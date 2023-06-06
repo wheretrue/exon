@@ -1,9 +1,8 @@
 # TCA
 
-> TCA is a modular library for building scientific workflows.
+TCA is not ready for public use. It is still in development.
 
 ## File Formats
-
 
 | Format    | Compression(s) | Inferred Extension(s) |
 | --------- | -------------- | --------------------- |
