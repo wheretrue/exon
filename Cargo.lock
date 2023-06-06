@@ -2290,7 +2290,7 @@ dependencies = [
 
 [[package]]
 name = "tca"
-version = "0.1.0"
+version = "0.1.1-alpha.1"
 dependencies = [
  "arrow",
  "async-trait",
