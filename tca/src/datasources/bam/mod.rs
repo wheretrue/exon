@@ -1,4 +1,6 @@
 //! Data source for BAM files.
+//!
+//! Reads BAM files. It is the binary version of SAM files.
 
 mod array_builder;
 mod batch_reader;
