@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::{fmt::Display, str::FromStr, sync::Arc};
 
 use datafusion::{
     datasource::file_format::{file_type::FileCompressionType, FileFormat},
@@ -76,6 +76,25 @@ impl FromStr for TCAFileType {
             "HMMDOMTAB" => Ok(Self::HMMER),
             "BED" => Ok(Self::BED),
             _ => Err(()),
+        }
+    }
+}
+
+impl Display for TCAFileType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FASTA => write!(f, "FASTA"),
+            Self::FASTQ => write!(f, "FASTQ"),
+            Self::VCF => write!(f, "VCF"),
+            Self::BCF => write!(f, "BCF"),
+            Self::GFF => write!(f, "GFF"),
+            Self::BAM => write!(f, "BAM"),
+            Self::SAM => write!(f, "SAM"),
+            #[cfg(feature = "mzml")]
+            Self::MZML => write!(f, "MZML"),
+            Self::GENBANK => write!(f, "GENBANK"),
+            Self::HMMER => write!(f, "HMMER"),
+            Self::BED => write!(f, "BED"),
         }
     }
 }
