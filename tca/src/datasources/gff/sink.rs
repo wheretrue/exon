@@ -20,11 +20,8 @@ use datafusion::{
 };
 use futures::StreamExt;
 use noodles::{
-    bam::reader::record,
-    bed::record::strand,
     core::Position,
     gff::{record::attributes::Entry, Record},
-    sam::record::reference_sequence_name,
 };
 use object_store::ObjectStore;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
