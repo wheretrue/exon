@@ -22,6 +22,7 @@ mod config;
 mod file_format;
 mod file_opener;
 mod scanner;
+mod sink;
 
 pub use self::config::GFFConfig;
 pub use self::file_format::GFFFormat;
