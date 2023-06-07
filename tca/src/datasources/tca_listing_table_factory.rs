@@ -40,8 +40,6 @@ impl TableProviderFactory for TCAListingTableFactory {
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let file_compression_type = cmd.file_compression_type.into();
 
-        eprintln!("file_compression_type: {:?}", file_compression_type);
-
         let file_type = TCAFileType::from_str(&cmd.file_type).map_err(|_| {
             datafusion::error::DataFusionError::Execution(format!(
                 "Unsupported file type: {}",

@@ -186,10 +186,10 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        // "/Users/thauck/wheretrue/github.com/wheretrue/tca"
         let object_store_url = ObjectStoreUrl::local_filesystem();
 
         let path = test_path("gff", "test.gff");
+        let new_path = test_path("gff", "test2.gff");
 
         let input_gff = ctx
             .read_gff(path.to_str().unwrap(), None)
@@ -199,10 +199,8 @@ mod tests {
             .await
             .unwrap();
 
-        let part_file = PartitionedFile::new(
-            "Users/thauck/wheretrue/github.com/wheretrue/tca/test2.gff".to_lowercase(),
-            0,
-        );
+        let path_str = new_path.to_str().unwrap();
+        let part_file = PartitionedFile::new(path_str.to_string(), 0);
 
         let gff_format = Arc::new(GFFFormat::default());
         let config = FileSinkConfig {
@@ -223,10 +221,11 @@ mod tests {
 
         while let Some(batch) = stream.next().await {
             let b = batch.unwrap();
-            eprintln!("batch: {:?}", b);
         }
 
-        // let head = object_store.head(&new_path).await.unwrap();
-        // assert_eq!(head.size, 135000);
+        let local_store = LocalFileSystem::new();
+        let path_string = Path::from(path_str);
+        let head = local_store.head(&path_string).await.unwrap();
+        assert_eq!(head.size, 279974);
     }
 }

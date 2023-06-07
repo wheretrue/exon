@@ -5,7 +5,7 @@ use std::{
 };
 
 use arrow::{
-    array::{Float32Array, Int32Array, Int64Array, MapArray, StringArray},
+    array::{Array, Float32Array, Int32Array, Int64Array, MapArray, StringArray},
     record_batch::{RecordBatch, RecordBatchWriter},
 };
 use async_trait::async_trait;
@@ -20,7 +20,11 @@ use datafusion::{
 };
 use futures::StreamExt;
 use noodles::{
-    bam::reader::record, core::Position, gff::Record, sam::record::reference_sequence_name,
+    bam::reader::record,
+    bed::record::strand,
+    core::Position,
+    gff::{record::attributes::Entry, Record},
+    sam::record::reference_sequence_name,
 };
 use object_store::ObjectStore;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
@@ -44,12 +48,56 @@ impl GFFArrayWriter {
         let start_position = Position::try_from(self.start.value(row_idx) as usize).unwrap();
         let end_position = Position::try_from(self.end.value(row_idx) as usize).unwrap();
 
+        let strand = self.strand.value(row_idx).parse().unwrap();
+
+        let arrow_attributes = self.attributes.value(row_idx);
+
+        let n_attributes = arrow_attributes.len();
+
+        let key_attrs = arrow_attributes
+            .column_by_name("keys")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+
+        let value_attrs = arrow_attributes
+            .column_by_name("values")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+
+        let mut entries = vec![];
+        for i in 0..n_attributes {
+            let key = key_attrs.value(i);
+            let value = value_attrs.value(i);
+
+            entries.push(Entry::new(key, value));
+        }
+        let attributes = noodles::gff::record::Attributes::from(entries);
+
+        // for i in 0..arrow_attributes.len() {
+        //     let key = arrow_attributes.key(i);
+        //     let value = arrow_attributes.value(i);
+
+        //     noodles_attributes.insert(key, value);
+        // }
+
         let mut record_builder = Record::builder()
             .set_reference_sequence_name(reference_sequence_name.to_string())
             .set_source(self.source.value(row_idx).to_string())
             .set_type(self.ty.value(row_idx).to_string())
             .set_start(start_position)
-            .set_end(end_position);
+            .set_end(end_position)
+            .set_strand(strand)
+            .set_score(self.score.value(row_idx))
+            .set_attributes(attributes);
+
+        if !self.phase.is_null(row_idx) {
+            let phase = self.phase.value(row_idx).parse().unwrap();
+            record_builder = record_builder.set_phase(phase);
+        }
 
         record_builder.build()
     }
@@ -242,8 +290,6 @@ impl GFFSink {
     ) -> datafusion::error::Result<Box<dyn AsyncWrite + Send + Unpin>> {
         let object = &file_meta.object_meta;
 
-        eprintln!("Creating writer for {:?}", object.location);
-
         match self.config.writer_mode {
             FileWriterMode::Append => Err(datafusion::error::DataFusionError::NotImplemented(
                 "GFF does not support append mode".to_string(),
@@ -276,14 +322,11 @@ impl DataSink for GFFSink {
             ));
         }
 
-        eprintln!("Writing GFF file...");
-
         let object_store = context
             .runtime_env()
             .object_store(&self.config.object_store_url)?;
 
         let file = &self.config.file_groups[0];
-        eprintln!("Writing to {:?}", file);
 
         let mut serializer = GFFSerializer::new();
         // let mut writer = self
@@ -304,8 +347,8 @@ impl DataSink for GFFSink {
 
             let bytes = serializer.serialize(batch).await?;
             let n_bytes = bytes.len();
-            eprintln!("Writing {} bytes", n_bytes);
 
+            // Why is this needed vs the writer working?
             object_store.put(&location, bytes).await?;
         }
 
