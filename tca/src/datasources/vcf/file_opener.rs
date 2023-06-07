@@ -15,8 +15,11 @@
 use std::sync::Arc;
 
 use datafusion::{
-    datasource::file_format::file_type::FileCompressionType, error::DataFusionError,
-    physical_plan::file_format::FileOpener,
+    datasource::{
+        file_format::file_type::FileCompressionType,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
+    error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
 use noodles::bgzf;
@@ -43,10 +46,7 @@ impl VCFOpener {
 }
 
 impl FileOpener for VCFOpener {
-    fn open(
-        &self,
-        file_meta: datafusion::physical_plan::file_format::FileMeta,
-    ) -> datafusion::error::Result<datafusion::physical_plan::file_format::FileOpenFuture> {
+    fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
         let file_compression_type = self.file_compression_type.clone();
 

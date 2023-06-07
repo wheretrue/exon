@@ -15,10 +15,12 @@
 use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
-use datafusion::physical_plan::{
-    file_format::{FileScanConfig, FileStream},
-    metrics::ExecutionPlanMetricsSet,
-    ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
+use datafusion::{
+    datasource::physical_plan::{FileScanConfig, FileStream},
+    physical_plan::{
+        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
+        Statistics,
+    },
 };
 
 use super::{config::BAMConfig, file_opener::BAMOpener};

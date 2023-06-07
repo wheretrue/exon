@@ -18,9 +18,10 @@ use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
     datasource::file_format::{file_type::FileCompressionType, FileFormat},
+    datasource::physical_plan::FileScanConfig,
     error::DataFusionError,
     execution::context::SessionState,
-    physical_plan::{file_format::FileScanConfig, ExecutionPlan, PhysicalExpr, Statistics},
+    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
 use futures::TryStreamExt;
 use noodles::{bgzf, vcf};

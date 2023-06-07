@@ -17,10 +17,10 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
-    datasource::file_format::FileFormat,
+    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
     error::DataFusionError,
     execution::context::SessionState,
-    physical_plan::{file_format::FileScanConfig, ExecutionPlan, PhysicalExpr, Statistics},
+    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
 use futures::TryStreamExt;
 use noodles::bcf;

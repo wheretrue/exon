@@ -16,11 +16,13 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    datasource::file_format::file_type::FileCompressionType,
+    datasource::{
+        file_format::file_type::FileCompressionType,
+        physical_plan::{FileScanConfig, FileStream},
+    },
     physical_plan::{
-        file_format::{FileScanConfig, FileStream},
-        metrics::ExecutionPlanMetricsSet,
-        ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
+        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
+        Statistics,
     },
 };
 
