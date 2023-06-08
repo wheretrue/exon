@@ -2,7 +2,7 @@
     <img src=".github/images/logo.png" width="200px" alt="Exon" />
 </h1>
 
-Exon is an modern analysis toolkit for informatics. It features:
+Exon is an analysis toolkit for life-science applications. It features:
 
 * Support for over 10 (and counting) file formats from bioinformatics, proteomics, and others
 * Seamless transition between local and object storage (e.g. S3)
