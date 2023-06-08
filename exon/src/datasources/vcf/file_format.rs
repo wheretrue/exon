@@ -78,7 +78,6 @@ impl FileFormat for VCFFormat {
                 let mut vcf_reader = vcf::AsyncReader::new(bgzf_reader);
 
                 let header = vcf_reader.read_header().await?;
-                
 
                 VCFSchemaBuilder::from(header)
             }
@@ -86,7 +85,6 @@ impl FileFormat for VCFFormat {
                 let mut vcf_reader = vcf::AsyncReader::new(stream_reader);
 
                 let header = vcf_reader.read_header().await?;
-                
 
                 VCFSchemaBuilder::from(header)
             }

@@ -18,11 +18,15 @@ use std::io::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
 
+use base64::Engine;
+
 use super::types::{Binary, CompressionType, DataType};
 
 /// Convert the binary content into a float of the appropriate type.
 pub fn decode_binary_array(b: &Binary, ct: &CompressionType, dt: &DataType) -> Vec<f64> {
-    let decoded = base64::decode(&b.content).expect("Unable to decode binary.");
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&b.content)
+        .expect("Unable to decode binary.");
 
     match (ct, dt) {
         (CompressionType::NoCompression, DataType::Float32Bit) => {

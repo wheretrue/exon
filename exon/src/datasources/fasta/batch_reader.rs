@@ -97,8 +97,6 @@ where
     }
 
     pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
-        
-
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),

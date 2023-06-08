@@ -57,8 +57,6 @@ impl FASTQConfig {
 }
 
 pub fn schema() -> Schema {
-    
-
     Schema::new(vec![
         Field::new("name", DataType::Utf8, false),
         Field::new("description", DataType::Utf8, true),

@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
+use base64::Engine;
+
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
@@ -268,7 +270,7 @@ type DecodedArrayResult<T> = Result<T, DecodeArrayError>;
 pub trait DecodedArray {
     fn decode_array(&self, i: usize) -> DecodedArrayResult<Vec<f64>> {
         let de = self.decompress_binary_string(i);
-        let decoded = base64::decode(de);
+        let decoded = base64::engine::general_purpose::STANDARD.decode(de);
 
         if let Ok(v) = decoded {
             let mut rdr = Cursor::new(v);

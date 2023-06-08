@@ -82,7 +82,7 @@ where
                                 ))
                             }
                             Err(_) => panic!("fuck"),
-                            Ok(e) => panic!("event: {:?}", e),
+                            Ok(e) => panic!("event: {e:?}"),
                         }
                     }
 
@@ -94,7 +94,7 @@ where
                 Ok(Event::Eof) => {
                     return Ok(None);
                 }
-                Err(e) => println!("{:?}", e),
+                Err(e) => println!("{e:?}"),
                 _ => {
                     buf.clear();
                 }
