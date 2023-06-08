@@ -59,7 +59,7 @@ pub trait ExonSessionExt {
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let mut state = SessionState::with_config_rt(config, runtime);
 
-        let mut sources = vec![
+        let sources = vec![
             "BAM",
             "BCF",
             "BED",
@@ -70,10 +70,9 @@ pub trait ExonSessionExt {
             "HMMDOMTAB",
             "SAM",
             "VCF",
+            #[cfg(feature = "mzml")]
+            "MZML",
         ];
-
-        #[cfg(feature = "mzml")]
-        sources.push("MZML");
 
         for source in sources {
             state
@@ -242,7 +241,7 @@ impl ExonSessionExt for SessionContext {
         let session_state = self.state();
 
         let table_url = ListingTableUrl::parse(table_path)?;
-        let file_format = crate::datasources::infer_exon_format(&table_path)?;
+        let file_format = crate::datasources::infer_exon_format(table_path)?;
         let lo = ListingOptions::new(file_format);
 
         let resolved_schema = lo.infer_schema(&session_state, &table_url).await?;
@@ -267,7 +266,7 @@ mod tests {
     async fn test_infer() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
 
-        let mut test_table = vec![
+        let test_table = vec![
             ("bam", "test.bam"),
             ("sam", "test.sam"),
             ("bed", "test.bed.zst"),
@@ -296,14 +295,13 @@ mod tests {
             ("hmmdomtab", "test.hmmdomtab.zst"),
             ("hmmdomtab", "test.hmmdomtab.gz"),
             ("hmmdomtab", "test.hmmdomtab"),
-        ];
-
-        #[cfg(feature = "mzml")]
-        test_table.extend(vec![
+            #[cfg(feature = "mzml")]
             ("mzml", "test.mzml.zst"),
+            #[cfg(feature = "mzml")]
             ("mzml", "test.mzml.gz"),
+            #[cfg(feature = "mzml")]
             ("mzml", "test.mzml"),
-        ]);
+        ];
 
         for (cat, fname) in test_table.iter() {
             let test_path = test_path(cat, fname);

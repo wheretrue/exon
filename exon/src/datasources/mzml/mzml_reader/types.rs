@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
+use base64::Engine;
+
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
@@ -157,9 +159,9 @@ impl TryFrom<&CVVector> for DataType {
 
     fn try_from(value: &CVVector) -> Result<Self, Self::Error> {
         for cv_param in value.iter() {
-            let data_type = DataType::try_from(cv_param);
-            if !data_type.is_err() {
-                return Ok(data_type.unwrap());
+            match DataType::try_from(cv_param) {
+                Ok(data_type) => return Ok(data_type),
+                Err(_) => continue,
             }
         }
         Err(MissingDataTypeError)
@@ -219,10 +221,10 @@ impl TryFrom<&CVVector> for CompressionType {
 
     fn try_from(value: &CVVector) -> Result<Self, Self::Error> {
         for cv_param in value.iter() {
-            let compression_type = CompressionType::try_from(cv_param);
-            if !compression_type.is_err() {
-                return Ok(compression_type.unwrap());
-            }
+            match CompressionType::try_from(cv_param) {
+                Ok(compression_type) => return Ok(compression_type),
+                Err(_) => continue,
+            };
         }
         Err(MissingCompressionError)
     }
@@ -268,11 +270,9 @@ type DecodedArrayResult<T> = Result<T, DecodeArrayError>;
 pub trait DecodedArray {
     fn decode_array(&self, i: usize) -> DecodedArrayResult<Vec<f64>> {
         let de = self.decompress_binary_string(i);
-        let decoded = base64::decode(de);
+        let decoded = base64::engine::general_purpose::STANDARD.decode(de);
 
-        if decoded.is_ok() {
-            let v = decoded.unwrap();
-
+        if let Ok(v) = decoded {
             let mut rdr = Cursor::new(v);
 
             let mut peaks = Vec::<f64>::new();
@@ -281,6 +281,7 @@ pub trait DecodedArray {
             }
             return Ok(peaks);
         };
+
         Err("error")
     }
 

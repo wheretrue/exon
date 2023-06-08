@@ -79,7 +79,7 @@ where
             }
         }
 
-        if record_batch.len() == 0 {
+        if record_batch.is_empty() {
             return Ok(None);
         }
 

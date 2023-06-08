@@ -136,8 +136,7 @@ pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionEr
 
     let file_type = ExonFileType::from_str(splitted).map_err(|_| {
         DataFusionError::Execution(format!(
-            "Unable to infer file type from file extension: {}",
-            path
+            "Unable to infer file type from file extension: {path}"
         ))
     })?;
 

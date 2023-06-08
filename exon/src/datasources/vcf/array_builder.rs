@@ -464,6 +464,11 @@ impl VCFArrayBuilder {
         self.chromosomes.len()
     }
 
+    /// Returns whether the builder is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Appends a record to the builder.
     pub fn append(&mut self, record: &Record) {
         let chromosome: String = format!("{}", record.chromosome());

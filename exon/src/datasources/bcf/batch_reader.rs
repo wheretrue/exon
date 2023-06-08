@@ -99,14 +99,14 @@ where
             }
         }
 
-        if record_batch.len() == 0 {
+        if record_batch.is_empty() {
             return Ok(None);
         }
 
         let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
 
         match &self.config.projection {
-            Some(projection) => Ok(Some(batch.project(&projection)?)),
+            Some(projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),
         }
     }

@@ -67,12 +67,9 @@ impl FileOpener for VCFOpener {
 
                     Ok(batch_reader.into_stream().boxed())
                 }
-                _ => {
-                    return Err(DataFusionError::NotImplemented(format!(
-                        "Unsupported file compression type {:?}",
-                        file_compression_type
-                    )))
-                }
+                _ => Err(DataFusionError::NotImplemented(format!(
+                    "Unsupported file compression type {file_compression_type:?}"
+                ))),
             }
         }))
     }
