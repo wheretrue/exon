@@ -69,8 +69,7 @@ impl FileOpener for VCFOpener {
                 }
                 _ => {
                     return Err(DataFusionError::NotImplemented(format!(
-                        "Unsupported file compression type {:?}",
-                        file_compression_type
+                        "Unsupported file compression type {file_compression_type:?}"
                     )))
                 }
             }

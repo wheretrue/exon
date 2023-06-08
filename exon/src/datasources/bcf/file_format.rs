@@ -62,7 +62,7 @@ impl FileFormat for BCFFormat {
             .parse::<noodles::vcf::Header>()
             .map_err(|e| DataFusionError::Execution(e.to_string()))?;
 
-        let schema_builder = VCFSchemaBuilder::from(header.clone());
+        let schema_builder = VCFSchemaBuilder::from(header);
 
         let schema = schema_builder.build();
 

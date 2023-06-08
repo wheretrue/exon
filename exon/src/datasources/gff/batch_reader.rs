@@ -94,7 +94,7 @@ where
             RecordBatch::try_new(self.config.file_schema.clone(), gff_array_builder.finish())?;
 
         match &self.config.projection {
-            Some(projection) => Ok(Some(batch.project(&projection)?)),
+            Some(projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),
         }
     }

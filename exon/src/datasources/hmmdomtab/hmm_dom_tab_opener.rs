@@ -83,7 +83,7 @@ impl FileOpener for HMMDomTabOpener {
                 let batch = match decoder.flush() {
                     Ok(None) => None,
                     Ok(Some(decoded)) => match &projection {
-                        Some(p) => Some(decoded.project(&p)),
+                        Some(p) => Some(decoded.project(p)),
                         None => Some(Ok(decoded)),
                     },
                     Err(e) => Some(Err(e)),

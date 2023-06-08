@@ -77,7 +77,7 @@ where
         )?;
 
         match self.config.projection {
-            Some(ref projection) => Ok(Some(batch.project(&projection)?)),
+            Some(ref projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),
         }
     }

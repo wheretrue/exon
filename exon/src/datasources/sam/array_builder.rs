@@ -76,6 +76,11 @@ impl SAMArrayBuilder {
         self.quality_scores.len()
     }
 
+    /// Returns whether the builder is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Appends a record to the builder.
     pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
         self.names.append_option(record.read_name());

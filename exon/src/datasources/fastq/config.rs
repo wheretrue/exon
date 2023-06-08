@@ -57,12 +57,12 @@ impl FASTQConfig {
 }
 
 pub fn schema() -> Schema {
-    let schema = Schema::new(vec![
+    
+
+    Schema::new(vec![
         Field::new("name", DataType::Utf8, false),
         Field::new("description", DataType::Utf8, true),
         Field::new("sequence", DataType::Utf8, false),
         Field::new("quality_scores", DataType::Utf8, false),
-    ]);
-
-    schema
+    ])
 }

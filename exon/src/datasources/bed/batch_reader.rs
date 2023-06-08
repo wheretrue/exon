@@ -74,7 +74,7 @@ where
         let batch = RecordBatch::try_new(self.config.file_schema.clone(), array_builder.finish())?;
 
         match &self.config.projection {
-            Some(projection) => Ok(Some(batch.project(&projection)?)),
+            Some(projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),
         }
     }
@@ -120,7 +120,7 @@ where
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    format!("invalid number of fields: {}", num_fields),
+                    format!("invalid number of fields: {num_fields}"),
                 ));
             }
         };

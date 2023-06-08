@@ -65,12 +65,12 @@ impl HMMDomTabConfig {
 pub fn build_hmm_dom_tab_decoder() -> Decoder {
     let builder = ReaderBuilder::new(schema().into());
 
-    let decoder = builder
+    
+
+    builder
         .with_delimiter(b'\t')
         .has_header(false)
-        .build_decoder();
-
-    decoder
+        .build_decoder()
 }
 
 pub fn schema() -> Schema {
