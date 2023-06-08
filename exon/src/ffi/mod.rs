@@ -76,7 +76,7 @@ mod tests {
     use arrow::record_batch::RecordBatchReader;
     use datafusion::prelude::SessionContext;
 
-    use crate::context::TCASessionExt;
+    use crate::context::ExonSessionExt;
     use crate::ffi::create_dataset_stream_from_table_provider;
     use crate::ffi::ArrowArrayStream;
 

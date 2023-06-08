@@ -14,17 +14,17 @@
 
 #![warn(missing_docs)]
 
-//! TCA is a library to facilitate open-ended analysis of scientific data, ease the application of ML models, and provide a common data interface for science and engineering teams.
+//! Exon is a library to facilitate open-ended analysis of scientific data, ease the application of ML models, and provide a common data interface for science and engineering teams.
 //!
 //! # Overview
 //!
-//! The main interface for users is through datafusion's `SessionContext` plus the [`TCASessionExt`] extension trait. This has a number of convenience methods for loading data from various sources.
+//! The main interface for users is through datafusion's `SessionContext` plus the [`ExonSessionExt`] extension trait. This has a number of convenience methods for loading data from various sources.
 //!
-//! See the `read_*` methods on [`TCASessionExt`] for more information. For example, `read_fasta`, or `read_gff`. There's also a `read_inferred_tca_table` method that will attempt to infer the data type and compression from the file extension for ease of use.
+//! See the `read_*` methods on [`ExonSessionExt`] for more information. For example, `read_fasta`, or `read_gff`. There's also a `read_inferred_exon_table` method that will attempt to infer the data type and compression from the file extension for ease of use.
 //!
-//! To facilitate those methods, TCA implements a number of traits for DataFusion that serve as a good base for scientific data work. See the [`datasources`] module for more information.
+//! To facilitate those methods, Exon implements a number of traits for DataFusion that serve as a good base for scientific data work. See the [`datasources`] module for more information.
 //!
-//! [`TCASessionExt`]: context::TCASessionExt
+//! [`ExonSessionExt`]: context::ExonSessionExt
 //! [`datasources`]: datasources
 //!
 //! # Examples
@@ -32,7 +32,7 @@
 //! ## Loading a FASTA file
 //!
 //! ```rust
-//! use tca::context::TCASessionExt;
+//! use exon::context::ExonSessionExt;
 //!
 //! use datafusion::prelude::*;
 //! use datafusion::error::Result;
@@ -57,7 +57,7 @@
 //! ## Loading a ZSTD-compressed FASTA file
 //!
 //! ```rust
-//! use tca::context::TCASessionExt;
+//! use exon::context::ExonSessionExt;
 //!
 //! use datafusion::prelude::*;
 //! use datafusion::error::Result;
@@ -82,10 +82,10 @@
 //! # }
 //! ```
 
-/// Main interface for working with TCA. Adds additional functionality to the DataFusion SessionContext.
+/// Main interface for working with Exon. Adds additional functionality to the DataFusion SessionContext.
 pub mod context;
 
-/// Data sources for the TCA.
+/// Data sources for the Exon.
 pub mod datasources;
 
 /// Utilities for moving data across the FFI boundary.

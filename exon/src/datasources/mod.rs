@@ -52,10 +52,10 @@ pub mod vcf;
 pub const DEFAULT_BATCH_SIZE: usize = 8192;
 
 /// File types.
-mod tca_file_type;
-pub use self::tca_file_type::infer_tca_format;
-pub use self::tca_file_type::TCAFileType;
+mod exon_file_type;
+pub use self::exon_file_type::infer_exon_format;
+pub use self::exon_file_type::ExonFileType;
 
 /// ListingTableFactory
-mod tca_listing_table_factory;
-pub use self::tca_listing_table_factory::TCAListingTableFactory;
+mod exon_listing_table_factory;
+pub use self::exon_listing_table_factory::ExonListingTableFactory;

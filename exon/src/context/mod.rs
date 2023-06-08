@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod tca_session_ext;
+mod exon_session_ext;
 
-pub use tca_session_ext::TCASessionExt;
+pub use exon_session_ext::ExonSessionExt;

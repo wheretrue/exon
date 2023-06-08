@@ -29,7 +29,7 @@ use super::{
 use super::mzml::MzMLFormat;
 
 /// The type of file.
-pub enum TCAFileType {
+pub enum ExonFileType {
     /// FASTA file format.
     FASTA,
     /// FASTQ file format.
@@ -56,7 +56,7 @@ pub enum TCAFileType {
     MZML,
 }
 
-impl FromStr for TCAFileType {
+impl FromStr for ExonFileType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -80,7 +80,7 @@ impl FromStr for TCAFileType {
     }
 }
 
-impl Display for TCAFileType {
+impl Display for ExonFileType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::FASTA => write!(f, "FASTA"),
@@ -99,7 +99,7 @@ impl Display for TCAFileType {
     }
 }
 
-impl TCAFileType {
+impl ExonFileType {
     /// Get the file format for the given file type.
     pub fn get_file_format(
         self,
@@ -123,7 +123,7 @@ impl TCAFileType {
 }
 
 /// Infer the file type from the file extension.
-pub fn infer_tca_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionError> {
+pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionError> {
     let mut exts = path.rsplit('.');
     let mut splitted = exts.next().unwrap_or("");
 
@@ -134,7 +134,7 @@ pub fn infer_tca_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionErr
         splitted = exts.next().unwrap_or("");
     }
 
-    let file_type = TCAFileType::from_str(splitted).map_err(|_| {
+    let file_type = ExonFileType::from_str(splitted).map_err(|_| {
         DataFusionError::Execution(format!(
             "Unable to infer file type from file extension: {}",
             path

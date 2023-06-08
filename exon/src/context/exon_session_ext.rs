@@ -25,36 +25,38 @@ use datafusion::{
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 
-use crate::datasources::{TCAFileType, TCAListingTableFactory};
+use crate::datasources::{ExonFileType, ExonListingTableFactory};
 
-/// Extension trait for [`SessionContext`] that adds TCA-specific functionality.
+/// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
 #[async_trait]
-pub trait TCASessionExt {
-    /// Reads a TCA table from the given path of a certain type and optional compression type.
-    async fn read_tca_table(
+pub trait ExonSessionExt {
+    /// Reads a Exon table from the given path of a certain type and optional compression type.
+    async fn read_exon_table(
         &self,
         table_path: &str,
-        file_type: TCAFileType,
+        file_type: ExonFileType,
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError>;
 
-    /// Reads a TCA table from a given path and infers the type of the table and compression type.
-    async fn read_inferred_tca_table(&self, table_path: &str)
-        -> Result<DataFrame, DataFusionError>;
+    /// Reads a Exon table from a given path and infers the type of the table and compression type.
+    async fn read_inferred_exon_table(
+        &self,
+        table_path: &str,
+    ) -> Result<DataFrame, DataFusionError>;
 
-    /// Create a new TCA based [`SessionContext`].
-    fn new_tca() -> SessionContext {
-        SessionContext::with_config_tca(SessionConfig::new())
+    /// Create a new Exon based [`SessionContext`].
+    fn new_exon() -> SessionContext {
+        SessionContext::with_config_exon(SessionConfig::new())
     }
 
-    /// Create a new TCA based [`SessionContext`] with the given config.
-    fn with_config_tca(config: SessionConfig) -> SessionContext {
+    /// Create a new Exon based [`SessionContext`] with the given config.
+    fn with_config_exon(config: SessionConfig) -> SessionContext {
         let runtime = Arc::new(RuntimeEnv::default());
-        Self::with_config_rt_tca(config, runtime)
+        Self::with_config_rt_exon(config, runtime)
     }
 
-    /// Create a new TCA based [`SessionContext`] with the given config and runtime.
-    fn with_config_rt_tca(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
+    /// Create a new Exon based [`SessionContext`] with the given config and runtime.
+    fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let mut state = SessionState::with_config_rt(config, runtime);
 
         let mut sources = vec![
@@ -76,7 +78,7 @@ pub trait TCASessionExt {
         for source in sources {
             state
                 .table_factories_mut()
-                .insert(source.into(), Arc::new(TCAListingTableFactory::default()));
+                .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
 
         SessionContext::with_state(state)
@@ -89,7 +91,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::FASTA, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::FASTA, file_compression_type)
             .await;
     }
 
@@ -100,7 +102,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::BAM, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::BAM, file_compression_type)
             .await;
     }
 
@@ -111,7 +113,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::SAM, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::SAM, file_compression_type)
             .await;
     }
 
@@ -122,7 +124,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::FASTQ, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::FASTQ, file_compression_type)
             .await;
     }
 
@@ -133,7 +135,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::VCF, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::VCF, file_compression_type)
             .await;
     }
 
@@ -144,7 +146,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::BCF, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::BCF, file_compression_type)
             .await;
     }
 
@@ -155,7 +157,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::GFF, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::GFF, file_compression_type)
             .await;
     }
 
@@ -166,7 +168,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::BED, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::BED, file_compression_type)
             .await;
     }
 
@@ -177,7 +179,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::GENBANK, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::GENBANK, file_compression_type)
             .await;
     }
 
@@ -188,7 +190,7 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::HMMER, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::HMMER, file_compression_type)
             .await;
     }
 
@@ -200,17 +202,17 @@ pub trait TCASessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_tca_table(table_path, TCAFileType::MZML, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::MZML, file_compression_type)
             .await;
     }
 }
 
 #[async_trait]
-impl TCASessionExt for SessionContext {
-    async fn read_tca_table(
+impl ExonSessionExt for SessionContext {
+    async fn read_exon_table(
         &self,
         table_path: &str,
-        file_type: TCAFileType,
+        file_type: ExonFileType,
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         let session_state = self.state();
@@ -233,14 +235,14 @@ impl TCASessionExt for SessionContext {
         self.read_table(Arc::new(table))
     }
 
-    async fn read_inferred_tca_table(
+    async fn read_inferred_exon_table(
         &self,
         table_path: &str,
     ) -> Result<DataFrame, DataFusionError> {
         let session_state = self.state();
 
         let table_url = ListingTableUrl::parse(table_path)?;
-        let file_format = crate::datasources::infer_tca_format(&table_path)?;
+        let file_format = crate::datasources::infer_exon_format(&table_path)?;
         let lo = ListingOptions::new(file_format);
 
         let resolved_schema = lo.infer_schema(&session_state, &table_url).await?;
@@ -259,7 +261,7 @@ impl TCASessionExt for SessionContext {
 mod tests {
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
-    use crate::{context::tca_session_ext::TCASessionExt, tests::test_path};
+    use crate::{context::exon_session_ext::ExonSessionExt, tests::test_path};
 
     #[tokio::test]
     async fn test_infer() -> Result<(), DataFusionError> {
@@ -307,7 +309,7 @@ mod tests {
             let test_path = test_path(cat, fname);
 
             let df = ctx
-                .read_inferred_tca_table(test_path.to_str().unwrap())
+                .read_inferred_exon_table(test_path.to_str().unwrap())
                 .await
                 .unwrap();
             let batches = df.collect().await.unwrap();
@@ -338,7 +340,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hmmer_dom_tab() -> Result<(), DataFusionError> {
-        //! Test tat the TCASessionExt can read a HMMER domtab file
+        //! Test tat the ExonSessionExt can read a HMMER domtab file
         let ctx = SessionContext::new();
 
         let path = test_path("hmmdomtab", "test.hmmdomtab");
@@ -393,7 +395,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_bam() -> Result<(), DataFusionError> {
-        //! Test tat the TCASessionExt can read a BAM file
+        //! Test tat the ExonSessionExt can read a BAM file
         let ctx = SessionContext::new();
 
         let path = test_path("bam", "test.bam");
@@ -433,7 +435,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fastq() -> Result<(), DataFusionError> {
-        //! Test tat the TCASessionExt can read a FASTQ file
+        //! Test tat the ExonSessionExt can read a FASTQ file
         let ctx = SessionContext::new();
 
         let path = test_path("fastq", "test.fastq");
@@ -515,11 +517,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_external_table() -> Result<(), DataFusionError> {
-        //! Test that with the TCASessionExt we can create an external table
+        //! Test that with the ExonSessionExt we can create an external table
 
         let path = test_path("fasta", "test.fasta");
 
-        let ctx = SessionContext::new_tca();
+        let ctx = SessionContext::new_exon();
         let sql = format!(
             "CREATE EXTERNAL TABLE uniprot STORED AS FASTA LOCATION '{}';",
             path.to_str().unwrap()

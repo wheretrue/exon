@@ -1,11 +1,11 @@
 [workspace.package]
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/wheretrue/tca"
+repository = "https://github.com/wheretrue/exon"
 
 [workspace]
 members = [
-  "tca",
+  "exon",
 ]
 
 [workspace.dependencies]

@@ -93,11 +93,28 @@ where
 
         let bed_record = match num_fields {
             12 => {
-                let r: Record<12> = Record::from_str(&buf).unwrap();
+                let r: Record<12> = match Record::from_str(&buf) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("invalid record: {e}"),
+                        ));
+                    }
+                };
+
                 r.into()
             }
             9 => {
-                let r: Record<9> = Record::from_str(&buf).unwrap();
+                let r: Record<9> = match Record::from_str(&buf) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("invalid record: {e}"),
+                        ));
+                    }
+                };
                 r.into()
             }
             _ => {

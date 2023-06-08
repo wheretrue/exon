@@ -25,14 +25,14 @@ use datafusion::{
     logical_expr::CreateExternalTable,
 };
 
-use crate::datasources::TCAFileType;
+use crate::datasources::ExonFileType;
 
-/// A `ListingTableFactory` that adapts TCA FileFormats to `TableProvider`s.
+/// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
 #[derive(Debug, Clone, Default)]
-pub struct TCAListingTableFactory {}
+pub struct ExonListingTableFactory {}
 
 #[async_trait]
-impl TableProviderFactory for TCAListingTableFactory {
+impl TableProviderFactory for ExonListingTableFactory {
     async fn create(
         &self,
         state: &SessionState,
@@ -40,9 +40,7 @@ impl TableProviderFactory for TCAListingTableFactory {
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let file_compression_type = cmd.file_compression_type.into();
 
-        eprintln!("file_compression_type: {:?}", file_compression_type);
-
-        let file_type = TCAFileType::from_str(&cmd.file_type).map_err(|_| {
+        let file_type = ExonFileType::from_str(&cmd.file_type).map_err(|_| {
             datafusion::error::DataFusionError::Execution(format!(
                 "Unsupported file type: {}",
                 &cmd.file_type,
@@ -79,7 +77,7 @@ mod tests {
     };
     use object_store::local::LocalFileSystem;
 
-    use crate::datasources::TCAListingTableFactory;
+    use crate::datasources::ExonListingTableFactory;
 
     fn create_runtime_env() -> Result<RuntimeEnv, DataFusionError> {
         let rn_config = RuntimeConfig::new();
@@ -102,28 +100,28 @@ mod tests {
                 .to_str()
                 .unwrap()
                 .into(),
-            Arc::new(TCAListingTableFactory::default()),
+            Arc::new(ExonListingTableFactory::default()),
             object_store,
             "SAM".to_string(),
             false,
         );
 
         mem_catalog
-            .register_schema("tca", Arc::new(schema))
+            .register_schema("exon", Arc::new(schema))
             .unwrap();
 
         let session_config = SessionConfig::from_env().unwrap();
         let runtime_env = create_runtime_env().unwrap();
         let ctx = SessionContext::with_config_rt(session_config.clone(), Arc::new(runtime_env));
 
-        ctx.register_catalog("tca", Arc::new(mem_catalog));
+        ctx.register_catalog("exon", Arc::new(mem_catalog));
         ctx.refresh_catalogs().await.unwrap();
 
-        let gotten_catalog = ctx.catalog("tca").unwrap();
+        let gotten_catalog = ctx.catalog("exon").unwrap();
         let schema_names = gotten_catalog.schema_names();
-        assert_eq!(schema_names, vec!["tca"]);
+        assert_eq!(schema_names, vec!["exon"]);
 
-        let new_schema = gotten_catalog.schema("tca").unwrap();
+        let new_schema = gotten_catalog.schema("exon").unwrap();
         let tables = new_schema.table_names();
         assert_eq!(tables, vec!["test"]);
     }
