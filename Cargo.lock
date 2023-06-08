@@ -849,7 +849,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.1.1-alpha.4"
+version = "0.1.1-alpha.5"
 dependencies = [
  "arrow",
  "async-trait",
