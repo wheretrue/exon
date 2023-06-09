@@ -11,6 +11,12 @@ Exon is an analysis toolkit for life-science applications. It features:
 
 Please note Exon was recently excised from a larger library, so please be patient as we work to clean up after that. If you have a comment or question in the meantime, please file an issue.
 
+- [Installation](#installation)
+- [Usage](#usage)
+- [Benchmarks](#benchmarks)
+  - [VCF](#vcf)
+  - [FASTA](#fasta)
+
 ## Installation
 
 Exon is available via crates.io. To install, add the following to your `Cargo.toml`:
@@ -36,3 +42,21 @@ let df = ctx.read_fasta("test-data/datasources/fasta/test.fasta", None).await?;
 ```
 
 Please see the [rust docs](https://docs.rs/exon) for more information.
+
+## Benchmarks
+
+Set of benchmarks for various file formats. All benchmarks were run on a 2022 MacBook Air.
+
+### VCF
+
+Reading VCF files.
+
+<!-- copied from the output of cargo bench -->
+<img src=".github/images/vcf-benches.svg" width="500px" alt="Exon" />
+
+### FASTA
+
+Reading uniprot sequences from a FASTA file.
+
+<!-- copied from the output of cargo bench -->
+<img src=".github/images/uniprot-benches.svg" width="500px" alt="Exon" />

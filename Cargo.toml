@@ -7,12 +7,3 @@ repository = "https://github.com/wheretrue/exon"
 members = [
   "exon",
 ]
-
-[workspace.dependencies]
-arrow = {version = "39.0.0"}
-async-trait = "0.1.68"
-datafusion = {version = "25.0.0", features = ["default"]}
-futures = "0.3.28"
-object_store = {version = "0.5.4"}
-tokio = {version = "1.0", features = ["io-util"]}
-tokio-util = {version = "0.7.8", features = ["compat"]}
