@@ -85,8 +85,11 @@
 /// Main interface for working with Exon. Adds additional functionality to the DataFusion SessionContext.
 pub mod context;
 
-/// Data sources for the Exon.
+/// Data sources for Exon.
 pub mod datasources;
+
+/// UDFs for Exon.
+pub mod udfs;
 
 /// Utilities for moving data across the FFI boundary.
 #[cfg(feature = "ffi")]
