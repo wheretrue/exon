@@ -35,6 +35,7 @@ pub struct FASTAConfig {
 }
 
 impl FASTAConfig {
+    /// Create a new FASTA configuration.
     pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
         Self {
             object_store,
@@ -44,11 +45,13 @@ impl FASTAConfig {
         }
     }
 
+    /// Create a new FASTA configuration with a given batch size.
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
         self.batch_size = batch_size;
         self
     }
 
+    /// Create a new FASTA configuration with a given projection.
     pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
         self.projection = Some(projection);
         self

@@ -110,7 +110,7 @@ impl GenotypeBuilder {
                 let value = genotype.get(&key);
 
                 match value {
-                    None => match field_type {
+                    None | Some(None) => match field_type {
                         DataType::Int32 => {
                             self.inner
                                 .values()
@@ -157,9 +157,13 @@ impl GenotypeBuilder {
                         }
                         _ => unimplemented!(),
                     },
-                    Some(None) => {
-                        unimplemented!();
-                    }
+                    // Some(None) => {
+                    //     self.inner
+                    //         .values()
+                    //         .field_builder::<BooleanBuilder>(i)
+                    //         .expect("expected a boolean builder")
+                    //         .append_value(false);
+                    // }
                     Some(Some(value)) => match value {
                         Value::Integer(int_val) => self
                             .inner
@@ -406,6 +410,20 @@ impl InfosBuilder {
                             let builder_values = builder.values();
                             for v in float_array {
                                 builder_values.append_option(*v);
+                            }
+                            builder.append(true);
+                        }
+                        InfoArray::String(string_array) => {
+                            let builder = self
+                                .inner
+                                .field_builder::<GenericListBuilder<i32, GenericStringBuilder<i32>>>(
+                                    i,
+                                )
+                                .unwrap();
+
+                            let builder_values = builder.values();
+                            for v in string_array {
+                                builder_values.append_option(v.clone());
                             }
                             builder.append(true);
                         }
