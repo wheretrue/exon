@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod gc_content;
 mod reverse_complement;
 
+pub use gc_content::gc_content;
 pub use reverse_complement::reverse_complement;
