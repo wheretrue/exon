@@ -33,6 +33,7 @@ pub struct FASTAOpener {
 }
 
 impl FASTAOpener {
+    /// Create a new FASTAOpener.
     pub fn new(config: Arc<FASTAConfig>, file_compression_type: FileCompressionType) -> Self {
         Self {
             config,
