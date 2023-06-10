@@ -16,3 +16,6 @@
 
 /// sequence UDFs for Exon.
 pub mod sequence;
+
+/// UDFs for SAM flags.
+pub mod samflags;
