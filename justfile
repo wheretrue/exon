@@ -9,3 +9,7 @@ download-vcf-sample:
 	wget -O benchmark.vcf.gz "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/GRCh38/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
 	gzcat benchmark.vcf.gz | head -n 150000 | bgzip -c > exon/benches/data/benchmark.vcf.gz
 	gunzip -k exon/benches/data/benchmark.vcf.gz
+
+coverage:
+	cargo tarpaulin --out Html
+	open tarpaulin-report.html

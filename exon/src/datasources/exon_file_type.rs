@@ -144,3 +144,29 @@ pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionEr
 
     Ok(file_format)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::ExonFileType;
+
+    #[test]
+    fn test_display() {
+        assert_eq!(ExonFileType::FASTA.to_string(), "FASTA");
+        assert_eq!(ExonFileType::FASTQ.to_string(), "FASTQ");
+        assert_eq!(ExonFileType::VCF.to_string(), "VCF");
+        assert_eq!(ExonFileType::BCF.to_string(), "BCF");
+        assert_eq!(ExonFileType::GFF.to_string(), "GFF");
+        assert_eq!(ExonFileType::BAM.to_string(), "BAM");
+        assert_eq!(ExonFileType::SAM.to_string(), "SAM");
+        assert_eq!(ExonFileType::GENBANK.to_string(), "GENBANK");
+        assert_eq!(ExonFileType::HMMER.to_string(), "HMMER");
+        assert_eq!(ExonFileType::BED.to_string(), "BED");
+    }
+
+    #[test]
+    fn test_from_str_errors() {
+        assert!(ExonFileType::from_str("foo").is_err());
+    }
+}
