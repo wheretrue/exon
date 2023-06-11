@@ -88,7 +88,7 @@ impl InfosBuilder {
             let v = info.get(&key);
 
             match v {
-                None => match field_type {
+                None | Some(None) => match field_type {
                     DataType::Int32 => {
                         self.inner
                             .field_builder::<Int32Builder>(i)
@@ -107,6 +107,12 @@ impl InfosBuilder {
                             .unwrap()
                             .append_null();
                     }
+                    DataType::Float32 => {
+                        self.inner
+                            .field_builder::<Float32Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
                     DataType::List(l) => match l.data_type() {
                         DataType::Int32 => {
                             let builder = self
@@ -114,9 +120,7 @@ impl InfosBuilder {
                                 .field_builder::<GenericListBuilder<i32, Int32Builder>>(i)
                                 .unwrap();
 
-                            builder.values().append_null();
-
-                            builder.append(true);
+                            builder.append_null();
                         }
                         DataType::Float32 => {
                             let builder = self
@@ -124,9 +128,7 @@ impl InfosBuilder {
                                 .field_builder::<GenericListBuilder<i32, Float32Builder>>(i)
                                 .unwrap();
 
-                            builder.values().append_null();
-
-                            builder.append(true);
+                            builder.append_null();
                         }
                         DataType::Utf8 => {
                             let builder = self
@@ -136,23 +138,12 @@ impl InfosBuilder {
                                 )
                                 .unwrap();
 
-                            builder.values().append_null();
-
-                            builder.append(true);
+                            builder.append_null();
                         }
                         _ => unimplemented!(),
                     },
-                    DataType::Float32 => {
-                        self.inner
-                            .field_builder::<Float32Builder>(i)
-                            .unwrap()
-                            .append_null();
-                    }
                     _ => unimplemented!("{:?}", field_type),
                 },
-                Some(None) => {
-                    unimplemented!();
-                }
                 Some(Some(value)) => match value {
                     InfoValue::Integer(int_val) => self
                         .inner
@@ -218,7 +209,21 @@ impl InfosBuilder {
                             }
                             builder.append(true);
                         }
-                        _ => unimplemented!("{:?}", array),
+                        InfoArray::Character(char_array) => {
+                            let builder = self
+                                .inner
+                                .field_builder::<GenericListBuilder<i32, GenericStringBuilder<i32>>>(
+                                    i,
+                                )
+                                .unwrap();
+
+                            let builder_values = builder.values();
+                            for v in char_array {
+                                let v = v.map(|c| c.to_string());
+                                builder_values.append_option(v);
+                            }
+                            builder.append(true);
+                        }
                     },
                 },
             }
@@ -229,40 +234,212 @@ impl InfosBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
     use arrow::{
-        datatypes::{DataType, Field, Fields},
+        array::Array,
         util::{display::FormatOptions, pretty::pretty_format_columns_with_options},
     };
-    use noodles::vcf::record::Info;
+    use noodles::vcf::{
+        header::{
+            record::value::{map::info, Map},
+            Number,
+        },
+        record::{
+            info::field::{Key, Value},
+            Info,
+        },
+        Header,
+    };
 
     use super::InfosBuilder;
 
     #[test]
-    fn test_bad_init_genotype() {
-        let fields = vec![Field::new("GT", DataType::Int32, false)];
+    fn test_vcf_builder() {
+        let info_test_table = vec![
+            (
+                "single_int",
+                Number::Count(1),
+                info::Type::Integer,
+                arrow::datatypes::Field::new(
+                    "single_int",
+                    arrow::datatypes::DataType::Int32,
+                    false,
+                ),
+                "1",
+            ),
+            (
+                "single_str",
+                Number::Count(1),
+                info::Type::String,
+                arrow::datatypes::Field::new("single_str", arrow::datatypes::DataType::Utf8, false),
+                "str",
+            ),
+            (
+                "single_flag",
+                Number::Count(0),
+                info::Type::Flag,
+                arrow::datatypes::Field::new(
+                    "single_flag",
+                    arrow::datatypes::DataType::Boolean,
+                    false,
+                ),
+                "",
+            ),
+            (
+                "single_char",
+                Number::Count(1),
+                info::Type::Character,
+                arrow::datatypes::Field::new(
+                    "single_char",
+                    arrow::datatypes::DataType::Utf8,
+                    false,
+                ),
+                "a",
+            ),
+            (
+                "single_float",
+                Number::Count(1),
+                info::Type::Float,
+                arrow::datatypes::Field::new(
+                    "single_float",
+                    arrow::datatypes::DataType::Float32,
+                    false,
+                ),
+                "1.0",
+            ),
+            (
+                "array_int",
+                Number::Count(2),
+                info::Type::Integer,
+                arrow::datatypes::Field::new(
+                    "array_int",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Int32,
+                        false,
+                    ))),
+                    false,
+                ),
+                "1,2",
+            ),
+            (
+                "array_str",
+                Number::Count(2),
+                info::Type::String,
+                arrow::datatypes::Field::new(
+                    "array_str",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        false,
+                    ))),
+                    false,
+                ),
+                "str1,str2",
+            ),
+            (
+                "array_char",
+                Number::Count(2),
+                info::Type::Character,
+                arrow::datatypes::Field::new(
+                    "array_char",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        false,
+                    ))),
+                    false,
+                ),
+                "a,b",
+            ),
+            (
+                "array_float",
+                Number::Count(2),
+                info::Type::Float,
+                arrow::datatypes::Field::new(
+                    "array_float",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Float32,
+                        false,
+                    ))),
+                    false,
+                ),
+                "1.0,2.0",
+            ),
+            (
+                "missing_array_int",
+                Number::Count(2),
+                info::Type::Integer,
+                arrow::datatypes::Field::new(
+                    "missing_array_int",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Int32,
+                        false,
+                    ))),
+                    false,
+                ),
+                ".",
+            ),
+        ];
 
-        let struct_type = DataType::Struct(Fields::from(fields));
-        let info_field = Field::new("INFO", struct_type, false);
+        let mut fields = Vec::new();
+        let mut header = Header::builder();
 
-        let mut ib = InfosBuilder::try_new(&info_field, 1).unwrap();
+        let mut info_val = Info::default();
 
-        let infos = Info::default();
+        for (key_str, number, ty, field, val) in info_test_table {
+            let key = Key::from_str(key_str).unwrap();
+            let info = Map::builder()
+                .set_description(key_str)
+                .set_number(number)
+                .set_type(ty)
+                .build()
+                .unwrap();
 
-        ib.append_value(&infos);
+            header = header.add_info(key, info.clone());
+            fields.push(field);
 
-        let ib_array = Arc::new(ib.finish());
+            let key2 = Key::from_str(key_str).unwrap();
+            if val == "." {
+                info_val.insert(key2, None);
+            } else {
+                let value = Value::try_from((number, ty, val)).unwrap();
+                info_val.insert(key2, Some(value));
+            }
+        }
 
-        let options = FormatOptions::default().with_null("NULL");
-        let formatted = pretty_format_columns_with_options("test", &[ib_array], &options).unwrap();
+        let header = header.build();
+
+        let info_string = info_val.to_string();
+        let info = Info::try_from_str(&info_string, header.infos()).unwrap();
+
+        let dt = arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(fields));
+        let field = arrow::datatypes::Field::new("info", dt, false);
+
+        let mut ib = InfosBuilder::try_new(&field, 0).unwrap();
+
+        ib.append_value(&info);
+
+        let array = Arc::new(ib.finish());
+
+        assert_eq!(array.len(), 1);
+
+        let formatted = pretty_format_columns_with_options(
+            "test",
+            &[array],
+            &FormatOptions::default().with_null("NULL"),
+        )
+        .unwrap();
 
         let expected = "\
-+------------+
-| test       |
-+------------+
-| {GT: NULL} |
-+------------+";
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| test                                                                                                                                                                                                     |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| {single_int: 1, single_str: str, single_flag: true, single_char: a, single_float: 1.0, array_int: [1, 2], array_str: [str1, str2], array_char: [a, b], array_float: [1.0, 2.0], missing_array_int: NULL} |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+";
 
         assert_eq!(formatted.to_string(), expected);
     }
