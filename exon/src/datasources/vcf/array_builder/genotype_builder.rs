@@ -90,6 +90,10 @@ impl GenotypeBuilder {
         self.inner.finish()
     }
 
+    /// Appends a record to the builder.
+    ///
+    /// It is important that the passed genotypes was parsed using the same header as the one used
+    /// to create this builder. If not, some types may not match and the append will fail.
     pub fn append_value(&mut self, genotypes: &Genotypes) {
         for genotype in genotypes.values() {
             for (i, field) in self.fields.clone().iter().enumerate() {
@@ -123,8 +127,7 @@ impl GenotypeBuilder {
                                     .field_builder::<GenericListBuilder<i32, Int32Builder>>(i)
                                     .expect("expected a list builder");
 
-                                vs.values().append_null();
-                                vs.append(true);
+                                vs.append_null();
                             }
                             DataType::Float32 => {
                                 let vs = self
@@ -133,8 +136,7 @@ impl GenotypeBuilder {
                                     .field_builder::<GenericListBuilder<i32, Float32Builder>>(i)
                                     .expect("expected a list builder");
 
-                                vs.values().append_null();
-                                vs.append(true);
+                                vs.append_null();
                             }
                             DataType::Utf8 => {
                                 let vs = self
@@ -145,8 +147,7 @@ impl GenotypeBuilder {
                                     )
                                     .expect("expected a list builder");
 
-                                vs.values().append_null();
-                                vs.append(true);
+                                vs.append_null();
                             }
                             _ => unimplemented!(),
                         },
@@ -260,12 +261,17 @@ mod tests {
         datatypes::{Field, Fields},
         util::{display::FormatOptions, pretty::pretty_format_columns_with_options},
     };
-    use noodles::vcf::record::{
-        genotypes::{keys::Key, sample::Value, Keys},
-        Genotypes,
+    use noodles::vcf::{
+        header::{
+            record::value::{map::format, Map},
+            Number,
+        },
+        record::{
+            genotypes::{self, sample::Value, Keys},
+            Genotypes,
+        },
+        Header,
     };
-
-    use noodles::vcf::record::genotypes::sample::value::Array as VcfArray;
 
     use crate::datasources::vcf::array_builder::genotype_builder::GenotypeBuilder;
 
@@ -287,126 +293,220 @@ mod tests {
     }
 
     #[test]
+    fn test_builder() {
+        let mut header_builder = Header::builder();
+        let mut expected_fields = Vec::new();
 
-    fn test_builder_scalar_path() {
-        let fields = vec![
-            Field::new("GT", arrow::datatypes::DataType::Utf8, false),
-            Field::new("DP", arrow::datatypes::DataType::Int32, false),
-            Field::new("CNQ", arrow::datatypes::DataType::Float32, false),
-            Field::new("AA", arrow::datatypes::DataType::Utf8, false),
-            Field::new("CC", arrow::datatypes::DataType::Utf8, false),
-            Field::new("AB", arrow::datatypes::DataType::Int32, false),
-            Field::new("AC", arrow::datatypes::DataType::Float32, false),
-            Field::new(
-                "LI",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
+        let test_table = vec![
+            (
+                "single_int",
+                Number::Count(1),
+                format::Type::Integer,
+                arrow::datatypes::Field::new(
+                    "single_int",
                     arrow::datatypes::DataType::Int32,
                     false,
-                ))),
-                false,
+                ),
+                "1",
             ),
-            Field::new(
-                "LS",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
-                    arrow::datatypes::DataType::Utf8,
-                    false,
-                ))),
-                false,
-            ),
-            Field::new(
-                "LF",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
+            (
+                "single_float",
+                Number::Count(1),
+                format::Type::Float,
+                arrow::datatypes::Field::new(
+                    "single_float",
                     arrow::datatypes::DataType::Float32,
                     false,
-                ))),
-                false,
+                ),
+                "1.0",
             ),
-            Field::new(
-                "LC",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
+            (
+                "single_char",
+                Number::Count(1),
+                format::Type::Character,
+                arrow::datatypes::Field::new(
+                    "single_char",
                     arrow::datatypes::DataType::Utf8,
                     false,
-                ))),
-                false,
+                ),
+                "a",
             ),
-            // Missing lists
-            Field::new(
-                "MLI",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
-                    arrow::datatypes::DataType::Int32,
-                    false,
-                ))),
-                false,
-            ),
-            Field::new(
-                "MLS",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
+            (
+                "single_string",
+                Number::Count(1),
+                format::Type::String,
+                arrow::datatypes::Field::new(
+                    "single_string",
                     arrow::datatypes::DataType::Utf8,
                     false,
-                ))),
-                false,
+                ),
+                "a",
             ),
-            Field::new(
-                "MLF",
-                arrow::datatypes::DataType::List(Arc::new(Field::new(
-                    "item",
-                    arrow::datatypes::DataType::Float32,
+            (
+                "single_int_array",
+                Number::Count(2),
+                format::Type::Integer,
+                arrow::datatypes::Field::new(
+                    "single_int_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Int32,
+                        false,
+                    ))),
                     false,
-                ))),
-                false,
+                ),
+                "1",
+            ),
+            (
+                "single_float_array",
+                Number::Count(2),
+                format::Type::Float,
+                arrow::datatypes::Field::new(
+                    "single_float_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Float32,
+                        false,
+                    ))),
+                    false,
+                ),
+                "1.0,2.0",
+            ),
+            (
+                "single_char_array",
+                Number::Count(2),
+                format::Type::Character,
+                arrow::datatypes::Field::new(
+                    "single_char_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        false,
+                    ))),
+                    false,
+                ),
+                "a,b",
+            ),
+            (
+                "single_string_array",
+                Number::Count(2),
+                format::Type::String,
+                arrow::datatypes::Field::new(
+                    "single_string_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        false,
+                    ))),
+                    false,
+                ),
+                "a,b",
+            ),
+            (
+                "missing_string_array",
+                Number::Count(2),
+                format::Type::String,
+                arrow::datatypes::Field::new(
+                    "missing_string_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        false,
+                    ))),
+                    false,
+                ),
+                ".",
+            ),
+            (
+                "missing_float_array",
+                Number::Count(2),
+                format::Type::Float,
+                arrow::datatypes::Field::new(
+                    "missing_float_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Float32,
+                        false,
+                    ))),
+                    false,
+                ),
+                ".",
+            ),
+            (
+                "missing_int_array",
+                Number::Count(2),
+                format::Type::Integer,
+                arrow::datatypes::Field::new(
+                    "missing_int_array",
+                    arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Int32,
+                        false,
+                    ))),
+                    false,
+                ),
+                ".",
+            ),
+            (
+                "missing_string",
+                Number::Count(1),
+                format::Type::String,
+                arrow::datatypes::Field::new(
+                    "missing_string",
+                    arrow::datatypes::DataType::Utf8,
+                    false,
+                ),
+                ".",
             ),
         ];
 
-        let inner_struct_type = arrow::datatypes::DataType::Struct(Fields::from(fields));
-        let inner_struct = Field::new("formats", inner_struct_type, false);
+        let mut keys = Vec::new();
+        let mut values = Vec::new();
 
-        let inner_list_type = arrow::datatypes::DataType::List(Arc::new(inner_struct));
-        let field = Field::new("formats", inner_list_type, false);
+        for (a, b, c, d, e) in test_table {
+            let key = genotypes::keys::Key::from_str(a).unwrap();
 
+            keys.push(genotypes::keys::Key::from_str(a).unwrap());
+
+            let format = Map::builder()
+                .set_description("test")
+                .set_number(b)
+                .set_type(c)
+                .set_idx(1)
+                .build()
+                .unwrap();
+
+            if e == "." {
+                values.push(None);
+            } else {
+                let value = Value::try_from((b, c, e)).unwrap();
+                values.push(Some(value));
+            }
+
+            header_builder = header_builder.add_format(key, format);
+
+            expected_fields.push(d);
+        }
+
+        let header = header_builder.build();
+        let genotypes = Genotypes::new(Keys::try_from(keys).unwrap(), vec![values]);
+
+        let gt_string = genotypes.to_string();
+
+        let gt = Genotypes::parse(&gt_string, &header).unwrap();
+
+        let field = Field::new(
+            "formats",
+            arrow::datatypes::DataType::List(Arc::new(Field::new(
+                "item",
+                arrow::datatypes::DataType::Struct(Fields::from(expected_fields)),
+                false,
+            ))),
+            false,
+        );
         let mut gb = GenotypeBuilder::try_new(&field, 0).unwrap();
 
-        let genotypes = Genotypes::new(
-            Keys::try_from(vec![
-                Key::from_str("GT").unwrap(),
-                Key::from_str("DP").unwrap(),
-                Key::from_str("CNQ").unwrap(),
-                Key::from_str("AA").unwrap(),
-                Key::from_str("AB").unwrap(),
-                Key::from_str("AC").unwrap(),
-                Key::from_str("CC").unwrap(),
-                Key::from_str("LI").unwrap(),
-                Key::from_str("LS").unwrap(),
-                Key::from_str("LF").unwrap(),
-                Key::from_str("LC").unwrap(),
-            ])
-            .unwrap(),
-            vec![vec![
-                Some(Value::String("1/1".to_string())),
-                Some(Value::Integer(0)),
-                Some(Value::Float(0.0)),
-                None,
-                None,
-                None,
-                Some(Value::Character('A')),
-                Some(Value::Array(VcfArray::Integer(vec![Some(51), Some(51)]))),
-                Some(Value::Array(VcfArray::String(vec![Some(
-                    "1/1".to_string(),
-                )]))),
-                Some(Value::Array(VcfArray::Float(vec![Some(0.0), Some(0.0)]))),
-                Some(Value::Array(VcfArray::Character(vec![
-                    Some('A'),
-                    Some('A'),
-                ]))),
-            ]],
-        );
-
-        gb.append_value(&genotypes);
+        gb.append_value(&gt);
 
         let array = Arc::new(gb.finish());
 
@@ -421,11 +521,11 @@ mod tests {
         .unwrap();
 
         let expected = "\
-+---------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| test                                                                                                                                                          |
-+---------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| [{GT: 1/1, DP: 0, CNQ: 0.0, AA: NULL, CC: A, AB: NULL, AC: NULL, LI: [51, 51], LS: [1/1], LF: [0.0, 0.0], LC: [A, A], MLI: [NULL], MLS: [NULL], MLF: [NULL]}] |
-+---------------------------------------------------------------------------------------------------------------------------------------------------------------+";
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| test                                                                                                                                                                                                                                                                                        |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| [{single_int: 1, single_float: 1.0, single_char: a, single_string: a, single_int_array: [1], single_float_array: [1.0, 2.0], single_char_array: [a, b], single_string_array: [a, b], missing_string_array: NULL, missing_float_array: NULL, missing_int_array: NULL, missing_string: NULL}] |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+";
 
         assert_eq!(formatted.to_string(), expected);
     }
