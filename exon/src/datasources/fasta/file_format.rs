@@ -80,8 +80,15 @@ impl FileFormat for FASTAFormat {
         &self,
         _state: &SessionState,
         conf: FileScanConfig,
-        _filters: Option<&Arc<dyn PhysicalExpr>>,
+        filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        eprintln!("filters: {:?}", filters);
+        // filters: Some(BinaryExpr { left: Column { name: "id", index: 0 }, op: Eq, right: Literal { value: Utf8("a") } })
+
+        // Try to parse the incoming filter into a region. If that works, load the
+        // index and use it to filter the scan.
+        // actually want a custom PhysicalExpr that is a RegionExpr
+
         let scan = FASTAScan::new(conf, self.file_compression_type.clone());
         Ok(Arc::new(scan))
     }
@@ -96,7 +103,7 @@ mod tests {
     use super::FASTAFormat;
     use datafusion::{
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
-        prelude::SessionContext,
+        prelude::{col, lit, SessionContext},
     };
 
     #[tokio::test]
@@ -118,11 +125,13 @@ mod tests {
         let provider = Arc::new(ListingTable::try_new(config).unwrap());
         let df = ctx.read_table(provider.clone()).unwrap();
 
+        let df = df.filter(col("id").eq(lit("a"))).unwrap();
+
         let mut row_cnt = 0;
         let bs = df.collect().await.unwrap();
         for batch in bs {
             row_cnt += batch.num_rows();
         }
-        assert_eq!(row_cnt, 2)
+        assert_eq!(row_cnt, 1)
     }
 }
