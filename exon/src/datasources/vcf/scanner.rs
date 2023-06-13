@@ -23,6 +23,7 @@ use datafusion::{
         ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use noodles::core::Region;
 
 use super::{config::VCFConfig, file_opener::VCFOpener};
 
@@ -37,6 +38,8 @@ pub struct VCFScan {
     file_compression_type: FileCompressionType,
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+    /// An optional region filter for the scan.
+    region_filter: Option<Region>,
 }
 
 impl VCFScan {
@@ -52,7 +55,14 @@ impl VCFScan {
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            region_filter: None,
         }
+    }
+
+    /// Create a new VCF scan with a region filter.
+    pub fn with_filter(mut self, region_filter: Region) -> Self {
+        self.region_filter = Some(region_filter);
+        self
     }
 }
 
@@ -101,7 +111,11 @@ impl ExecutionPlan for VCFScan {
             config = config.with_projection(projections.clone());
         }
 
-        let opener = VCFOpener::new(Arc::new(config), self.file_compression_type.clone());
+        let mut opener = VCFOpener::new(Arc::new(config), self.file_compression_type.clone());
+
+        if let Some(x) = &self.region_filter {
+            opener = opener.with_region(x.clone());
+        }
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
