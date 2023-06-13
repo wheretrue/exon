@@ -59,6 +59,7 @@ impl VCFScan {
         }
     }
 
+    /// Create a new VCF scan with a region filter.
     pub fn with_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
         self

@@ -50,6 +50,7 @@ impl VCFFormat {
         }
     }
 
+    /// Set the region to filter on.
     pub fn with_region_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
         self

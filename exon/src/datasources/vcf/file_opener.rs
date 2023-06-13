@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{boxed, io::BufReader, sync::Arc};
+use std::sync::Arc;
 
-use arrow::ipc::gen::File;
 use datafusion::{
     datasource::file_format::file_type::FileCompressionType, error::DataFusionError,
-    physical_plan::file_format::FileOpener, sql::sqlparser::keywords::BIGDECIMAL,
+    physical_plan::file_format::FileOpener,
 };
-use futures::{FutureExt, StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf, core::Region};
 use object_store::GetResult;
 use tokio_util::io::StreamReader;
 
 use super::{
     async_batch_reader::AsyncBatchReader,
-    batch_reader::{self, BatchReader, UnIndexedRecordIterator, VCFIndexedRecordStream},
+    batch_reader::{BatchReader, UnIndexedRecordIterator},
     config::VCFConfig,
 };
 
@@ -50,6 +49,7 @@ impl VCFOpener {
         }
     }
 
+    /// Set the region to filter on.
     pub fn with_region(mut self, region: Region) -> Self {
         self.region = Some(region);
         self

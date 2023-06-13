@@ -12,60 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{
-    io::{Read, Seek},
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use arrow::{
-    error::{ArrowError, Result as ArrowResult},
-    record_batch::RecordBatch,
-};
-
-use futures::Stream;
-use noodles::{
-    core::Region,
-    vcf::{reader::Query, Header},
-};
+use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
 
 use super::{array_builder::VCFArrayBuilder, config::VCFConfig};
 
 trait VCFRecordIterator: Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send {
     fn header(&self) -> &noodles::vcf::Header;
-}
-
-/// A stream of records from an indexed reader.
-/// pub struct VCFIndexedRecordStream<R> {
-pub struct VCFIndexedRecordStream<R>
-where
-    R: Read + Seek + Unpin + Send + 'static,
-{
-    reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>,
-    index: noodles::csi::Index,
-    header: noodles::vcf::Header,
-    region: Region,
-}
-
-impl<R> VCFIndexedRecordStream<R>
-where
-    R: Read + Seek + Unpin + Send,
-{
-    pub fn new(inner: R, index: noodles::csi::Index, region: Region) -> std::io::Result<Self> {
-        let mut reader = noodles::vcf::Reader::new(noodles::bgzf::Reader::new(inner));
-
-        let header = reader.read_header()?;
-
-        let query = reader.query(&header, &index, &region).unwrap();
-
-        let boxed_query = Box::new(query.into_iter());
-
-        Ok(Self {
-            reader,
-            index,
-            header,
-            region,
-        })
-    }
 }
 
 pub struct UnIndexedRecordIterator<R> {
@@ -104,19 +58,9 @@ where
     }
 }
 
-impl<R> VCFRecordIterator for UnIndexedRecordIterator<R>
-where
-    R: std::io::BufRead + Send,
-{
-    fn header(&self) -> &noodles::vcf::Header {
-        &self.header
-    }
-}
-
 /// A VCF record batch reader.
 pub struct BatchReader {
     /// The underlying VCF record iterator.
-    // record_iterator: Box<dyn VCFRecordIterator<Item = std::io::Result<noodles::vcf::Record>>>,
     record_iterator: Box<dyn Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send>,
 
     /// The VCF configuration.
