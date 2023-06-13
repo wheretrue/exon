@@ -17,7 +17,7 @@ datafusion = {version = "26", features = ["default"]}
 flate2 = {version = "1.0.25", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1"}
-noodles = {version = "0.40", features = ["bed", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf"]}
+noodles = {version = "0.40", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi"]}
 object_store = {version = "0.5.4"}
 pin-project = {version = "1.1.0", optional = true}
 quick-xml = {version = "0.28.2", features = ["async-tokio", "serialize", "overlapped-lists"], optional = true}

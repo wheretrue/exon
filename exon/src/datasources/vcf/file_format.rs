@@ -23,7 +23,7 @@ use datafusion::{
     physical_plan::{file_format::FileScanConfig, ExecutionPlan, PhysicalExpr, Statistics},
 };
 use futures::TryStreamExt;
-use noodles::{bgzf, vcf};
+use noodles::{bgzf, core::Region, vcf};
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
@@ -36,6 +36,9 @@ use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
 pub struct VCFFormat {
     /// The compression type of the file.
     file_compression_type: FileCompressionType,
+
+    /// A region to filter on, if known.
+    region_filter: Option<Region>,
 }
 
 impl VCFFormat {
@@ -43,7 +46,13 @@ impl VCFFormat {
     pub fn new(file_compression_type: FileCompressionType) -> Self {
         Self {
             file_compression_type,
+            region_filter: None,
         }
+    }
+
+    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
+        self.region_filter = Some(region_filter);
+        self
     }
 }
 
@@ -51,6 +60,7 @@ impl Default for VCFFormat {
     fn default() -> Self {
         Self {
             file_compression_type: FileCompressionType::UNCOMPRESSED,
+            region_filter: None,
         }
     }
 }
@@ -116,7 +126,12 @@ impl FileFormat for VCFFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = VCFScan::new(conf, self.file_compression_type.clone());
+        let mut scan = VCFScan::new(conf, self.file_compression_type.clone());
+
+        if let Some(region_filter) = &self.region_filter {
+            scan = scan.with_filter(region_filter.clone());
+        }
+
         Ok(Arc::new(scan))
     }
 }
@@ -127,19 +142,23 @@ mod tests {
 
     use super::VCFFormat;
     use datafusion::{
-        datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        datasource::{
+            file_format::file_type::FileCompressionType,
+            listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        },
         prelude::SessionContext,
     };
+    use noodles::core::Region;
 
     #[tokio::test]
-    async fn test_schema_inference() {
+    async fn test_uncompressed_read() {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
         let table_path = ListingTableUrl::parse("test-data").unwrap();
 
-        let fasta_format = Arc::new(VCFFormat::default());
-        let lo = ListingOptions::new(fasta_format.clone()).with_file_extension("vcf");
+        let vcf_format = Arc::new(VCFFormat::default());
+        let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf");
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
 
@@ -159,5 +178,37 @@ mod tests {
             row_cnt += batch.num_rows();
         }
         assert_eq!(row_cnt, 621)
+    }
+
+    #[tokio::test]
+    async fn test_compressed_read_with_region() {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
+
+        let table_path = ListingTableUrl::parse("test-data").unwrap();
+
+        let region: Region = "1".parse().unwrap();
+        let vcf_format =
+            Arc::new(VCFFormat::new(FileCompressionType::GZIP).with_region_filter(region));
+        let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
+
+        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+        assert_eq!(resolved_schema.fields().len(), 9);
+        assert_eq!(resolved_schema.field(0).name(), "chrom");
+
+        let config = ListingTableConfig::new(table_path)
+            .with_listing_options(lo)
+            .with_schema(resolved_schema);
+
+        let provider = Arc::new(ListingTable::try_new(config).unwrap());
+        let df = ctx.read_table(provider.clone()).unwrap();
+
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 191)
     }
 }
