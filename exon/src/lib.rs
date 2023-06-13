@@ -91,6 +91,9 @@ pub mod datasources;
 /// UDFs for Exon.
 pub mod udfs;
 
+/// Expressions
+pub mod expr;
+
 /// Utilities for moving data across the FFI boundary.
 #[cfg(feature = "ffi")]
 pub mod ffi;

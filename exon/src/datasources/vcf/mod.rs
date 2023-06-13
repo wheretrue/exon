@@ -17,7 +17,7 @@
 // limitations under the License.
 
 mod array_builder;
-mod batch_reader;
+mod vcf_batch_stream_builder;
 mod config;
 mod file_format;
 mod file_opener;

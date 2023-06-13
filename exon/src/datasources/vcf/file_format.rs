@@ -79,14 +79,14 @@ impl FileFormat for VCFFormat {
 
                 let header = vcf_reader.read_header().await?;
 
-                VCFSchemaBuilder::from(header)
+                VCFSchemaBuilder::from(&header)
             }
             FileCompressionType::UNCOMPRESSED => {
                 let mut vcf_reader = vcf::AsyncReader::new(stream_reader);
 
                 let header = vcf_reader.read_header().await?;
 
-                VCFSchemaBuilder::from(header)
+                VCFSchemaBuilder::from(&header)
             }
             _ => {
                 return Err(DataFusionError::Execution(

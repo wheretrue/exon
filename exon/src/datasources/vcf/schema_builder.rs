@@ -31,7 +31,18 @@ pub struct VCFSchemaBuilder {
 
 impl Default for VCFSchemaBuilder {
     fn default() -> Self {
-        Self::new()
+        let mut n = Self::new();
+
+        n.fields
+            .push(Field::new("info", arrow::datatypes::DataType::Utf8, true));
+
+        n.fields.push(Field::new(
+            "formats",
+            arrow::datatypes::DataType::Utf8,
+            true,
+        ));
+
+        n
     }
 }
 
@@ -89,8 +100,8 @@ impl VCFSchemaBuilder {
 }
 
 /// Creates a new builder from a VCF header.
-impl From<Header> for VCFSchemaBuilder {
-    fn from(header: Header) -> Self {
+impl From<&Header> for VCFSchemaBuilder {
+    fn from(header: &Header) -> Self {
         let mut builder = Self::new();
         builder.update_from_header(&header);
         builder
@@ -298,7 +309,7 @@ mod tests {
 
         let header = header_builder.build();
 
-        let schema = VCFSchemaBuilder::from(header).build();
+        let schema = VCFSchemaBuilder::from(&header).build();
 
         let info_field = schema.field(8);
 
@@ -449,7 +460,7 @@ mod tests {
         }
 
         let header = header.build();
-        let schema = VCFSchemaBuilder::from(header).build();
+        let schema = VCFSchemaBuilder::from(&header).build();
 
         let info_field = schema.field(7);
 
@@ -463,7 +474,7 @@ mod tests {
     #[test]
     fn test_default_header_to_schema() {
         let header = noodles::vcf::Header::default();
-        let schema = super::VCFSchemaBuilder::from(header).build();
+        let schema = super::VCFSchemaBuilder::from(&header).build();
 
         assert_eq!(schema.fields().len(), 9);
 

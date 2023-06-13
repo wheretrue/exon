@@ -89,6 +89,9 @@ impl FileFormat for FASTAFormat {
         // index and use it to filter the scan.
         // actually want a custom PhysicalExpr that is a RegionExpr
 
+        // do I actually want a PhysicalExpr that is a RegionExpr? It seems that maybe a PhysicalExpr can
+        // be applied to RecordBatchs meaning it may not be meant for pushdown all the way to the source
+
         let scan = FASTAScan::new(conf, self.file_compression_type.clone());
         Ok(Arc::new(scan))
     }
