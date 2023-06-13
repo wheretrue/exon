@@ -15,10 +15,11 @@
 use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
 
 use futures::{Stream, StreamExt};
-use noodles::core::Region;
-use tokio::io::AsyncBufRead;
+use noodles::{core::Region, csi::Index, fasta::record};
+use tokio::io::{AsyncBufRead, AsyncSeek};
 
 use self::{
+    indexed_record_reader::VCFIndexedRecordStream,
     record_batch_stream_adapter::VCFRecordBatchStreamAdapter,
     unindexed_record_reader::VCFUnindexedRecordStream,
 };
@@ -32,7 +33,7 @@ pub struct VCFRecordBatchStreamBuilder<R> {
     projection: Option<Vec<usize>>,
     batch_size: usize,
     region: Option<Region>,
-    index_path: Option<String>,
+    index: Option<Index>,
 }
 
 impl<R> VCFRecordBatchStreamBuilder<R>
@@ -45,7 +46,7 @@ where
             projection: None,
             batch_size: 1024,
             region: None,
-            index_path: None,
+            index: None,
         }
     }
 
@@ -54,9 +55,27 @@ where
         self
     }
 
-    fn try_build_indexed_stream(&self) {
-        // let mut_idx_stream = VCFIndexedRecordStream::new(
-    }
+    // pub async fn try_build_indexed_stream(self) -> impl Stream<Item = ArrowResult<RecordBatch>> {
+    //     let index = self.index.unwrap().clone();
+    //     let region = self.region.unwrap().clone();
+
+    //     let mut record_stream = VCFIndexedRecordStream::new(self.input_stream, index, region)
+    //         .await
+    //         .unwrap();
+
+    //     let schema = record_stream.get_arrow_schema();
+
+    //     let adapter = VCFRecordBatchStreamAdapter::new(
+    //         record_stream.into_record_stream().boxed(),
+    //         schema.clone(),
+    //         self.batch_size,
+    //         self.projection,
+    //     );
+
+    //     let stream = adapter.into_stream().boxed();
+
+    //     stream
+    // }
 
     pub async fn try_build_unindexed_stream(self) -> impl Stream<Item = ArrowResult<RecordBatch>> {
         let mut_idx_stream = VCFUnindexedRecordStream::new(self.input_stream)
@@ -82,8 +101,8 @@ where
         self
     }
 
-    pub fn with_index_path(mut self, index_path: String) -> Self {
-        self.index_path = Some(index_path);
+    pub fn with_index(mut self, index: Index) -> Self {
+        self.index = Some(index);
         self
     }
 }

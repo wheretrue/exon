@@ -18,10 +18,10 @@ use datafusion::{
     datasource::file_format::file_type::FileCompressionType, error::DataFusionError,
     physical_plan::file_format::FileOpener,
 };
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
 
-use super::config::VCFConfig;
+use super::{config::VCFConfig, vcf_batch_stream_builder::VCFRecordBatchStreamBuilder};
 
 /// A file opener for VCF files.
 pub struct VCFOpener {
@@ -56,17 +56,17 @@ impl FileOpener for VCFOpener {
             let stream_reader = StreamReader::new(stream_reader);
 
             match file_compression_type {
-                // FileCompressionType::UNCOMPRESSED => {
-                //     // let batch_reader = BatchReader::new(stream_reader, config).await?;
-                //     let vcf_record_batch_stream_builder =
-                //         VCFRecordBatchStreamBuilder::new(stream_reader, config);
+                FileCompressionType::UNCOMPRESSED => {
+                    // let batch_reader = BatchReader::new(stream_reader, config).await?;
+                    let vcf_record_batch_stream_builder =
+                        VCFRecordBatchStreamBuilder::new(stream_reader);
 
-                //     let batch_stream = vcf_record_batch_stream_builder
-                //         .try_build_unindexed_stream()
-                //         .await;
+                    let batch_stream = vcf_record_batch_stream_builder
+                        .try_build_unindexed_stream()
+                        .await;
 
-                //     Ok(batch_stream.boxed())
-                // }
+                    Ok(batch_stream.boxed())
+                }
                 // FileCompressionType::GZIP => {
                 //     let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
                 //     let batch_reader = BatchReader::new(bgzf_reader, config).await?;
