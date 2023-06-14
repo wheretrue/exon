@@ -12,24 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{io, sync::Arc};
 
 use datafusion::{error::DataFusionError, physical_plan::file_format::FileOpener};
 use futures::{StreamExt, TryStreamExt};
+use noodles::core::Region;
+use object_store::GetResult;
 use tokio_util::io::StreamReader;
 
-use super::{batch_reader::BatchReader, config::BAMConfig};
+use super::{
+    batch_reader::{BatchReader, StreamRecordBatchAdapter},
+    config::BAMConfig,
+    record_stream::RecordIterator,
+};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct BAMOpener {
     /// The base configuration for the file scan.
     config: Arc<BAMConfig>,
+
+    /// An optional region to filter on.
+    region: Option<Region>,
 }
 
 impl BAMOpener {
     /// Create a new BAM file opener.
     pub fn new(config: Arc<BAMConfig>) -> Self {
-        Self { config }
+        Self {
+            config,
+            region: None,
+        }
+    }
+
+    /// Set the region to filter on.
+    pub fn with_region(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 }
 
@@ -39,18 +57,61 @@ impl FileOpener for BAMOpener {
         file_meta: datafusion::physical_plan::file_format::FileMeta,
     ) -> datafusion::error::Result<datafusion::physical_plan::file_format::FileOpenFuture> {
         let config = self.config.clone();
+        let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            let get_result = config.object_store.get(file_meta.location()).await?;
+            match config.object_store.get(file_meta.location()).await? {
+                GetResult::File(file, path) => match region {
+                    Some(region) => {
+                        let mut reader = noodles::bam::indexed_reader::Builder::default()
+                            .build_from_path(path)?;
 
-            let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+                        let header = reader.read_header()?;
 
-            let stream_reader = StreamReader::new(stream_reader);
-            let batch_reader = BatchReader::new(stream_reader, config).await?;
+                        let query = reader
+                            .query(&header, &region)?
+                            .map(|result| Ok(result))
+                            .collect::<io::Result<Vec<_>>>()?;
 
-            let batch_stream = batch_reader.into_stream();
+                        let record_stream = futures::stream::iter(query).boxed();
 
-            Ok(batch_stream.boxed())
+                        let batch_adapter =
+                            StreamRecordBatchAdapter::new(record_stream, header, config.clone());
+
+                        let batch_stream = batch_adapter.into_stream();
+
+                        Ok(batch_stream.boxed())
+                    }
+                    None => {
+                        let mut reader = noodles::bam::Reader::new(file);
+
+                        let header = reader.read_header()?;
+
+                        let record_iterator = RecordIterator::new(reader, header.clone()).unwrap();
+                        let record_stream = futures::stream::iter(record_iterator).boxed();
+
+                        let batch_adapter = StreamRecordBatchAdapter::new(
+                            record_stream,
+                            header.clone(),
+                            config.clone(),
+                        );
+
+                        let batch_stream = batch_adapter.into_stream();
+
+                        Ok(batch_stream.boxed())
+                    }
+                },
+                GetResult::Stream(s) => {
+                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+
+                    let stream_reader = StreamReader::new(stream_reader);
+                    let batch_reader = BatchReader::new(stream_reader, config).await?;
+
+                    let batch_stream = batch_reader.into_stream();
+
+                    Ok(batch_stream.boxed())
+                }
+            }
         }))
     }
 }

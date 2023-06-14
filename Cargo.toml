@@ -6,4 +6,9 @@ repository = "https://github.com/wheretrue/exon"
 [workspace]
 members = [
   "exon",
+  "benchmarks",
 ]
+
+[workspace.dependencies]
+arrow = {version = "40"}
+datafusion = {version = "26", features = ["default"]}

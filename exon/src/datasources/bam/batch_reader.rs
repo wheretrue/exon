@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use noodles::sam::alignment::Record;
 use tokio::io::{AsyncBufRead, AsyncRead};
 
@@ -99,5 +99,59 @@ where
             Some(projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),
         }
+    }
+}
+
+/// Given an input stream of records, adapt it to a stream of `RecordBatch`s.
+pub struct StreamRecordBatchAdapter {
+    stream: Pin<Box<dyn Stream<Item = std::io::Result<Record>> + Send>>,
+    header: noodles::sam::Header,
+    config: Arc<BAMConfig>,
+}
+
+impl StreamRecordBatchAdapter {
+    pub fn new(
+        stream: Pin<Box<dyn Stream<Item = std::io::Result<Record>> + Send>>,
+        header: noodles::sam::Header,
+        config: Arc<BAMConfig>,
+    ) -> Self {
+        Self {
+            stream,
+            header,
+            config,
+        }
+    }
+
+    async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
+        let mut record_batch = BAMArrayBuilder::create(self.header.clone());
+
+        for _ in 0..self.config.batch_size {
+            match self.stream.next().await {
+                Some(Ok(record)) => record_batch.append(&record)?,
+                Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
+                None => break,
+            }
+        }
+
+        if record_batch.len() == 0 {
+            return Ok(None);
+        }
+
+        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+
+        match &self.config.projection {
+            Some(projection) => Ok(Some(batch.project(projection)?)),
+            None => Ok(Some(batch)),
+        }
+    }
+
+    pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
+        futures::stream::unfold(self, |mut reader| async move {
+            match reader.read_batch().await {
+                Ok(Some(batch)) => Some((Ok(batch), reader)),
+                Ok(None) => None,
+                Err(e) => Some((Err(ArrowError::ExternalError(Box::new(e))), reader)),
+            }
+        })
     }
 }
