@@ -14,14 +14,13 @@
 
 use std::{any::Any, sync::Arc};
 
+use super::{config::SAMConfig, file_opener::SAMOpener};
 use arrow::datatypes::SchemaRef;
 use datafusion::physical_plan::{
     file_format::{FileScanConfig, FileStream},
     metrics::ExecutionPlanMetricsSet,
     ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
 };
-
-use super::{config::SAMConfig, file_opener::SAMOpener};
 
 #[derive(Debug)]
 /// Implements a datafusion `ExecutionPlan` for SAM files.
@@ -92,6 +91,7 @@ impl ExecutionPlan for SAMScan {
 
         let mut config = SAMConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(batch_size);
+
         if let Some(projection) = &self.base_config.projection {
             config = config.with_projection(projection.clone());
         }

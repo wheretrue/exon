@@ -21,13 +21,30 @@ use datafusion::{
     execution::context::SessionState,
     physical_plan::{file_format::FileScanConfig, ExecutionPlan, PhysicalExpr, Statistics},
 };
+use noodles::core::Region;
 use object_store::{ObjectMeta, ObjectStore};
 
 use super::{array_builder::schema, scanner::BAMScan};
 
 #[derive(Debug, Default)]
 /// Implements a datafusion `FileFormat` for BAM files.
-pub struct BAMFormat {}
+pub struct BAMFormat {
+    /// An optional region filter for the scan.
+    region_filter: Option<Region>,
+}
+
+impl BAMFormat {
+    /// Create a new BAM format.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the region filter for the scan.
+    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
+        self.region_filter = Some(region_filter);
+        self
+    }
+}
 
 #[async_trait]
 impl FileFormat for BAMFormat {
@@ -62,7 +79,12 @@ impl FileFormat for BAMFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BAMScan::new(conf);
+        let mut scan = BAMScan::new(conf);
+
+        if let Some(region_filter) = &self.region_filter {
+            scan = scan.with_region_filter(region_filter.clone());
+        }
+
         Ok(Arc::new(scan))
     }
 }
@@ -76,15 +98,45 @@ mod tests {
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         prelude::SessionContext,
     };
+    use noodles::core::Region;
 
     #[tokio::test]
-    async fn test_schema_inference() {
+    async fn test_read_bam() {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
         let table_path = ListingTableUrl::parse("test-data").unwrap();
 
-        let fasta_format = Arc::new(BAMFormat::default());
+        let bam_format = Arc::new(BAMFormat::default());
+        let lo = ListingOptions::new(bam_format.clone()).with_file_extension("bam");
+
+        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+        let config = ListingTableConfig::new(table_path)
+            .with_listing_options(lo)
+            .with_schema(resolved_schema);
+
+        let provider = Arc::new(ListingTable::try_new(config).unwrap());
+        let df = ctx.read_table(provider.clone()).unwrap();
+
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 61)
+    }
+
+    #[tokio::test]
+    async fn test_read_with_index() {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
+
+        let table_path = ListingTableUrl::parse("test-data").unwrap();
+
+        let region: Region = "chr1:1-12209153".parse().unwrap();
+        let fasta_format = Arc::new(BAMFormat::default().with_region_filter(region));
+
         let lo = ListingOptions::new(fasta_format.clone()).with_file_extension("bam");
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
@@ -101,6 +153,6 @@ mod tests {
         for batch in bs {
             row_cnt += batch.num_rows();
         }
-        assert_eq!(row_cnt, 1)
+        assert_eq!(row_cnt, 55)
     }
 }

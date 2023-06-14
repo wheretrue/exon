@@ -24,8 +24,9 @@ use datafusion::{
     execution::{context::SessionState, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
+use noodles::core::Region;
 
-use crate::datasources::{ExonFileType, ExonListingTableFactory};
+use crate::datasources::{bam::BAMFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory};
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
 #[async_trait]
@@ -204,6 +205,24 @@ pub trait ExonSessionExt {
             .read_exon_table(table_path, ExonFileType::MZML, file_compression_type)
             .await;
     }
+
+    /// Query a VCF file.
+    ///
+    /// File must be indexed and index file must be in the same directory as the VCF file.
+    async fn query_vcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError>;
+
+    /// Query a BAM file.
+    ///
+    /// File must be indexed and index file must be in the same directory as the BAM file.
+    async fn query_bam_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError>;
 }
 
 #[async_trait]
@@ -222,6 +241,62 @@ impl ExonSessionExt for SessionContext {
 
         let file_format = file_type.get_file_format(file_compression_type)?;
         let lo = ListingOptions::new(file_format);
+
+        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
+
+        let config = ListingTableConfig::new(table_path)
+            .with_listing_options(lo)
+            .with_schema(resolved_schema);
+
+        let table = ListingTable::try_new(config)?;
+
+        self.read_table(Arc::new(table))
+    }
+
+    async fn query_bam_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let session_state = self.state();
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let region: Region = query
+            .parse()
+            .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
+
+        let file_format = BAMFormat::default().with_region_filter(region);
+        let boxed_format = Arc::new(file_format);
+
+        let lo = ListingOptions::new(boxed_format);
+
+        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
+
+        let config = ListingTableConfig::new(table_path)
+            .with_listing_options(lo)
+            .with_schema(resolved_schema);
+
+        let table = ListingTable::try_new(config)?;
+
+        self.read_table(Arc::new(table))
+    }
+
+    async fn query_vcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let session_state = self.state();
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let region: Region = query
+            .parse()
+            .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
+
+        let file_format = VCFFormat::new(FileCompressionType::GZIP).with_region_filter(region);
+        let boxed_format = Arc::new(file_format);
+
+        let lo = ListingOptions::new(boxed_format);
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
 
@@ -392,6 +467,44 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_query_vcf() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
+
+        let path = test_path("vcf", "index.vcf.gz");
+        let query = "1";
+
+        let df = ctx
+            .query_vcf_file(path.to_str().unwrap(), query)
+            .await
+            .unwrap();
+
+        let batches = df.collect().await.unwrap();
+
+        assert!(!batches.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_bam() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
+
+        let path = test_path("bam", "test.bam");
+        let query = "chr1:1-12209153";
+
+        let df = ctx
+            .query_bam_file(path.to_str().unwrap(), query)
+            .await
+            .unwrap();
+
+        let batches = df.collect().await.unwrap();
+
+        assert!(!batches.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_read_bam() -> Result<(), DataFusionError> {
         //! Test tat the ExonSessionExt can read a BAM file
         let ctx = SessionContext::new();
@@ -404,7 +517,7 @@ mod tests {
         let batches = df.collect().await.unwrap();
 
         assert_eq!(batches.len(), 1);
-        assert_eq!(batches[0].num_rows(), 1);
+        assert_eq!(batches[0].num_rows(), 61);
         assert_eq!(batches[0].num_columns(), 1);
 
         Ok(())

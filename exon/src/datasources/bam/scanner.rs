@@ -20,6 +20,7 @@ use datafusion::physical_plan::{
     metrics::ExecutionPlanMetricsSet,
     ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
 };
+use noodles::core::Region;
 
 use super::{config::BAMConfig, file_opener::BAMOpener};
 
@@ -34,6 +35,9 @@ pub struct BAMScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// An optional region filter for the scan.
+    region_filter: Option<Region>,
 }
 
 impl BAMScan {
@@ -48,7 +52,14 @@ impl BAMScan {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
+            region_filter: None,
         }
+    }
+
+    /// Set the region filter for the scan.
+    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
+        self.region_filter = Some(region_filter);
+        self
     }
 }
 
@@ -98,7 +109,10 @@ impl ExecutionPlan for BAMScan {
             config = config.with_some_projection(Some(projection.clone()));
         }
 
-        let opener = BAMOpener::new(Arc::new(config));
+        let mut opener = BAMOpener::new(Arc::new(config));
+        if let Some(region) = &self.region_filter {
+            opener = opener.with_region(region.clone());
+        }
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

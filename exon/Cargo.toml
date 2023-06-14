@@ -8,12 +8,12 @@ repository = "https://www.github.com/wheretrue/exon"
 version = "0.1.1-alpha.5"
 
 [dependencies]
-arrow = {version = "40"}
+arrow = {workspace = true}
 async-trait = "0.1.68"
 base64 = {version = "0.21", optional = true}
 byteorder = {version = "1.4.3", optional = true}
 bytes = "1.4.0"
-datafusion = {version = "26", features = ["default"]}
+datafusion = {workspace = true}
 flate2 = {version = "1.0.25", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1"}

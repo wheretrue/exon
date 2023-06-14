@@ -21,6 +21,7 @@ mod batch_reader;
 mod config;
 mod file_format;
 mod file_opener;
+mod record_stream;
 mod scanner;
 
 pub use config::BAMConfig;
