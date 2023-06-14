@@ -70,7 +70,7 @@ impl FileOpener for BAMOpener {
 
                         let query = reader
                             .query(&header, &region)?
-                            .map(|result| Ok(result))
+                            .map(Ok)
                             .collect::<io::Result<Vec<_>>>()?;
 
                         let record_stream = futures::stream::iter(query).boxed();
@@ -90,11 +90,8 @@ impl FileOpener for BAMOpener {
                         let record_iterator = RecordIterator::new(reader, header.clone()).unwrap();
                         let record_stream = futures::stream::iter(record_iterator).boxed();
 
-                        let batch_adapter = StreamRecordBatchAdapter::new(
-                            record_stream,
-                            header.clone(),
-                            config.clone(),
-                        );
+                        let batch_adapter =
+                            StreamRecordBatchAdapter::new(record_stream, header, config.clone());
 
                         let batch_stream = batch_adapter.into_stream();
 

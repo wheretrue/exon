@@ -26,19 +26,11 @@ use object_store::{ObjectMeta, ObjectStore};
 
 use super::{array_builder::schema, scanner::BAMScan};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Implements a datafusion `FileFormat` for BAM files.
 pub struct BAMFormat {
     /// An optional region filter for the scan.
     region_filter: Option<Region>,
-}
-
-impl Default for BAMFormat {
-    fn default() -> Self {
-        Self {
-            region_filter: None,
-        }
-    }
 }
 
 impl BAMFormat {

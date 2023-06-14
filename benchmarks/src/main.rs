@@ -42,7 +42,7 @@ async fn main() {
 
             let batch_count = df.count().await.unwrap();
 
-            println!("Batch count: {}", batch_count);
+            println!("Batch count: {batch_count}");
         }
         None => {}
     }

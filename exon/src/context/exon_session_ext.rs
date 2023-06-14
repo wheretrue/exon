@@ -480,7 +480,7 @@ mod tests {
 
         let batches = df.collect().await.unwrap();
 
-        assert!(batches.len() > 0);
+        assert!(!batches.is_empty());
 
         Ok(())
     }
@@ -499,7 +499,7 @@ mod tests {
 
         let batches = df.collect().await.unwrap();
 
-        assert!(batches.len() > 0);
+        assert!(!batches.is_empty());
 
         Ok(())
     }
