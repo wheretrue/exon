@@ -25,14 +25,7 @@ serde = {version = "1", features = ["derive"], optional = true}
 tokio = {version = "1", features = ["io-util"]}
 tokio-util = {version = "0.7.8", features = ["compat"]}
 
-[dev-dependencies]
-criterion = {version = "0.5", features = ["async_tokio"]}
-
 [features]
 all = ["ffi", "mzml"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 mzml = ["dep:base64", "dep:byteorder", "dep:flate2", "dep:quick-xml", "dep:serde"]
-
-[[bench]]
-harness = false
-name = "bench_reads"

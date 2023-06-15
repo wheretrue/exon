@@ -1,10 +1,13 @@
 use clap::{Parser, Subcommand};
-use datafusion::prelude::SessionContext;
+use datafusion::{
+    datasource::file_format::file_type::FileCompressionType,
+    prelude::{col, lit, SessionContext},
+};
 use exon::context::ExonSessionExt;
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Run a VCF query on a file with a region
+    /// Run a VCF query on a file with a region.
     VCFQuery {
         /// which path to use
         #[arg(short, long)]
@@ -13,6 +16,26 @@ enum Commands {
         /// which region to use
         #[arg(short, long)]
         region: String,
+    },
+    /// Run a BAM query on a file with a region.
+    BAMQuery {
+        /// which path to use for the BAM file
+        #[arg(short, long)]
+        path: String,
+
+        /// which region to use
+        #[arg(short, long)]
+        region: String,
+    },
+    /// Scan a FASTA file and count the number of non-methionine start codons
+    FASTACodonScan {
+        /// which path to use
+        #[arg(short, long)]
+        path: String,
+
+        /// which compression to use
+        #[arg(short, long)]
+        compression: Option<FileCompressionType>,
     },
 }
 
@@ -42,7 +65,35 @@ async fn main() {
 
             let batch_count = df.count().await.unwrap();
 
-            println!("Batch count: {batch_count}");
+            println!("Row count: {batch_count}");
+        }
+        Some(Commands::BAMQuery { path, region }) => {
+            let path = path.as_str();
+            let region = region.as_str();
+
+            let ctx = SessionContext::new();
+
+            let df = ctx.query_bam_file(path, region).await.unwrap();
+            let batch_count = df.count().await.unwrap();
+
+            println!("Row count: {batch_count}");
+        }
+        Some(Commands::FASTACodonScan { path, compression }) => {
+            let path = path.as_str();
+            let compression = compression.to_owned();
+
+            let ctx = SessionContext::new();
+
+            let df = ctx.read_fasta(path, compression).await.unwrap();
+
+            let count = df
+                .filter(col("sequence").like(lit("M%")))
+                .unwrap()
+                .count()
+                .await
+                .unwrap();
+
+            println!("Count: {count}");
         }
         None => {}
     }
