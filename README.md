@@ -1,5 +1,5 @@
 <h1 align="center">
-    <img src=".github/images/logo.png" width="200px" alt="Exon" />
+    <img src=".github/images/logo.svg" width="220px" alt="Exon" />
 </h1>
 
 Exon is an analysis toolkit for life-science applications. It features:
@@ -15,8 +15,6 @@ Please note Exon was recently excised from a larger library, so please be patien
 - [Usage](#usage)
 - [File Formats](#file-formats)
 - [Benchmarks](#benchmarks)
-  - [VCF](#vcf)
-  - [FASTA](#fasta)
 
 ## Installation
 
@@ -66,18 +64,4 @@ Please see the [rust docs](https://docs.rs/exon) for more information.
 
 ## Benchmarks
 
-Set of benchmarks for various file formats. All benchmarks were run on a 2022 MacBook Air.
-
-### VCF
-
-Reading VCF files.
-
-<!-- copied from the output of cargo bench -->
-<img src=".github/images/vcf-benches.svg" width="500px" alt="Exon" />
-
-### FASTA
-
-Reading uniprot sequences from a FASTA file.
-
-<!-- copied from the output of cargo bench -->
-<img src=".github/images/uniprot-benches.svg" width="500px" alt="Exon" />
+Please see the [benchmarks](benchmarks) [README](benchmarks/README.md) for more information.

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="12.611mm"
+   height="6.04mm"
+   viewBox="0 0 12.611 6.04"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.2 (b0a84865, 2022-12-01)"
+   sodipodi:docname="exon-logo.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="18.053242"
+     inkscape:cx="24.593921"
+     inkscape:cy="11.493781"
+     inkscape:window-width="1470"
+     inkscape:window-height="891"
+     inkscape:window-x="0"
+     inkscape:window-y="37"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-69.607306,-102.39128)">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333px;font-family:'Chivo Mono';-inkscape-font-specification:'Chivo Mono, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       x="70.806923"
+       y="106.2951"
+       id="text236"><tspan
+         sodipodi:role="line"
+         id="tspan234"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333px;font-family:'Chivo Mono';-inkscape-font-specification:'Chivo Mono, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#0174c5;fill-opacity:1;stroke-width:0;stroke-dasharray:none"
+         x="70.806923"
+         y="106.2951">Exon</tspan></text>
+    <rect
+       style="fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       id="rect2630"
+       width="2.5065513"
+       height="0.799999"
+       x="71.108307"
+       y="106.63116"
+       ry="0.37999871"
+       rx="0" />
+    <rect
+       style="fill:#e74115;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       id="rect2630-3"
+       width="1.7345403"
+       height="0.79999894"
+       x="73.935806"
+       y="106.63116"
+       ry="0"
+       rx="0" />
+    <rect
+       style="fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       id="rect2630-3-8"
+       width="2.5065513"
+       height="0.79999894"
+       x="75.991295"
+       y="106.63116"
+       ry="0"
+       rx="0" />
+    <rect
+       style="fill:#e74115;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       id="rect2630-3-8-1"
+       width="0.43285474"
+       height="0.80072933"
+       x="78.781746"
+       y="106.63079"
+       ry="0"
+       rx="0" />
+    <rect
+       style="fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       id="rect2630-3-8-4"
+       width="1.244482"
+       height="0.79999894"
+       x="79.47364"
+       y="106.63116"
+       ry="0"
+       rx="0" />
+  </g>
+</svg>
