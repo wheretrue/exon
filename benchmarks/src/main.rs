@@ -87,7 +87,7 @@ async fn main() {
             let df = ctx.read_fasta(path, compression).await.unwrap();
 
             let count = df
-                .filter(col("sequence").like(lit("M%")))
+                .filter(col("sequence").ilike(lit("M%")))
                 .unwrap()
                 .count()
                 .await
