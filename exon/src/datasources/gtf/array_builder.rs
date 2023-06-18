@@ -66,7 +66,7 @@ impl GTFArrayBuilder {
         self.scores.append_option(record.score());
         self.strands.append_option(record.strand());
         self.frame
-            .append_option(record.frame().and_then(|f| Some(f.to_string())));
+            .append_option(record.frame().map(|frame| frame.to_string()));
 
         for entry in record.attributes().iter() {
             self.attributes.keys().append_value(entry.key());
