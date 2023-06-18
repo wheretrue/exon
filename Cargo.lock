@@ -1538,6 +1538,7 @@ dependencies = [
  "noodles-fasta",
  "noodles-fastq",
  "noodles-gff",
+ "noodles-gtf",
  "noodles-sam",
  "noodles-tabix",
  "noodles-vcf",
@@ -1679,6 +1680,17 @@ dependencies = [
  "noodles-core",
  "noodles-csi",
  "percent-encoding",
+]
+
+[[package]]
+name = "noodles-gtf"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26791c63a9d6b286631c6a816242237109e578f149426c6f4b18293da4da7016"
+dependencies = [
+ "noodles-bgzf",
+ "noodles-core",
+ "noodles-csi",
 ]
 
 [[package]]
