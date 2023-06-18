@@ -161,6 +161,16 @@ pub trait ExonSessionExt {
             .await;
     }
 
+    /// Read a GTF file.
+    async fn read_gtf(
+        &self,
+        table_path: &str,
+        file_compression_type: Option<FileCompressionType>,
+    ) -> Result<DataFrame, DataFusionError> {
+        self.read_exon_table(table_path, ExonFileType::GTF, file_compression_type)
+            .await
+    }
+
     /// Read a BED file.
     async fn read_bed(
         &self,
@@ -364,6 +374,7 @@ mod tests {
             ("gff", "test.gff.zst"),
             ("gff", "test.gff.gz"),
             ("gff", "test.gff"),
+            ("gtf", "test.gtf"),
             ("vcf", "index.vcf"),
             ("bcf", "index.bcf"),
             ("vcf", "index.vcf.gz"),

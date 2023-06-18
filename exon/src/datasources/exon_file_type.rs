@@ -21,8 +21,8 @@ use datafusion::{
 
 use super::{
     bam::BAMFormat, bcf::BCFFormat, bed::BEDFormat, fasta::FASTAFormat, fastq::FASTQFormat,
-    genbank::GenbankFormat, gff::GFFFormat, hmmdomtab::HMMDomTabFormat, sam::SAMFormat,
-    vcf::VCFFormat,
+    genbank::GenbankFormat, gff::GFFFormat, gtf::GTFFormat, hmmdomtab::HMMDomTabFormat,
+    sam::SAMFormat, vcf::VCFFormat,
 };
 
 #[cfg(feature = "mzml")]
@@ -50,6 +50,8 @@ pub enum ExonFileType {
     HMMER,
     /// BED file format.
     BED,
+    /// GTF file format.
+    GTF,
 
     /// mzML file format.
     #[cfg(feature = "mzml")]
@@ -75,6 +77,7 @@ impl FromStr for ExonFileType {
             "GENBANK" | "GBK" | "GB" => Ok(Self::GENBANK),
             "HMMDOMTAB" => Ok(Self::HMMER),
             "BED" => Ok(Self::BED),
+            "GTF" => Ok(Self::GTF),
             _ => Err(()),
         }
     }
@@ -95,6 +98,7 @@ impl Display for ExonFileType {
             Self::GENBANK => write!(f, "GENBANK"),
             Self::HMMER => write!(f, "HMMER"),
             Self::BED => write!(f, "BED"),
+            Self::GTF => write!(f, "GTF"),
         }
     }
 }
@@ -116,6 +120,7 @@ impl ExonFileType {
             Self::HMMER => Ok(Arc::new(HMMDomTabFormat::new(file_compression_type))),
             Self::SAM => Ok(Arc::new(SAMFormat::default())),
             Self::VCF => Ok(Arc::new(VCFFormat::new(file_compression_type))),
+            Self::GTF => Ok(Arc::new(GTFFormat::new(file_compression_type))),
             #[cfg(feature = "mzml")]
             Self::MZML => Ok(Arc::new(MzMLFormat::new(file_compression_type))),
         }

@@ -48,6 +48,9 @@ pub mod sam;
 /// VCF module.
 pub mod vcf;
 
+/// GTF module.
+pub mod gtf;
+
 /// Default batch size.
 pub const DEFAULT_BATCH_SIZE: usize = 8192;
 
