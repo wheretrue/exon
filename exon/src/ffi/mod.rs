@@ -59,13 +59,15 @@ pub async fn create_dataset_stream_from_table_provider(
     dataframe: DataFrame,
     rt: Arc<tokio::runtime::Runtime>,
     stream_ptr: *mut ArrowArrayStream,
-) {
-    let stream = dataframe.execute_stream().await.unwrap();
+) -> Result<(), ArrowError> {
+    let stream = dataframe.execute_stream().await?;
     let dataset_record_batch_stream = DataFrameRecordBatchStream::new(stream, rt);
 
     unsafe {
         export_reader_into_raw(Box::new(dataset_record_batch_stream), stream_ptr);
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -83,7 +85,7 @@ mod tests {
     use crate::tests::test_path;
 
     #[test]
-    pub fn test() {
+    pub fn test() -> Result<(), DataFusionError> {
         let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
         let ctx = SessionContext::new();
@@ -94,17 +96,17 @@ mod tests {
 
         rt.block_on(async {
             let df = ctx.read_mzml(path.to_str().unwrap(), None).await.unwrap();
-            create_dataset_stream_from_table_provider(df, rt.clone(), &mut stream_ptr).await;
+            create_dataset_stream_from_table_provider(df, rt.clone(), &mut stream_ptr).await?;
         });
 
-        let stream_reader = unsafe { ArrowArrayStreamReader::from_raw(&mut stream_ptr).unwrap() };
+        let stream_reader = unsafe { ArrowArrayStreamReader::from_raw(&mut stream_ptr)? };
 
         let imported_schema = stream_reader.schema();
         assert_eq!(imported_schema.field(0).name(), "id");
 
         let mut row_cnt = 0;
         for batch in stream_reader {
-            let batch = batch.unwrap();
+            let batch = batch?;
 
             row_cnt += batch.num_rows();
         }
