@@ -642,11 +642,11 @@ mod tests {
         let ctx = SessionContext::new();
 
         let path = test_path("gff-bad-directive", "test.gff");
-        let df = ctx.read_gff(path.to_str().unwrap(), None).await;
-
-        assert!(df.is_ok());
-
-        let batches = df.unwrap().collect().await.unwrap();
+        let batches = ctx
+            .read_gff(path.to_str().unwrap(), None)
+            .await?
+            .collect()
+            .await?;
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 7);
