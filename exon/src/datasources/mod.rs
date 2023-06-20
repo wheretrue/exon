@@ -62,3 +62,7 @@ pub use self::exon_file_type::ExonFileType;
 /// ListingTableFactory
 mod exon_listing_table_factory;
 pub use self::exon_listing_table_factory::ExonListingTableFactory;
+
+/// Options that control reading files exon files.
+mod options;
+pub use self::options::ExonReadOptions;

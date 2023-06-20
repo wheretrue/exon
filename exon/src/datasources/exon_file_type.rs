@@ -29,6 +29,7 @@ use super::{
 use super::mzml::MzMLFormat;
 
 /// The type of file.
+#[derive(Debug, Clone)]
 pub enum ExonFileType {
     /// FASTA file format.
     FASTA,
@@ -108,21 +109,21 @@ impl ExonFileType {
     pub fn get_file_format(
         self,
         file_compression_type: FileCompressionType,
-    ) -> Result<Arc<dyn FileFormat>, DataFusionError> {
+    ) -> Arc<dyn FileFormat> {
         match self {
-            Self::BAM => Ok(Arc::new(BAMFormat::default())),
-            Self::BCF => Ok(Arc::new(BCFFormat::default())),
-            Self::BED => Ok(Arc::new(BEDFormat::new(file_compression_type))),
-            Self::FASTA => Ok(Arc::new(FASTAFormat::new(file_compression_type))),
-            Self::FASTQ => Ok(Arc::new(FASTQFormat::new(file_compression_type))),
-            Self::GENBANK => Ok(Arc::new(GenbankFormat::new(file_compression_type))),
-            Self::GFF => Ok(Arc::new(GFFFormat::new(file_compression_type))),
-            Self::HMMER => Ok(Arc::new(HMMDomTabFormat::new(file_compression_type))),
-            Self::SAM => Ok(Arc::new(SAMFormat::default())),
-            Self::VCF => Ok(Arc::new(VCFFormat::new(file_compression_type))),
-            Self::GTF => Ok(Arc::new(GTFFormat::new(file_compression_type))),
+            Self::BAM => Arc::new(BAMFormat::default()),
+            Self::BCF => Arc::new(BCFFormat::default()),
+            Self::BED => Arc::new(BEDFormat::new(file_compression_type)),
+            Self::FASTA => Arc::new(FASTAFormat::new(file_compression_type)),
+            Self::FASTQ => Arc::new(FASTQFormat::new(file_compression_type)),
+            Self::GENBANK => Arc::new(GenbankFormat::new(file_compression_type)),
+            Self::GFF => Arc::new(GFFFormat::new(file_compression_type)),
+            Self::HMMER => Arc::new(HMMDomTabFormat::new(file_compression_type)),
+            Self::SAM => Arc::new(SAMFormat::default()),
+            Self::VCF => Arc::new(VCFFormat::new(file_compression_type)),
+            Self::GTF => Arc::new(GTFFormat::new(file_compression_type)),
             #[cfg(feature = "mzml")]
-            Self::MZML => Ok(Arc::new(MzMLFormat::new(file_compression_type))),
+            Self::MZML => Arc::new(MzMLFormat::new(file_compression_type)),
         }
     }
 }
@@ -145,7 +146,7 @@ pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionEr
         ))
     })?;
 
-    let file_format = file_type.get_file_format(file_compression_type)?;
+    let file_format = file_type.get_file_format(file_compression_type);
 
     Ok(file_format)
 }
