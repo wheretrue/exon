@@ -122,3 +122,57 @@ where
         })
     }
 }
+
+pub struct BatchAdapter {
+    /// The underlying record iterator.
+    record_iterator: Box<dyn Iterator<Item = Result<noodles::vcf::Record, std::io::Error>> + Send>,
+
+    /// Configuration for how to batch records.
+    config: Arc<BCFConfig>,
+}
+
+impl BatchAdapter {
+    pub fn new(
+        record_iterator: Box<
+            dyn Iterator<Item = Result<noodles::vcf::Record, std::io::Error>> + Send,
+        >,
+        config: Arc<BCFConfig>,
+    ) -> Self {
+        Self {
+            record_iterator,
+            config,
+        }
+    }
+
+    fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
+        let mut record_batch =
+            VCFArrayBuilder::create(self.config.file_schema.clone(), self.config.batch_size)?;
+
+        for _ in 0..self.config.batch_size {
+            match self.record_iterator.next() {
+                Some(Ok(record)) => record_batch.append(&record),
+                Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
+                None => break,
+            }
+        }
+
+        if record_batch.is_empty() {
+            return Ok(None);
+        }
+
+        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+
+        match &self.config.projection {
+            Some(projection) => Ok(Some(batch.project(projection)?)),
+            None => Ok(Some(batch)),
+        }
+    }
+}
+
+impl Iterator for BatchAdapter {
+    type Item = Result<RecordBatch, ArrowError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.read_batch().transpose()
+    }
+}

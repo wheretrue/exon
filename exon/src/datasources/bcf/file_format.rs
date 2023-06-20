@@ -23,7 +23,7 @@ use datafusion::{
     physical_plan::{file_format::FileScanConfig, ExecutionPlan, PhysicalExpr, Statistics},
 };
 use futures::TryStreamExt;
-use noodles::bcf;
+use noodles::{bcf, core::Region};
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
@@ -35,7 +35,25 @@ use super::scanner::BCFScan;
 
 #[derive(Debug, Default)]
 /// Implements a datafusion `FileFormat` for BCF files.
-pub struct BCFFormat {}
+pub struct BCFFormat {
+    /// A region to filter on, if known.
+    region_filter: Option<Region>,
+}
+
+impl BCFFormat {
+    /// Create a new BCFFormat.
+    pub fn new() -> Self {
+        Self {
+            region_filter: None,
+        }
+    }
+
+    /// Set the region to filter on.
+    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
+        self.region_filter = Some(region_filter);
+        self
+    }
+}
 
 #[async_trait]
 impl FileFormat for BCFFormat {
@@ -85,7 +103,12 @@ impl FileFormat for BCFFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BCFScan::new(conf);
+        let mut scan = BCFScan::new(conf);
+
+        if let Some(region_filter) = &self.region_filter {
+            scan = scan.with_region_filter(region_filter.clone());
+        }
+
         Ok(Arc::new(scan))
     }
 }

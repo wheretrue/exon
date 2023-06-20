@@ -20,6 +20,7 @@ use datafusion::physical_plan::{
     metrics::ExecutionPlanMetricsSet,
     ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
 };
+use noodles::core::Region;
 
 use super::{config::BCFConfig, file_opener::BCFOpener};
 
@@ -34,6 +35,9 @@ pub struct BCFScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// An optional region filter for the scan.
+    region_filter: Option<Region>,
 }
 
 impl BCFScan {
@@ -48,7 +52,14 @@ impl BCFScan {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
+            region_filter: None,
         }
+    }
+
+    /// Set the region filter for the scan.
+    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
+        self.region_filter = Some(region_filter);
+        self
     }
 }
 
@@ -95,7 +106,11 @@ impl ExecutionPlan for BCFScan {
             .with_batch_size(batch_size)
             .with_some_projection(self.base_config.projection.clone());
 
-        let opener = BCFOpener::new(Arc::new(config));
+        let mut opener = BCFOpener::new(Arc::new(config));
+
+        if let Some(region) = &self.region_filter {
+            opener = opener.with_region_filter(region.clone());
+        }
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
