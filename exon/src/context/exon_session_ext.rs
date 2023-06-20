@@ -638,6 +638,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_read_gff_bad_directive() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
+
+        let path = test_path("gff-bad-directive", "test.gff");
+        let df = ctx.read_gff(path.to_str().unwrap(), None).await;
+
+        assert!(df.is_ok());
+
+        let batches = df.unwrap().collect().await.unwrap();
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].num_rows(), 7);
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_create_external_table() -> Result<(), DataFusionError> {
         //! Test that with the ExonSessionExt we can create an external table
 
