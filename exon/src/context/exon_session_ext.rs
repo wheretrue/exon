@@ -21,12 +21,14 @@ use datafusion::{
         listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     },
     error::DataFusionError,
-    execution::{context::SessionState, runtime_env::RuntimeEnv},
+    execution::{context::SessionState, options::ReadOptions, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 use noodles::core::Region;
 
-use crate::datasources::{bam::BAMFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory};
+use crate::datasources::{
+    bam::BAMFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory, ExonReadOptions,
+};
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
 #[async_trait]
@@ -55,6 +57,14 @@ pub trait ExonSessionExt {
         let runtime = Arc::new(RuntimeEnv::default());
         Self::with_config_rt_exon(config, runtime)
     }
+
+    /// Register a Exon table from the given path of a certain type and optional compression type.
+    async fn register_exon_table(
+        &self,
+        name: &str,
+        table_path: &str,
+        options: ExonReadOptions<'_>,
+    ) -> Result<(), DataFusionError>;
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
@@ -249,7 +259,7 @@ impl ExonSessionExt for SessionContext {
         let file_compression_type =
             file_compression_type.unwrap_or(FileCompressionType::UNCOMPRESSED);
 
-        let file_format = file_type.get_file_format(file_compression_type)?;
+        let file_format = file_type.get_file_format(file_compression_type);
         let lo = ListingOptions::new(file_format);
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
@@ -261,6 +271,28 @@ impl ExonSessionExt for SessionContext {
         let table = ListingTable::try_new(config)?;
 
         self.read_table(Arc::new(table))
+    }
+
+    async fn register_exon_table(
+        &self,
+        name: &str,
+        table_path: &str,
+        options: ExonReadOptions<'_>,
+    ) -> Result<(), DataFusionError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let listing_options = options.to_listing_options(&self.copied_config());
+
+        self.register_listing_table(
+            name,
+            table_path,
+            listing_options,
+            options.schema.map(|s| Arc::new(s.to_owned())),
+            None,
+        )
+        .await?;
+
+        Ok(())
     }
 
     async fn query_bam_file(
@@ -343,14 +375,44 @@ impl ExonSessionExt for SessionContext {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
-    use crate::{context::exon_session_ext::ExonSessionExt, tests::test_path};
+    use crate::{
+        context::exon_session_ext::ExonSessionExt,
+        datasources::{ExonFileType, ExonReadOptions},
+        tests::test_path,
+    };
+
+    #[tokio::test]
+    async fn test_register() -> Result<(), DataFusionError> {
+        let file_file = ExonFileType::from_str("fasta").unwrap();
+
+        let options = ExonReadOptions::new(file_file);
+
+        let ctx = SessionContext::new();
+
+        let test_path = test_path("fasta", "test.fasta");
+
+        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), options)
+            .await
+            .unwrap();
+
+        let df = ctx.sql("SELECT * FROM test_fasta").await.unwrap();
+
+        let batches = df.collect().await.unwrap();
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].num_columns(), 3);
+        assert_eq!(batches[0].num_rows(), 2);
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_infer() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
-
         let test_table = vec![
             ("bam", "test.bam"),
             ("sam", "test.sam"),
