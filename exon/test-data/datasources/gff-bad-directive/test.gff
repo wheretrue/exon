@@ -1,0 +1,10 @@
+##gff-version  3
+# Sequence Data: seqnum=1;seqlen=353909;seqhdr="Ga0604745_000001"
+# Model Data: version=Prodigal.v2.6.3_patched;run_type=Metagenomic;model="10|Burkholderia_rhizoxinica_HKI_454|B|59.7|11|1";gc_cont=59.70;transl_table=11;uses_sd=1
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	2	2116	203.5	+	0	ID=Ga0604745_000001_2_2116;translation_table=11;partial=5'
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	2146	5328	284.0	+	0	ID=Ga0604745_000001_2146_5328;translation_table=11
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	5331	5879	46.3	+	0	ID=Ga0604745_000001_5331_5879;translation_table=11
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	5876	8896	311.3	+	0	ID=Ga0604745_000001_5876_8896;translation_table=11
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	8899	11298	266.4	+	0	ID=Ga0604745_000001_8899_11298;translation_table=11
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	11286	12002	85.3	-	0	ID=Ga0604745_000001_11286_12002;translation_table=11
+Ga0604745_000001	Prodigal v2.6.3_patched	CDS	12132	13001	59.2	+	0	ID=Ga0604745_000001_12132_13001;translation_table=11

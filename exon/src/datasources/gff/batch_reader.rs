@@ -49,24 +49,31 @@ where
     }
 
     async fn read_line(&mut self) -> std::io::Result<Option<noodles::gff::Line>> {
-        let mut buf = String::new();
-        match self.reader.read_line(&mut buf).await {
-            Ok(0) => Ok(None),
-            Ok(_) => {
-                buf.pop();
-                let line = match noodles::gff::Line::from_str(&buf) {
-                    Ok(line) => line,
-                    Err(e) => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("invalid line: {buf} error: {e}"),
-                        ));
-                    }
-                };
-                buf.clear();
-                Ok(Some(line))
-            }
-            Err(e) => Err(e),
+        loop {
+            let mut buf = String::new();
+            match self.reader.read_line(&mut buf).await {
+                Ok(0) => return Ok(None),
+                Ok(_) => {
+                    buf.pop();
+                    let line = match noodles::gff::Line::from_str(&buf) {
+                        Ok(line) => line,
+                        Err(e) => match e {
+                            noodles::gff::line::ParseError::InvalidDirective(_) => {
+                                continue;
+                            }
+                            noodles::gff::line::ParseError::InvalidRecord(e) => {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    format!("invalid record: {buf} error: {e}"),
+                                ))
+                            }
+                        },
+                    };
+                    buf.clear();
+                    return Ok(Some(line));
+                }
+                Err(e) => return Err(e),
+            };
         }
     }
 
