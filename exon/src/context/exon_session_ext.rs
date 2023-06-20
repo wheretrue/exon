@@ -27,7 +27,8 @@ use datafusion::{
 use noodles::core::Region;
 
 use crate::datasources::{
-    bam::BAMFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory, ExonReadOptions,
+    bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
+    ExonReadOptions,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -235,6 +236,15 @@ pub trait ExonSessionExt {
         query: &str,
     ) -> Result<DataFrame, DataFusionError>;
 
+    /// Query a BCF file.
+    ///
+    /// File must be indexed and index file must be in the same directory as the BCF file.
+    async fn query_bcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError>;
+
     /// Query a BAM file.
     ///
     /// File must be indexed and index file must be in the same directory as the BAM file.
@@ -308,6 +318,34 @@ impl ExonSessionExt for SessionContext {
             .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
 
         let file_format = BAMFormat::default().with_region_filter(region);
+        let boxed_format = Arc::new(file_format);
+
+        let lo = ListingOptions::new(boxed_format);
+
+        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
+
+        let config = ListingTableConfig::new(table_path)
+            .with_listing_options(lo)
+            .with_schema(resolved_schema);
+
+        let table = ListingTable::try_new(config)?;
+
+        self.read_table(Arc::new(table))
+    }
+
+    async fn query_bcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let session_state = self.state();
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let region: Region = query
+            .parse()
+            .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
+
+        let file_format = BCFFormat::default().with_region_filter(region);
         let boxed_format = Arc::new(file_format);
 
         let lo = ListingOptions::new(boxed_format);
@@ -548,6 +586,25 @@ mod tests {
 
         let df = ctx
             .query_vcf_file(path.to_str().unwrap(), query)
+            .await
+            .unwrap();
+
+        let batches = df.collect().await.unwrap();
+
+        assert!(!batches.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_bcf() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
+
+        let path = test_path("bcf", "index.bcf");
+        let query = "1";
+
+        let df = ctx
+            .query_bcf_file(path.to_str().unwrap(), query)
             .await
             .unwrap();
 

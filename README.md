@@ -53,6 +53,7 @@ Please see the [rust docs](https://docs.rs/exon) for more information.
 | FASTQ     | gz, zstd       | .fastq, .fq           |
 | GENBANK   | gz, zstd       | .gbk, .genbank, .gb   |
 | GFF       | gz, zstd       | .gff                  |
+| GTF       | gz, zstd       | .gtf                  |
 | HMMDOMTAB | gz, zstd       | .hmmdomtab            |
 | MZML      | gz, zstd       | .mzml[^2]             |
 | SAM       | -              | .sam                  |

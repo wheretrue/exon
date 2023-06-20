@@ -16,19 +16,38 @@ use std::sync::Arc;
 
 use datafusion::{error::DataFusionError, physical_plan::file_format::FileOpener};
 use futures::{StreamExt, TryStreamExt};
+use noodles::{bcf, core::Region, csi};
+use object_store::GetResult;
+use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
 
-use super::{batch_reader::BatchReader, config::BCFConfig};
+use super::{
+    batch_reader::{BatchAdapter, BatchReader},
+    config::BCFConfig,
+};
 
 /// A file opener for BCF files.
 pub struct BCFOpener {
+    /// The configuration for the opener.
     config: Arc<BCFConfig>,
+
+    /// The region to filter on.
+    region: Option<Region>,
 }
 
 impl BCFOpener {
     /// Create a new BCF file opener.
     pub fn new(config: Arc<BCFConfig>) -> Self {
-        Self { config }
+        Self {
+            config,
+            region: None,
+        }
+    }
+
+    /// Set the region to filter on.
+    pub fn with_region_filter(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 }
 
@@ -38,18 +57,58 @@ impl FileOpener for BCFOpener {
         file_meta: datafusion::physical_plan::file_format::FileMeta,
     ) -> datafusion::error::Result<datafusion::physical_plan::file_format::FileOpenFuture> {
         let config = self.config.clone();
+        let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            let get_result = config.object_store.get(file_meta.location()).await?;
+            match config.object_store.get(file_meta.location()).await? {
+                GetResult::File(file, path) => match region {
+                    Some(region) => {
+                        let mut reader = bcf::Reader::new(file);
+                        let header = reader.read_header()?;
 
-            let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+                        let index = csi::read(path.with_extension("bcf.csi"))?;
 
-            let stream_reader = StreamReader::new(stream_reader);
-            let batch_reader = BatchReader::new(stream_reader, config).await?;
+                        let query = reader.query(&header, &index, &region)?;
 
-            let batch_stream = batch_reader.into_stream();
+                        let mut records = Vec::new();
 
-            Ok(batch_stream.boxed())
+                        for result in query {
+                            records.push(result);
+                        }
+
+                        let boxed_iter = Box::new(records.into_iter());
+
+                        let batch_adapter = BatchAdapter::new(boxed_iter, config);
+                        let batch_stream = futures::stream::iter(batch_adapter);
+
+                        Ok(batch_stream.boxed())
+                    }
+                    None => {
+                        let buf_reader = tokio::fs::File::open(path).await.map(BufReader::new)?;
+                        let batch_reader = BatchReader::new(buf_reader, config).await?;
+
+                        let batch_stream = batch_reader.into_stream();
+
+                        Ok(batch_stream.boxed())
+                    }
+                },
+                GetResult::Stream(s) => {
+                    if region.is_some() {
+                        return Err(DataFusionError::NotImplemented(
+                            "region filtering is not yet implemented for object stores".to_string(),
+                        ));
+                    }
+
+                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+
+                    let stream_reader = StreamReader::new(stream_reader);
+                    let batch_reader = BatchReader::new(stream_reader, config).await?;
+
+                    let batch_stream = batch_reader.into_stream();
+
+                    Ok(batch_stream.boxed())
+                }
+            }
         }))
     }
 }
