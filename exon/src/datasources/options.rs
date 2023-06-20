@@ -13,14 +13,20 @@ use datafusion::{
 use super::ExonFileType;
 
 #[derive(Clone)]
+/// ExonReadOptions control how exon files are read.
 pub struct ExonReadOptions<'a> {
+    /// The type of exon file.
     pub exon_file_type: ExonFileType,
+
+    /// The type of compression used for the file.
     pub file_compression_type: FileCompressionType,
 
+    /// The schema of the file.
     pub schema: Option<&'a Schema>,
 }
 
 impl<'a> ExonReadOptions<'a> {
+    /// Create a new `ExonReadOptions`.
     pub fn new(exon_file_type: ExonFileType) -> Self {
         Self {
             exon_file_type,
@@ -29,6 +35,7 @@ impl<'a> ExonReadOptions<'a> {
         }
     }
 
+    /// Set the compression type of the file.
     pub fn with_compression(mut self, file_compression_type: FileCompressionType) -> Self {
         self.file_compression_type = file_compression_type;
         self
@@ -39,7 +46,7 @@ impl<'a> ExonReadOptions<'a> {
 impl ReadOptions<'_> for ExonReadOptions<'_> {
     fn to_listing_options(
         &self,
-        config: &datafusion::prelude::SessionConfig,
+        _config: &datafusion::prelude::SessionConfig,
     ) -> datafusion::datasource::listing::ListingOptions {
         let file_format = self
             .exon_file_type

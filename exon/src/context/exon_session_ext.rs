@@ -58,6 +58,7 @@ pub trait ExonSessionExt {
         Self::with_config_rt_exon(config, runtime)
     }
 
+    /// Register a Exon table from the given path of a certain type and optional compression type.
     async fn register_exon_table(
         &self,
         name: &str,
@@ -278,8 +279,6 @@ impl ExonSessionExt for SessionContext {
         table_path: &str,
         options: ExonReadOptions<'_>,
     ) -> Result<(), DataFusionError> {
-        eprintln!("register_exon_table: {}", name);
-        eprintln!("table_path: {}", table_path);
         let table_path = ListingTableUrl::parse(table_path)?;
 
         let listing_options = options.to_listing_options(&self.copied_config());
