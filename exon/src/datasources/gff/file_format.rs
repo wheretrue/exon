@@ -133,7 +133,7 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
+        let table_path = ListingTableUrl::parse("test-data/datasources/gff").unwrap();
 
         let gff_format = Arc::new(GFFFormat::default());
         let lo = ListingOptions::new(gff_format.clone()).with_file_extension("gff");
