@@ -133,7 +133,7 @@ mod tests {
         let table_path = test_listing_table_url("bcf");
 
         let bcf_format = Arc::new(BCFFormat::default());
-        let lo = ListingOptions::new(bcf_format.clone());
+        let lo = ListingOptions::new(bcf_format.clone()).with_file_extension("bcf");
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
 
