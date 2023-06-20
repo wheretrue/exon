@@ -76,6 +76,7 @@ mod tests {
 
     use arrow::ffi_stream::ArrowArrayStreamReader;
     use arrow::record_batch::RecordBatchReader;
+    use datafusion::error::DataFusionError;
     use datafusion::prelude::SessionContext;
 
     use crate::context::ExonSessionExt;
@@ -90,13 +91,15 @@ mod tests {
 
         let ctx = SessionContext::new();
 
-        let path = test_path("mzml", "test.mzml");
+        let path = test_path("fasta", "test.fasta");
 
         let mut stream_ptr = ArrowArrayStream::empty();
 
         rt.block_on(async {
-            let df = ctx.read_mzml(path.to_str().unwrap(), None).await.unwrap();
-            create_dataset_stream_from_table_provider(df, rt.clone(), &mut stream_ptr).await?;
+            let df = ctx.read_fasta(path.to_str().unwrap(), None).await.unwrap();
+            create_dataset_stream_from_table_provider(df, rt.clone(), &mut stream_ptr)
+                .await
+                .unwrap();
         });
 
         let stream_reader = unsafe { ArrowArrayStreamReader::from_raw(&mut stream_ptr)? };
@@ -112,5 +115,7 @@ mod tests {
         }
 
         assert_eq!(row_cnt, 1);
+
+        Ok(())
     }
 }
