@@ -2,99 +2,54 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="12.611mm"
-   height="6.04mm"
-   viewBox="0 0 12.611 6.04"
+   width="48.006592mm"
+   height="20.182781mm"
+   viewBox="0 0 48.006589 20.182781"
    version="1.1"
    id="svg5"
-   inkscape:version="1.2.2 (b0a84865, 2022-12-01)"
-   sodipodi:docname="exon-logo.svg"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-  <sodipodi:namedview
-     id="namedview7"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     inkscape:document-units="mm"
-     showgrid="false"
-     inkscape:zoom="18.053242"
-     inkscape:cx="24.593921"
-     inkscape:cy="11.493781"
-     inkscape:window-width="1470"
-     inkscape:window-height="891"
-     inkscape:window-x="0"
-     inkscape:window-y="37"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="layer1" />
   <defs
      id="defs2" />
   <g
-     inkscape:label="Layer 1"
-     inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-69.607306,-102.39128)">
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333px;font-family:'Chivo Mono';-inkscape-font-specification:'Chivo Mono, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
-       x="70.806923"
-       y="106.2951"
-       id="text236"><tspan
-         sodipodi:role="line"
-         id="tspan234"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333px;font-family:'Chivo Mono';-inkscape-font-specification:'Chivo Mono, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#0174c5;fill-opacity:1;stroke-width:0;stroke-dasharray:none"
-         x="70.806923"
-         y="106.2951">Exon</tspan></text>
-    <rect
-       style="fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
-       id="rect2630"
-       width="2.5065513"
-       height="0.799999"
-       x="71.108307"
-       y="106.63116"
-       ry="0.37999871"
-       rx="0" />
-    <rect
-       style="fill:#e74115;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+     transform="translate(-68.030823,-89.949174)">
+    <g
+       aria-label="Exon"
+       id="text236"
+       style="font-weight:bold;font-size:21.146px;font-family:'Chivo Mono';-inkscape-font-specification:'Chivo Mono, Bold';fill:#0174c5;stroke:#0174c5;stroke-width:0">
+      <path
+         d="M 68.030823,104.45533 V 89.949174 h 10.065496 l -0.380628,2.685542 h -6.216924 v 3.087316 h 5.81515 v 2.622104 h -5.81515 v 3.319924 h 6.280362 l 0.359482,2.79127 z"
+         id="path337" />
+      <path
+         d="m 79.724529,104.45533 3.721696,-5.667128 -3.404506,-5.138478 h 3.848572 l 1.818556,3.023878 h 0.06344 l 1.839702,-3.023878 h 3.59482 l -3.446798,5.223062 3.658258,5.582544 h -3.827426 l -2.093454,-3.48909 h -0.06344 l -2.1146,3.48909 z"
+         id="path339" />
+      <path
+         d="m 98.248392,104.66679 q -1.712826,0 -2.939294,-0.69782 -1.226467,-0.69782 -1.903139,-1.92428 -0.655526,-1.22647 -0.655526,-2.791276 V 98.85164 q 0,-1.607096 0.655526,-2.833564 0.676672,-1.226468 1.903139,-1.90314 1.226468,-0.676672 2.918148,-0.676672 1.733972,0 2.960444,0.697818 1.24761,0.676672 1.90314,1.90314 0.65552,1.205322 0.65552,2.812418 v 0.401774 q 0,1.607096 -0.67667,2.833566 -0.65553,1.22647 -1.88199,1.90314 -1.226472,0.67667 -2.939298,0.67667 z m 0,-2.1146 q 0.84584,0 1.395636,-0.63438 0.570942,-0.63438 0.570942,-1.64939 v -2.431788 q 0,-1.036154 -0.570942,-1.649388 -0.549796,-0.63438 -1.395636,-0.63438 -0.824694,0 -1.395636,0.63438 -0.570942,0.613234 -0.570942,1.649388 v 2.431788 q 0,1.01501 0.570942,1.64939 0.570942,0.63438 1.395636,0.63438 z"
+         id="path341" />
+      <path
+         d="M 106.03009,104.45533 V 93.649724 h 2.70669 l 0.25375,1.226468 q 0.5075,-0.74011 1.31105,-1.078446 0.80355,-0.359482 1.88199,-0.359482 1.73398,0 2.72784,0.95157 1.01501,0.95157 1.01501,2.664396 v 7.4011 h -3.31993 v -6.703282 q 0,-0.95157 -0.42292,-1.416782 -0.42292,-0.486358 -1.16303,-0.486358 -0.5075,0 -0.88813,0.253752 -0.38063,0.253752 -0.59209,0.697818 -0.19031,0.42292 -0.19031,0.993862 v 6.66099 z"
+         id="path343" />
+    </g>
+    <path
        id="rect2630-3"
-       width="1.7345403"
-       height="0.79999894"
-       x="73.935806"
-       y="106.63116"
-       ry="0"
-       rx="0" />
-    <rect
-       style="fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       style="fill:#e74115;stroke:#0174c5;stroke-width:0"
+       d="m 82.158676,106.134 h 8.6643 v 3.99612 h -8.6643 z" />
+    <path
        id="rect2630-3-8"
-       width="2.5065513"
-       height="0.79999894"
-       x="75.991295"
-       y="106.63116"
-       ry="0"
-       rx="0" />
-    <rect
-       style="fill:#e74115;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       style="fill:#0174c5;stroke:#0174c5;stroke-width:0"
+       d="m 92.42617,106.134 h 12.52062 v 3.99612 H 92.42617 Z" />
+    <path
+       id="rect2630-3-8-3"
+       style="fill:#0174c5;stroke:#0174c5;stroke-width:0"
+       d="m 68.030823,106.13418 h 12.520615 v 3.99612 H 68.030823 Z" />
+    <path
        id="rect2630-3-8-1"
-       width="0.43285474"
-       height="0.80072933"
-       x="78.781746"
-       y="106.63079"
-       ry="0"
-       rx="0" />
-    <rect
-       style="fill:#0174c5;fill-opacity:1;stroke:#0174c5;stroke-width:0;stroke-dasharray:none"
+       style="fill:#e74115;stroke:#0174c5;stroke-width:0"
+       d="m 106.36493,106.13219 h 2.16218 v 3.99976 h -2.16218 z" />
+    <path
        id="rect2630-3-8-4"
-       width="1.244482"
-       height="0.79999894"
-       x="79.47364"
-       y="106.63116"
-       ry="0"
-       rx="0" />
+       style="fill:#0174c5;stroke:#0174c5;stroke-width:0"
+       d="m 109.82104,106.134 h 6.21638 v 3.99612 h -6.21638 z" />
   </g>
 </svg>
