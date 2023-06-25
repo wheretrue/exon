@@ -44,9 +44,10 @@ combined_df = pd.concat(dataframes)
 charts = []
 for bench_group, df in combined_df.groupby('Bench Group'):
     chart = alt.Chart(df).mark_bar().encode(
-        x='Command',
+        color='Command',
         y='Time (s)',
-        color='Git Hash',
+        x='Command',
+        column='Git Hash:O',
     ).properties(
         width=200,
         height=200,
