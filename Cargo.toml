@@ -9,6 +9,7 @@ repository = "https://github.com/wheretrue/exon"
 members = [
   "exon",
   "benchmarks",
+  "exon-examples",
 ]
 
 [workspace.dependencies]
