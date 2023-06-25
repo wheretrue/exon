@@ -370,16 +370,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
 
 [[package]]
-name = "benchmarks"
-version = "0.1.0"
-dependencies = [
- "clap",
- "datafusion",
- "exon",
- "tokio",
-]
-
-[[package]]
 name = "bit-vec"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -977,6 +967,16 @@ dependencies = [
  "serde",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "exon-benchmarks"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "datafusion",
+ "exon",
+ "tokio",
 ]
 
 [[package]]
