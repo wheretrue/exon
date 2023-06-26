@@ -1,17 +1,27 @@
-use datafusion::prelude::SessionConfig;
-// use exon::{context::ExonSessionExt, ffi::create_dataset_stream_from_table_provider};
+use std::sync::Arc;
+
+use exon::datasources::fasta::FASTAConfig;
 use extendr_api::prelude::*;
-// use tokio::runtime::Runtime;
+
+fn read_fasta_file_inner(path: &str) -> &'static str {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    rt.block_on(async {
+        let file = tokio::fs::File::open(path).await.unwrap();
+        let mut reader = tokio::io::BufReader::new(file);
+
+        let config = Arc::new(FASTAConfig::default());
+        let batch_reader = exon::datasources::fasta::BatchReader::new(reader, config);
+    });
+
+    return "Hello world!";
+}
 
 /// Return string `"Hello world!"` to R.
 /// @export
 #[extendr]
 fn read_fasta_file() -> &'static str {
-    let config = SessionConfig::new().with_batch_size(8096);
-    // let _ctx = SessionContext::with_config(config);
-    return "Hello world!";
-
-    // return stream_ptr;
+    return read_fasta_file_inner("/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/fasta/test.fasta");
 }
 
 // Macro to generate exports.

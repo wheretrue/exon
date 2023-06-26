@@ -993,8 +993,9 @@ dependencies = [
 name = "exonr"
 version = "0.1.0"
 dependencies = [
- "datafusion",
+ "exon",
  "extendr-api",
+ "tokio",
 ]
 
 [[package]]

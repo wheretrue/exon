@@ -56,6 +56,7 @@ pub const DEFAULT_BATCH_SIZE: usize = 8192;
 
 /// File types.
 mod exon_file_type;
+
 pub use self::exon_file_type::infer_exon_format;
 pub use self::exon_file_type::ExonFileType;
 

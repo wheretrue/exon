@@ -19,6 +19,7 @@ mod file_format;
 mod file_opener;
 mod scanner;
 
+pub use self::batch_reader::BatchReader;
 pub use self::config::FASTAConfig;
 pub use self::file_format::FASTAFormat;
 pub use self::file_opener::FASTAOpener;
