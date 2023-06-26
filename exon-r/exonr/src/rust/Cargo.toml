@@ -1,0 +1,12 @@
+[package]
+edition = '2021'
+name = 'exonr'
+version = '0.1.0'
+
+[lib]
+crate-type = ['staticlib']
+name = 'exonr'
+
+[dependencies]
+datafusion = {version = "26", features = ["default"]}
+extendr-api = '*'
