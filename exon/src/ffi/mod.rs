@@ -114,7 +114,7 @@ mod tests {
             row_cnt += batch.num_rows();
         }
 
-        assert_eq!(row_cnt, 1);
+        assert_eq!(row_cnt, 2);
 
         Ok(())
     }

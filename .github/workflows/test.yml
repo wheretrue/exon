@@ -28,4 +28,4 @@ jobs:
 
     - name: Run tests
       run: |
-        cargo test
+        cargo test --all-targets --all-features
