@@ -25,10 +25,7 @@ async fn main() -> Result<(), DataFusionError> {
     let ctx = SessionContext::new_exon();
 
     let path = "./exon-examples/data/Ga0604745_crt.gff";
-    let sql = format!(
-        "CREATE EXTERNAL TABLE gff STORED AS GFF LOCATION '{}';",
-        path
-    );
+    let sql = format!("CREATE EXTERNAL TABLE gff STORED AS GFF LOCATION '{path}';",);
 
     ctx.sql(&sql).await?;
 
@@ -49,7 +46,7 @@ async fn main() -> Result<(), DataFusionError> {
     // Show the logical plan.
     let logical_plan = df.logical_plan();
     assert_eq!(
-        format!("\n{:?}", logical_plan),
+        format!("\n{logical_plan:?}"),
         r#"
 Limit: skip=0, fetch=10
   Sort: crispr.seqid ASC NULLS LAST, crispr.start ASC NULLS LAST, crispr.end ASC NULLS LAST, repeat.start ASC NULLS LAST, repeat.end ASC NULLS LAST
@@ -73,7 +70,7 @@ Limit: skip=0, fetch=10
     let results = df.collect().await?;
     let formatted_results = pretty_format_batches(results.as_slice())?;
     assert_eq!(
-        format!("\n{}", formatted_results),
+        format!("\n{formatted_results}"),
         r#"
 +------------------+-------+------+-------+-----+
 | seqid            | start | end  | start | end |

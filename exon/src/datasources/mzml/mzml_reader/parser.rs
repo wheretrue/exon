@@ -41,23 +41,26 @@ where
     }
 
     pub async fn read_spectrum(&mut self) -> std::io::Result<Option<Spectrum>> {
-        let mut buf = Vec::new();
+        let mut outer_buf = Vec::new();
 
         loop {
-            match self.reader.read_event_into_async(&mut buf).await {
+            match self.reader.read_event_into_async(&mut outer_buf).await {
+                // Continue if the event is not the start of a spectrum tag
                 Ok(Event::Start(e)) if e.name() != quick_xml::name::QName(b"spectrum") => {
                     continue;
                 }
+                // The start of the spectrum tag has been found, this section extracts spectrum tag and its children
+                // into a new buffer, then deserializes the spectrum tag into a Spectrum struct
                 Ok(Event::Start(e)) => {
                     let end = b"spectrum";
 
-                    let mut buf3 = Vec::new();
-                    let mut writer = quick_xml::Writer::new(Cursor::new(&mut buf3));
+                    let mut inner_buf = Vec::new();
+                    let mut writer = quick_xml::Writer::new(Cursor::new(&mut inner_buf));
 
                     writer.write_event(Event::Start(e)).unwrap();
 
                     loop {
-                        match self.reader.read_event_into_async(&mut buf).await {
+                        match self.reader.read_event_into_async(&mut outer_buf).await {
                             Ok(Event::Start(e)) => {
                                 writer.write_event(Event::Start(e)).unwrap();
                             }
@@ -86,7 +89,7 @@ where
                         }
                     }
 
-                    let c = Cursor::new(buf3);
+                    let c = Cursor::new(inner_buf);
 
                     let spectrum: Spectrum = quick_xml::de::from_reader(c).unwrap();
                     return Ok(Some(spectrum));
@@ -96,7 +99,7 @@ where
                 }
                 Err(e) => println!("{e:?}"),
                 _ => {
-                    buf.clear();
+                    outer_buf.clear();
                 }
             }
         }

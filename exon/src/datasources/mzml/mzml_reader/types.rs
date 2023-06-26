@@ -112,7 +112,7 @@ pub struct Scan {
 #[serde(rename_all = "camelCase")]
 pub struct ScanList {
     pub cv_param: CVVector,
-    pub scans: Vec<Scan>,
+    pub scan: Vec<Scan>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -290,6 +290,49 @@ pub trait DecodedArray {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct IsolationWindow {
+    pub cv_param: CVVector,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectedIon {
+    pub cv_param: CVVector,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Activation {
+    pub cv_param: CVVector,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectedIonList {
+    pub selected_ion: Vec<SelectedIon>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Precursor {
+    #[serde(rename = "@spectrumRef")]
+    pub spectrum_ref: String,
+
+    pub isolation_window: IsolationWindow,
+
+    pub selected_ion_list: SelectedIonList,
+
+    pub activation: Activation,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PrecursorList {
+    pub precursor: Vec<Precursor>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Spectrum {
     pub cv_param: CVVector,
 
@@ -301,7 +344,12 @@ pub struct Spectrum {
 
     #[serde(rename = "@defaultArrayLength")]
     pub default_array_length: String,
+
     pub binary_data_array_list: BinaryDataArrayList,
+
+    pub scan_list: Option<ScanList>,
+
+    pub precursor_list: Option<PrecursorList>,
 }
 
 impl DecodedArray for Spectrum {
@@ -470,6 +518,27 @@ mod tests {
             </scanWindowList>
           </scan>
         </scanList>
+        <precursorList count="1">
+          <precursor spectrumRef="controllerType=0 controllerNumber=1 scan=30068">
+            <isolationWindow>
+              <cvParam cvRef="MS" accession="MS:1000827" name="isolation window target m/z" value="643.368408203125" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+              <cvParam cvRef="MS" accession="MS:1000828" name="isolation window lower offset" value="1.0" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+              <cvParam cvRef="MS" accession="MS:1000829" name="isolation window upper offset" value="1.0" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+              <userParam name="ms level" value="1"/>
+            </isolationWindow>
+            <selectedIonList count="1">
+              <selectedIon>
+                <cvParam cvRef="MS" accession="MS:1000744" name="selected ion m/z" value="643.034396630915" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+                <cvParam cvRef="MS" accession="MS:1000041" name="charge state" value="3"/>
+                <cvParam cvRef="MS" accession="MS:1000042" name="peak intensity" value="3.0614616075e08" unitCvRef="MS" unitAccession="MS:1000131" unitName="number of detector counts"/>
+              </selectedIon>
+            </selectedIonList>
+            <activation>
+              <cvParam cvRef="MS" accession="MS:1000422" name="beam-type collision-induced dissociation" value=""/>
+              <cvParam cvRef="MS" accession="MS:1000045" name="collision energy" value="25.0" unitCvRef="UO" unitAccession="UO:0000266" unitName="electronvolt"/>
+            </activation>
+          </precursor>
+        </precursorList>
         <binaryDataArrayList count="2">
           <binaryDataArray encodedLength="5152">
             <cvParam cvRef="MS" accession="MS:1000523" name="64-bit float" value=""/>
@@ -489,6 +558,22 @@ mod tests {
 
         assert_eq!(spectrum.index, "0");
         assert_eq!(spectrum.cv_param.len(), 9);
+
+        let scan_list = spectrum.scan_list.unwrap();
+
+        assert_eq!(scan_list.scan.len(), 1);
+        assert_eq!(scan_list.cv_param.len(), 1);
+
+        let precursor_list = spectrum.precursor_list.unwrap();
+        assert_eq!(precursor_list.precursor.len(), 1);
+
+        assert_eq!(spectrum.binary_data_array_list.binary_data_array.len(), 2);
+        assert_eq!(
+            spectrum.binary_data_array_list.binary_data_array[0]
+                .cv_param
+                .len(),
+            3
+        );
     }
 
     #[test]

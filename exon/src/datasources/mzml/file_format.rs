@@ -104,10 +104,10 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = test_listing_table_url("mzml/test.mzML");
+        let table_path = test_listing_table_url("mzml/test.mzml");
 
         let mzml_format = Arc::new(MzMLFormat::default());
-        let lo = ListingOptions::new(mzml_format.clone()).with_file_extension("mzML");
+        let lo = ListingOptions::new(mzml_format.clone()).with_file_extension("mzml");
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
 
