@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{DataType, Field, Fields, Schema};
 use object_store::ObjectStore;
 
 /// Configuration for a MzML data source.
@@ -68,5 +68,34 @@ impl Default for MzMLConfig {
 }
 
 pub fn schema() -> Schema {
-    Schema::new(vec![Field::new("id", DataType::Utf8, false)])
+    let mz_fields = Fields::from(vec![Field::new(
+        "mz",
+        DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+        true,
+    )]);
+
+    let mz_field = Field::new("mz", DataType::Struct(mz_fields), true);
+
+    let intensity_fields = Fields::from(vec![Field::new(
+        "intensity",
+        DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+        true,
+    )]);
+
+    let intensity_field = Field::new("intensity", DataType::Struct(intensity_fields), true);
+
+    let wavelength_fields = Fields::from(vec![Field::new(
+        "wavelength",
+        DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+        true,
+    )]);
+
+    let wavelength_field = Field::new("wavelength", DataType::Struct(wavelength_fields), true);
+
+    Schema::new(vec![
+        Field::new("id", DataType::Utf8, false),
+        mz_field,
+        intensity_field,
+        wavelength_field,
+    ])
 }
