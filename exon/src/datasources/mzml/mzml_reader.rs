@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod binary_conversion;
+pub mod binary_conversion;
 
 pub mod parser;
 pub mod types;

@@ -57,7 +57,7 @@ where
         for _ in 0..self.config.batch_size {
             match self.reader.read_spectrum().await? {
                 Some(spectrum) => {
-                    array_builder.append(&spectrum);
+                    array_builder.append(&spectrum).unwrap();
                 }
                 None => {
                     break;
@@ -111,7 +111,7 @@ mod tests {
             let batch = batch.unwrap();
 
             assert_eq!(batch.num_rows(), 1);
-            assert_eq!(batch.num_columns(), 1);
+            assert_eq!(batch.num_columns(), 4);
         }
     }
 }

@@ -115,6 +115,30 @@ pub struct ScanList {
     pub scan: Vec<Scan>,
 }
 
+pub(crate) const MZ_ARRAY: &str = "MS:1000514";
+pub(crate) const INTENSITY_ARRAY: &str = "MS:1000515";
+pub(crate) const WAVE_LENGTH_ARRAY: &str = "MS:1000617";
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub enum BinaryDataType {
+    Mz,
+    Intensity,
+    Wavelength,
+}
+
+impl TryFrom<&str> for BinaryDataType {
+    type Error = MissingDataTypeError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            MZ_ARRAY => Ok(BinaryDataType::Mz),
+            INTENSITY_ARRAY => Ok(BinaryDataType::Intensity),
+            WAVE_LENGTH_ARRAY => Ok(BinaryDataType::Wavelength),
+            _ => Err(MissingDataTypeError),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Binary {
     #[serde(rename = "$value")]
@@ -177,6 +201,9 @@ impl fmt::Display for MissingDataTypeError {
     }
 }
 
+pub(crate) const FLOAT_32_DATA_TYPE_MS_NUMBER: &str = "MS:1000521";
+pub(crate) const FLOAT_64_DATA_TYPE_MS_NUMBER: &str = "MS:1000523";
+
 impl Error for MissingDataTypeError {}
 
 impl TryFrom<&CVParam> for DataType {
@@ -184,10 +211,20 @@ impl TryFrom<&CVParam> for DataType {
 
     fn try_from(value: &CVParam) -> Result<Self, Self::Error> {
         match value.accession.as_str() {
-            "MS:1000521" => Ok(DataType::Float32Bit),
-            "MS:1000523" => Ok(DataType::Float64Bit),
-            //"MS:1000520" => Ok(DataType::Float16Bit),
-            //"MS:1000522" => Ok(DataType::Integer64Bit),
+            FLOAT_32_DATA_TYPE_MS_NUMBER => Ok(DataType::Float32Bit),
+            FLOAT_64_DATA_TYPE_MS_NUMBER => Ok(DataType::Float64Bit),
+            _ => Err(MissingDataTypeError),
+        }
+    }
+}
+
+impl TryFrom<&str> for DataType {
+    type Error = MissingDataTypeError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            FLOAT_32_DATA_TYPE_MS_NUMBER => Ok(DataType::Float32Bit),
+            FLOAT_64_DATA_TYPE_MS_NUMBER => Ok(DataType::Float64Bit),
             _ => Err(MissingDataTypeError),
         }
     }
@@ -229,6 +266,9 @@ impl TryFrom<&CVVector> for CompressionType {
         Err(MissingCompressionError)
     }
 }
+
+pub(crate) const NO_COMPRESSION_MS_NUMBER: &str = "MS:1000576";
+pub(crate) const ZLIB_COMPRESSION_MS_NUMBER: &str = "MS:1000574";
 
 impl TryFrom<&CVParam> for CompressionType {
     type Error = MissingDataTypeError;
