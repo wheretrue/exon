@@ -79,6 +79,7 @@ pub trait ExonSessionExt {
             "FASTQ",
             "GENBANK",
             "GFF",
+            "GTF",
             "HMMDOMTAB",
             "SAM",
             "VCF",
