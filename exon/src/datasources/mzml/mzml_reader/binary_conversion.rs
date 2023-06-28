@@ -23,17 +23,31 @@ use base64::Engine;
 use super::types::{Binary, CompressionType, DataType};
 
 /// Convert the binary content into a float of the appropriate type.
-pub fn decode_binary_array(b: &Binary, ct: &CompressionType, dt: &DataType) -> Vec<f64> {
+pub fn decode_binary_array(
+    b: &Binary,
+    ct: &CompressionType,
+    dt: &DataType,
+) -> std::io::Result<Vec<f64>> {
+    let decoded = match &b.content {
+        Some(c) => c,
+        None => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "No binary content found.",
+            ))
+        }
+    };
+
     let decoded = base64::engine::general_purpose::STANDARD
-        .decode(&b.content)
-        .expect("Unable to decode binary.");
+        .decode(decoded)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     match (ct, dt) {
         (CompressionType::NoCompression, DataType::Float32Bit) => {
-            binary_string_to_array_f32(decoded)
+            Ok(binary_string_to_array_f32(decoded))
         }
         (CompressionType::NoCompression, DataType::Float64Bit) => {
-            binary_string_to_array_f64(decoded)
+            Ok(binary_string_to_array_f64(decoded))
         }
         (CompressionType::ZlibCompression, DataType::Float64Bit) => {
             let mut decoded_bytes = Vec::<u8>::new();
@@ -43,7 +57,7 @@ pub fn decode_binary_array(b: &Binary, ct: &CompressionType, dt: &DataType) -> V
             let mut d = ZlibDecoder::new(rdr);
             d.read_to_end(&mut decoded_bytes).unwrap();
 
-            binary_string_to_array_f64(decoded_bytes)
+            Ok(binary_string_to_array_f64(decoded_bytes))
         }
         (CompressionType::ZlibCompression, DataType::Float32Bit) => {
             let mut decoded_bytes = Vec::<u8>::new();
@@ -53,7 +67,7 @@ pub fn decode_binary_array(b: &Binary, ct: &CompressionType, dt: &DataType) -> V
             let mut d = ZlibDecoder::new(rdr);
             d.read_to_end(&mut decoded_bytes).unwrap();
 
-            binary_string_to_array_f32(decoded_bytes)
+            Ok(binary_string_to_array_f32(decoded_bytes))
         }
     }
 }
@@ -110,12 +124,13 @@ mod tests {
         }
 
         let tests = vec![
-            TestData::new(Binary::new(String::from("AAAAAAAALkAAAAAAAAAsQAAAAAAAACpAAAAAAAAAKEAAAAAAAAAmQAAAAAAAACRAAAAAAAAAIkAAAAAAAAAgQAAAAAAAABxAAAAAAAAAGEAAAAAAAAAUQAAAAAAAABBAAAAAAAAACEAAAAAAAAAAQAAAAAAAAPA/")), CompressionType::NoCompression, DataType::Float64Bit, vec![15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0]),
-            TestData::new(Binary::new(String::from("eJxjYEABDhBKAEpLQGkFKK0CpTWgtA6UNoDSRg4AZlQDYw==")), CompressionType::ZlibCompression, DataType::Float64Bit, vec![0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0])
+            TestData::new(Binary::new(Some(String::from("AAAAAAAALkAAAAAAAAAsQAAAAAAAACpAAAAAAAAAKEAAAAAAAAAmQAAAAAAAACRAAAAAAAAAIkAAAAAAAAAgQAAAAAAAABxAAAAAAAAAGEAAAAAAAAAUQAAAAAAAABBAAAAAAAAACEAAAAAAAAAAQAAAAAAAAPA/"))), CompressionType::NoCompression, DataType::Float64Bit, vec![15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0]),
+            TestData::new(Binary::new(Some(String::from("eJxjYEABDhBKAEpLQGkFKK0CpTWgtA6UNoDSRg4AZlQDYw=="))), CompressionType::ZlibCompression, DataType::Float64Bit, vec![0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0])
         ];
 
         for test in tests.iter() {
-            let array = decode_binary_array(&test.binary, &test.compression_type, &test.data_type);
+            let array =
+                decode_binary_array(&test.binary, &test.compression_type, &test.data_type).unwrap();
             assert_eq!(array, test.expected_array);
         }
     }

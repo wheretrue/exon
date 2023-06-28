@@ -25,6 +25,7 @@ jobs:
     - shell: Rscript {0}
       working-directory: ./exon-r/exonr/
       run: |
+        install.packages("arrow")
         rextendr::document()
         devtools::load_all(".")
         read_fasta_table("../../exon/test-data/fasta/test.fa")

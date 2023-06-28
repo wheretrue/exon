@@ -258,7 +258,7 @@ impl MzMLArrayBuilder {
 
             let data_array = match (compression_type, data_type) {
                 (Some(compression), Some(data_type)) => {
-                    decode_binary_array(&mz.binary, &compression, &data_type)
+                    decode_binary_array(&mz.binary, &compression, &data_type)?
                 }
                 _ => {
                     return Err(std::io::Error::new(
