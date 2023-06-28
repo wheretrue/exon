@@ -1,5 +1,7 @@
 on:
   push:
+    paths:
+      - ./exon-r/
 
 
 jobs:
