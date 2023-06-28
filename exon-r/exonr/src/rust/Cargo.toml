@@ -9,6 +9,6 @@ name = 'exonr'
 
 [dependencies]
 datafusion.workspace = true
-exon = {path = '../../../../exon'}
+exon = {path = '../../../../exon', features = ['all']}
 extendr-api = '*'
 tokio = {version = '*', features = ['full']}
