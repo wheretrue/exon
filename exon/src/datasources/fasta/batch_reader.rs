@@ -25,6 +25,7 @@ use tokio::io::AsyncBufRead;
 
 use super::{array_builder::FASTAArrayBuilder, config::FASTAConfig};
 
+/// A FASTA batch reader.
 pub struct BatchReader<R> {
     /// The underlying FASTA reader.
     reader: noodles::fasta::AsyncReader<R>,
@@ -37,6 +38,7 @@ impl<R> BatchReader<R>
 where
     R: AsyncBufRead + Unpin + Send,
 {
+    /// Creates a FASTA batch reader.
     pub fn new(inner: R, config: Arc<FASTAConfig>) -> Self {
         Self {
             reader: noodles::fasta::AsyncReader::new(inner),
@@ -96,6 +98,7 @@ where
         }
     }
 
+    /// Converts the reader into a stream of batches.
     pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
