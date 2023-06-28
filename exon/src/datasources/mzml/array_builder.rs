@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::{
     array::{
         ArrayBuilder, ArrayRef, Float64Builder, GenericListBuilder, GenericStringBuilder,
-        ListBuilder, StructBuilder,
+        ListBuilder, MapBuilder, StructBuilder,
     },
     datatypes::{DataType, Field, Fields},
 };
@@ -41,6 +41,7 @@ pub struct MzMLArrayBuilder {
 
     intensity: StructBuilder,
     wavelength: StructBuilder,
+    precursor_list: GenericListBuilder<i32, StructBuilder>,
 }
 
 impl MzMLArrayBuilder {
@@ -78,12 +79,60 @@ impl MzMLArrayBuilder {
         let wavelength_builder =
             StructBuilder::new(wavelength_fields, vec![Box::new(wavelength_array_builder)]);
 
+        let cv_param_struct = Field::new(
+            "cv_param",
+            DataType::Struct(Fields::from(vec![
+                Field::new("accession", DataType::Utf8, false),
+                Field::new("name", DataType::Utf8, false),
+                Field::new("value", DataType::Utf8, false),
+            ])),
+            true,
+        );
+
+        let attribute_key_field = Field::new("ms_number", DataType::Utf8, false);
+
+        // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
+        let isolation_window = Field::new_map(
+            "isolation_window",
+            "cv_params",
+            attribute_key_field,
+            cv_param_struct,
+            false,
+            true,
+        );
+
+        let precursor_fields = Fields::from(vec![isolation_window]);
+
+        let cv_param_struct_builder = StructBuilder::new(
+            Fields::from(vec![
+                Field::new("accession", DataType::Utf8, false),
+                Field::new("name", DataType::Utf8, false),
+                Field::new("value", DataType::Utf8, false),
+            ]),
+            vec![
+                Box::new(GenericStringBuilder::<i32>::new()),
+                Box::new(GenericStringBuilder::<i32>::new()),
+                Box::new(GenericStringBuilder::<i32>::new()),
+            ],
+        );
+
+        let isolation_window_builder = MapBuilder::new(
+            None,
+            GenericStringBuilder::<i32>::new(),
+            cv_param_struct_builder,
+        );
+
+        let precursor_builder =
+            StructBuilder::new(precursor_fields, vec![Box::new(isolation_window_builder)]);
+
         Self {
             id: GenericStringBuilder::<i32>::new(),
 
             mz: mz_builder,
             intensity: intensity_builder,
             wavelength: wavelength_builder,
+
+            precursor_list: GenericListBuilder::new(precursor_builder),
         }
     }
 
@@ -232,6 +281,53 @@ impl MzMLArrayBuilder {
             self.wavelength.append_null();
         }
 
+        let precursor_list_values = self.precursor_list.values();
+
+        match &record.precursor_list {
+            Some(precursor_list) => {
+                for precursor in &precursor_list.precursor {
+                    let isolation_window_builder = precursor_list_values
+                        .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(0)
+                        .unwrap();
+
+                    for cv_param in &precursor.isolation_window.cv_param {
+                        isolation_window_builder
+                            .keys()
+                            .append_value(&cv_param.accession);
+
+                        isolation_window_builder
+                            .values()
+                            .field_builder::<GenericStringBuilder<i32>>(0)
+                            .unwrap()
+                            .append_value(&cv_param.accession);
+
+                        isolation_window_builder
+                            .values()
+                            .field_builder::<GenericStringBuilder<i32>>(1)
+                            .unwrap()
+                            .append_value(&cv_param.name);
+
+                        isolation_window_builder
+                            .values()
+                            .field_builder::<GenericStringBuilder<i32>>(2)
+                            .unwrap()
+                            .append_null();
+
+                        isolation_window_builder.values().append(true);
+                    }
+
+                    isolation_window_builder.append(true).unwrap();
+                }
+
+                precursor_list_values.append(true);
+                self.precursor_list.append(true);
+            }
+            None => {
+                precursor_list_values.append_null();
+                self.precursor_list.append_null();
+            }
+        }
+
         Ok(())
     }
 
@@ -240,12 +336,14 @@ impl MzMLArrayBuilder {
         let mz = self.mz.finish();
         let intensity = self.intensity.finish();
         let wavelength = self.wavelength.finish();
+        let precursor_list = self.precursor_list.finish();
 
         vec![
             Arc::new(id),
             Arc::new(mz),
             Arc::new(intensity),
             Arc::new(wavelength),
+            Arc::new(precursor_list),
         ]
     }
 }

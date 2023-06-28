@@ -76,6 +76,7 @@ where
 
                 Ok(Some(projected_batch))
             }
+
             None => Ok(Some(batch)),
         }
     }
@@ -85,6 +86,7 @@ where
 mod tests {
     use std::sync::Arc;
 
+    use arrow::util::pretty::pretty_format_batches;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
     use tokio_util::io::StreamReader;
@@ -111,7 +113,10 @@ mod tests {
             let batch = batch.unwrap();
 
             assert_eq!(batch.num_rows(), 1);
-            assert_eq!(batch.num_columns(), 4);
+            assert_eq!(batch.num_columns(), 5);
+
+            let pretty_print = pretty_format_batches(&[batch]).unwrap();
+            eprintln!("{}", pretty_print);
         }
     }
 }
