@@ -103,22 +103,48 @@ pub fn schema() -> Schema {
         true,
     );
 
-    let attribute_key_field = Field::new("ms_number", DataType::Utf8, false);
+    let cv_params_field = Field::new_map(
+        "cv_params",
+        "entries",
+        Field::new("keys", DataType::Utf8, false),
+        Field::new(
+            "values",
+            DataType::Struct(Fields::from(vec![
+                Field::new("accession", DataType::Utf8, false),
+                Field::new("name", DataType::Utf8, false),
+                Field::new("value", DataType::Utf8, false),
+            ])),
+            true,
+        ),
+        false,
+        true,
+    );
+
+    let cv_key_field = Field::new("ms_number", DataType::Utf8, false);
 
     // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
     let isolation_window = Field::new_map(
         "isolation_window",
         "cv_params",
-        attribute_key_field,
+        cv_key_field.clone(),
+        cv_param_struct.clone(),
+        false,
+        true,
+    );
+
+    let activation = Field::new_map(
+        "activation",
+        "cv_params",
+        cv_key_field,
         cv_param_struct,
         false,
         true,
     );
 
-    // A precursor is a struct with one field: isolation_window
+    // A precursor is a struct
     let precursor = Field::new(
         "item",
-        DataType::Struct(Fields::from(vec![isolation_window])),
+        DataType::Struct(Fields::from(vec![isolation_window, activation])),
         true,
     );
 
@@ -130,6 +156,7 @@ pub fn schema() -> Schema {
         mz_field,
         intensity_field,
         wavelength_field,
+        cv_params_field,
         precursor_list,
     ])
 }
