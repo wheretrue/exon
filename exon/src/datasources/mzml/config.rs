@@ -92,10 +92,44 @@ pub fn schema() -> Schema {
 
     let wavelength_field = Field::new("wavelength", DataType::Struct(wavelength_fields), true);
 
+    // An individual cvParam
+    let cv_param_struct = Field::new(
+        "cv_param",
+        DataType::Struct(Fields::from(vec![
+            Field::new("accession", DataType::Utf8, false),
+            Field::new("name", DataType::Utf8, false),
+            Field::new("value", DataType::Utf8, false),
+        ])),
+        true,
+    );
+
+    let attribute_key_field = Field::new("ms_number", DataType::Utf8, false);
+
+    // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
+    let isolation_window = Field::new_map(
+        "isolation_window",
+        "cv_params",
+        attribute_key_field,
+        cv_param_struct,
+        false,
+        true,
+    );
+
+    // A precursor is a struct with one field: isolation_window
+    let precursor = Field::new(
+        "item",
+        DataType::Struct(Fields::from(vec![isolation_window])),
+        true,
+    );
+
+    // A precursor list is a list of precursors
+    let precursor_list = Field::new("precursor_list", DataType::List(Arc::new(precursor)), true);
+
     Schema::new(vec![
         Field::new("id", DataType::Utf8, false),
         mz_field,
         intensity_field,
         wavelength_field,
+        precursor_list,
     ])
 }
