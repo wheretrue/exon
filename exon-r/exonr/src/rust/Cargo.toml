@@ -1,0 +1,13 @@
+[package]
+edition = '2021'
+name = 'exonr'
+version = '0.1.0'
+
+[lib]
+crate-type = ['staticlib']
+name = 'exonr'
+
+[dependencies]
+exon = {path = '../../../../exon'}
+extendr-api = '*'
+tokio = {version = '*', features = ['full']}
