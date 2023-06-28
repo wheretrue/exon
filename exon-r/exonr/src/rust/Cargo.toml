@@ -8,6 +8,7 @@ crate-type = ['staticlib']
 name = 'exonr'
 
 [dependencies]
+datafusion.workspace = true
 exon = {path = '../../../../exon'}
 extendr-api = '*'
 tokio = {version = '*', features = ['full']}

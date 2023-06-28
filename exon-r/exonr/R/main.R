@@ -1,11 +1,13 @@
 # Import the wrappers
 
-# require(arrow)
+require(arrow)
 
-read_fasta_table <- function() {
-    # stream_ptr <- arrow$allocate_arrow_array_stream()
+read_fasta_table <- function(file_path) {
+    stream_ptr <- arrow$allocate_arrow_array_stream()
 
-    # print(stream_ptr)
+    batch_reader_ptr <- read_fasta_file_extendr(file_path, stream_ptr)
 
-    hello_world()
+    record_batch_reader <- RecordBatchStreamReader$import_from_c(batch_reader_ptr)
+
+    print(record_batch_reader)
 }

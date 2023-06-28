@@ -1,7 +1,7 @@
 on:
   push:
     paths:
-      - ./exon-r/
+    - ./exon-r/
 
 
 jobs:
@@ -27,3 +27,4 @@ jobs:
       run: |
         rextendr::document()
         devtools::load_all(".")
+        read_fasta_table("../../exon/test-data/fasta/test.fa")
