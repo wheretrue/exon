@@ -27,7 +27,7 @@ use crate::datasources::mzml::mzml_reader::types::WAVE_LENGTH_ARRAY;
 use super::mzml_reader::{
     binary_conversion::decode_binary_array,
     types::{
-        BinaryDataType, CompressionType, DataType as MzDataType, Spectrum,
+        BinaryDataArray, BinaryDataType, CompressionType, DataType as MzDataType, Spectrum,
         FLOAT_32_DATA_TYPE_MS_NUMBER, FLOAT_64_DATA_TYPE_MS_NUMBER, INTENSITY_ARRAY, MZ_ARRAY,
         NO_COMPRESSION_MS_NUMBER, ZLIB_COMPRESSION_MS_NUMBER,
     },
@@ -188,34 +188,133 @@ impl MzMLArrayBuilder {
         self.id.len()
     }
 
-    pub fn append(&mut self, record: &Spectrum) -> std::io::Result<()> {
-        self.id.append_value(&record.id);
+    /// Handles the append case where there's no content in the binary data array.
+    /// Handles the append case where there is a binary data array.
+    fn append_data_arrays_none_content(
+        &mut self,
+        compression_type: Option<CompressionType>,
+        data_type: Option<MzDataType>,
+        binary_array_type: Option<BinaryDataType>,
+        mz: &BinaryDataArray,
+    ) -> std::io::Result<()> {
+        match binary_array_type {
+            Some(BinaryDataType::Mz) => {
+                let mz_builder = self
+                    .mz
+                    .field_builder::<ListBuilder<Float64Builder>>(0)
+                    .unwrap();
 
-        for cv_param in &record.cv_param {
-            self.cv_params.keys().append_value(&cv_param.accession);
+                mz_builder.append_null();
+                self.mz.append(true);
+            }
+            Some(BinaryDataType::Intensity) => {
+                let intensity_builder = self
+                    .intensity
+                    .field_builder::<ListBuilder<Float64Builder>>(0)
+                    .unwrap();
 
-            self.cv_params
-                .values()
-                .field_builder::<GenericStringBuilder<i32>>(0)
-                .unwrap()
-                .append_value(&cv_param.accession);
+                intensity_builder.append_null();
+                self.intensity.append(true);
+            }
+            Some(BinaryDataType::Wavelength) => {
+                let wavelength_builder = self
+                    .wavelength
+                    .field_builder::<ListBuilder<Float64Builder>>(0)
+                    .unwrap();
 
-            self.cv_params
-                .values()
-                .field_builder::<GenericStringBuilder<i32>>(1)
-                .unwrap()
-                .append_value(&cv_param.name);
-
-            self.cv_params
-                .values()
-                .field_builder::<GenericStringBuilder<i32>>(2)
-                .unwrap()
-                .append_null();
-
-            self.cv_params.values().append(true);
+                wavelength_builder.append_null();
+                self.wavelength.append(true);
+            }
+            None => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "No binary array type found",
+                ))
+            }
         }
-        self.cv_params.append(true).unwrap();
 
+        Ok(())
+    }
+
+    /// Handles the append case where there is a binary data array.
+    fn append_data_arrays_some_content(
+        &mut self,
+        compression_type: Option<CompressionType>,
+        data_type: Option<MzDataType>,
+        binary_array_type: Option<BinaryDataType>,
+        mz: &BinaryDataArray,
+    ) -> std::io::Result<()> {
+        let data_array = match (compression_type, data_type) {
+            (Some(compression), Some(data_type)) => {
+                decode_binary_array(&mz.binary, &compression, &data_type)?
+            }
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "No compression or data type found",
+                ))
+            }
+        };
+
+        match binary_array_type {
+            Some(BinaryDataType::Mz) => {
+                let mz_builder = self
+                    .mz
+                    .field_builder::<ListBuilder<Float64Builder>>(0)
+                    .unwrap();
+
+                let mz_values = mz_builder.values();
+                for value in data_array {
+                    mz_values.append_value(value);
+                }
+
+                mz_builder.append(true);
+
+                self.mz.append(true);
+            }
+            Some(BinaryDataType::Intensity) => {
+                let intensity_builder = self
+                    .intensity
+                    .field_builder::<ListBuilder<Float64Builder>>(0)
+                    .unwrap();
+
+                let intensity_values = intensity_builder.values();
+                for value in data_array {
+                    intensity_values.append_value(value);
+                }
+
+                intensity_builder.append(true);
+
+                self.intensity.append(true);
+            }
+            Some(BinaryDataType::Wavelength) => {
+                let wavelength_builder = self
+                    .wavelength
+                    .field_builder::<ListBuilder<Float64Builder>>(0)
+                    .unwrap();
+
+                let wavelength_values = wavelength_builder.values();
+                for value in data_array {
+                    wavelength_values.append_value(value);
+                }
+
+                wavelength_builder.append(true);
+
+                self.wavelength.append(true);
+            }
+            None => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "No binary array type found",
+                ))
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Append the data arrays to the arrow array batch builder.
+    fn append_data_arrays(&mut self, record: &Spectrum) -> std::io::Result<()> {
         for mz in &record.binary_data_array_list.binary_data_array {
             let mut binary_array_type = None;
             let mut compression_type = None;
@@ -256,71 +355,24 @@ impl MzMLArrayBuilder {
                 }
             }
 
-            let data_array = match (compression_type, data_type) {
-                (Some(compression), Some(data_type)) => {
-                    decode_binary_array(&mz.binary, &compression, &data_type)?
-                }
-                _ => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "No compression or data type found",
-                    ))
-                }
-            };
-
-            match binary_array_type {
-                Some(BinaryDataType::Mz) => {
-                    let mz_builder = self
-                        .mz
-                        .field_builder::<ListBuilder<Float64Builder>>(0)
-                        .unwrap();
-
-                    let mz_values = mz_builder.values();
-                    for value in data_array {
-                        mz_values.append_value(value);
-                    }
-
-                    mz_builder.append(true);
-
-                    self.mz.append(true);
-                }
-                Some(BinaryDataType::Intensity) => {
-                    let intensity_builder = self
-                        .intensity
-                        .field_builder::<ListBuilder<Float64Builder>>(0)
-                        .unwrap();
-
-                    let intensity_values = intensity_builder.values();
-                    for value in data_array {
-                        intensity_values.append_value(value);
-                    }
-
-                    intensity_builder.append(true);
-
-                    self.intensity.append(true);
-                }
-                Some(BinaryDataType::Wavelength) => {
-                    let wavelength_builder = self
-                        .wavelength
-                        .field_builder::<ListBuilder<Float64Builder>>(0)
-                        .unwrap();
-
-                    let wavelength_values = wavelength_builder.values();
-                    for value in data_array {
-                        wavelength_values.append_value(value);
-                    }
-
-                    wavelength_builder.append(true);
-
-                    self.wavelength.append(true);
+            match &mz.binary.content {
+                Some(content) => {
+                    self.append_data_arrays_some_content(
+                        compression_type,
+                        data_type,
+                        binary_array_type,
+                        mz,
+                    )?;
                 }
                 None => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "No binary array type found",
-                    ))
+                    self.append_data_arrays_none_content(
+                        compression_type,
+                        data_type,
+                        binary_array_type,
+                        mz,
+                    )?;
                 }
-            }
+            };
         }
 
         // We may not see a certain array type in the data array list, so if not, append null to main equilength arrays.
@@ -353,6 +405,39 @@ impl MzMLArrayBuilder {
             wavelength_builder.append_null();
             self.wavelength.append_null();
         }
+
+        Ok(())
+    }
+
+    pub fn append(&mut self, record: &Spectrum) -> std::io::Result<()> {
+        self.id.append_value(&record.id);
+
+        for cv_param in &record.cv_param {
+            self.cv_params.keys().append_value(&cv_param.accession);
+
+            self.cv_params
+                .values()
+                .field_builder::<GenericStringBuilder<i32>>(0)
+                .unwrap()
+                .append_value(&cv_param.accession);
+
+            self.cv_params
+                .values()
+                .field_builder::<GenericStringBuilder<i32>>(1)
+                .unwrap()
+                .append_value(&cv_param.name);
+
+            self.cv_params
+                .values()
+                .field_builder::<GenericStringBuilder<i32>>(2)
+                .unwrap()
+                .append_null();
+
+            self.cv_params.values().append(true);
+        }
+        self.cv_params.append(true).unwrap();
+
+        self.append_data_arrays(record)?;
 
         let precursor_list_values = self.precursor_list.values();
 
