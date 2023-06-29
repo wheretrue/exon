@@ -192,10 +192,7 @@ impl MzMLArrayBuilder {
     /// Handles the append case where there is a binary data array.
     fn append_data_arrays_none_content(
         &mut self,
-        compression_type: Option<CompressionType>,
-        data_type: Option<MzDataType>,
         binary_array_type: Option<BinaryDataType>,
-        mz: &BinaryDataArray,
     ) -> std::io::Result<()> {
         match binary_array_type {
             Some(BinaryDataType::Mz) => {
@@ -356,7 +353,7 @@ impl MzMLArrayBuilder {
             }
 
             match &mz.binary.content {
-                Some(content) => {
+                Some(_) => {
                     self.append_data_arrays_some_content(
                         compression_type,
                         data_type,
@@ -365,12 +362,7 @@ impl MzMLArrayBuilder {
                     )?;
                 }
                 None => {
-                    self.append_data_arrays_none_content(
-                        compression_type,
-                        data_type,
-                        binary_array_type,
-                        mz,
-                    )?;
+                    self.append_data_arrays_none_content(binary_array_type)?;
                 }
             };
         }
