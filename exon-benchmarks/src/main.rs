@@ -37,6 +37,16 @@ enum Commands {
         #[arg(short, long)]
         compression: Option<FileCompressionType>,
     },
+    /// Count the number of spectra in a mzML file
+    MzMLScan {
+        /// which path to use
+        #[arg(short, long)]
+        path: String,
+
+        /// which compression to use
+        #[arg(short, long)]
+        compression: Option<FileCompressionType>,
+    },
 }
 
 #[derive(Parser)]
@@ -92,6 +102,18 @@ async fn main() {
                 .count()
                 .await
                 .unwrap();
+
+            println!("Count: {count}");
+        }
+        Some(Commands::MzMLScan { path, compression }) => {
+            let path = path.as_str();
+            let compression = compression.to_owned();
+
+            let ctx = SessionContext::new();
+
+            let df = ctx.read_mzml(path, compression).await.unwrap();
+
+            let count = df.count().await.unwrap();
 
             println!("Count: {count}");
         }

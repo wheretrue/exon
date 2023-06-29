@@ -142,11 +142,11 @@ impl TryFrom<&str> for BinaryDataType {
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Binary {
     #[serde(rename = "$value")]
-    pub content: String,
+    pub content: Option<String>,
 }
 
 impl Binary {
-    pub fn new(content: String) -> Binary {
+    pub fn new(content: Option<String>) -> Binary {
         Binary { content }
     }
 }
@@ -166,7 +166,7 @@ impl BinaryDataArray {
         let compression_type = CompressionType::try_from(&self.cv_param).unwrap();
 
         let result =
-            binary_conversion::decode_binary_array(&self.binary, &compression_type, &data_type);
+            binary_conversion::decode_binary_array(&self.binary, &compression_type, &data_type)?;
 
         Ok(result)
     }
@@ -309,7 +309,7 @@ type DecodedArrayResult<T> = Result<T, DecodeArrayError>;
 
 pub trait DecodedArray {
     fn decode_array(&self, i: usize) -> DecodedArrayResult<Vec<f64>> {
-        let de = self.decompress_binary_string(i);
+        let de = self.decompress_binary_string(i).unwrap();
         let decoded = base64::engine::general_purpose::STANDARD.decode(de);
 
         if let Ok(v) = decoded {
@@ -325,7 +325,7 @@ pub trait DecodedArray {
         Err("error")
     }
 
-    fn decompress_binary_string(&self, i: usize) -> &String;
+    fn decompress_binary_string(&self, i: usize) -> std::io::Result<&String>;
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -393,10 +393,17 @@ pub struct Spectrum {
 }
 
 impl DecodedArray for Spectrum {
-    fn decompress_binary_string(&self, i: usize) -> &String {
-        &self.binary_data_array_list.binary_data_array[i]
+    fn decompress_binary_string(&self, i: usize) -> std::io::Result<&String> {
+        match &self.binary_data_array_list.binary_data_array[i]
             .binary
             .content
+        {
+            Some(content) => Ok(content),
+            None => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "no binary data",
+            )),
+        }
     }
 }
 
@@ -614,6 +621,68 @@ mod tests {
                 .len(),
             3
         );
+    }
+
+    #[test]
+    fn test_from_massive_error() {
+        let body = r#"<spectrum index="968" id="scanId=108186" defaultArrayLength="0">
+        <cvParam cvRef="MS" accession="MS:1000130" name="positive scan" value=""/>
+        <cvParam cvRef="MS" accession="MS:1000504" name="base peak m/z" value="160.99991725769" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+        <cvParam cvRef="MS" accession="MS:1000505" name="base peak intensity" value="54.864727" unitCvRef="MS" unitAccession="MS:1000131" unitName="number of detector counts"/>
+        <cvParam cvRef="MS" accession="MS:1000285" name="total ion current" value="109.338783" unitCvRef="MS" unitAccession="MS:1000131" unitName="number of detector counts"/>
+        <cvParam cvRef="MS" accession="MS:1000511" name="ms level" value="2"/>
+        <cvParam cvRef="MS" accession="MS:1000580" name="MSn spectrum" value=""/>
+        <cvParam cvRef="MS" accession="MS:1000127" name="centroid spectrum" value=""/>
+        <cvParam cvRef="MS" accession="MS:1000796" name="spectrum title" value="SALJA0984.108186.108186.1 File:&quot;SALJA0984.d&quot;, NativeID:&quot;scanId=108186&quot;"/>
+        <scanList count="1">
+          <cvParam cvRef="MS" accession="MS:1000795" name="no combination" value=""/>
+          <scan>
+            <cvParam cvRef="MS" accession="MS:1000016" name="scan start time" value="1.802966666667" unitCvRef="UO" unitAccession="UO:0000031" unitName="minute"/>
+            <scanWindowList count="1">
+              <scanWindow>
+                <cvParam cvRef="MS" accession="MS:1000501" name="scan window lower limit" value="0.0" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+                <cvParam cvRef="MS" accession="MS:1000500" name="scan window upper limit" value="0.0" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+              </scanWindow>
+            </scanWindowList>
+          </scan>
+        </scanList>
+        <precursorList count="1">
+          <precursor spectrumRef="scanId=107792">
+            <isolationWindow>
+              <cvParam cvRef="MS" accession="MS:1000827" name="isolation window target m/z" value="250.114906311035" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+            </isolationWindow>
+            <selectedIonList count="1">
+              <selectedIon>
+                <cvParam cvRef="MS" accession="MS:1000744" name="selected ion m/z" value="250.114906311035" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+                <cvParam cvRef="MS" accession="MS:1000041" name="charge state" value="1"/>
+                <cvParam cvRef="MS" accession="MS:1000042" name="peak intensity" value="109.33878326416" unitCvRef="MS" unitAccession="MS:1000131" unitName="number of detector counts"/>
+              </selectedIon>
+            </selectedIonList>
+            <activation>
+              <cvParam cvRef="MS" accession="MS:1000422" name="beam-type collision-induced dissociation" value=""/>
+              <cvParam cvRef="MS" accession="MS:1000045" name="collision energy" value="40.0" unitCvRef="UO" unitAccession="UO:0000266" unitName="electronvolt"/>
+            </activation>
+          </precursor>
+        </precursorList>
+        <binaryDataArrayList count="2">
+          <binaryDataArray encodedLength="0">
+            <cvParam cvRef="MS" accession="MS:1000521" name="32-bit float" value=""/>
+            <cvParam cvRef="MS" accession="MS:1000576" name="no compression" value=""/>
+            <cvParam cvRef="MS" accession="MS:1000514" name="m/z array" value="" unitCvRef="MS" unitAccession="MS:1000040" unitName="m/z"/>
+            <binary></binary>
+          </binaryDataArray>
+          <binaryDataArray encodedLength="0">
+            <cvParam cvRef="MS" accession="MS:1000521" name="32-bit float" value=""/>
+            <cvParam cvRef="MS" accession="MS:1000576" name="no compression" value=""/>
+            <cvParam cvRef="MS" accession="MS:1000515" name="intensity array" value="" unitCvRef="MS" unitAccession="MS:1000131" unitName="number of detector counts"/>
+            <binary></binary>
+          </binaryDataArray>
+        </binaryDataArrayList>
+      </spectrum>"#;
+
+        let spectrum: Spectrum = quick_xml::de::from_str(body).unwrap();
+
+        assert_eq!(spectrum.index, "968");
     }
 
     #[test]

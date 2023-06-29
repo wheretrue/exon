@@ -13,7 +13,7 @@ NULL
 
 #' Return string `"Hello world!"` to R.
 #' @export
-hello_world <- function() .Call(wrap__hello_world)
+read_fasta_file_extendr <- function(file_path, stream_ptr) invisible(.Call(wrap__read_fasta_file_extendr, file_path, stream_ptr))
 
 
 # nolint end

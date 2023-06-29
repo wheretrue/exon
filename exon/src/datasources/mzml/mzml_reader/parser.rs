@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use quick_xml;
 use quick_xml::events::Event;
+use quick_xml::{self, DeError};
 use tokio::io::AsyncBufRead;
 
 use std::io::Cursor;
@@ -89,10 +89,18 @@ where
                         }
                     }
 
-                    let c = Cursor::new(inner_buf);
+                    let iclone = &inner_buf.clone();
+                    let buf_str = std::str::from_utf8(iclone).unwrap();
 
-                    let spectrum: Spectrum = quick_xml::de::from_reader(c).unwrap();
-                    return Ok(Some(spectrum));
+                    let c = Cursor::new(inner_buf.clone());
+
+                    let spectrum: Result<Spectrum, DeError> = quick_xml::de::from_reader(c);
+
+                    if spectrum.is_err() {
+                        eprintln!("{buf_str}");
+                    }
+
+                    return Ok(Some(spectrum.unwrap()));
                 }
                 Ok(Event::Eof) => {
                     return Ok(None);

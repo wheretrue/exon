@@ -112,7 +112,7 @@ mod tests {
         while let Some(batch) = batch_reader.next().await {
             let batch = batch.unwrap();
 
-            assert_eq!(batch.num_rows(), 1);
+            assert_eq!(batch.num_rows(), 2);
             assert_eq!(batch.num_columns(), 6);
 
             let pretty_print = pretty_format_batches(&[batch]).unwrap();

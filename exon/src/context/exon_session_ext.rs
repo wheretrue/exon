@@ -483,11 +483,11 @@ mod tests {
             ("hmmdomtab", "test.hmmdomtab.gz"),
             ("hmmdomtab", "test.hmmdomtab"),
             #[cfg(feature = "mzml")]
-            ("mzml", "test.mzml.zst"),
+            ("mzml", "test.mzML.zst"),
             #[cfg(feature = "mzml")]
-            ("mzml", "test.mzml.gz"),
+            ("mzml", "test.mzML.gz"),
             #[cfg(feature = "mzml")]
-            ("mzml", "test.mzml"),
+            ("mzml", "test.mzML"),
         ];
 
         for (cat, fname) in test_table.iter() {
@@ -511,14 +511,14 @@ mod tests {
     async fn test_read_mzml() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
 
-        let path = test_path("mzml", "test.mzml");
+        let path = test_path("mzml", "test.mzML");
 
         let df = ctx.read_mzml(path.to_str().unwrap(), None).await.unwrap();
 
         let batches = df.collect().await.unwrap();
         let len_sum = batches.iter().fold(0, |acc, b| acc + b.num_rows());
 
-        assert_eq!(len_sum, 1);
+        assert_eq!(len_sum, 2);
 
         Ok(())
     }

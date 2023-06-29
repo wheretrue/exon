@@ -88,7 +88,7 @@ mod test {
     async fn test_opener() {
         let config = Arc::new(MzMLConfig::default());
 
-        let path = test_listing_table_dir("mzml", "test.mzml");
+        let path = test_listing_table_dir("mzml", "test.mzML");
         let object_meta = config.object_store.head(&path).await.unwrap();
 
         let opener = MzMLOpener::new(config, FileCompressionType::UNCOMPRESSED);
@@ -103,6 +103,6 @@ mod test {
             n_records += batch.num_rows();
         }
 
-        assert_eq!(n_records, 1);
+        assert_eq!(n_records, 2);
     }
 }
