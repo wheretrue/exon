@@ -6,14 +6,17 @@ library(nanoarrow)
 read_fasta_table <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
 
-    batch_reader_ptr <- read_fasta_file_extendr(
+    read_fasta_file_extendr(
         file_path,
         nanoarrow::nanoarrow_pointer_addr_chr(stream)
     )
 
     record_batch_reader <- RecordBatchStreamReader$import_from_c(
-        batch_reader_ptr
+        nanoarrow::nanoarrow_pointer_addr_chr(stream)
     )
 
-    print(record_batch_reader)
+    tab <- record_batch_reader$read_table()
+    df <- as.data.frame(tab)
+
+    print(df)
 }
