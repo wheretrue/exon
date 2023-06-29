@@ -104,10 +104,10 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = test_listing_table_url("mzml/test.mzml");
+        let table_path = test_listing_table_url("mzml/test.mzML");
 
         let mzml_format = Arc::new(MzMLFormat::default());
-        let lo = ListingOptions::new(mzml_format.clone()).with_file_extension("mzml");
+        let lo = ListingOptions::new(mzml_format.clone()).with_file_extension("mzML");
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
 
@@ -123,6 +123,6 @@ mod tests {
         for batch in bs {
             row_cnt += batch.num_rows();
         }
-        assert_eq!(row_cnt, 1)
+        assert_eq!(row_cnt, 2)
     }
 }
