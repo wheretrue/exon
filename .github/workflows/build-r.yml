@@ -28,5 +28,5 @@ jobs:
         install.packages("arrow")
         install.packages("nanoarrow")
         rextendr::document()
-        devtools::load_all(".")
-        read_fasta_file("../../exon/test-data/datasources/fasta/test.fa")
+        devtools::load_all()
+        devtools::test()
