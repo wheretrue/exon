@@ -11,9 +11,9 @@
 #' @useDynLib exonr, .registration = TRUE
 NULL
 
-#' Return string `"Hello world!"` to R.
+#' Copy the inferred exon table from the given path into the given stream.
 #' @export
-read_fasta_file_extendr <- function(file_path, stream_ptr) invisible(.Call(wrap__read_fasta_file_extendr, file_path, stream_ptr))
+read_inferred_exon_table <- function(file_path, stream_ptr) invisible(.Call(wrap__read_inferred_exon_table, file_path, stream_ptr))
 
 
 # nolint end
