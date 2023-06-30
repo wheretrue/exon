@@ -29,4 +29,4 @@ jobs:
         install.packages("nanoarrow")
         rextendr::document()
         devtools::load_all(".")
-        read_fasta_table("../../exon/test-data/datasources/fasta/test.fa")
+        read_fasta_file("../../exon/test-data/datasources/fasta/test.fa")
