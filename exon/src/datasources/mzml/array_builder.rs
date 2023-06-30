@@ -503,7 +503,20 @@ impl MzMLArrayBuilder {
                 self.precursor_list.append(true);
             }
             None => {
+                let isolation_window_builder = precursor_list_values
+                    .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(0)
+                    .unwrap();
+
+                isolation_window_builder.append(true).unwrap();
+
+                let activation_builder = precursor_list_values
+                    .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(1)
+                    .unwrap();
+
+                activation_builder.append(true).unwrap();
+
                 precursor_list_values.append_null();
+
                 self.precursor_list.append_null();
             }
         }
