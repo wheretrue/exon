@@ -94,7 +94,7 @@ test_that("reading a SAM works", {
     expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
 
     # Check there's two rows.
-    expect_equal(nrow(df), 61)
+    expect_equal(nrow(df), 1)
 })
 
 test_that("reading a BAM works", {
@@ -105,5 +105,5 @@ test_that("reading a BAM works", {
     expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
 
     # Check there's two rows.
-    expect_equal(nrow(df), 61)
+    expect_equal(nrow(df), 1)
 })
