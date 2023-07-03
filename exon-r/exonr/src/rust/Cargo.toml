@@ -11,4 +11,6 @@ name = 'exonr'
 datafusion.workspace = true
 exon = {path = '../../../../exon', features = ['all']}
 extendr-api = '*'
+object_store.workspace = true
 tokio = {version = '*', features = ['full']}
+url = "2.4.0"
