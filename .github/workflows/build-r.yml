@@ -43,9 +43,7 @@ jobs:
       working-directory: ./exon-r/exonr/
       run: |
         fn = devtools::build(binary = TRUE, args = c('--preclean'))
-
-        newfn = paste0(substr(fn, 1, regexpr("_",fn)), "_", R.version$platform, ".", tools::file_ext(fn))
-        file.rename(fn,newfn)
+        print(fn)
 
     - name: print files
       run: print(list.files("..",recursive = TRUE,full.names=TRUE))
@@ -56,4 +54,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: exonr
-        path: ./exon-r/exonr_*.tar.gz
+        path: exon/exon-r/exonr_*.gz
