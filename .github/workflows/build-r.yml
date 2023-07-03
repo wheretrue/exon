@@ -11,11 +11,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         r: [release]
 
     steps:
     - uses: actions/checkout@v3
+
+    # If we're on macos, use brew to install lzma
+    - name: Install lzma
+      if: matrix.os == 'macos-latest'
+      run: brew install xz
 
     - uses: dtolnay/rust-toolchain@master
       with:
@@ -42,3 +47,10 @@ jobs:
     - name: print files
       run: print(list.files("..",recursive = TRUE,full.names=TRUE))
       shell: Rscript {0}
+
+    # Upload the build artifact
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: exonr
+        path: ./exon-r/exonr/exonr_*.tar.gz
