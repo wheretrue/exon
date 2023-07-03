@@ -52,13 +52,6 @@ jobs:
         name: exonr
         path: exon-r/exonr_*
 
-    # Upload the build artifact
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: exonr2
-        path: /home/runner/work/exon/exon/exon-r/exonr_0.0.0.9000_R_x86_64-pc-linux-gnu.tar.gz
-
     - name: print wd
       run: print(getwd())
       shell: Rscript {0}
