@@ -18,7 +18,7 @@ flate2 = {version = "1.0.25", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1"}
 noodles = {version = "0.40", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi", "gtf"]}
-object_store = {version = "0.5.4"}
+object_store = {workspace = true}
 pin-project = {version = "1.1.0", optional = true}
 quick-xml = {version = "0.29.0", features = ["async-tokio", "serialize", "overlapped-lists"], optional = true}
 serde = {version = "1", features = ["derive"], optional = true}
