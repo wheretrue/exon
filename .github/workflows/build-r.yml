@@ -36,6 +36,9 @@ jobs:
         extra-packages: rcmdcheck, devtools, usethis, remotes, rextendr, arrow, nanoarrow
         working-directory: ./exon-r/exonr/
 
+    # Use rust cache action to cache rust build process
+    - uses: Swatinem/rust-cache@v2
+
     - shell: Rscript {0}
       working-directory: ./exon-r/exonr/
       run: |
@@ -53,4 +56,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: exonr
-        path: ./exon-r/exonr/exonr_*.tar.gz
+        path: ./exon-r/exonr_*.tar.gz
