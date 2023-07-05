@@ -23,3 +23,9 @@ This benchmark shows querying a 2.6G VCF file for a genomic region. A reminder t
 This benchmark shows querying a 303M BAM file for a genomic region. The same caveat as the VCF query benchmark applies.
 
 ![SAM Scan](./plots/bam-query.svg)
+
+## MzML Scan
+
+This benchmark shows scanning an MzML file with roughly 6k spectra.
+
+![MzML Scan](./plots/mzml-scan.svg)
