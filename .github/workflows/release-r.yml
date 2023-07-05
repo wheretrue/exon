@@ -1,10 +1,10 @@
-name: Release
+name: Release R
 
-# Build on push to tags match v*
+# Build on push to tags match exonr-v*
 on:
   push:
     tags:
-    - 'v*'
+    - 'exonr-v*'
 
 permissions:
   id-token: write
