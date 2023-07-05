@@ -51,7 +51,9 @@ run-mzml-benchmarks:
 		-n pymzml-gzip \
 		'python exon-benchmarks/pymzml_scan.py exon-benchmarks/data/SALJA0984.mzML.gz' \
 		-n pymzml-no-compression \
-		'python exon-benchmarks/pymzml_scan.py exon-benchmarks/data/SALJA0984.mzML'
+		'python exon-benchmarks/pymzml_scan.py exon-benchmarks/data/SALJA0984.mzML' \
+		-n pyteomics-no-compression \
+		'python exon-benchmarks/pyteomics_scan.py exon-benchmarks/data/SALJA0984.mzML'
 
 plot-benchmarks:
 	python exon-benchmarks/plot_results.py
