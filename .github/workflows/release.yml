@@ -1,0 +1,44 @@
+name: Release
+
+# Build on push to tags match v*
+on:
+  push:
+  # tags:
+  # - 'v*'
+
+jobs:
+  release-r:
+    runs-on: ${{ matrix.os }}
+    name: Build R Release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          r: release
+        - os: macos-latest
+          r: release
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: ./.github/actions/r_setup
+
+    - shell: Rscript {0}
+      working-directory: ./exon-r/exonr/
+      run: |
+        fn = devtools::build(binary = TRUE, args = c('--preclean'))
+
+        newfn = paste0(substr(fn, 1, regexpr("_",fn)), "_", R.version$platform, ".", tools::file_ext(fn))
+        print(newfn)
+
+        file.rename(fn)
+
+        print(fn)
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: exonr-${{ matrix.os }}-${{ matrix.r }}
+        path: exon-r/exonr_*
