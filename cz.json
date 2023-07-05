@@ -1,7 +1,7 @@
 {
   "commitizen": {
     "name": "cz_conventional_commits",
-    "version": "0.2.0-a0",
+    "version": "0.2.0",
     "tag_format": "exon-v$version",
     "version_scheme": "semver",
     "version_files": [
