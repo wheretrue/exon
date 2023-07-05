@@ -1,3 +1,0 @@
-pre-release-replacements = [
-  {file = "exon-r/exonr/DESCRIPTION", search = "Version: .*", replace = "Version: {{version}}"},
-]
