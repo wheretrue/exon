@@ -75,7 +75,7 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ./exon-r/exonr/exonr_*
+        file: exon-r/exonr_*
         file_glob: true
         overwrite: true
         tag: ${{ needs.prep_release.outputs.version }}
