@@ -28,11 +28,11 @@ jobs:
         tag=$(printf "%q" ${{ github.ref_name }})
 
         if [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "::set-output name=version::$tag"
-          echo "::set-output name=prerelease::false"
+          echo "version=$tag" >> $GITHUB_OUTPUT
+          echo "prerelease=false" >> $GITHUB_OUTPUT
         else
-          echo "::set-output name=version::$tag"
-          echo "::set-output name=prerelease::true"
+          echo "version=$tag" >> $GITHUB_OUTPUT
+          echo "prerelease=true" >> $GITHUB_OUTPUT
         fi
 
   release-r:
