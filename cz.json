@@ -2,10 +2,11 @@
   "commitizen": {
     "name": "cz_conventional_commits",
     "version": "0.2.0",
-    "tag_format": "exon-v$version",
+    "tag_format": "v$version",
     "version_scheme": "semver",
     "version_files": [
       "exon/Cargo.toml",
+      "Cargo.lock",
       "exon-r/exonr/DESCRIPTION"
     ]
   }
