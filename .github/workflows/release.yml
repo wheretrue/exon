@@ -31,11 +31,9 @@ jobs:
         fn = devtools::build(binary = TRUE, args = c('--preclean'))
 
         newfn = paste0(substr(fn, 1, regexpr("_",fn)), "_", R.version$platform, ".", tools::file_ext(fn))
-        print(newfn)
+        print(paste0("Renaming ", fn, " to ", newfn))
 
-        file.rename(fn)
-
-        print(fn)
+        file.rename(fn, newfn)
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
