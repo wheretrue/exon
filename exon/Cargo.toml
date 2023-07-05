@@ -5,7 +5,7 @@ homepage = "https://www.github.com/wheretrue/exon"
 license = "Apache-2.0"
 name = "exon"
 repository = "https://www.github.com/wheretrue/exon"
-version = "0.1.2"
+version = "0.2.0-a0"
 
 [dependencies]
 arrow = {workspace = true}
