@@ -4,7 +4,7 @@ name: Release R
 on:
   push:
     tags:
-    - 'exonr-v*'
+    - 'exonr-*'
 
 permissions:
   id-token: write
@@ -27,7 +27,7 @@ jobs:
       run: |
         tag=$(printf "%q" ${{ github.ref_name }})
 
-        if [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        if [[ $tag =~ ^exonr-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           echo "version=$tag" >> $GITHUB_OUTPUT
           echo "prerelease=false" >> $GITHUB_OUTPUT
         else
