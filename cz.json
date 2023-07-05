@@ -6,7 +6,6 @@
     "version_scheme": "semver",
     "version_files": [
       "exon/Cargo.toml",
-      "Cargo.lock",
       "exon-r/exonr/DESCRIPTION"
     ]
   }
