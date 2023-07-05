@@ -1,0 +1,83 @@
+name: Release
+
+# Build on push to tags match v*
+on:
+  push:
+    tags:
+    - 'v*'
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+
+  prep_release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # https://github.com/getdozer/dozer/blob/main/.github/workflows/release.yaml
+    - name: Get the tag
+      id: version
+      run: |
+        tag=$(printf "%q" ${{ github.ref_name }})
+
+        if [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::set-output name=version::$tag"
+          echo "::set-output name=prerelease::false"
+        else
+          echo "::set-output name=version::$tag"
+          echo "::set-output name=prerelease::true"
+        fi
+
+  release-r:
+    runs-on: ${{ matrix.os }}
+    name: Build R Release
+
+    needs: [prep_release]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          r: release
+        - os: macos-latest
+          r: release
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: ./.github/actions/r_setup
+
+    - shell: Rscript {0}
+      working-directory: ./exon-r/exonr/
+      run: |
+        fn = devtools::build(binary = TRUE, args = c('--preclean'))
+
+        newfn = paste0(substr(fn, 1, regexpr("_", fn)), R.version$platform, ".", tools::file_ext(fn))
+        print(paste0("Renaming ", fn, " to ", newfn))
+
+        file.rename(fn, newfn)
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: exonr-${{ matrix.os }}-${{ matrix.r }}
+        path: exon-r/exonr_*
+
+    - name: Upload the release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ./exon-r/exonr/exonr_*
+        file_glob: true
+        overwrite: true
+        tag: ${{ needs.prep_release.outputs.version }}
+        release_name: "Release - ${{ needs.prep_release.outputs.version }}"
+        prerelease: ${{ needs.prep_release.outputs.prerelease }}

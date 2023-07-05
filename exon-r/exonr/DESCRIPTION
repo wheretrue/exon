@@ -1,6 +1,6 @@
 Package: exonr
 Title: Scientific Data Processing
-Version: 0.0.0.9000
+Version: 0.1.2
 Authors@R:
     person("Trent", "Hauck", , "thauck@wheretrue.com", role = c("aut", "cre"))
 Description: This package provides a set of tools for processing scientific data. It's based on the e

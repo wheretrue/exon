@@ -1,13 +1,15 @@
 name: Build R
 
-# Build on push to main
+# Build on push to main, but not on tags as tags are released
 on:
   push:
     branches:
     - main
+    tags-ignore:
+    - '*'
 
 jobs:
-  test:
+  build:
     runs-on: ${{ matrix.os }}
     name: R Build
 
