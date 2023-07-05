@@ -1,0 +1,51 @@
+name: r_setup
+description: "Setup R and system dependencies"
+
+runs:
+  using: composite
+  steps:
+  - name: Install lzma
+    if: runner.os == 'macos-latest'
+    run: brew install xz
+    shell: bash
+
+  - uses: dtolnay/rust-toolchain@master
+    with:
+      toolchain: stable
+
+  - name: Set up R
+    uses: r-lib/actions/setup-r@v2
+    with:
+      r-version: 'release'
+
+  - uses: r-lib/actions/setup-r-dependencies@v2
+    with:
+      extra-packages: rcmdcheck, devtools, usethis, remotes, rextendr, arrow, nanoarrow
+      working-directory: ./exon-r/exonr/
+
+    # https://github.com/getdozer/dozer/blob/main/.github/workflows/release.yaml
+  - name: Cache Exon
+    uses: actions/cache@v3
+    with:
+      path: |
+        ~/.cargo/bin/
+        ~/.cargo/.crates.toml
+        ~/.cargo/.crates2.json
+        ~/.cargo/.package-cache
+        ~/.cargo/registry/
+        ~/.cargo/git/db/
+        target/
+      key: ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
+      restore-keys: |
+        ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
+        ${{ runner.os }}-cargo-release-
+
+  - name: Cache ExonR
+    uses: actions/cache@v3
+    with:
+      path: |
+        exon-r/exonr/src/rust/target
+      key: ${{ runner.os }}-cargo-release-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
+      restore-keys: |
+        ${{ runner.os }}-cargo-release-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
+        ${{ runner.os }}-cargo-release-

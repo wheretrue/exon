@@ -2,21 +2,32 @@ name: Test
 
 on:
   push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+
+    - name: Cache Exon
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/.crates.toml
+          ~/.cargo/.crates2.json
+          ~/.cargo/.package-cache
+          ~/.cargo/registry/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
+          ${{ runner.os }}-cargo-release-
 
     - uses: actions/setup-python@v2
       with:

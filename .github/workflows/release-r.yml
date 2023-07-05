@@ -34,10 +34,9 @@ jobs:
         name: exonr-${{ matrix.os }}-${{ matrix.r }}
         path: exon-r/exonr_*
 
-    - name: print wd
-      run: print(getwd())
-      shell: Rscript {0}
-
-    - name: print files
-      run: print(list.files("exon-r",recursive = TRUE,full.names=TRUE))
-      shell: Rscript {0}
+    - name: Release ExonR
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request'
+      with:
+        files: |
+          exon-r/exonr_*.tar.gz

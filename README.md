@@ -65,4 +65,4 @@ Please see the [rust docs](https://docs.rs/exon) for more information.
 
 ## Benchmarks
 
-Please see the [benchmarks](benchmarks) [README](benchmarks/README.md) for more information.
+Please see the [benchmarks](exon-benchmarks) [README](exon-benchmarks/README.md) for more information.
