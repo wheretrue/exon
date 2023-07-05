@@ -17,4 +17,4 @@ jobs:
       run: |
         rextendr::document()
         devtools::load_all()
-        devtools::test()
+        devtools::test(stop_on_failure = TRUE)
