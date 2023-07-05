@@ -188,8 +188,6 @@ impl MzMLArrayBuilder {
         self.id.len()
     }
 
-    /// Handles the append case where there's no content in the binary data array.
-    /// Handles the append case where there is a binary data array.
     fn append_data_arrays_none_content(
         &mut self,
         binary_array_type: Option<BinaryDataType>,
@@ -423,7 +421,7 @@ impl MzMLArrayBuilder {
                 .values()
                 .field_builder::<GenericStringBuilder<i32>>(2)
                 .unwrap()
-                .append_null();
+                .append_option(cv_param.value.as_ref().map(|v| v.to_string()));
 
             self.cv_params.values().append(true);
         }

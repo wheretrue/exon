@@ -43,11 +43,10 @@ combined_df = pd.concat(dataframes)
 # Create subplots for each benchmark file
 charts = []
 for bench_group, df in combined_df.groupby('Bench Group'):
-    chart = alt.Chart(df).mark_bar().encode(
+    chart = alt.Chart(df).mark_line().encode(
         color='Command',
         y='Time (s)',
-        x='Command',
-        column='Git Hash:O',
+        x='Git Hash:O',
     ).properties(
         width=200,
         height=200,

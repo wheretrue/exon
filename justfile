@@ -41,12 +41,17 @@ run-benchmarks:
 		-n biopython-no-compression \
 		'python exon-benchmarks/biopython_scan_fasta.py exon-benchmarks/data/uniprot_sprot.fasta'
 
+run-mzml-benchmarks:
 	# Run mzml scan benchmarks.
 	hyperfine --runs 5 --export-json exon-benchmarks/results/mzml-scan_{{GIT_SHA}}.json \
 		-n exon-gzip \
-		'./target/release/exon-benchmarks mzml-scan -p ./exon-benchmarks/data/SALJA0984.mzML.gz -c gzip' \
+		'./target/release/exon-benchmarks mz-ml-scan -p ./exon-benchmarks/data/SALJA0984.mzML.gz -c gzip' \
 		-n exon-no-compression \
-		'./target/release/exon-benchmarks mzml-scan -p ./exon-benchmarks/data/SALJA0984.mzML'
+		'./target/release/exon-benchmarks mz-ml-scan -p ./exon-benchmarks/data/SALJA0984.mzML' \
+		-n pymzml-gzip \
+		'python exon-benchmarks/pymzml_scan.py exon-benchmarks/data/SALJA0984.mzML.gz' \
+		-n pymzml-no-compression \
+		'python exon-benchmarks/pymzml_scan.py exon-benchmarks/data/SALJA0984.mzML'
 
 plot-benchmarks:
 	python exon-benchmarks/plot_results.py
