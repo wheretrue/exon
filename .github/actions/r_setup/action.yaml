@@ -5,8 +5,9 @@ runs:
   using: composite
   steps:
   - name: Install lzma
-    if: matrix.os == 'macos-latest'
+    if: runner.os == 'macos-latest'
     run: brew install xz
+    shell: bash
 
   - uses: dtolnay/rust-toolchain@master
     with:
