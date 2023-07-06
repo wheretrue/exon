@@ -11,6 +11,8 @@ version = "0.2.3"
 [dependencies]
 arrow = {workspace = true}
 async-trait = "0.1.70"
+aws-config = {version = "0.55.3", optional = true}
+aws-credential-types = "0.55.3"
 base64 = {version = "0.21", optional = true}
 byteorder = {version = "1.4.3", optional = true}
 bytes = "1.4.0"
@@ -25,8 +27,11 @@ quick-xml = {version = "0.29.0", features = ["async-tokio", "serialize", "overla
 serde = {version = "1", features = ["derive"], optional = true}
 tokio = {version = "1", features = ["io-util"]}
 tokio-util = {version = "0.7.8", features = ["compat"]}
+url = "2.4.0"
 
 [features]
-all = ["ffi", "mzml"]
+all = ["ffi", "mzml", "aws", "gcp"]
+aws = ["object_store/aws", "aws-config"]
 ffi = ["arrow/ffi", "dep:pin-project"]
+gcp = ["object_store/gcp"]
 mzml = ["dep:base64", "dep:byteorder", "dep:flate2", "dep:quick-xml", "dep:serde"]

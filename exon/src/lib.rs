@@ -95,6 +95,14 @@ pub mod udfs;
 #[cfg(feature = "ffi")]
 pub mod ffi;
 
+/// I/O module for Exon.
+#[cfg(any(feature = "aws", feature = "gcp"))]
+pub mod io;
+
+/// Runtime environment for Exon.
+#[cfg(any(feature = "aws", feature = "gcp"))]
+pub mod runtime_env;
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
