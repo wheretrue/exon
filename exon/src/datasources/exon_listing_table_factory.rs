@@ -17,8 +17,8 @@ use std::{str::FromStr, sync::Arc};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        datasource::TableProviderFactory,
         listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        provider::TableProviderFactory,
         TableProvider,
     },
     execution::context::SessionState,
@@ -67,10 +67,7 @@ mod tests {
     use std::{path::PathBuf, sync::Arc};
 
     use datafusion::{
-        catalog::{
-            catalog::{CatalogProvider, MemoryCatalogProvider},
-            listing_schema::ListingSchemaProvider,
-        },
+        catalog::{listing_schema::ListingSchemaProvider, CatalogProvider, MemoryCatalogProvider},
         error::DataFusionError,
         execution::runtime_env::{RuntimeConfig, RuntimeEnv},
         prelude::{SessionConfig, SessionContext},

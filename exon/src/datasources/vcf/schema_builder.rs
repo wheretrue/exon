@@ -138,7 +138,7 @@ fn vcf_info_to_field(infos: Infos) -> arrow::datatypes::Field {
     for (key, value) in infos {
         let ty = vcf_info_type_to_arrow_type(value.ty());
 
-        let field = arrow::datatypes::Field::new(key.to_string(), ty, false);
+        let field = arrow::datatypes::Field::new(key.to_string(), ty, true);
         let field = wrap_type_in_count(value.number(), &field);
 
         arrow_fields.push(field);
@@ -154,7 +154,7 @@ fn vcf_formats_to_field(formats: Formats) -> arrow::datatypes::Field {
     for (key, value) in formats {
         let ty = vcf_format_type_to_arrow_type(value.ty());
 
-        let field = arrow::datatypes::Field::new(key.to_string(), ty, false);
+        let field = arrow::datatypes::Field::new(key.to_string(), ty, true);
         let field = wrap_type_in_count(value.number(), &field);
 
         fields.push(field);
@@ -201,11 +201,7 @@ mod tests {
                 "single_int",
                 Number::Count(1),
                 format::Type::Integer,
-                arrow::datatypes::Field::new(
-                    "single_int",
-                    arrow::datatypes::DataType::Int32,
-                    false,
-                ),
+                arrow::datatypes::Field::new("single_int", arrow::datatypes::DataType::Int32, true),
             ),
             (
                 "single_float",
@@ -214,18 +210,14 @@ mod tests {
                 arrow::datatypes::Field::new(
                     "single_float",
                     arrow::datatypes::DataType::Float32,
-                    false,
+                    true,
                 ),
             ),
             (
                 "single_char",
                 Number::Count(1),
                 format::Type::Character,
-                arrow::datatypes::Field::new(
-                    "single_char",
-                    arrow::datatypes::DataType::Utf8,
-                    false,
-                ),
+                arrow::datatypes::Field::new("single_char", arrow::datatypes::DataType::Utf8, true),
             ),
             (
                 "single_string",
@@ -234,7 +226,7 @@ mod tests {
                 arrow::datatypes::Field::new(
                     "single_string",
                     arrow::datatypes::DataType::Utf8,
-                    false,
+                    true,
                 ),
             ),
             (
@@ -246,9 +238,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Int32,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
             (
@@ -260,9 +252,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Float32,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
             (
@@ -274,9 +266,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Utf8,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
         ];
@@ -318,17 +310,13 @@ mod tests {
                 "single_int",
                 Number::Count(1),
                 info::Type::Integer,
-                arrow::datatypes::Field::new(
-                    "single_int",
-                    arrow::datatypes::DataType::Int32,
-                    false,
-                ),
+                arrow::datatypes::Field::new("single_int", arrow::datatypes::DataType::Int32, true),
             ),
             (
                 "single_str",
                 Number::Count(1),
                 info::Type::String,
-                arrow::datatypes::Field::new("single_str", arrow::datatypes::DataType::Utf8, false),
+                arrow::datatypes::Field::new("single_str", arrow::datatypes::DataType::Utf8, true),
             ),
             (
                 "single_flag",
@@ -337,18 +325,14 @@ mod tests {
                 arrow::datatypes::Field::new(
                     "single_flag",
                     arrow::datatypes::DataType::Boolean,
-                    false,
+                    true,
                 ),
             ),
             (
                 "single_char",
                 Number::Count(1),
                 info::Type::Character,
-                arrow::datatypes::Field::new(
-                    "single_char",
-                    arrow::datatypes::DataType::Utf8,
-                    false,
-                ),
+                arrow::datatypes::Field::new("single_char", arrow::datatypes::DataType::Utf8, true),
             ),
             (
                 "single_float",
@@ -357,7 +341,7 @@ mod tests {
                 arrow::datatypes::Field::new(
                     "single_float",
                     arrow::datatypes::DataType::Float32,
-                    false,
+                    true,
                 ),
             ),
             (
@@ -369,9 +353,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Int32,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
             (
@@ -383,9 +367,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Utf8,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
             (
@@ -397,9 +381,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Utf8,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
             (
@@ -411,9 +395,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Boolean,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
             (
@@ -425,9 +409,9 @@ mod tests {
                     arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
                         "item",
                         arrow::datatypes::DataType::Float32,
-                        false,
+                        true,
                     ))),
-                    false,
+                    true,
                 ),
             ),
         ];
