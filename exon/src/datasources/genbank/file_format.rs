@@ -17,9 +17,12 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{DataType, Field, Fields, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    datasource::file_format::{file_type::FileCompressionType, FileFormat},
+    datasource::{
+        file_format::{file_type::FileCompressionType, FileFormat},
+        physical_plan::FileScanConfig,
+    },
     execution::context::SessionState,
-    physical_plan::{file_format::FileScanConfig, ExecutionPlan, PhysicalExpr, Statistics},
+    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
 use object_store::{ObjectMeta, ObjectStore};
 

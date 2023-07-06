@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use datafusion::{error::DataFusionError, physical_plan::file_format::FileOpener};
+use datafusion::{
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    error::DataFusionError,
+};
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bcf, core::Region, csi};
 use object_store::GetResult;
@@ -52,10 +55,7 @@ impl BCFOpener {
 }
 
 impl FileOpener for BCFOpener {
-    fn open(
-        &self,
-        file_meta: datafusion::physical_plan::file_format::FileMeta,
-    ) -> datafusion::error::Result<datafusion::physical_plan::file_format::FileOpenFuture> {
+    fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
         let region = self.region.clone();
 

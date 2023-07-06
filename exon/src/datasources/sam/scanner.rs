@@ -16,10 +16,12 @@ use std::{any::Any, sync::Arc};
 
 use super::{config::SAMConfig, file_opener::SAMOpener};
 use arrow::datatypes::SchemaRef;
-use datafusion::physical_plan::{
-    file_format::{FileScanConfig, FileStream},
-    metrics::ExecutionPlanMetricsSet,
-    ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
+use datafusion::{
+    datasource::physical_plan::{FileScanConfig, FileStream},
+    physical_plan::{
+        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
+        Statistics,
+    },
 };
 
 #[derive(Debug)]

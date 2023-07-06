@@ -51,7 +51,7 @@ impl MzMLArrayBuilder {
     pub fn new() -> Self {
         let mz_fields = Fields::from(vec![Field::new(
             "mz",
-            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
             true,
         )]);
 
@@ -60,7 +60,7 @@ impl MzMLArrayBuilder {
 
         let intensity_fields = Fields::from(vec![Field::new(
             "intensity",
-            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
             true,
         )]);
 
@@ -69,7 +69,7 @@ impl MzMLArrayBuilder {
 
         let wavelength_fields = Fields::from(vec![Field::new(
             "wavelength",
-            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
             true,
         )]);
 
@@ -87,9 +87,9 @@ impl MzMLArrayBuilder {
             GenericStringBuilder::<i32>::new(),
             StructBuilder::new(
                 Fields::from(vec![
-                    Field::new("accession", DataType::Utf8, false),
-                    Field::new("name", DataType::Utf8, false),
-                    Field::new("value", DataType::Utf8, false),
+                    Field::new("accession", DataType::Utf8, true),
+                    Field::new("name", DataType::Utf8, true),
+                    Field::new("value", DataType::Utf8, true),
                 ]),
                 vec![
                     Box::new(GenericStringBuilder::<i32>::new()),
@@ -100,21 +100,21 @@ impl MzMLArrayBuilder {
         );
 
         let cv_param_struct = Field::new(
-            "cv_param",
+            "values",
             DataType::Struct(Fields::from(vec![
-                Field::new("accession", DataType::Utf8, false),
-                Field::new("name", DataType::Utf8, false),
-                Field::new("value", DataType::Utf8, false),
+                Field::new("accession", DataType::Utf8, true),
+                Field::new("name", DataType::Utf8, true),
+                Field::new("value", DataType::Utf8, true),
             ])),
             true,
         );
 
-        let cv_key_field = Field::new("ms_number", DataType::Utf8, false);
+        let cv_key_field = Field::new("keys", DataType::Utf8, false);
 
         // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
         let isolation_window = Field::new_map(
             "isolation_window",
-            "cv_params",
+            "entries",
             cv_key_field.clone(),
             cv_param_struct.clone(),
             false,
@@ -123,7 +123,7 @@ impl MzMLArrayBuilder {
 
         let activation = Field::new_map(
             "activation",
-            "cv_params",
+            "entries",
             cv_key_field,
             cv_param_struct,
             false,
@@ -137,9 +137,9 @@ impl MzMLArrayBuilder {
             GenericStringBuilder::<i32>::new(),
             StructBuilder::new(
                 Fields::from(vec![
-                    Field::new("accession", DataType::Utf8, false),
-                    Field::new("name", DataType::Utf8, false),
-                    Field::new("value", DataType::Utf8, false),
+                    Field::new("accession", DataType::Utf8, true),
+                    Field::new("name", DataType::Utf8, true),
+                    Field::new("value", DataType::Utf8, true),
                 ]),
                 vec![
                     Box::new(GenericStringBuilder::<i32>::new()),
@@ -154,9 +154,9 @@ impl MzMLArrayBuilder {
             GenericStringBuilder::<i32>::new(),
             StructBuilder::new(
                 Fields::from(vec![
-                    Field::new("accession", DataType::Utf8, false),
-                    Field::new("name", DataType::Utf8, false),
-                    Field::new("value", DataType::Utf8, false),
+                    Field::new("accession", DataType::Utf8, true),
+                    Field::new("name", DataType::Utf8, true),
+                    Field::new("value", DataType::Utf8, true),
                 ]),
                 vec![
                     Box::new(GenericStringBuilder::<i32>::new()),

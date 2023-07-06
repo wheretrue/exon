@@ -70,7 +70,7 @@ impl Default for MzMLConfig {
 pub fn schema() -> Schema {
     let mz_fields = Fields::from(vec![Field::new(
         "mz",
-        DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+        DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
         true,
     )]);
 
@@ -78,7 +78,7 @@ pub fn schema() -> Schema {
 
     let intensity_fields = Fields::from(vec![Field::new(
         "intensity",
-        DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+        DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
         true,
     )]);
 
@@ -86,7 +86,7 @@ pub fn schema() -> Schema {
 
     let wavelength_fields = Fields::from(vec![Field::new(
         "wavelength",
-        DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+        DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
         true,
     )]);
 
@@ -94,11 +94,11 @@ pub fn schema() -> Schema {
 
     // An individual cvParam
     let cv_param_struct = Field::new(
-        "cv_param",
+        "values",
         DataType::Struct(Fields::from(vec![
-            Field::new("accession", DataType::Utf8, false),
-            Field::new("name", DataType::Utf8, false),
-            Field::new("value", DataType::Utf8, false),
+            Field::new("accession", DataType::Utf8, true),
+            Field::new("name", DataType::Utf8, true),
+            Field::new("value", DataType::Utf8, true),
         ])),
         true,
     );
@@ -110,9 +110,9 @@ pub fn schema() -> Schema {
         Field::new(
             "values",
             DataType::Struct(Fields::from(vec![
-                Field::new("accession", DataType::Utf8, false),
-                Field::new("name", DataType::Utf8, false),
-                Field::new("value", DataType::Utf8, false),
+                Field::new("accession", DataType::Utf8, true),
+                Field::new("name", DataType::Utf8, true),
+                Field::new("value", DataType::Utf8, true),
             ])),
             true,
         ),
@@ -120,12 +120,12 @@ pub fn schema() -> Schema {
         true,
     );
 
-    let cv_key_field = Field::new("ms_number", DataType::Utf8, false);
+    let cv_key_field = Field::new("keys", DataType::Utf8, false);
 
     // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
     let isolation_window = Field::new_map(
         "isolation_window",
-        "cv_params",
+        "entries",
         cv_key_field.clone(),
         cv_param_struct.clone(),
         false,
@@ -134,7 +134,7 @@ pub fn schema() -> Schema {
 
     let activation = Field::new_map(
         "activation",
-        "cv_params",
+        "entries",
         cv_key_field,
         cv_param_struct,
         false,
