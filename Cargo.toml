@@ -15,4 +15,4 @@ members = [
 [workspace.dependencies]
 arrow = {version = "42"}
 datafusion = {version = "27", features = ["default"]}
-object_store = {version = "0.6.1", features = ["aws", "gcp"]}
+object_store = {version = "0.6.1"}
