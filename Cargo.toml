@@ -10,7 +10,6 @@ members = [
   "exon",
   "exon-benchmarks",
   "exon-examples",
-  "exon-r/exonr/src/rust",
 ]
 
 [workspace.dependencies]
