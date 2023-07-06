@@ -1,10 +1,12 @@
 [package]
 description = "A platform for scientific data processing and analysis."
 edition = "2021"
-homepage = "https://www.github.com/wheretrue/exon"
-license = "Apache-2.0"
+homepage = {workspace = true}
+keywords = ["biology", "science", "arrow"]
+license = {workspace = true}
 name = "exon"
-repository = "https://www.github.com/wheretrue/exon"
+readme = {workspace = true}
+repository = {workspace = true}
 version = "0.2.3"
 
 [dependencies]
