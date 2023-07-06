@@ -14,7 +14,8 @@
 
 use std::sync::Arc;
 
-use datafusion::{arrow::ffi_stream::FFI_ArrowArrayStream, prelude::SessionContext};
+use arrow::ffi_stream::FFI_ArrowArrayStream;
+use datafusion::prelude::SessionContext;
 use exon::{context::ExonSessionExt, ffi::create_dataset_stream_from_table_provider};
 use extendr_api::prelude::*;
 use object_store::{aws::AmazonS3Builder, gcp::GoogleCloudStorageBuilder};
