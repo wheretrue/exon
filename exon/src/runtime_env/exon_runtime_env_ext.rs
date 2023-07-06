@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{error::DataFusionError, execution::runtime_env::RuntimeEnv};
-use object_store::{gcp::GoogleCloudStorageBuilder, ObjectStore};
+use object_store::ObjectStore;
 
 use crate::io::build_s3_object_store;
 
@@ -60,8 +60,13 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
         url: &url::Url,
     ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError> {
         match url.scheme() {
+            #[cfg(feature = "aws")]
             "s3" => self.register_s3_object_store(url).await,
+
+            #[cfg(feature = "gcs")]
             "gcs" => {
+                use object_store::gcs::GoogleCloudStorageBuilder;
+
                 let gcs = Arc::new(
                     GoogleCloudStorageBuilder::from_env()
                         .with_url(url.to_string())

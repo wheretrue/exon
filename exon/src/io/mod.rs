@@ -14,7 +14,7 @@
 
 //! I/O module for Exon.
 
-// Code from arrow and lance projects, but Apache 2.0 licensed
+// Code from arrow and lance projects that are Apache 2.0 licensed.
 
 use std::time::SystemTime;
 use std::{collections::HashMap, sync::Arc, time::Duration};
@@ -34,10 +34,7 @@ const AWS_CREDS_CACHE_KEY: &str = "aws_credentials";
 struct AwsCredentialAdapter {
     pub inner: Arc<dyn ProvideCredentials>,
 
-    // RefCell can't be shared across threads, so we use HashMap
     cache: Arc<RwLock<HashMap<String, Arc<aws_credential_types::Credentials>>>>,
-
-    // The amount of time before expiry to refresh credentials
     credentials_refresh_offset: Duration,
 }
 
@@ -67,10 +64,9 @@ impl CredentialProvider for AwsCredentialAdapter {
                                 .expect("this time should always be valid")
                                 < SystemTime::now()
                         })
-                        // no expiry is never expire
                         .unwrap_or(false)
                 })
-                .unwrap_or(true); // no cred is the same as expired;
+                .unwrap_or(true);
             if expired {
                 None
             } else {

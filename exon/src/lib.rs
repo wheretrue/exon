@@ -96,7 +96,7 @@ pub mod udfs;
 pub mod ffi;
 
 /// I/O module for Exon.
-#[cfg(any(feature = "aws", feature = "gcp"))]
+#[cfg(any(feature = "aws"))]
 pub mod io;
 
 /// Runtime environment for Exon.
