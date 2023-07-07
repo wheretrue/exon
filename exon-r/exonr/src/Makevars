@@ -3,7 +3,7 @@ LIBDIR = $(TARGET_DIR)/release
 STATLIB = $(LIBDIR)/libexonr.a
 PKG_LIBS = -L$(LIBDIR) -lexonr -llzma
 
-.PHONY update
+.PHONY: update
 
 all: C_clean
 
