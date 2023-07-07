@@ -1,5 +1,5 @@
 <h1 align="center">
-    <img src=".github/images/logo.svg" width="220px" alt="Exon" />
+    <img src="https://raw.githubusercontent.com/wheretrue/exon/main/.github/images/logo.svg" width="220px" alt="Exon" />
 </h1>
 
 Exon is an analysis toolkit for life-science applications. It features:
