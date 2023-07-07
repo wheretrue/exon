@@ -3,14 +3,18 @@ LIBDIR = $(TARGET_DIR)/release
 STATLIB = $(LIBDIR)/libexonr.a
 PKG_LIBS = -L$(LIBDIR) -lexonr -llzma
 
+.PHONY update
+
 all: C_clean
 
 $(SHLIB): $(STATLIB)
 
 CARGOTMP = $(CURDIR)/.cargo
 
-$(STATLIB):
-	rustup update && \
+update:
+	rustup update
+
+$(STATLIB): update
 	# In some environments, ~/.cargo/bin might not be included in PATH, so we need
 	# to set it here to ensure cargo can be invoked. It is appended to PATH and
 	# therefore is only used if cargo is absent from the user's PATH.
