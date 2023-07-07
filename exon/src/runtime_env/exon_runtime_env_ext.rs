@@ -73,6 +73,13 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
             "gs" => {
                 use object_store::gcp::GoogleCloudStorageBuilder;
 
+                // Check that the GOOGLE_SERVICE_ACCOUNT env var is set
+                if std::env::var("GOOGLE_SERVICE_ACCOUNT").is_err() {
+                    return Err(DataFusionError::Execution(
+                        "GOOGLE_SERVICE_ACCOUNT env var must be set to use gs://".to_string(),
+                    ));
+                }
+
                 let gcs = Arc::new(
                     GoogleCloudStorageBuilder::from_env()
                         .with_url(url.to_string())
