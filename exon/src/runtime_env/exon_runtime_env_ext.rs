@@ -69,9 +69,9 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
             #[cfg(feature = "aws")]
             "s3" => self.register_s3_object_store(url).await,
 
-            #[cfg(feature = "gcs")]
+            #[cfg(feature = "gcp")]
             "gs" => {
-                use object_store::gcs::GoogleCloudStorageBuilder;
+                use object_store::gcp::GoogleCloudStorageBuilder;
 
                 let gcs = Arc::new(
                     GoogleCloudStorageBuilder::from_env()
