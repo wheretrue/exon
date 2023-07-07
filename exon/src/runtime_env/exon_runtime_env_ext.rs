@@ -32,9 +32,15 @@ pub trait ExonRuntimeEnvExt {
     ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError>;
 
     /// Register an object store "intelligently" given the URL.
-    async fn exon_register_object_store(
+    async fn exon_register_object_store_url(
         &self,
         url: &url::Url,
+    ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError>;
+
+    /// Register an object store with the given URI.
+    async fn exon_register_object_store_uri(
+        &self,
+        uri: &str,
     ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError>;
 }
 
@@ -55,7 +61,7 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
     }
 
     /// Register an object store "intelligently" given the URL.
-    async fn exon_register_object_store(
+    async fn exon_register_object_store_url(
         &self,
         url: &url::Url,
     ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError> {
@@ -81,6 +87,18 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
                 "Unsupported scheme: {}",
                 url.scheme()
             ))),
+        }
+    }
+
+    /// Register an object store with the given URI.
+    async fn exon_register_object_store_uri(
+        &self,
+        uri: &str,
+    ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError> {
+        match url::Url::parse(uri) {
+            Ok(url) => self.exon_register_object_store_url(&url).await,
+            // TODO: have this handle tilde expansion
+            _ => Ok(None),
         }
     }
 }
