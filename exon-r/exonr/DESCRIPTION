@@ -1,6 +1,6 @@
 Package: exonr
 Title: Scientific Data Processing
-Version: 0.2.3.9006
+Version: 0.2.3.9007
 Authors@R:
     person("Trent", "Hauck", , "thauck@wheretrue.com", role = c("aut", "cre"))
 Description: This package provides a set of tools for processing scientific data. It's based on the e
@@ -10,7 +10,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Config/rextendr/version: 0.3.1
 Imports:
-    arrow (>= 12.0.1)
+    arrow (>= 12.0.1),
     nanoarrow (>= 0.2.0)
 Suggests:
     testthat (>= 3.0.0)
