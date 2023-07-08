@@ -1,9 +1,9 @@
 Package: exonr
 Title: Scientific Data Processing
-Version: 0.2.3.9007
+Version: 0.2.3.9008
 Authors@R:
     person("Trent", "Hauck", , "thauck@wheretrue.com", role = c("aut", "cre"))
-Description: This package provides a set of tools for processing scientific data. It's based on the e
+Description: This package provides a set of tools for processing scientific data. It's based on the exon Rust package.
 License: use_apache_license(version = 2, include_future = TRUE)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

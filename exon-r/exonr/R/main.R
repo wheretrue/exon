@@ -20,7 +20,7 @@ read_fasta_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
 
 #' Read FASTQ File
@@ -39,7 +39,7 @@ read_fastq_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
 
 #' Read GFF File
@@ -58,7 +58,7 @@ read_gff_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
 
 #' Read GenBank File
@@ -77,7 +77,7 @@ read_genbank_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
 
 #' Read VCF/BCF File
@@ -96,7 +96,7 @@ read_vcf_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
 
 #' Read BED File
@@ -115,7 +115,7 @@ read_bed_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
 
 #' Read SAM/BAM File
@@ -134,5 +134,5 @@ read_sam_file <- function(file_path) {
 
     read_inferred_exon_table(file_path, pointer_addr)
 
-    return(RecordBatchStreamReader$import_from_c(pointer_addr))
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }

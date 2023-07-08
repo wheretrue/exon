@@ -3,6 +3,11 @@ LIBDIR = $(TARGET_DIR)/release
 STATLIB = $(LIBDIR)/libexonr.a
 PKG_LIBS = -L$(LIBDIR) -lexonr -llzma
 
+ifeq ($(shell uname), Darwin)
+    # Add the necessary PKG_LIBS for Apple
+    PKG_LIBS += -framework Security -framework Foundation
+endif
+
 .PHONY: update
 
 all: C_clean
