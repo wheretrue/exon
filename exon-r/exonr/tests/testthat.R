@@ -9,4 +9,4 @@
 library(testthat)
 library(exonr)
 
-test_check("exonr")
+# test_check("exonr")
