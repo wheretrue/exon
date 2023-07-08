@@ -112,7 +112,7 @@ fn read_inferred_exon_table_inner(
     }
 
     rt.block_on(async {
-        let df = ctx.read_inferred_exon_table(path).await?;
+        let df = ctx.read_inferred_exon_table(path).await.unwrap();
 
         create_dataset_stream_from_table_provider(df, rt.clone(), stream_ptr)
             .await
