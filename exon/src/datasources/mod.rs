@@ -51,6 +51,9 @@ pub mod vcf;
 /// GTF module.
 pub mod gtf;
 
+/// FCS module.
+pub mod fcs;
+
 /// Default batch size.
 pub const DEFAULT_BATCH_SIZE: usize = 8192;
 
