@@ -412,13 +412,15 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::test_path;
+
     use super::*;
 
     #[tokio::test]
     async fn test_read_file() -> std::io::Result<()> {
-        let file = tokio::fs::File::open("/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/fcs/Guava Muse.fcs")
-            .await
-            .unwrap();
+        let test_path = test_path("fcs", "Guava Muse.fcs");
+
+        let file = tokio::fs::File::open(test_path).await.unwrap();
 
         let mut reader = Reader::new(file);
 
