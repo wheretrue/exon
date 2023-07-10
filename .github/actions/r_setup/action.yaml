@@ -45,7 +45,7 @@ runs:
     with:
       path: |
         exon-r/exonr/src/rust/target
-      key: ${{ runner.os }}-cargo-release-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
+      key: ${{ runner.os }}-cargo-release-r-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
       restore-keys: |
-        ${{ runner.os }}-cargo-release-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
-        ${{ runner.os }}-cargo-release-
+        ${{ runner.os }}-cargo-release-r-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
+        ${{ runner.os }}-cargo-release-r-
