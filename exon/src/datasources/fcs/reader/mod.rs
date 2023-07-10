@@ -221,6 +221,21 @@ impl TextData {
         None
     }
 
+    /// Return a vector of the parameter names
+    pub fn parameter_names(&self) -> Vec<String> {
+        let mut parameter_names = Vec::new();
+
+        if let Some(number_of_parameters) = self.number_of_parameters() {
+            for i in 1..=number_of_parameters {
+                if let Some(parameter_name) = self.get(&format!("$P{}S", i)) {
+                    parameter_names.push(parameter_name.clone());
+                }
+            }
+        }
+
+        parameter_names
+    }
+
     /// Check the data type
     pub fn data_type(&self) -> Option<DataType> {
         match self.get("$DATATYPE") {
@@ -445,6 +460,22 @@ mod tests {
 
         assert_eq!(text_data.number_of_events(), Some(108));
         assert_eq!(text_data.number_of_parameters(), Some(10));
+
+        assert_eq!(
+            text_data.parameter_names(),
+            vec![
+                "Forward Scatter (FSC-HLin)",
+                "Forward Scatter Width (FSC-W)",
+                "Yellow Fluorescence (YEL-HLin)",
+                "Yellow Fluorescence Width (YEL-W)",
+                "Red Fluorescence (RED-HLin)",
+                "Red Fluorescence Width (RED-W)",
+                "Time",
+                "Cell Size (FSC-HLog)",
+                "Viability (YEL-HLog)",
+                "Nucleation (RED-HLog)"
+            ]
+        );
 
         let endianness = text_data.endianness();
         assert_eq!(endianness, Some(Endianness::Little));
