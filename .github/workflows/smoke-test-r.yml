@@ -26,5 +26,11 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y liblzma-dev r-base r-base-dev libarrow-dev
+        sudo apt-get install -y liblzma-dev r-base r-base-dev
       shell: bash
+
+    - name: Install R packages
+      run: |
+        install.packages(c("devtools", "usethis", "remotes", "rcmdcheck", "arrow", "nanoarrow"))
+        install.packages('exonr', repos = c('https://wheretrue.r-universe.dev', 'https://cloud.r-project.org'))
+      shell: Rscript {0}
