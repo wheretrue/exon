@@ -26,5 +26,5 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y liblzma-dev arrow r-base r-base-dev
+        sudo apt-get install -y liblzma-dev r-base r-base-dev libarrow-dev
       shell: bash
