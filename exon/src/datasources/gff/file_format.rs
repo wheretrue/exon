@@ -48,7 +48,7 @@ pub fn schema() -> SchemaRef {
     let attribute_value_field = Field::new("values", DataType::Utf8, true);
 
     let inner = Schema::new(vec![
-        Field::new("seqid", DataType::Utf8, false),
+        Field::new("seqname", DataType::Utf8, false),
         Field::new("source", DataType::Utf8, true),
         Field::new("type", DataType::Utf8, false),
         Field::new("start", DataType::Int64, false),
