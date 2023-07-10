@@ -37,5 +37,19 @@ jobs:
     - name: Install R packages
       run: |
         install.packages(c("arrow", "nanoarrow"))
-        install.packages('exonr', repos = c('https://wheretrue.r-universe.dev', 'https://cloud.r-project.org'))
+        install.packages("exonr", repos = c("https://wheretrue.r-universe.dev", "https://cloud.r-project.org"))
       shell: Rscript {0}
+
+    - name: Test exonr
+      shell: Rscript {0}
+      run: |
+        library(exonr)
+
+        # Read in an example file
+        batch_reader <- exonr::read_fasta_file("exon/test-data/datasources/fasta/test.fasta")
+
+        # Convert to a data.frame
+        batch_df <- as.data.frame(batch_reader)
+
+        # Print the head of the dataframe
+        print(head(batch_df))
