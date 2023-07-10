@@ -25,7 +25,7 @@ test_that("reading a GFF works", {
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
-    expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase", "attributes"))
+    expect_equal(colnames(df), c("seqid", "source", "type", "start", "end", "score", "strand", "phase", "attributes"))
 
     # Check there's two rows.
     expect_equal(nrow(df), 5000)
