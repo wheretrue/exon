@@ -1,10 +1,7 @@
-# Create a smoketest that just installs the biobear python package and reads an example file
-
 name: Smoke Test
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   test-package:
