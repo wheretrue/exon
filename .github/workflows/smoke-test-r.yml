@@ -26,7 +26,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y liblzma-dev
+        sudo apt-get install -y liblzma-dev libcurl4-openssl-dev
       shell: bash
 
     - name: Set up R
@@ -36,6 +36,6 @@ jobs:
 
     - name: Install R packages
       run: |
-        install.packages(c("devtools", "usethis", "remotes", "rcmdcheck", "arrow", "nanoarrow"))
+        install.packages(c("arrow", "nanoarrow"))
         install.packages('exonr', repos = c('https://wheretrue.r-universe.dev', 'https://cloud.r-project.org'))
       shell: Rscript {0}
