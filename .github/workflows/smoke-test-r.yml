@@ -18,12 +18,12 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Install system dependencies and R for macOS
-      if: runner.os == 'macos-latest'
+      if: matrix.os == 'macos-latest'
       run: brew install xz arrow R
       shell: bash
 
     - name: Install system dependencies for Ubuntu
-      if: runner.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y liblzma-dev arrow r-base r-base-dev
