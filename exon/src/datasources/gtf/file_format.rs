@@ -49,7 +49,7 @@ pub fn schema() -> SchemaRef {
 
     let inner = Schema::new(vec![
         // https://useast.ensembl.org/info/website/upload/gff.html
-        Field::new("seqname", DataType::Utf8, false),
+        Field::new("seqid", DataType::Utf8, false),
         Field::new("source", DataType::Utf8, true),
         Field::new("type", DataType::Utf8, false),
         Field::new("start", DataType::Int64, false),

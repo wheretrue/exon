@@ -514,6 +514,7 @@ impl MzMLArrayBuilder {
                 activation_builder.append(true).unwrap();
 
                 precursor_list_values.append_null();
+
                 self.precursor_list.append_null();
             }
         }
