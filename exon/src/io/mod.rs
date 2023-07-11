@@ -28,6 +28,7 @@ use object_store::{aws::AmazonS3Builder, CredentialProvider, ObjectStore};
 use tokio::sync::RwLock;
 use url::Url;
 
+const DEFAULT_REGION: &str = "us-west-2";
 const AWS_CREDS_CACHE_KEY: &str = "aws_credentials";
 
 #[derive(Debug)]
@@ -100,8 +101,6 @@ impl CredentialProvider for AwsCredentialAdapter {
 /// Build an S3 object store from a URL.
 pub async fn build_s3_object_store(uri: &Url) -> std::io::Result<Arc<dyn ObjectStore>> {
     use aws_config::meta::region::RegionProviderChain;
-
-    const DEFAULT_REGION: &str = "us-west-2";
 
     let region_provider = RegionProviderChain::default_provider().or_else(DEFAULT_REGION);
 
