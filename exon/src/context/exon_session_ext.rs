@@ -746,7 +746,7 @@ mod tests {
             .read_gff(path.to_str().unwrap(), None)
             .await
             .unwrap()
-            .select_columns(&["seqid", "source", "type", "start", "end"])?;
+            .select_columns(&["seqname", "source", "type", "start", "end"])?;
 
         let batches = df.collect().await.unwrap();
 
