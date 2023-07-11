@@ -359,10 +359,10 @@ where
         read_metadata(&mut inner, &mut metadata).await?;
 
         let mut text_data = TextData::new();
-        read_text(&mut inner, &mut text_data, &metadata).await?;
+        let _ = read_text(&mut inner, &mut text_data, &metadata).await?;
 
         let mut single_byte = [0u8; 1];
-        inner.read(&mut single_byte).await?;
+        inner.read_exact(&mut single_byte).await?;
 
         Ok(FcsReader {
             inner,

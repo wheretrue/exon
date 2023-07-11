@@ -37,7 +37,7 @@ impl FCSArrayBuilder {
 
     /// Get the length of the array
     pub fn len(&self) -> usize {
-        if self.builders.len() == 0 {
+        if self.builders.is_empty() {
             return 0;
         }
 
