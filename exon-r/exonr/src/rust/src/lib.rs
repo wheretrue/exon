@@ -15,123 +15,51 @@
 use std::sync::Arc;
 
 use arrow::ffi_stream::FFI_ArrowArrayStream;
+use datafusion::error::DataFusionError;
 use datafusion::prelude::SessionContext;
+use exon::runtime_env::ExonRuntimeEnvExt;
 use exon::{context::ExonSessionExt, ffi::create_dataset_stream_from_table_provider};
-use extendr_api::prelude::*;
-use object_store::{aws::AmazonS3Builder, gcp::GoogleCloudStorageBuilder};
-use url::Url;
-
-fn add_s3_filesystem(ctx: &mut SessionContext, path: &str) -> std::io::Result<()> {
-    let url = Url::parse(path).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid URL: {e}"),
-        )
-    })?;
-
-    let host_str = url.host_str().ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid URL: {path}"),
-        )
-    })?;
-
-    let bucket_address = Url::parse(format!("s3://{host_str}").as_str()).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid URL: {e}"),
-        )
-    })?;
-
-    let s3 = AmazonS3Builder::from_env()
-        .with_bucket_name(host_str)
-        .build()?;
-
-    ctx.runtime_env()
-        .register_object_store(&bucket_address, Arc::new(s3));
-
-    Ok(())
-}
-
-fn add_google_filesystem(ctx: &mut SessionContext, path: &str) -> std::io::Result<()> {
-    let url = Url::parse(path).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid URL: {e}"),
-        )
-    })?;
-
-    let host_str = url.host_str().ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid URL: {path}"),
-        )
-    })?;
-
-    let bucket_address = Url::parse(format!("gs://{host_str}").as_str()).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Invalid URL: {e}"),
-        )
-    })?;
-
-    let gcs = GoogleCloudStorageBuilder::from_env()
-        .with_bucket_name(host_str)
-        .build()?;
-
-    ctx.runtime_env()
-        .register_object_store(&bucket_address, Arc::new(gcs));
-
-    Ok(())
-}
+use extendr_api::{extendr, extendr_module};
 
 fn read_inferred_exon_table_inner(
     path: &str,
     stream_ptr: *mut FFI_ArrowArrayStream,
-) -> std::io::Result<()> {
+) -> Result<(), DataFusionError> {
     let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
-    let mut ctx = SessionContext::new();
-
-    if path.starts_with("gs://") {
-        add_google_filesystem(&mut ctx, path).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error adding Google Cloud Storage: {e}"),
-            )
-        })?;
-    }
-
-    if path.starts_with("s3://") {
-        add_s3_filesystem(&mut ctx, path).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Error adding Amazon S3: {e}"),
-            )
-        })?;
-    }
+    let ctx = SessionContext::new();
 
     rt.block_on(async {
-        let df = ctx.read_inferred_exon_table(path).await.unwrap();
+        ctx.runtime_env()
+            .exon_register_object_store_uri(path)
+            .await?;
 
-        create_dataset_stream_from_table_provider(df, rt.clone(), stream_ptr)
-            .await
-            .unwrap();
-    });
+        let df = ctx.read_inferred_exon_table(path).await?;
+
+        create_dataset_stream_from_table_provider(df, rt.clone(), stream_ptr).await?;
+
+        Ok::<(), DataFusionError>(())
+    })?;
 
     Ok(())
 }
 
 /// Copy the inferred exon table from the given path into the given stream.
 /// @export
-#[extendr]
-fn read_inferred_exon_table(file_path: &str, stream_ptr: &str) {
+#[extendr(use_try_from = true)]
+fn read_inferred_exon_table(file_path: &str, stream_ptr: &str) -> extendr_api::Result<()> {
     let stream_out_ptr_addr: usize = stream_ptr.parse().unwrap();
 
     let stream_out_ptr = stream_out_ptr_addr as *mut FFI_ArrowArrayStream;
 
-    // TODO: Handle errors
-    read_inferred_exon_table_inner(file_path, stream_out_ptr).unwrap();
+    read_inferred_exon_table_inner(file_path, stream_out_ptr).map_err(|e| {
+        extendr_api::Error::from(format!(
+            "Error reading inferred exon table from {}: {}",
+            file_path, e
+        ))
+    })?;
+
+    Ok(())
 }
 
 extendr_module! {

@@ -96,10 +96,6 @@ where
 
                     let spectrum: Result<Spectrum, DeError> = quick_xml::de::from_reader(c);
 
-                    if spectrum.is_err() {
-                        eprintln!("{buf_str}");
-                    }
-
                     return Ok(Some(spectrum.unwrap()));
                 }
                 Ok(Event::Eof) => {
