@@ -92,17 +92,6 @@ impl MetaData {
     pub fn set_analysis_end(&mut self, analysis_end: u64) {
         self.analysis_end = analysis_end;
     }
-
-    /// Clears the meta data.
-    pub fn clear(&mut self) {
-        self.file_version.clear();
-        self.text_start = 0;
-        self.text_end = 0;
-        self.data_start = 0;
-        self.data_end = 0;
-        self.analysis_start = 0;
-        self.analysis_end = 0;
-    }
 }
 
 fn parse_ascii_encoded_offset(buffer: &[u8]) -> std::io::Result<u64> {
@@ -116,15 +105,6 @@ fn parse_ascii_encoded_offset(buffer: &[u8]) -> std::io::Result<u64> {
         std::io::ErrorKind::InvalidData,
         "Invalid offset",
     ))
-}
-
-/// A reader for FCS files
-pub struct Reader<R> {
-    /// The underlying reader
-    inner: R,
-
-    /// Consumed bytes
-    consumed: usize,
 }
 
 /// Read the metadata section of the FCS file
@@ -221,15 +201,19 @@ impl TextData {
         None
     }
 
-    /// Check the data type
-    pub fn data_type(&self) -> Option<DataType> {
-        match self.get("$DATATYPE") {
-            Some(data_type) => match data_type.as_str() {
-                "F" => Some(DataType::Float32),
-                _ => None,
-            },
-            None => None,
+    /// Return a vector of the parameter names
+    pub fn parameter_names(&self) -> Vec<String> {
+        let mut parameter_names = Vec::new();
+
+        if let Some(number_of_parameters) = self.number_of_parameters() {
+            for i in 1..=number_of_parameters {
+                if let Some(parameter_name) = self.get(&format!("$P{}S", i)) {
+                    parameter_names.push(parameter_name.clone());
+                }
+            }
         }
+
+        parameter_names
     }
 
     /// Check the endianness
@@ -350,63 +334,72 @@ where
     Ok(total_bytes)
 }
 
-/// A data type in the FCS file.
-pub enum DataType {
-    /// A 32-bit float (f32)
-    Float32,
+/// A reader for FCS files
+pub struct FcsReader<R> {
+    /// The underlying reader
+    inner: R,
+
+    /// Number of records read
+    pub records_read: usize,
+
+    /// The metadata of the FCS file
+    pub metadata: MetaData,
+
+    /// The text section of the FCS file
+    pub text_data: TextData,
 }
 
-impl<R> Reader<R>
+impl<R> FcsReader<R>
 where
     R: AsyncRead + Unpin,
 {
     /// Create a new FCS reader
-    pub fn new(inner: R) -> Reader<R> {
-        Reader { inner, consumed: 0 }
-    }
-
-    /// Read the Metadata of the FCS file
-    pub async fn read_metadata(&mut self) -> std::io::Result<MetaData> {
+    pub async fn new(mut inner: R) -> std::io::Result<FcsReader<R>> {
         let mut metadata = MetaData::default();
+        read_metadata(&mut inner, &mut metadata).await?;
 
-        let read_data = read_metadata(&mut self.inner, &mut metadata).await?;
-        self.consumed += read_data;
+        let mut text_data = TextData::new();
+        let _ = read_text(&mut inner, &mut text_data, &metadata).await?;
 
-        Ok(metadata)
-    }
-
-    /// Read the text section of the FCS file
-    pub async fn read_text(&mut self, metadata: &MetaData) -> std::io::Result<TextData> {
-        let mut text = TextData::new();
-
-        let read_data = read_text(&mut self.inner, &mut text, metadata).await?;
-        self.consumed += read_data;
-
-        Ok(text)
-    }
-
-    /// Read a single byte to advance the reader to the Data section
-    pub async fn read_to_data(&mut self) -> std::io::Result<()> {
         let mut single_byte = [0u8; 1];
-        let read_data = self.inner.read_exact(&mut single_byte).await?;
+        inner.read_exact(&mut single_byte).await?;
 
-        self.consumed += read_data;
-
-        Ok(())
+        Ok(FcsReader {
+            inner,
+            metadata,
+            text_data,
+            records_read: 0,
+        })
     }
 
     /// Read a single record from the FCS file
-    pub async fn read_record(
-        &mut self,
-        metadata: &MetaData,
-        text: &TextData,
-    ) -> std::io::Result<FcsRecord> {
+    pub async fn read_record(&mut self) -> std::io::Result<Option<FcsRecord>> {
+        // Get the number of events, if it's not present, return and error.
+        // It may be worth seeing if it's faster to just get this once and store it
+        let number_of_events = self.text_data.number_of_events().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Number of events not present in text section",
+            )
+        })? as usize;
+
+        if self.records_read >= number_of_events {
+            return Ok(None);
+        }
+
         let mut fcs_record = FcsRecord::default();
 
-        let bytes_read = read_record(&mut self.inner, metadata, text, &mut fcs_record).await?;
-        self.consumed += bytes_read;
+        read_record(
+            &mut self.inner,
+            &self.metadata,
+            &self.text_data,
+            &mut fcs_record,
+        )
+        .await?;
 
-        Ok(fcs_record)
+        self.records_read += 1;
+
+        Ok(Some(fcs_record))
     }
 }
 
@@ -422,40 +415,52 @@ mod tests {
 
         let file = tokio::fs::File::open(test_path).await.unwrap();
 
-        let mut reader = Reader::new(file);
+        let mut reader = FcsReader::new(file).await?;
 
-        let metadata = reader.read_metadata().await.unwrap();
-        assert_eq!(reader.consumed, 58);
+        assert_eq!(reader.metadata.file_version, "FCS3.0");
+        assert_eq!(reader.metadata.text_start, 58);
+        assert_eq!(reader.metadata.text_end, 3445);
+        assert_eq!(reader.metadata.data_start, 3446);
+        assert_eq!(reader.metadata.data_end, 7765);
+        assert_eq!(reader.metadata.analysis_start, 0);
+        assert_eq!(reader.metadata.analysis_end, 0);
 
-        assert_eq!(metadata.file_version, "FCS3.0");
-        assert_eq!(metadata.text_start, 58);
-        assert_eq!(metadata.text_end, 3445);
-        assert_eq!(metadata.data_start, 3446);
-        assert_eq!(metadata.data_end, 7765);
-        assert_eq!(metadata.analysis_start, 0);
-        assert_eq!(metadata.analysis_end, 0);
+        assert_eq!(reader.text_data.get("$TOT"), Some(&"108".to_string()));
+        assert_eq!(reader.text_data.get("$PAR"), Some(&"10".to_string()));
+        assert_eq!(
+            reader.text_data.get("$BYTEORD"),
+            Some(&"1,2,3,4".to_string())
+        );
+        assert_eq!(reader.text_data.get("$DATATYPE"), Some(&"F".to_string()));
 
-        let text_data = reader.read_text(&metadata).await.unwrap();
-        assert_eq!(reader.consumed, 3445);
+        assert_eq!(reader.text_data.number_of_events(), Some(108));
+        assert_eq!(reader.text_data.number_of_parameters(), Some(10));
 
-        assert_eq!(text_data.get("$TOT"), Some(&"108".to_string()));
-        assert_eq!(text_data.get("$PAR"), Some(&"10".to_string()));
-        assert_eq!(text_data.get("$BYTEORD"), Some(&"1,2,3,4".to_string()));
-        assert_eq!(text_data.get("$DATATYPE"), Some(&"F".to_string()));
+        assert_eq!(
+            reader.text_data.parameter_names(),
+            vec![
+                "Forward Scatter (FSC-HLin)",
+                "Forward Scatter Width (FSC-W)",
+                "Yellow Fluorescence (YEL-HLin)",
+                "Yellow Fluorescence Width (YEL-W)",
+                "Red Fluorescence (RED-HLin)",
+                "Red Fluorescence Width (RED-W)",
+                "Time",
+                "Cell Size (FSC-HLog)",
+                "Viability (YEL-HLog)",
+                "Nucleation (RED-HLog)"
+            ]
+        );
 
-        assert_eq!(text_data.number_of_events(), Some(108));
-        assert_eq!(text_data.number_of_parameters(), Some(10));
-
-        let endianness = text_data.endianness();
-        assert_eq!(endianness, Some(Endianness::Little));
-
-        reader.read_to_data().await.unwrap();
+        assert_eq!(reader.text_data.endianness(), Some(Endianness::Little));
 
         for i in 0..108 {
-            let record = reader.read_record(&metadata, &text_data).await.unwrap();
+            let record = reader.read_record().await.unwrap();
 
             // test the first record
             if i == 0 {
+                let record = record.unwrap();
+
                 assert_eq!(record.data.len(), 10);
                 assert_eq!(
                     record.data,
@@ -466,8 +471,6 @@ mod tests {
                 );
             }
         }
-
-        assert_eq!(reader.consumed, 7766);
 
         Ok(())
     }
