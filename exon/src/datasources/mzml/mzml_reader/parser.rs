@@ -89,9 +89,6 @@ where
                         }
                     }
 
-                    let iclone = &inner_buf.clone();
-                    let buf_str = std::str::from_utf8(iclone).unwrap();
-
                     let c = Cursor::new(inner_buf.clone());
 
                     let spectrum: Result<Spectrum, DeError> = quick_xml::de::from_reader(c);
