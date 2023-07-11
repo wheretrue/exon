@@ -3,7 +3,7 @@ TARGET = $(subst 64,x86_64,$(subst 32,i686,$(WIN)))-pc-windows-gnu
 TARGET_DIR = ./rust/target
 LIBDIR = $(TARGET_DIR)/$(TARGET)/release
 STATLIB = $(LIBDIR)/libexonr.a
-PKG_LIBS = -L$(LIBDIR) -lexonr -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
+PKG_LIBS = -L$(LIBDIR) -lexonr -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll -lssleay32 -llibeay32 -lcrypt32 -lws2_32 -lcrypto -lssl
 
 all: C_clean
 
