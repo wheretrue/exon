@@ -14,7 +14,7 @@ async-trait = "0.1.70"
 aws-config = {version = "0.55.3", optional = true}
 aws-credential-types = {version = "0.55.3", optional = true}
 base64 = {version = "0.21", optional = true}
-byteorder = {version = "1.4.3", optional = true}
+byteorder = {version = "1.4.3"}
 bytes = "1.4.0"
 datafusion = {workspace = true}
 flate2 = {version = "1.0.25", optional = true}
@@ -34,4 +34,4 @@ all = ["ffi", "mzml", "aws", "gcp"]
 aws = ["object_store/aws", "aws-config", "aws-credential-types", "url"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 gcp = ["object_store/gcp", "url"]
-mzml = ["dep:base64", "dep:byteorder", "dep:flate2", "dep:quick-xml", "dep:serde"]
+mzml = ["dep:base64", "dep:flate2", "dep:quick-xml", "dep:serde"]
