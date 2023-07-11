@@ -4,6 +4,19 @@
 library(arrow)
 library(nanoarrow)
 
+#' Copy the inferred exon table from the given path into the given stream.
+#'
+#' @param file_path The path to the inferred exon table.
+#' @param stream_ptr The pointer to the stream to copy the inferred exon table
+read_inferred_exon_table_r <- function(file_path, pointer_addr) {
+    result <- read_inferred_exon_table(file_path, pointer_addr)
+
+    # if result$err is not null, then we have an error so throw it
+    if (!is.null(result$err)) {
+        stop(result$err)
+    }
+}
+
 #' Read FASTA File
 #'
 #' This function reads a FASTA file from a file and returns a RecordBatch
@@ -18,7 +31,7 @@ read_fasta_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
@@ -37,7 +50,7 @@ read_fastq_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
@@ -56,7 +69,7 @@ read_gff_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
@@ -75,7 +88,7 @@ read_genbank_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
@@ -94,7 +107,7 @@ read_vcf_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
@@ -113,7 +126,7 @@ read_bed_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
@@ -132,7 +145,7 @@ read_sam_file <- function(file_path) {
     stream <- nanoarrow::nanoarrow_allocate_array_stream()
     pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
-    read_inferred_exon_table(file_path, pointer_addr)
+    read_inferred_exon_table_r(file_path, pointer_addr)
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
