@@ -21,6 +21,8 @@ use object_store::ObjectStore;
 use crate::io::build_s3_object_store;
 
 /// Extension trait for [`RuntimeEnv`] that provides additional methods for Exon use-cases.
+///
+/// For example, you can use this trait to register an S3 object store with the given URL, that's backed by the default AWS credential chain.
 #[async_trait]
 pub trait ExonRuntimeEnvExt {
     /// Register an S3 object store with the given URL, that's backed by the default AWS credential chain.

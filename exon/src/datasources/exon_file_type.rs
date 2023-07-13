@@ -21,9 +21,11 @@ use datafusion::{
 
 use super::{
     bam::BAMFormat, bcf::BCFFormat, bed::BEDFormat, fasta::FASTAFormat, fastq::FASTQFormat,
-    genbank::GenbankFormat, gff::GFFFormat, gtf::GTFFormat, hmmdomtab::HMMDomTabFormat,
-    sam::SAMFormat, vcf::VCFFormat,
+    gff::GFFFormat, gtf::GTFFormat, hmmdomtab::HMMDomTabFormat, sam::SAMFormat, vcf::VCFFormat,
 };
+
+#[cfg(feature = "genbank")]
+use super::genbank::GenbankFormat;
 
 #[cfg(feature = "mzml")]
 use super::mzml::MzMLFormat;
@@ -45,14 +47,16 @@ pub enum ExonFileType {
     BAM,
     /// SAM file format.
     SAM,
-    /// Genbank file format.
-    GENBANK,
     /// HMMER file format.
     HMMER,
     /// BED file format.
     BED,
     /// GTF file format.
     GTF,
+
+    /// Genbank file format.
+    #[cfg(feature = "genbank")]
+    GENBANK,
 
     /// mzML file format.
     #[cfg(feature = "mzml")]
@@ -75,6 +79,7 @@ impl FromStr for ExonFileType {
             "SAM" => Ok(Self::SAM),
             #[cfg(feature = "mzml")]
             "MZML" => Ok(Self::MZML),
+            #[cfg(feature = "genbank")]
             "GENBANK" | "GBK" | "GB" => Ok(Self::GENBANK),
             "HMMDOMTAB" => Ok(Self::HMMER),
             "BED" => Ok(Self::BED),
@@ -96,6 +101,7 @@ impl Display for ExonFileType {
             Self::SAM => write!(f, "SAM"),
             #[cfg(feature = "mzml")]
             Self::MZML => write!(f, "MZML"),
+            #[cfg(feature = "genbank")]
             Self::GENBANK => write!(f, "GENBANK"),
             Self::HMMER => write!(f, "HMMER"),
             Self::BED => write!(f, "BED"),
@@ -116,6 +122,7 @@ impl ExonFileType {
             Self::BED => Arc::new(BEDFormat::new(file_compression_type)),
             Self::FASTA => Arc::new(FASTAFormat::new(file_compression_type)),
             Self::FASTQ => Arc::new(FASTQFormat::new(file_compression_type)),
+            #[cfg(feature = "genbank")]
             Self::GENBANK => Arc::new(GenbankFormat::new(file_compression_type)),
             Self::GFF => Arc::new(GFFFormat::new(file_compression_type)),
             Self::HMMER => Arc::new(HMMDomTabFormat::new(file_compression_type)),
