@@ -29,14 +29,31 @@ jobs:
           ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
           ${{ runner.os }}-cargo-release-
 
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install aws and awslocal
+      run: |
+        pip install awscli
+        pip install awscli-local
 
     - name: Run clippy
       run: |
         cargo clippy --all-targets --all-features -- -D warnings
 
     - name: Run tests
+      env:
+        AWS_DEFAULT_REGION: us-west-2
+        AWS_ACCESS_KEY_ID: test
+        AWS_SECRET_ACCESS_KEY: test
+        AWS_ENDPOINT_URL: http://localhost:4566
+        AWS_ALLOW_HTTP: true
       run: |
-        cargo test
+        docker compose up -d
+        sleep 5
+        aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
+        awslocal s3api put-object --bucket test-bucket --key test.fasta --body ./exon/test-data/datasources/fasta/test.fasta
+
+        cargo test --all-features

@@ -1,0 +1,15 @@
+# Setup localstack S3
+
+version: '3.7'
+
+services:
+  localstack:
+    image: localstack/localstack:2.0
+    container_name: localstack
+    ports:
+    - "4566:4566"
+    environment:
+      AWS_DEFAULT_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT: http://localhost:4566

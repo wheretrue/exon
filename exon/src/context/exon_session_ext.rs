@@ -835,4 +835,26 @@ mod tests {
 
         Ok(())
     }
+
+    #[cfg(feature = "aws")]
+    #[tokio::test]
+    async fn test_read_s3() -> Result<(), DataFusionError> {
+        use crate::ExonRuntimeEnvExt;
+
+        let ctx = SessionContext::new();
+
+        let path = "s3://test-bucket/test.fasta";
+        let _ = ctx
+            .runtime_env()
+            .exon_register_object_store_uri(path)
+            .await?;
+
+        let df = ctx.read_fasta(path, None).await.unwrap();
+        let batches = df.collect().await.unwrap();
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].num_rows(), 2);
+
+        Ok(())
+    }
 }
