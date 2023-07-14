@@ -14,7 +14,7 @@
 
 //! I/O module for Exon.
 
-// Code from arrow and lance projects that are Apache 2.0 licensed.
+// Code is modified from arrow and lance projects that are Apache 2.0 licensed.
 
 use std::time::SystemTime;
 use std::{collections::HashMap, sync::Arc, time::Duration};
@@ -102,6 +102,7 @@ impl CredentialProvider for AwsCredentialAdapter {
 pub async fn build_s3_object_store(uri: &Url) -> std::io::Result<Arc<dyn ObjectStore>> {
     use aws_config::meta::region::RegionProviderChain;
 
+    // https://github.com/delta-io/delta-rs/issues/79
     let region_provider = RegionProviderChain::default_provider().or_else(DEFAULT_REGION);
 
     let credentials_provider = DefaultCredentialsChain::builder()
@@ -110,21 +111,20 @@ pub async fn build_s3_object_store(uri: &Url) -> std::io::Result<Arc<dyn ObjectS
         .await;
 
     let credentials_refresh_offset = Duration::from_secs(60);
+    let s3 = AmazonS3Builder::from_env()
+        .with_url(uri.to_owned())
+        .with_credentials(Arc::new(AwsCredentialAdapter::new(
+            Arc::new(credentials_provider),
+            credentials_refresh_offset,
+        )))
+        .with_region(
+            region_provider
+                .region()
+                .await
+                .map(|r| r.as_ref().to_string())
+                .unwrap_or(DEFAULT_REGION.to_string()),
+        )
+        .build()?;
 
-    Ok(Arc::new(
-        AmazonS3Builder::new()
-            .with_url(uri.to_owned())
-            .with_credentials(Arc::new(AwsCredentialAdapter::new(
-                Arc::new(credentials_provider),
-                credentials_refresh_offset,
-            )))
-            .with_region(
-                region_provider
-                    .region()
-                    .await
-                    .map(|r| r.as_ref().to_string())
-                    .unwrap_or(DEFAULT_REGION.to_string()),
-            )
-            .build()?,
-    ))
+    Ok(Arc::new(s3))
 }

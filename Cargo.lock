@@ -1354,6 +1354,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "exon-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "datafusion",
+ "exon",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "exon-examples"
 version = "0.1.0"
 dependencies = [
