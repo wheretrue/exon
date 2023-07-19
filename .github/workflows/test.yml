@@ -39,7 +39,7 @@ jobs:
       run: |
         cargo clippy --all-targets --all-features -- -D warnings
 
-    - name: Run tests
+    - name: Run tests and sqllogictests
       env:
         AWS_DEFAULT_REGION: us-west-2
         AWS_ACCESS_KEY_ID: test
@@ -53,3 +53,5 @@ jobs:
         awslocal s3api put-object --bucket test-bucket --key test.fasta --body ./exon/test-data/datasources/fasta/test.fasta
 
         cargo test --all-features
+
+        cargo test --package exon --test sqllogictests --features all
