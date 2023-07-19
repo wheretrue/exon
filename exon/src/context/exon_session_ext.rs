@@ -26,9 +26,12 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::datasources::{
-    bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
-    ExonReadOptions,
+use crate::{
+    datasources::{
+        bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
+        ExonReadOptions,
+    },
+    udfs::massspec::bin_vectors_udf,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -78,7 +81,12 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`].
     fn new_exon() -> SessionContext {
-        SessionContext::with_config_exon(SessionConfig::new())
+        let ctx = SessionContext::with_config_exon(SessionConfig::new());
+
+        let bin_vectors_udf = bin_vectors_udf();
+        ctx.register_udf(bin_vectors_udf);
+
+        ctx
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config.
@@ -444,6 +452,7 @@ impl ExonSessionExt for SessionContext {
 mod tests {
     use std::str::FromStr;
 
+    use arrow::array::{as_list_array, Float64Array};
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
     use crate::{
@@ -798,6 +807,42 @@ mod tests {
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 7);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bin_vector_udf_on_context() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new_exon();
+
+        let sql = r#"
+            SELECT bin_vectors(mz, intensity, 100.0, 3, 1.0) AS binned_vector
+            FROM (
+                SELECT [100.0, 200.0, 300.0, 400.0, 500.0, 600.0] AS mz,
+                       [1.0, 2.0, 3.0, 4.0, 5.0, 6.0] AS intensity
+            )
+        "#;
+
+        let plan = ctx.state().create_logical_plan(sql).await?;
+
+        let v = ctx.execute_logical_plan(plan).await?;
+
+        assert_eq!(v.schema().fields().len(), 1);
+        assert_eq!(v.schema().field(0).name(), "binned_vector");
+
+        let batches = v.collect().await.unwrap();
+
+        let binned = as_list_array(batches[0].column(0));
+
+        // iterate over the rows
+        for i in 0..batches[0].num_rows() {
+            let array = binned.value(i);
+            let array = array.as_any().downcast_ref::<Float64Array>().unwrap();
+
+            eprintln!("{:?}", array.values());
+
+            assert_eq!(array.len(), 3);
+        }
 
         Ok(())
     }
