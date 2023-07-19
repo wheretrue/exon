@@ -1,6 +1,5 @@
-use std::{error::Error, path::PathBuf, sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
 use datafusion::{error::DataFusionError, prelude::SessionContext};
 use exon::ExonSessionExt;
@@ -61,23 +60,16 @@ impl Default for TestOptions {
 
 pub struct ExonTextRunner {
     context: Arc<SessionContext>,
-    relative_path: PathBuf,
 }
 
 impl ExonTextRunner {
-    pub fn new(context: Arc<SessionContext>, relative_path: PathBuf) -> Self {
-        Self {
-            context,
-            relative_path,
-        }
+    pub fn new(context: Arc<SessionContext>) -> Self {
+        Self { context }
     }
 }
 
 async fn run_query(ctx: &SessionContext, sql: impl Into<String>) -> Result<DFOutput, TestError> {
-    let df = ctx.sql(sql.into().as_str()).await.unwrap();
-
-    let results: Vec<RecordBatch> = df.collect().await.unwrap();
-
+    let _ = ctx.sql(sql.into().as_str()).await.unwrap();
     Ok(DBOutput::StatementComplete(0))
 }
 
@@ -121,9 +113,7 @@ async fn run_tests() -> Result<(), DataFusionError> {
             continue;
         }
 
-        let mut runner =
-            sqllogictest::Runner::new(ExonTextRunner::new(exon_context.clone(), test_file.path()));
-
+        let mut runner = sqllogictest::Runner::new(ExonTextRunner::new(exon_context.clone()));
         runner.run_file_async(test_file.path()).await.unwrap();
     }
 
