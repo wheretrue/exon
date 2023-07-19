@@ -83,8 +83,18 @@ pub trait ExonSessionExt {
     fn new_exon() -> SessionContext {
         let ctx = SessionContext::with_config_exon(SessionConfig::new());
 
-        let bin_vectors_udf = bin_vectors_udf();
-        ctx.register_udf(bin_vectors_udf);
+        // Add bin vectors UDF for binning mass spec data
+        ctx.register_udf(bin_vectors_udf());
+
+        // Register the sequence UDFs
+        for sequence_udf in crate::udfs::sequence::register_udfs() {
+            ctx.register_udf(sequence_udf);
+        }
+
+        // Register the sam flag UDFs
+        for sam_udf in crate::udfs::samflags::register_udfs() {
+            ctx.register_udf(sam_udf);
+        }
 
         ctx
     }
@@ -452,7 +462,7 @@ impl ExonSessionExt for SessionContext {
 mod tests {
     use std::str::FromStr;
 
-    use arrow::array::{as_list_array, Float64Array};
+    use arrow::array::{as_list_array, Float32Array, Float64Array};
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
     use crate::{
@@ -807,6 +817,31 @@ mod tests {
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 7);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_gc_content_on_context() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new_exon();
+
+        let sql = r#"
+            SELECT gc_content('ATCG') as gc_content
+        "#;
+
+        let plan = ctx.state().create_logical_plan(sql).await?;
+        let df = ctx.execute_logical_plan(plan).await?;
+
+        let batches = df.collect().await.unwrap();
+        let batch = &batches[0];
+
+        let gc_content = batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap();
+
+        assert_eq!(gc_content.value(0), 0.5);
 
         Ok(())
     }

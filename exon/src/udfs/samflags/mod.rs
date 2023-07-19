@@ -14,8 +14,14 @@
 
 use std::sync::Arc;
 
-use arrow::array::ArrayRef;
-use datafusion::{common::cast::as_int32_array, error::Result};
+use arrow::{array::ArrayRef, datatypes::DataType};
+use datafusion::{
+    common::cast::as_int32_array,
+    error::Result,
+    logical_expr::{ScalarUDF, Volatility},
+    physical_plan::functions::make_scalar_function,
+    prelude::create_udf,
+};
 use noodles::sam::record::Flags;
 
 /// Based on the SAM flags, determine if the read is segmented.
@@ -128,4 +134,95 @@ fn sam_flag_function(args: &[ArrayRef], record_flag: Flags) -> Result<ArrayRef> 
         .collect::<arrow::array::BooleanArray>();
 
     Ok(Arc::new(array))
+}
+
+/// Returns a vector of SAM function UDFs.
+pub fn register_udfs() -> Vec<ScalarUDF> {
+    vec![
+        // create_udf(name, input_types, return_type, volatility, fun)
+        create_udf(
+            "is_segmented",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_segmented),
+        ),
+        create_udf(
+            "is_properly_aligned",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_properly_aligned),
+        ),
+        create_udf(
+            "is_unmapped",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_unmapped),
+        ),
+        create_udf(
+            "is_mate_unmapped",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_mate_unmapped),
+        ),
+        create_udf(
+            "is_reverse_complemented",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_reverse_complemented),
+        ),
+        create_udf(
+            "is_mate_reverse_complemented",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_mate_reverse_complemented),
+        ),
+        create_udf(
+            "is_first_segment",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_first_segment),
+        ),
+        create_udf(
+            "is_last_segment",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_last_segment),
+        ),
+        create_udf(
+            "is_secondary",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_secondary),
+        ),
+        create_udf(
+            "is_qc_fail",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_qc_fail),
+        ),
+        create_udf(
+            "is_duplicate",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_duplicate),
+        ),
+        create_udf(
+            "is_supplementary",
+            vec![DataType::Int32],
+            Arc::new(DataType::Boolean),
+            Volatility::Immutable,
+            make_scalar_function(is_supplementary),
+        ),
+    ]
 }
