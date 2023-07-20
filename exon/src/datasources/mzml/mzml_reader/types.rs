@@ -105,7 +105,7 @@ pub struct ScanWindowList {
 #[serde(rename_all = "camelCase")]
 pub struct Scan {
     pub cv_param: CVVector,
-    pub scan_window_list: ScanWindowList,
+    pub scan_window_list: Option<ScanWindowList>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -358,7 +358,7 @@ pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
     pub spectrum_ref: String,
 
-    pub isolation_window: IsolationWindow,
+    pub isolation_window: Option<IsolationWindow>,
 
     pub selected_ion_list: SelectedIonList,
 

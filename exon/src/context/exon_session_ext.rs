@@ -241,6 +241,7 @@ pub trait ExonSessionExt {
     }
 
     /// Read a GENBANK file.
+    #[cfg(feature = "genbank")]
     async fn read_genbank(
         &self,
         table_path: &str,
