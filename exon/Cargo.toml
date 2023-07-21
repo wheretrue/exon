@@ -10,7 +10,7 @@ version = "0.2.5"
 
 [dependencies]
 arrow = {workspace = true}
-async-trait = "0.1.70"
+async-trait = "0.1.72"
 aws-config = {version = "0.55.3", optional = true}
 aws-credential-types = {version = "0.55.3", optional = true}
 base64 = {version = "0.21", optional = true}
