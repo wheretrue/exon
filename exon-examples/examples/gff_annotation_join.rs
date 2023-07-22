@@ -18,7 +18,7 @@
 use arrow::util::pretty::pretty_format_batches;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::*;
-use exon::context::ExonSessionExt;
+use exon::ExonSessionExt;
 
 #[tokio::main]
 async fn main() -> Result<(), DataFusionError> {

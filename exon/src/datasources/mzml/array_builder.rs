@@ -438,33 +438,39 @@ impl MzMLArrayBuilder {
                         .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(0)
                         .unwrap();
 
-                    for cv_param in &precursor.isolation_window.cv_param {
-                        isolation_window_builder
-                            .keys()
-                            .append_value(&cv_param.accession);
+                    match &precursor.isolation_window {
+                        Some(isolation_window) => {
+                            for cv_param in &isolation_window.cv_param {
+                                isolation_window_builder
+                                    .keys()
+                                    .append_value(&cv_param.accession);
 
-                        isolation_window_builder
-                            .values()
-                            .field_builder::<GenericStringBuilder<i32>>(0)
-                            .unwrap()
-                            .append_value(&cv_param.accession);
+                                isolation_window_builder
+                                    .values()
+                                    .field_builder::<GenericStringBuilder<i32>>(0)
+                                    .unwrap()
+                                    .append_value(&cv_param.accession);
 
-                        isolation_window_builder
-                            .values()
-                            .field_builder::<GenericStringBuilder<i32>>(1)
-                            .unwrap()
-                            .append_value(&cv_param.name);
+                                isolation_window_builder
+                                    .values()
+                                    .field_builder::<GenericStringBuilder<i32>>(1)
+                                    .unwrap()
+                                    .append_value(&cv_param.name);
 
-                        isolation_window_builder
-                            .values()
-                            .field_builder::<GenericStringBuilder<i32>>(2)
-                            .unwrap()
-                            .append_null();
+                                isolation_window_builder
+                                    .values()
+                                    .field_builder::<GenericStringBuilder<i32>>(2)
+                                    .unwrap()
+                                    .append_null();
 
-                        isolation_window_builder.values().append(true);
-                    }
-
-                    isolation_window_builder.append(true).unwrap();
+                                isolation_window_builder.values().append(true);
+                            }
+                            isolation_window_builder.append(true).unwrap();
+                        }
+                        None => {
+                            isolation_window_builder.append(false).unwrap();
+                        }
+                    };
 
                     let activation_builder = precursor_list_values
                         .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(1)

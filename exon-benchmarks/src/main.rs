@@ -3,7 +3,7 @@ use datafusion::{
     datasource::file_format::file_type::FileCompressionType,
     prelude::{col, lit, SessionContext},
 };
-use exon::context::ExonSessionExt;
+use exon::ExonSessionExt;
 
 #[derive(Subcommand)]
 enum Commands {

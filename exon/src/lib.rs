@@ -29,10 +29,10 @@
 //!
 //! # Examples
 //!
-//! ## Loading a FASTA file
+//! ## Loading a FASTQ file
 //!
 //! ```rust
-//! use exon::context::ExonSessionExt;
+//! use exon::ExonSessionExt;
 //!
 //! use datafusion::prelude::*;
 //! use datafusion::error::Result;
@@ -41,15 +41,13 @@
 //! # async fn main() -> Result<()> {
 //! let ctx = SessionContext::new();
 //!
-//! let df = ctx.read_fasta("test-data/datasources/fasta/test.fasta", None).await?;
+//! let df = ctx.read_fastq("test-data/datasources/fastq/test.fastq", None).await?;
 //!
-//! assert_eq!(df.schema().fields().len(), 3);
-//! assert_eq!(df.schema().field(0).name(), "id");
+//! assert_eq!(df.schema().fields().len(), 4);
+//! assert_eq!(df.schema().field(0).name(), "name");
 //! assert_eq!(df.schema().field(1).name(), "description");
 //! assert_eq!(df.schema().field(2).name(), "sequence");
-//!
-//! let results = df.collect().await?;
-//! assert_eq!(results.len(), 1);  // 1 batch, small dataset
+//! assert_eq!(df.schema().field(3).name(), "quality_scores");
 //! # Ok(())
 //! # }
 //! ```
@@ -57,7 +55,7 @@
 //! ## Loading a ZSTD-compressed FASTA file
 //!
 //! ```rust
-//! use exon::context::ExonSessionExt;
+//! use exon::ExonSessionExt;
 //!
 //! use datafusion::prelude::*;
 //! use datafusion::error::Result;
@@ -82,8 +80,8 @@
 //! # }
 //! ```
 
-/// Main interface for working with Exon. Adds additional functionality to the DataFusion SessionContext.
-pub mod context;
+mod context;
+pub use context::ExonSessionExt;
 
 /// Data sources for Exon.
 pub mod datasources;
@@ -96,12 +94,15 @@ pub mod udfs;
 pub mod ffi;
 
 /// I/O module for Exon.
-#[cfg(any(feature = "aws"))]
-pub mod io;
+#[cfg(feature = "aws")]
+mod io;
 
 /// Runtime environment for Exon.
 #[cfg(any(feature = "aws", feature = "gcp"))]
-pub mod runtime_env;
+mod runtime_env;
+
+#[cfg(any(feature = "aws", feature = "gcp"))]
+pub use runtime_env::ExonRuntimeEnvExt;
 
 #[cfg(test)]
 mod tests {

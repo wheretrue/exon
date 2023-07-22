@@ -13,6 +13,8 @@
 // limitations under the License.
 
 //! Datasources module.
+//!
+//! This module contains the various datasources that are supported by Exon. Generally a user of this library should not need to use this module directly, but rather use the [`ExonSessionExt`][crate::context::ExonSessionExt] trait to load data.
 
 /// BAM module.
 pub mod bam;
@@ -30,6 +32,7 @@ pub mod fasta;
 pub mod fastq;
 
 /// GenBank module.
+#[cfg(feature = "genbank")]
 pub mod genbank;
 
 /// GFF module.
@@ -52,6 +55,7 @@ pub mod vcf;
 pub mod gtf;
 
 /// FCS module.
+#[cfg(feature = "fcs")]
 pub mod fcs;
 
 /// Default batch size.

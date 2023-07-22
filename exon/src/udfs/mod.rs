@@ -19,3 +19,6 @@ pub mod sequence;
 
 /// UDFs for SAM flags.
 pub mod samflags;
+
+/// UDFs for Mass Spectrometry.
+pub mod massspec;

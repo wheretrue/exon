@@ -19,7 +19,7 @@ use datafusion::error::DataFusionError;
 use datafusion::prelude::SessionContext;
 use exon::runtime_env::ExonRuntimeEnvExt;
 use exon::{context::ExonSessionExt, ffi::create_dataset_stream_from_table_provider};
-use extendr_api::{extendr, extendr_module};
+use extendr_api::{extendr, extendr_module, list, Attributes, Conversions, IntoRobj};
 
 fn read_inferred_exon_table_inner(
     path: &str,
@@ -44,22 +44,33 @@ fn read_inferred_exon_table_inner(
     Ok(())
 }
 
+/// Wrap a result in a list with "ok" and "err" fields.
+pub fn r_result_list<T, E>(result: std::result::Result<T, E>) -> list::List
+where
+    T: IntoRobj,
+    E: std::fmt::Display,
+{
+    match result {
+        Ok(x) => list!(ok = x.into_robj(), err = extendr_api::NULL),
+        Err(x) => list!(ok = extendr_api::NULL, err = x.to_string()),
+    }
+    .set_class(&["rust_result"])
+    .unwrap_or_default()
+    .as_list()
+    .unwrap_or_default()
+}
+
 /// Copy the inferred exon table from the given path into the given stream.
 /// @export
-#[extendr(use_try_from = true)]
-fn read_inferred_exon_table(file_path: &str, stream_ptr: &str) -> extendr_api::Result<()> {
+#[extendr]
+fn read_inferred_exon_table(file_path: &str, stream_ptr: &str) -> list::List {
     let stream_out_ptr_addr: usize = stream_ptr.parse().unwrap();
 
     let stream_out_ptr = stream_out_ptr_addr as *mut FFI_ArrowArrayStream;
 
-    read_inferred_exon_table_inner(file_path, stream_out_ptr).map_err(|e| {
-        extendr_api::Error::from(format!(
-            "Error reading inferred exon table from {}: {}",
-            file_path, e
-        ))
-    })?;
+    let val = read_inferred_exon_table_inner(file_path, stream_out_ptr);
 
-    Ok(())
+    r_result_list(val)
 }
 
 extendr_module! {

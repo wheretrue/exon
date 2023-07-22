@@ -71,13 +71,13 @@ pub fn schema() -> SchemaRef {
         Field::new("date", DataType::Utf8, true),
         Field::new("dblink", DataType::Utf8, true),
         Field::new("definition", DataType::Utf8, true),
-        Field::new("division", DataType::Utf8, true),
+        Field::new("division", DataType::Utf8, false),
         Field::new("keywords", DataType::Utf8, true),
         Field::new("molecule_type", DataType::Utf8, true),
         Field::new("name", DataType::Utf8, true),
         Field::new("source", DataType::Utf8, true),
         Field::new("version", DataType::Utf8, true),
-        Field::new("topology", DataType::Utf8, true),
+        Field::new("topology", DataType::Utf8, false),
         Field::new("features", DataType::List(Arc::new(feature_field)), true),
     ]);
 

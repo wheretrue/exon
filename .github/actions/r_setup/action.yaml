@@ -24,28 +24,27 @@ runs:
       working-directory: ./exon-r/exonr/
 
     # https://github.com/getdozer/dozer/blob/main/.github/workflows/release.yaml
-  - name: Cache Exon
-    uses: actions/cache@v3
-    with:
-      path: |
-        ~/.cargo/bin/
-        ~/.cargo/.crates.toml
-        ~/.cargo/.crates2.json
-        ~/.cargo/.package-cache
-        ~/.cargo/registry/
-        ~/.cargo/git/db/
-        target/
-      key: ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
-      restore-keys: |
-        ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
-        ${{ runner.os }}-cargo-release-
+  # - name: Cache Exon
+  #   uses: actions/cache@v3
+  #   with:
+  #     path: |
+  #       ~/.cargo/bin/
+  #       ~/.cargo/.crates.toml
+  #       ~/.cargo/.crates2.json
+  #       ~/.cargo/.package-cache
+  #       ~/.cargo/registry/
+  #       ~/.cargo/git/db/
+  #       target/
+  #     key: ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
+  #     restore-keys: |
+  #       ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
 
-  - name: Cache ExonR
-    uses: actions/cache@v3
-    with:
-      path: |
-        exon-r/exonr/src/rust/target
-      key: ${{ runner.os }}-cargo-release-r-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
-      restore-keys: |
-        ${{ runner.os }}-cargo-release-r-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
-        ${{ runner.os }}-cargo-release-r-
+  # - name: Cache ExonR
+  #   uses: actions/cache@v3
+  #   with:
+  #     path: |
+  #       exon-r/exonr/src/rust/target
+  #     key: ${{ runner.os }}-cargo-release-r-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
+  #     restore-keys: |
+  #       ${{ runner.os }}-cargo-release-r-${{ hashFiles('exon-r/exonr/src/rust/Cargo.toml') }}
+  #       ${{ runner.os }}-cargo-release-r-

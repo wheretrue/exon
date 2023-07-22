@@ -26,12 +26,43 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::datasources::{
-    bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
-    ExonReadOptions,
+use crate::{
+    datasources::{
+        bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
+        ExonReadOptions,
+    },
+    udfs::massspec::bin_vectors_udf,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
+///
+/// # Example
+///
+/// ```rust
+/// use exon::ExonSessionExt;
+///
+/// use datafusion::prelude::*;
+/// use datafusion::error::Result;
+/// use datafusion::datasource::file_format::file_type::FileCompressionType;
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
+/// let ctx = SessionContext::new();
+///
+/// let file_compression = FileCompressionType::ZSTD;
+/// let df = ctx.read_fasta("test-data/datasources/fasta/test.fasta.zstd", Some(file_compression)).await?;
+///
+/// assert_eq!(df.schema().fields().len(), 3);
+/// assert_eq!(df.schema().field(0).name(), "id");
+/// assert_eq!(df.schema().field(1).name(), "description");
+/// assert_eq!(df.schema().field(2).name(), "sequence");
+///
+/// let results = df.collect().await?;
+/// assert_eq!(results.len(), 1);  // 1 batch, small dataset
+///
+/// # Ok(())
+/// # }
+/// ```
 #[async_trait]
 pub trait ExonSessionExt {
     /// Reads a Exon table from the given path of a certain type and optional compression type.
@@ -50,7 +81,22 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`].
     fn new_exon() -> SessionContext {
-        SessionContext::with_config_exon(SessionConfig::new())
+        let ctx = SessionContext::with_config_exon(SessionConfig::new());
+
+        // Add bin vectors UDF for binning mass spec data
+        ctx.register_udf(bin_vectors_udf());
+
+        // Register the sequence UDFs
+        for sequence_udf in crate::udfs::sequence::register_udfs() {
+            ctx.register_udf(sequence_udf);
+        }
+
+        // Register the sam flag UDFs
+        for sam_udf in crate::udfs::samflags::register_udfs() {
+            ctx.register_udf(sam_udf);
+        }
+
+        ctx
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config.
@@ -195,6 +241,7 @@ pub trait ExonSessionExt {
     }
 
     /// Read a GENBANK file.
+    #[cfg(feature = "genbank")]
     async fn read_genbank(
         &self,
         table_path: &str,
@@ -416,6 +463,7 @@ impl ExonSessionExt for SessionContext {
 mod tests {
     use std::str::FromStr;
 
+    use arrow::array::{as_list_array, Float32Array, Float64Array};
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
     use crate::{
@@ -746,7 +794,7 @@ mod tests {
             .read_gff(path.to_str().unwrap(), None)
             .await
             .unwrap()
-            .select_columns(&["seqid", "source", "type", "start", "end"])?;
+            .select_columns(&["seqname", "source", "type", "start", "end"])?;
 
         let batches = df.collect().await.unwrap();
 
@@ -770,6 +818,67 @@ mod tests {
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 7);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_gc_content_on_context() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new_exon();
+
+        let sql = r#"
+            SELECT gc_content('ATCG') as gc_content
+        "#;
+
+        let plan = ctx.state().create_logical_plan(sql).await?;
+        let df = ctx.execute_logical_plan(plan).await?;
+
+        let batches = df.collect().await.unwrap();
+        let batch = &batches[0];
+
+        let gc_content = batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap();
+
+        assert_eq!(gc_content.value(0), 0.5);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bin_vector_udf_on_context() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new_exon();
+
+        let sql = r#"
+            SELECT bin_vectors(mz, intensity, 100.0, 3, 1.0) AS binned_vector
+            FROM (
+                SELECT [100.0, 200.0, 300.0, 400.0, 500.0, 600.0] AS mz,
+                       [1.0, 2.0, 3.0, 4.0, 5.0, 6.0] AS intensity
+            )
+        "#;
+
+        let plan = ctx.state().create_logical_plan(sql).await?;
+
+        let v = ctx.execute_logical_plan(plan).await?;
+
+        assert_eq!(v.schema().fields().len(), 1);
+        assert_eq!(v.schema().field(0).name(), "binned_vector");
+
+        let batches = v.collect().await.unwrap();
+
+        let binned = as_list_array(batches[0].column(0));
+
+        // iterate over the rows
+        for i in 0..batches[0].num_rows() {
+            let array = binned.value(i);
+            let array = array.as_any().downcast_ref::<Float64Array>().unwrap();
+
+            eprintln!("{:?}", array.values());
+
+            assert_eq!(array.len(), 3);
+        }
 
         Ok(())
     }
@@ -803,6 +912,28 @@ mod tests {
         assert_eq!(batches.len(), 1);
 
         assert_eq!(batches[0].schema().fields().len(), 2);
+        assert_eq!(batches[0].num_rows(), 2);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "aws")]
+    #[tokio::test]
+    async fn test_read_s3() -> Result<(), DataFusionError> {
+        use crate::ExonRuntimeEnvExt;
+
+        let ctx = SessionContext::new();
+
+        let path = "s3://test-bucket/test.fasta";
+        let _ = ctx
+            .runtime_env()
+            .exon_register_object_store_uri(path)
+            .await?;
+
+        let df = ctx.read_fasta(path, None).await.unwrap();
+        let batches = df.collect().await.unwrap();
+
+        assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 2);
 
         Ok(())

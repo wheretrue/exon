@@ -45,10 +45,13 @@ impl Default for GFFFormat {
 
 pub fn schema() -> SchemaRef {
     let attribute_key_field = Field::new("keys", DataType::Utf8, false);
-    let attribute_value_field = Field::new("values", DataType::Utf8, true);
+
+    // attribute_value_field is a list of strings
+    let value_field = Field::new("item", DataType::Utf8, true);
+    let attribute_value_field = Field::new("values", DataType::List(Arc::new(value_field)), true);
 
     let inner = Schema::new(vec![
-        Field::new("seqid", DataType::Utf8, false),
+        Field::new("seqname", DataType::Utf8, false),
         Field::new("source", DataType::Utf8, true),
         Field::new("type", DataType::Utf8, false),
         Field::new("start", DataType::Int64, false),
