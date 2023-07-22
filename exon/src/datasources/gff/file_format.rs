@@ -45,7 +45,13 @@ impl Default for GFFFormat {
 
 pub fn schema() -> SchemaRef {
     let attribute_key_field = Field::new("keys", DataType::Utf8, false);
-    let attribute_value_field = Field::new("values", DataType::Utf8, true);
+
+    // attribute_value_field is a list of strings
+    let value_field = Field::new("item", DataType::Utf8, true);
+    let attribute_value_field = Field::new("values", DataType::List(Arc::new(value_field)), true);
+
+    // Map(Field { name: \"entries\", data_type: Struct([Field { name: \"keys\", data_type: Utf8, nullable: false, dict_id: 0, dict_is_ordered: false, metadata: {} }, Field { name: \"values\", data_type: List(Field { name: \"item\", data_type: Utf8, nullable: false, dict_id: 0, dict_is_ordered: false, metadata: {} }), nullable: false, dict_id: 0, dict_is_ordered: false, metadata: {} }]), nullable: false, dict_id: 0, dict_is_ordered: false, metadata: {} }, false)
+    // Map(Field { name: \"entries\", data_type: Struct([Field { name: \"keys\", data_type: Utf8, nullable: false, dict_id: 0, dict_is_ordered: false, metadata: {} }, Field { name: \"values\", data_type: List(Field { name: \"item\", data_type: Utf8, nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} }), nullable: true, dict_id: 0, dict_is_ordered: false, metadata: {} }]), nullable: false, dict_id: 0, dict_is_ordered: false, metadata: {} }
 
     let inner = Schema::new(vec![
         Field::new("seqname", DataType::Utf8, false),

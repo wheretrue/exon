@@ -16,11 +16,12 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        ArrayBuilder, ArrayRef, Float32Builder, GenericStringBuilder, Int64Builder, MapBuilder,
+        ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
+        Int64Builder, MapBuilder,
     },
     error::ArrowError,
 };
-use noodles::gff::Record;
+use noodles::gff::{record::attributes::field::Value, Record};
 
 pub struct GFFArrayBuilder {
     seqnames: GenericStringBuilder<i32>,
@@ -31,7 +32,8 @@ pub struct GFFArrayBuilder {
     scores: Float32Builder,
     strands: GenericStringBuilder<i32>,
     phases: GenericStringBuilder<i32>,
-    attributes: MapBuilder<GenericStringBuilder<i32>, GenericStringBuilder<i32>>,
+    attributes:
+        MapBuilder<GenericStringBuilder<i32>, GenericListBuilder<i32, GenericStringBuilder<i32>>>,
 }
 
 impl GFFArrayBuilder {
@@ -48,7 +50,9 @@ impl GFFArrayBuilder {
             attributes: MapBuilder::new(
                 None,
                 GenericStringBuilder::<i32>::new(),
-                GenericStringBuilder::<i32>::new(),
+                GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
+                    i32,
+                >::new()),
             ),
         }
     }
@@ -68,9 +72,30 @@ impl GFFArrayBuilder {
         self.phases
             .append_option(record.phase().map(|p| p.to_string()));
 
-        for entry in record.attributes().iter() {
-            self.attributes.keys().append_value(entry.key());
-            self.attributes.values().append_value(entry.value());
+        for (key, value) in record.attributes().iter() {
+            self.attributes.keys().append_value(key);
+
+            match value {
+                Value::String(value) => {
+                    let values = self.attributes.values();
+                    let list_values = values.values();
+
+                    list_values.append_value(value.as_str());
+                    values.append(true);
+                }
+                Value::Array(attr_values) => {
+                    let values = self.attributes.values();
+                    let list_values = values.values();
+
+                    for value in attr_values.iter() {
+                        list_values.append_value(value.as_str());
+                    }
+
+                    values.append(true);
+                }
+            }
+
+            // self.attributes.values().append_option(value.as_string());
         }
 
         self.attributes.append(true)?;
