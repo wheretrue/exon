@@ -9,9 +9,10 @@ use datafusion::{
         TableProvider,
     },
     error::DataFusionError,
+    execution::context::SessionState,
     prelude::SessionContext,
 };
-use exon::{datasources::ExonFileType, ExonSessionExt};
+use exon::{datasources::ExonFileType, ExonRuntimeEnvExt, ExonSessionExt};
 use proto::GetSchemaByNameRequest;
 
 mod proto;
@@ -149,6 +150,7 @@ struct Schema {
     inner: proto::Schema,
     catalog_service_client:
         proto::catalog_service_client::CatalogServiceClient<tonic::transport::Channel>,
+    session_context: Arc<SessionContext>,
     tables: HashMap<String, proto::Table>,
 }
 
@@ -164,6 +166,7 @@ impl std::fmt::Debug for Schema {
 impl Schema {
     pub async fn new(
         proto_schema: proto::Schema,
+        session_context: Arc<SessionContext>,
         catalog_service_client: &mut proto::catalog_service_client::CatalogServiceClient<
             tonic::transport::Channel,
         >,
@@ -171,6 +174,7 @@ impl Schema {
         let mut s = Self {
             inner: proto_schema,
             catalog_service_client: catalog_service_client.clone(),
+            session_context,
             tables: HashMap::new(),
         };
 
@@ -213,6 +217,12 @@ impl SchemaProvider for Schema {
     async fn table(&self, name: &str) -> Option<Arc<dyn TableProvider>> {
         let proto_table = self.tables.get(name)?;
 
+        self.session_context
+            .runtime_env()
+            .exon_register_object_store_uri(&proto_table.location.clone())
+            .await
+            .unwrap();
+
         let table_path = ListingTableUrl::parse(proto_table.location.as_str()).unwrap();
         let file_compression_type = FileCompressionType::UNCOMPRESSED;
 
@@ -220,8 +230,14 @@ impl SchemaProvider for Schema {
         let file_format = file_type.get_file_format(file_compression_type);
 
         let lo = ListingOptions::new(file_format);
+        let resolved_schema = lo
+            .infer_schema(&self.session_context.state(), &table_path)
+            .await
+            .unwrap();
 
-        let listing_table_config = ListingTableConfig::new(table_path).with_listing_options(lo);
+        let listing_table_config = ListingTableConfig::new(table_path)
+            .with_listing_options(lo)
+            .with_schema(resolved_schema);
 
         let table = ListingTable::try_new(listing_table_config).unwrap();
 
@@ -239,13 +255,13 @@ async fn test_exome_catalog_client() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = ExomeCatalogClient::connect(
         "http://localhost:50051".to_string(),
         "".to_string(),
-        "75111965-0a15-4318-a222-69cb00f572f2".to_string(),
+        "00000000-0000-0000-0000-000000000000".to_string(),
     )
     .await?;
 
     client.health_check().await?;
 
-    let session = SessionContext::new_exon();
+    let session = Arc::new(SessionContext::new_exon());
 
     // try to run a select statement from the table
     let catalog_name = "test_catalog";
@@ -266,9 +282,10 @@ async fn test_exome_catalog_client() -> Result<(), Box<dyn std::error::Error>> {
         let schemas = client.get_schemas(catalog.id).await.unwrap();
 
         for schema in schemas {
-            let mut schema = Schema::new(schema, &mut client.catalog_service_client)
-                .await
-                .unwrap();
+            let mut schema =
+                Schema::new(schema, session.clone(), &mut client.catalog_service_client)
+                    .await
+                    .unwrap();
 
             schema.refresh().await.unwrap();
 
@@ -289,7 +306,10 @@ async fn test_exome_catalog_client() -> Result<(), Box<dyn std::error::Error>> {
 
     let results = df.collect().await?;
 
-    eprintln!("results: {:?}", results);
+    assert_eq!(results.len(), 1);
+
+    let first_batch = results.first().unwrap();
+    assert_eq!(first_batch.num_rows(), 1);
 
     Ok(())
 }

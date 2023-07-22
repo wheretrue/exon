@@ -6,7 +6,7 @@ version = "0.1.0"
 [dependencies]
 async-trait = "0.1.72"
 datafusion.workspace = true
-exon = {path = "../exon"}
+exon = {path = "../exon", features = ["all"]}
 prost = "*"
 tokio = "1.29.1"
 tonic = "*"
