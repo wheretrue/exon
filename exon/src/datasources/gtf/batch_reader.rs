@@ -53,7 +53,15 @@ where
         match self.reader.read_line(&mut buf).await {
             Ok(0) => Ok(None),
             Ok(_) => {
+                // remove the new line character, needs to work for both windows and unix
                 buf.pop();
+
+                // remove the carriage return character if it exists on windows
+                #[cfg(target_os = "windows")]
+                if buf.ends_with('\r') {
+                    buf.pop();
+                }
+
                 let line = match noodles::gtf::Line::from_str(&buf) {
                     Ok(line) => line,
                     Err(e) => {

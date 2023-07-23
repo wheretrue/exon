@@ -55,6 +55,12 @@ where
                 Ok(0) => return Ok(None),
                 Ok(_) => {
                     buf.pop();
+
+                    #[cfg(target_os = "windows")]
+                    if buf.ends_with('\r') {
+                        buf.pop();
+                    }
+
                     let line = match noodles::gff::Line::from_str(&buf) {
                         Ok(line) => line,
                         Err(e) => match e {
@@ -111,6 +117,7 @@ where
 mod tests {
     use std::sync::Arc;
 
+    use arrow::util::pretty::pretty_format_batches;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
@@ -132,13 +139,28 @@ mod tests {
 
         let batch_reader = super::BatchReader::new(buf_reader, config);
 
-        let mut batch_stream = batch_reader.into_stream().boxed();
+        let batch_stream = batch_reader.into_stream().boxed();
 
-        let mut n_rows = 0;
-        while let Some(batch) = batch_stream.next().await {
-            let batch = batch.unwrap();
-            n_rows += batch.num_rows();
-        }
-        assert_eq!(n_rows, 5000);
+        let batches = batch_stream
+            .map(|batch| batch.unwrap())
+            .collect::<Vec<_>>()
+            .await;
+
+        assert_eq!(batches.len(), 1);
+
+        // Check the first 2 rows of the first batch are what's expected.
+        let batch = &batches[0];
+        let smaller_batch = batch.slice(0, 2);
+
+        let expected = r#"+---------+--------+------+-------+-----+-------+--------+-------+----------------------------------------+
+| seqname | source | type | start | end | score | strand | phase | attributes                             |
++---------+--------+------+-------+-----+-------+--------+-------+----------------------------------------+
+| sq0     | caat   | gene | 8     | 13  |       | +      |       | {gene_id: [caat1], gene_name: [gene0]} |
+| sq0     | caat   | gene | 8     | 13  |       | +      |       | {gene_id: [caat1], gene_name: [gene0]} |
++---------+--------+------+-------+-----+-------+--------+-------+----------------------------------------+"#;
+
+        let formatted = pretty_format_batches(&[smaller_batch]).unwrap().to_string();
+
+        assert_eq!(formatted, expected);
     }
 }

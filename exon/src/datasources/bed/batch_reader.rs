@@ -91,6 +91,12 @@ where
         // Remove the newline
         buf.pop();
 
+        // Remove the carriage return if present and on windows
+        #[cfg(target_os = "windows")]
+        if buf.ends_with('\r') {
+            buf.pop();
+        }
+
         let bed_record = match num_fields {
             12 => {
                 let r: Record<12> = match Record::from_str(&buf) {
@@ -107,6 +113,18 @@ where
             }
             9 => {
                 let r: Record<9> = match Record::from_str(&buf) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("invalid record: {e}"),
+                        ));
+                    }
+                };
+                r.into()
+            }
+            6 => {
+                let r: Record<6> = match Record::from_str(&buf) {
                     Ok(r) => r,
                     Err(e) => {
                         return Err(std::io::Error::new(

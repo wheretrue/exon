@@ -620,7 +620,7 @@ mod tests {
         let batches = df.collect().await.unwrap();
 
         assert_eq!(batches.len(), 1);
-        assert_eq!(batches[0].num_rows(), 1);
+        assert_eq!(batches[0].num_rows(), 10);
         assert_eq!(batches[0].num_columns(), 1);
 
         Ok(())
@@ -917,7 +917,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "aws")]
+    #[cfg(all(feature = "aws", not(target_os = "windows")))]
     #[tokio::test]
     async fn test_read_s3() -> Result<(), DataFusionError> {
         use crate::ExonRuntimeEnvExt;

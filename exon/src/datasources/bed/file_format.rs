@@ -129,6 +129,6 @@ mod tests {
 
             assert_eq!(batch.num_columns(), 12);
         }
-        assert_eq!(row_cnt, 1)
+        assert_eq!(row_cnt, 10)
     }
 }

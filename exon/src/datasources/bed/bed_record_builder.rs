@@ -193,3 +193,17 @@ impl From<Record<9>> for BEDRecord {
         builder.finish()
     }
 }
+
+impl From<Record<6>> for BEDRecord {
+    fn from(value: Record<6>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score())
+            .strand(value.strand());
+
+        builder.finish()
+    }
+}
