@@ -133,7 +133,7 @@ mod tests {
 
         let batch_reader = super::BatchReader::new(buf_reader, config);
 
-        let mut batch_stream = batch_reader.into_stream().boxed();
+        let batch_stream = batch_reader.into_stream().boxed();
 
         let batches = batch_stream
             .map(|batch| batch.unwrap())
