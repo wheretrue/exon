@@ -91,6 +91,12 @@ where
         // Remove the newline
         buf.pop();
 
+        // Remove the carriage return if present and on windows
+        #[cfg(target_os = "windows")]
+        if buf.ends_with(CARRIAGE_RETURN) {
+            buf.pop();
+        }
+
         let bed_record = match num_fields {
             12 => {
                 let r: Record<12> = match Record::from_str(&buf) {
