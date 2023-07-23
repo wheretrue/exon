@@ -117,6 +117,18 @@ where
                 };
                 r.into()
             }
+            6 => {
+                let r: Record<6> = match Record::from_str(&buf) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("invalid record: {e}"),
+                        ));
+                    }
+                };
+                r.into()
+            }
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
