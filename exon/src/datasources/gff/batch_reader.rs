@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(target_os = "windows")]
-const CARRIAGE_RETURN: char = '\r';
-
 use std::{str::FromStr, sync::Arc};
 
 use arrow::{error::ArrowError, error::Result as ArrowResult, record_batch::RecordBatch};
@@ -60,7 +57,7 @@ where
                     buf.pop();
 
                     #[cfg(target_os = "windows")]
-                    if buf.ends_with(CARRIAGE_RETURN) {
+                    if buf.ends_with('\r') {
                         buf.pop();
                     }
 

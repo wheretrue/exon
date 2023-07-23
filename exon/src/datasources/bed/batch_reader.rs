@@ -93,7 +93,7 @@ where
 
         // Remove the carriage return if present and on windows
         #[cfg(target_os = "windows")]
-        if buf.ends_with(CARRIAGE_RETURN) {
+        if buf.ends_with('\r') {
             buf.pop();
         }
 
