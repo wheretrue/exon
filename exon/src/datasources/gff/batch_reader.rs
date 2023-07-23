@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(target_os = "windows")]
+const CARRIAGE_RETURN: char = '\r';
+
 use std::{str::FromStr, sync::Arc};
 
 use arrow::{error::ArrowError, error::Result as ArrowResult, record_batch::RecordBatch};
@@ -55,6 +58,12 @@ where
                 Ok(0) => return Ok(None),
                 Ok(_) => {
                     buf.pop();
+
+                    #[cfg(target_os = "windows")]
+                    if buf.ends_with(CARRIAGE_RETURN) {
+                        buf.pop();
+                    }
+
                     let line = match noodles::gff::Line::from_str(&buf) {
                         Ok(line) => line,
                         Err(e) => match e {
