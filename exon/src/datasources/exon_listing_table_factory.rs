@@ -62,6 +62,7 @@ impl TableProviderFactory for ExonListingTableFactory {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 #[cfg(test)]
 mod tests {
     use std::{path::PathBuf, sync::Arc};
@@ -81,6 +82,7 @@ mod tests {
         RuntimeEnv::new(rn_config)
     }
 
+    // Don't include this test on windows
     #[tokio::test]
     async fn test_in_catalog() {
         let mem_catalog: MemoryCatalogProvider = MemoryCatalogProvider::new();
@@ -89,7 +91,7 @@ mod tests {
         let cargo_manifest_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
 
         let schema = ListingSchemaProvider::new(
-            "file://".to_string(),
+            "file://localhost".to_string(),
             cargo_manifest_path
                 .join("test-data")
                 .join("datasources")

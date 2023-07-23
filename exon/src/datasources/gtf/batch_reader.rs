@@ -21,6 +21,8 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
 use super::{array_builder::GTFArrayBuilder, GTFConfig};
 
+const CARRIAGE_RETURN: char = '\r';
+
 /// Reads a GTF file into arrow record batches.
 pub struct BatchReader<R> {
     /// The reader to read from.
@@ -53,7 +55,15 @@ where
         match self.reader.read_line(&mut buf).await {
             Ok(0) => Ok(None),
             Ok(_) => {
+                // remove the new line character, needs to work for both windows and unix
                 buf.pop();
+
+                // remove the carriage return character if it exists
+                if buf.ends_with(CARRIAGE_RETURN) {
+                    buf.pop();
+                }
+
+
                 let line = match noodles::gtf::Line::from_str(&buf) {
                     Ok(line) => line,
                     Err(e) => {
