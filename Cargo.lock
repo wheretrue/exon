@@ -3214,9 +3214,9 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "sqllogictest"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "556b08485afb80bb29ed93a0a364641dbfdb65d832c0d08f5b16cb3b750696e5"
+checksum = "43c4e6422d7c801de4897553c0a9be42d28dfe5c3deec7387855f258d16eb9dd"
 dependencies = [
  "async-trait",
  "educe",
@@ -3224,7 +3224,7 @@ dependencies = [
  "futures",
  "glob",
  "humantime",
- "itertools 0.10.5",
+ "itertools 0.11.0",
  "libtest-mimic",
  "md-5",
  "owo-colors",
