@@ -515,10 +515,15 @@ mod tests {
             ("fastq", "test.fastq.gz"),
             ("fastq", "test.fastq"),
             ("fastq", "test.fq"),
+            #[cfg(feature = "genbank")]
             ("genbank", "test.gb"),
+            #[cfg(feature = "genbank")]
             ("genbank", "test.gb.gz"),
+            #[cfg(feature = "genbank")]
             ("genbank", "test.gb.zst"),
+            #[cfg(feature = "genbank")]
             ("genbank", "test.genbank"),
+            #[cfg(feature = "genbank")]
             ("genbank", "test.gbk"),
             ("gff", "test.gff.zst"),
             ("gff", "test.gff.gz"),
@@ -702,6 +707,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "genbank")]
     #[tokio::test]
     async fn test_read_genbank() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();

@@ -173,9 +173,12 @@ mod tests {
         assert_eq!(ExonFileType::GFF.to_string(), "GFF");
         assert_eq!(ExonFileType::BAM.to_string(), "BAM");
         assert_eq!(ExonFileType::SAM.to_string(), "SAM");
+        #[cfg(feature = "genbank")]
         assert_eq!(ExonFileType::GENBANK.to_string(), "GENBANK");
         assert_eq!(ExonFileType::HMMER.to_string(), "HMMER");
         assert_eq!(ExonFileType::BED.to_string(), "BED");
+        #[cfg(feature = "mzml")]
+        assert_eq!(ExonFileType::MZML.to_string(), "MZML");
     }
 
     #[test]
