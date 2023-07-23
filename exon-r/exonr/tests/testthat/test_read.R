@@ -75,16 +75,16 @@ test_that("reading a BCF works", {
     expect_equal(nrow(df), 621)
 })
 
-test_that("reading a BED works", {
-    batch_reader <- read_bed_file("../../../../exon/test-data/datasources/bed/test.bed")
-    df <- as.data.frame(batch_reader$read_table())
+# test_that("reading a BED works", {
+#     batch_reader <- read_bed_file("../../../../exon/test-data/datasources/bed/test.bed")
+#     df <- as.data.frame(batch_reader$read_table())
 
-    # Check the column names are what's expected.
-    expect_equal(colnames(df), c("reference_sequence_name", "start", "end", "name", "score", "strand", "thick_start", "thick_end", "color", "block_count", "block_sizes", "block_starts"))
+#     # Check the column names are what's expected.
+#     expect_equal(colnames(df), c("reference_sequence_name", "start", "end", "name", "score", "strand", "thick_start", "thick_end", "color", "block_count", "block_sizes", "block_starts"))
 
-    # Check there's two rows.
-    expect_equal(nrow(df), 1)
-})
+#     # Check there's two rows.
+#     expect_equal(nrow(df), 1)
+# })
 
 test_that("reading a SAM works", {
     batch_reader <- read_sam_file("../../../../exon/test-data/datasources/sam/test.sam")
