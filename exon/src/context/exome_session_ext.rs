@@ -85,6 +85,8 @@ impl ExomeSessionExt for SessionContext {
     }
 }
 
+#[cfg(test)]
+#[cfg(feature = "exome")]
 #[allow(unused_imports)]
 mod tests {
     use datafusion::prelude::SessionContext;

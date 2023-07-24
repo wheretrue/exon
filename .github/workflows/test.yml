@@ -64,6 +64,5 @@ jobs:
         aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
         awslocal s3api put-object --bucket test-bucket --key test.fasta --body ./exon/test-data/datasources/fasta/test.fasta
 
-        cargo test --all-features
-
-        cargo test --package exon --test sqllogictests --features all
+        cargo test
+        cargo test --package exon --test sqllogictests

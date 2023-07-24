@@ -36,7 +36,7 @@ url = {version = "2.4.0", optional = true}
 sqllogictest = "0.14.0"
 
 [features]
-all = ["aws", "ffi", "gcp", "genbank", "mzml", "exome"]
+all = ["aws", "ffi", "gcp", "genbank", "mzml"]
 aws = ["object_store/aws", "dep:aws-config", "dep:aws-credential-types", "dep:url"]
 exome = ["dep:prost", "dep:tonic", "dep:url"]
 fcs = ["dep:byteorder"]
