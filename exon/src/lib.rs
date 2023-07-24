@@ -104,6 +104,12 @@ mod runtime_env;
 #[cfg(any(feature = "aws", feature = "gcp"))]
 pub use runtime_env::ExonRuntimeEnvExt;
 
+#[cfg(feature = "exome")]
+mod exome;
+
+#[cfg(feature = "exome")]
+pub use context::ExomeSessionExt;
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;

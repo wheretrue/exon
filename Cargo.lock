@@ -1411,12 +1411,15 @@ dependencies = [
  "gb-io",
  "noodles",
  "object_store",
+ "parking_lot",
  "pin-project",
+ "prost",
  "quick-xml 0.29.0",
  "serde",
  "sqllogictest",
  "tokio",
  "tokio-util",
+ "tonic",
  "url",
 ]
 
@@ -1449,19 +1452,6 @@ dependencies = [
  "datafusion",
  "exon",
  "tokio",
-]
-
-[[package]]
-name = "exon-exome"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "datafusion",
- "exon",
- "prost",
- "tokio",
- "tonic",
- "url",
 ]
 
 [[package]]
