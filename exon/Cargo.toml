@@ -20,7 +20,7 @@ datafusion = {workspace = true}
 flate2 = {version = "1.0.25", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1", optional = true}
-noodles = {version = "0.45", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi", "gtf"]}
+noodles = {version = "0.46", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi", "gtf"]}
 object_store = {workspace = true}
 parking_lot = "0.12.1"
 pin-project = {version = "1.1.0", optional = true}
