@@ -18,8 +18,8 @@ use arrow::datatypes::SchemaRef;
 use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-        Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
 use noodles::core::Region;
@@ -62,6 +62,12 @@ impl BCFScan {
     pub fn with_region_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
         self
+    }
+}
+
+impl DisplayAs for BCFScan {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "BCFScan")
     }
 }
 

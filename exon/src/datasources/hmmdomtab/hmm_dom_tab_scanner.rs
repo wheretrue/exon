@@ -21,8 +21,8 @@ use datafusion::{
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-        Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
+        SendableRecordBatchStream, Statistics,
     },
 };
 
@@ -58,6 +58,16 @@ impl HMMDomTabScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+}
+
+impl DisplayAs for HMMDomTabScan {
+    fn fmt_as(
+        &self,
+        _t: datafusion::physical_plan::DisplayFormatType,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        write!(f, "HMMDomTabScan")
     }
 }
 

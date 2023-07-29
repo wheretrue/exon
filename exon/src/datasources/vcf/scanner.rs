@@ -21,8 +21,8 @@ use datafusion::{
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-        Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
 
@@ -68,6 +68,12 @@ impl VCFScan {
     pub fn with_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
         self
+    }
+}
+
+impl DisplayAs for VCFScan {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "VCFScan")
     }
 }
 
