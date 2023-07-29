@@ -21,7 +21,8 @@ use datafusion::{
 ///     The ListArray should contain Float64Arrays and be a single column.
 ///     The second element should be a Float64Array. The Float64Array should
 ///     contain the peak mz value. The third element should be a Float64Array.
-///     The Float64Array should contain the tolerance.
+///     The Float64Array should contain the tolerance, this is absolute not
+///     PPM.
 ///
 /// # Returns
 ///
@@ -46,21 +47,46 @@ fn contains_peak(args: &[ArrayRef]) -> DataFusionResult<ArrayRef> {
     for ((mz_array, peak_mz), tolerance) in
         mz_array.iter().zip(peak_mz.iter()).zip(tolerance.iter())
     {
-        let mz_array = mz_array.unwrap();
-        let mz_array = mz_array
+        let mz_array = mz_array.ok_or_else(|| {
+            datafusion::error::DataFusionError::Internal("mz_array should not be null".to_string())
+        })?;
+
+        let mz_array = match mz_array
             .as_any()
             .downcast_ref::<arrow::array::Float64Array>()
-            .unwrap();
+        {
+            Some(mz_array) => mz_array,
+            None => {
+                return Err(datafusion::error::DataFusionError::Internal(
+                    "mz_array should be a Float64Array".to_string(),
+                ))
+            }
+        };
 
+        let mut found = false;
         for mz in mz_array.iter() {
-            let mz = mz.unwrap();
-            let peak_mz = peak_mz.unwrap();
-            let tolerance = tolerance.unwrap();
+            let mz = match mz {
+                Some(mz) => mz,
+                None => continue,
+            };
+
+            let peak_mz = match peak_mz {
+                Some(peak_mz) => peak_mz,
+                None => continue,
+            };
+
+            let tolerance = match tolerance {
+                Some(tolerance) => tolerance,
+                None => continue,
+            };
 
             if (mz - peak_mz).abs() < tolerance {
-                bool_builder.append_value(true);
+                found = true;
+                break;
             }
         }
+
+        bool_builder.append_value(found);
     }
 
     Ok(Arc::new(bool_builder.finish()))

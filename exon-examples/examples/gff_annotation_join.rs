@@ -31,14 +31,14 @@ async fn main() -> Result<(), DataFusionError> {
 
     let df = ctx
         .sql(
-            r#"SELECT crispr.seqid, crispr.start, crispr.end, repeat.start, repeat.end
+            r#"SELECT crispr.seqname, crispr.start, crispr.end, repeat.start, repeat.end
             FROM (SELECT * FROM gff WHERE type = 'CRISPR') AS crispr
                 JOIN (SELECT * FROM gff WHERE type = 'repeat_unit') AS repeat
-                    ON crispr.seqid = repeat.seqid
+                    ON crispr.seqname = repeat.seqname
                     AND crispr.start <= repeat.start
                     AND crispr.end >= repeat.end
 
-            ORDER BY crispr.seqid, crispr.start, crispr.end, repeat.start, repeat.end
+            ORDER BY crispr.seqname, crispr.start, crispr.end, repeat.start, repeat.end
             LIMIT 10"#,
         )
         .await?;
@@ -49,15 +49,15 @@ async fn main() -> Result<(), DataFusionError> {
         format!("\n{logical_plan:?}"),
         r#"
 Limit: skip=0, fetch=10
-  Sort: crispr.seqid ASC NULLS LAST, crispr.start ASC NULLS LAST, crispr.end ASC NULLS LAST, repeat.start ASC NULLS LAST, repeat.end ASC NULLS LAST
-    Projection: crispr.seqid, crispr.start, crispr.end, repeat.start, repeat.end
-      Inner Join:  Filter: crispr.seqid = repeat.seqid AND crispr.start <= repeat.start AND crispr.end >= repeat.end
+  Sort: crispr.seqname ASC NULLS LAST, crispr.start ASC NULLS LAST, crispr.end ASC NULLS LAST, repeat.start ASC NULLS LAST, repeat.end ASC NULLS LAST
+    Projection: crispr.seqname, crispr.start, crispr.end, repeat.start, repeat.end
+      Inner Join:  Filter: crispr.seqname = repeat.seqname AND crispr.start <= repeat.start AND crispr.end >= repeat.end
         SubqueryAlias: crispr
-          Projection: gff.seqid, gff.source, gff.type, gff.start, gff.end, gff.score, gff.strand, gff.phase, gff.attributes
+          Projection: gff.seqname, gff.source, gff.type, gff.start, gff.end, gff.score, gff.strand, gff.phase, gff.attributes
             Filter: gff.type = Utf8("CRISPR")
               TableScan: gff
         SubqueryAlias: repeat
-          Projection: gff.seqid, gff.source, gff.type, gff.start, gff.end, gff.score, gff.strand, gff.phase, gff.attributes
+          Projection: gff.seqname, gff.source, gff.type, gff.start, gff.end, gff.score, gff.strand, gff.phase, gff.attributes
             Filter: gff.type = Utf8("repeat_unit")
               TableScan: gff"#,
     );
@@ -73,7 +73,7 @@ Limit: skip=0, fetch=10
         format!("\n{formatted_results}"),
         r#"
 +------------------+-------+------+-------+-----+
-| seqid            | start | end  | start | end |
+| seqname          | start | end  | start | end |
 +------------------+-------+------+-------+-----+
 | Ga0604745_000026 | 1     | 3473 | 1     | 37  |
 | Ga0604745_000026 | 1     | 3473 | 73    | 109 |
@@ -87,6 +87,8 @@ Limit: skip=0, fetch=10
 | Ga0604745_000026 | 1     | 3473 | 654   | 690 |
 +------------------+-------+------+-------+-----+"#
     );
+
+    println!("{}", formatted_results);
 
     Ok(())
 }
