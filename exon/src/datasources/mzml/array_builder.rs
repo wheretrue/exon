@@ -457,11 +457,12 @@ impl MzMLArrayBuilder {
                                     .unwrap()
                                     .append_value(&cv_param.name);
 
+                                let cv_value = cv_param.value.as_ref().map(|v| v.to_string());
                                 isolation_window_builder
                                     .values()
                                     .field_builder::<GenericStringBuilder<i32>>(2)
                                     .unwrap()
-                                    .append_null();
+                                    .append_option(cv_value);
 
                                 isolation_window_builder.values().append(true);
                             }

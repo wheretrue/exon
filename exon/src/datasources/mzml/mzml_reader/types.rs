@@ -356,7 +356,7 @@ pub struct SelectedIonList {
 #[serde(rename_all = "camelCase")]
 pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
-    pub spectrum_ref: String,
+    pub spectrum_ref: Option<String>,
 
     pub isolation_window: Option<IsolationWindow>,
 
