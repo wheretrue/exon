@@ -15,5 +15,5 @@ members = [
 
 [workspace.dependencies]
 arrow = {version = "42"}
-datafusion = {version = "27", features = ["default"]}
+datafusion = {version = "28", features = ["default"]}
 object_store = {version = "0.6.1"}
