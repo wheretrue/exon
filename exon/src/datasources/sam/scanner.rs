@@ -19,8 +19,8 @@ use arrow::datatypes::SchemaRef;
 use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-        Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
 
@@ -49,6 +49,12 @@ impl SAMScan {
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+}
+
+impl DisplayAs for SAMScan {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "SAMScan")
     }
 }
 

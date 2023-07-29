@@ -117,7 +117,7 @@ where
 mod tests {
     use std::sync::Arc;
 
-    use arrow::util::pretty::pretty_format_batches;
+    use datafusion::arrow::util::pretty::pretty_format_batches;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
 

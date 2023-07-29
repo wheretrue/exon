@@ -21,8 +21,8 @@ use datafusion::{
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-        Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
+        SendableRecordBatchStream, Statistics,
     },
 };
 
@@ -57,6 +57,16 @@ impl FCSScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+}
+
+impl DisplayAs for FCSScan {
+    fn fmt_as(
+        &self,
+        _t: datafusion::physical_plan::DisplayFormatType,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        write!(f, "FCSScan")
     }
 }
 

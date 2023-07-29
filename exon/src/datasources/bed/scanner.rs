@@ -21,8 +21,8 @@ use datafusion::{
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-        Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
 
@@ -58,6 +58,12 @@ impl BEDScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+}
+
+impl DisplayAs for BEDScan {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "BEDScan")
     }
 }
 
