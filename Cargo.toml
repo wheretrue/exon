@@ -15,5 +15,6 @@ members = [
 
 [workspace.dependencies]
 arrow = {version = "43"}
-datafusion = {version = "28", features = ["default"]}
+# datafusion = {version = "28", features = ["default"]}
+datafusion = {path = "/Users/thauck/personal/code/github.com/tshauck/arrow-datafusion/datafusion/core", features = ["default"]}
 object_store = {version = "0.6.1"}

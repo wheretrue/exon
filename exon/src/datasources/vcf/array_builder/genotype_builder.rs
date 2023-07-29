@@ -259,8 +259,9 @@ mod tests {
     use arrow::{
         array::Array,
         datatypes::{Field, Fields},
-        util::{display::FormatOptions, pretty::pretty_format_columns_with_options},
+        util::display::FormatOptions,
     };
+    use datafusion::arrow::util::pretty::pretty_format_columns_with_options;
     use noodles::vcf::{
         header::{
             record::value::{map::format, Map},

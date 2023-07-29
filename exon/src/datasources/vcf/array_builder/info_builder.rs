@@ -236,10 +236,8 @@ impl InfosBuilder {
 mod tests {
     use std::{str::FromStr, sync::Arc};
 
-    use arrow::{
-        array::Array,
-        util::{display::FormatOptions, pretty::pretty_format_columns_with_options},
-    };
+    use arrow::{array::Array, util::display::FormatOptions};
+    use datafusion::arrow::util::pretty::pretty_format_columns_with_options;
     use noodles::vcf::{
         header::{
             record::value::{map::info, Map},

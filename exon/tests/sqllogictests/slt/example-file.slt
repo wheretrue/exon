@@ -6,3 +6,8 @@ CREATE TABLE dna_sequences(sequence TEXT) AS VALUES
 
 statement ok
 SELECT reverse_complement(sequence) FROM dna_sequences;
+
+query I
+SELECT 1;
+----
+1

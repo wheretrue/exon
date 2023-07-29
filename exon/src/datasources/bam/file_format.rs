@@ -14,8 +14,8 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
+use datafusion::arrow::datatypes::SchemaRef;
 use datafusion::{
     datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
     execution::context::SessionState,
