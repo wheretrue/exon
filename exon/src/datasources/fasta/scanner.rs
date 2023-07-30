@@ -28,7 +28,7 @@ use datafusion::{
 
 use super::{config::FASTAConfig, file_opener::FASTAOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for FASTA files.
 pub struct FASTAScan {
     /// The base configuration for the file scan.
@@ -59,6 +59,35 @@ impl FASTAScan {
             metrics: ExecutionPlanMetricsSet::new(),
         }
     }
+
+    /// Get a repartitioned version of this plan.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        let flattened_files = self
+            .base_config
+            .file_groups
+            .iter()
+            .flatten()
+            .map(|f| f.clone())
+            .collect::<Vec<_>>();
+
+        let mut new_file_groups = Vec::new();
+
+        // Add empty file groups to the new file groups equal to the number of target partitions.
+        for _ in 0..target_partitions {
+            new_file_groups.push(Vec::new());
+        }
+
+        // Work through the flattened files and add them to the new file groups.
+        for (i, file) in flattened_files.iter().enumerate() {
+            let target_partition = i % target_partitions;
+            new_file_groups[target_partition].push(file.clone());
+        }
+
+        let mut new_plan = self.clone();
+        new_plan.base_config.file_groups = new_file_groups;
+
+        new_plan
+    }
 }
 
 impl DisplayAs for FASTAScan {
@@ -77,7 +106,7 @@ impl ExecutionPlan for FASTAScan {
     }
 
     fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
+        Partitioning::RoundRobinBatch(self.base_config.file_groups.len())
     }
 
     fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {

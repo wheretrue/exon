@@ -81,11 +81,21 @@ impl FileFormat for FASTAFormat {
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTAScan::new(conf, self.file_compression_type.clone());
+        let scan = FASTAScan::new(conf.clone(), self.file_compression_type.clone());
+
+        let config = state.config();
+
+        let target_partitions = config.target_partitions();
+
+        if target_partitions == 1 {
+            return Ok(Arc::new(scan));
+        }
+
+        let scan = scan.get_repartitioned(target_partitions);
         Ok(Arc::new(scan))
     }
 }

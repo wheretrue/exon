@@ -29,3 +29,9 @@ This benchmark shows querying a 303M BAM file for a genomic region. The same cav
 This benchmark shows scanning an MzML file with roughly 6k spectra.
 
 ![MzML Scan](./plots/mzml-scan.svg)
+
+## Per-File Parallel FASTA Scan
+
+This benchmark shows scanning 8 FASTA files at different levels of parallelism.
+
+![Per-File Parallel FASTA Scan](./plots/fasta-parallel-scan.svg)

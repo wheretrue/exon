@@ -1,7 +1,9 @@
 use clap::{Parser, Subcommand};
 use datafusion::{
+    arrow::util::pretty,
+    config::ParquetOptions,
     datasource::file_format::file_type::FileCompressionType,
-    prelude::{col, lit, SessionContext},
+    prelude::{col, lit, ParquetReadOptions, SessionConfig, SessionContext},
 };
 use exon::ExonSessionExt;
 
@@ -36,6 +38,16 @@ enum Commands {
         /// which compression to use
         #[arg(short, long)]
         compression: Option<FileCompressionType>,
+    },
+    /// Parallel FASTA Scan
+    FASTAScanParallel {
+        /// path directory with FASTA files
+        #[arg(short, long)]
+        path: String,
+
+        /// Number of target partitions
+        #[arg(short, long)]
+        workers: usize,
     },
     /// Count the number of spectra in a mzML file
     MzMLScan {
@@ -103,6 +115,23 @@ async fn main() {
                 .await
                 .unwrap();
 
+            println!("Count: {count}");
+        }
+        Some(Commands::FASTAScanParallel { path, workers }) => {
+            let config = SessionConfig::new()
+                .with_repartition_file_scans(true)
+                .with_target_partitions(*workers);
+
+            let ctx = SessionContext::with_config_exon(config);
+            let compression = None;
+            let df = ctx.read_fasta(path, compression).await.unwrap();
+
+            let count = df
+                .filter(col("sequence").ilike(lit("M%")))
+                .unwrap()
+                .count()
+                .await
+                .unwrap();
             println!("Count: {count}");
         }
         Some(Commands::MzMLScan { path, compression }) => {
