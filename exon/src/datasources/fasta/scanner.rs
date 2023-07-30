@@ -70,6 +70,7 @@ impl FASTAScan {
             .cloned()
             .collect::<Vec<_>>();
 
+        let target_partitions = std::cmp::min(target_partitions, flattened_files.len());
         let mut new_file_groups = Vec::new();
 
         // Add empty file groups to the new file groups equal to the number of target partitions.
