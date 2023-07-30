@@ -1421,7 +1421,6 @@ dependencies = [
  "clap",
  "datafusion",
  "exon",
- "num_cpus",
  "tokio",
 ]
 

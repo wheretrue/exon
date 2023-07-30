@@ -67,7 +67,7 @@ impl FASTAScan {
             .file_groups
             .iter()
             .flatten()
-            .map(|f| f.clone())
+            .cloned()
             .collect::<Vec<_>>();
 
         let mut new_file_groups = Vec::new();
