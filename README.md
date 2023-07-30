@@ -11,10 +11,10 @@ Exon is an analysis toolkit for life-science applications. It features:
 
 Please note Exon was recently excised from a larger library, so please be patient as we work to clean up after that. If you have a comment or question in the meantime, please file an issue.
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [File Formats](#file-formats)
-- [Benchmarks](#benchmarks)
+* [Installation](#installation)
+* [Usage](#usage)
+* [File Formats](#file-formats)
+* [Benchmarks](#benchmarks)
 
 ## Installation
 
@@ -58,7 +58,6 @@ Please see the [rust docs](https://docs.rs/exon) for more information.
 | MZML      | gz, zstd       | .mzml[^2]             |
 | SAM       | -              | .sam                  |
 | VCF       | gz[^1]         | .vcf                  |
-
 
 [^1]: Uses bgzip not gzip.
 [^2]: mzML also works.

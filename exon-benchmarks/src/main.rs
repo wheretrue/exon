@@ -1,7 +1,21 @@
+// Copyright 2023 WHERE TRUE Technologies.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use clap::{Parser, Subcommand};
 use datafusion::{
     datasource::file_format::file_type::FileCompressionType,
-    prelude::{col, lit, SessionContext},
+    prelude::{col, lit, SessionConfig, SessionContext},
 };
 use exon::ExonSessionExt;
 
@@ -36,6 +50,16 @@ enum Commands {
         /// which compression to use
         #[arg(short, long)]
         compression: Option<FileCompressionType>,
+    },
+    /// Parallel FASTA Scan
+    FASTAScanParallel {
+        /// path directory with FASTA files
+        #[arg(short, long)]
+        path: String,
+
+        /// Number of target partitions
+        #[arg(short, long)]
+        workers: usize,
     },
     /// Count the number of spectra in a mzML file
     MzMLScan {
@@ -103,6 +127,23 @@ async fn main() {
                 .await
                 .unwrap();
 
+            println!("Count: {count}");
+        }
+        Some(Commands::FASTAScanParallel { path, workers }) => {
+            let config = SessionConfig::new()
+                .with_repartition_file_scans(true)
+                .with_target_partitions(*workers);
+
+            let ctx = SessionContext::with_config_exon(config);
+            let compression = None;
+            let df = ctx.read_fasta(path, compression).await.unwrap();
+
+            let count = df
+                .filter(col("sequence").ilike(lit("M%")))
+                .unwrap()
+                .count()
+                .await
+                .unwrap();
             println!("Count: {count}");
         }
         Some(Commands::MzMLScan { path, compression }) => {

@@ -41,6 +41,21 @@ run-benchmarks:
 		-n biopython-no-compression \
 		'python exon-benchmarks/biopython_scan_fasta.py exon-benchmarks/data/uniprot_sprot.fasta'
 
+
+run-parallel-fasta-scan-benchmarks:
+	# Run FASTA parallel scan benchmarks.
+	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-parallel-scan_{{GIT_SHA}}.json \
+		-n workers-1 \
+		'./target/release/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 1' \
+		-n workers-2 \
+		'./target/release/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 2' \
+		-n workers-4 \
+		'./target/release/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 4' \
+		-n workers-6 \
+		'./target/release/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 6' \
+		-n workers-8 \
+		'./target/release/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 8'
+
 run-mzml-benchmarks:
 	# Run mzml scan benchmarks.
 	hyperfine --runs 5 --export-json exon-benchmarks/results/mzml-scan_{{GIT_SHA}}.json \
