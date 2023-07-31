@@ -22,7 +22,11 @@ use exon::ExonSessionExt;
 
 #[tokio::main]
 async fn main() -> Result<(), DataFusionError> {
-    let ctx = SessionContext::new_exon();
+    let config = SessionConfig::new()
+        .with_target_partitions(4)
+        .with_repartition_file_scans(true);
+
+    let ctx = SessionContext::with_config_exon(config);
 
     let path = "./exon-examples/data/Ga0604745_crt.gff";
     let sql = format!("CREATE EXTERNAL TABLE gff STORED AS GFF LOCATION '{path}';",);

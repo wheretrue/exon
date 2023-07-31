@@ -132,6 +132,7 @@ async fn main() {
         Some(Commands::FASTAScanParallel { path, workers }) => {
             let config = SessionConfig::new()
                 .with_repartition_file_scans(true)
+                .with_round_robin_repartition(true)
                 .with_target_partitions(*workers);
 
             let ctx = SessionContext::with_config_exon(config);
