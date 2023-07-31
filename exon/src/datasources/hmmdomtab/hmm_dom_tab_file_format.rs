@@ -26,6 +26,8 @@ use datafusion::{
 };
 use object_store::{ObjectMeta, ObjectStore};
 
+use crate::optimizer;
+
 use super::{hmm_dom_tab_config::schema, hmm_dom_tab_scanner::HMMDomTabScan};
 
 #[derive(Debug)]
@@ -79,13 +81,30 @@ impl FileFormat for HMMDomTabFormat {
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = HMMDomTabScan::new(conf, self.file_compression_type.clone());
+        let config = state.config();
+        let target_partitions = config.target_partitions();
 
-        Ok(Arc::new(scan))
+        let repartition_file_scans = config.options().optimizer.repartition_file_scans;
+
+        if target_partitions == 1 || !repartition_file_scans {
+            let scan = HMMDomTabScan::new(conf.clone(), self.file_compression_type.clone());
+            Ok(Arc::new(scan))
+        } else {
+            let mut scan_config = conf.clone();
+
+            scan_config.file_groups = optimizer::repartitioning::regroup_file_partitions(
+                scan_config.file_groups,
+                target_partitions,
+            );
+
+            let scan = HMMDomTabScan::new(scan_config, self.file_compression_type.clone());
+
+            Ok(Arc::new(scan))
+        }
     }
 }
 

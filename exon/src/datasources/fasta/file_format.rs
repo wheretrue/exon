@@ -26,6 +26,8 @@ use datafusion::{
 };
 use object_store::{ObjectMeta, ObjectStore};
 
+use crate::optimizer;
+
 use super::{config::schema, scanner::FASTAScan};
 
 #[derive(Debug)]
@@ -85,18 +87,26 @@ impl FileFormat for FASTAFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTAScan::new(conf.clone(), self.file_compression_type.clone());
-
         let config = state.config();
-
         let target_partitions = config.target_partitions();
 
-        if target_partitions == 1 {
-            return Ok(Arc::new(scan));
-        }
+        let repartition_file_scans = config.options().optimizer.repartition_file_scans;
 
-        let scan = scan.get_repartitioned(target_partitions);
-        Ok(Arc::new(scan))
+        if target_partitions == 1 || !repartition_file_scans {
+            let scan = FASTAScan::new(conf.clone(), self.file_compression_type.clone());
+            Ok(Arc::new(scan))
+        } else {
+            let mut scan_config = conf.clone();
+
+            scan_config.file_groups = optimizer::repartitioning::regroup_file_partitions(
+                scan_config.file_groups,
+                target_partitions,
+            );
+
+            let scan = FASTAScan::new(scan_config, self.file_compression_type.clone());
+
+            Ok(Arc::new(scan))
+        }
     }
 }
 

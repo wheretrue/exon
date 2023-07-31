@@ -59,36 +59,6 @@ impl FASTAScan {
             metrics: ExecutionPlanMetricsSet::new(),
         }
     }
-
-    /// Get a repartitioned version of this plan.
-    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
-        let flattened_files = self
-            .base_config
-            .file_groups
-            .iter()
-            .flatten()
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let target_partitions = std::cmp::min(target_partitions, flattened_files.len());
-        let mut new_file_groups = Vec::new();
-
-        // Add empty file groups to the new file groups equal to the number of target partitions.
-        for _ in 0..target_partitions {
-            new_file_groups.push(Vec::new());
-        }
-
-        // Work through the flattened files and add them to the new file groups.
-        for (i, file) in flattened_files.iter().enumerate() {
-            let target_partition = i % target_partitions;
-            new_file_groups[target_partition].push(file.clone());
-        }
-
-        let mut new_plan = self.clone();
-        new_plan.base_config.file_groups = new_file_groups;
-
-        new_plan
-    }
 }
 
 impl DisplayAs for FASTAScan {
