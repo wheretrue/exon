@@ -41,8 +41,6 @@ run-benchmarks:
 		-n biopython-no-compression \
 		'python exon-benchmarks/biopython_scan_fasta.py exon-benchmarks/data/uniprot_sprot.fasta'
 
-
-run-parallel-fasta-scan-benchmarks:
 	# Run FASTA parallel scan benchmarks.
 	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-parallel-scan_{{GIT_SHA}}.json \
 		-n workers-1 \

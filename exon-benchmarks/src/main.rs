@@ -15,9 +15,9 @@
 use clap::{Parser, Subcommand};
 use datafusion::{
     datasource::file_format::file_type::FileCompressionType,
-    prelude::{col, lit, SessionConfig, SessionContext},
+    prelude::{col, lit, SessionContext},
 };
-use exon::ExonSessionExt;
+use exon::{new_exon_config, ExonSessionExt};
 
 #[derive(Subcommand)]
 enum Commands {
@@ -93,7 +93,7 @@ async fn main() {
             let path = path.as_str();
             let region = region.as_str();
 
-            let ctx = SessionContext::new();
+            let ctx = SessionContext::new_exon();
 
             let df = ctx.query_vcf_file(path, region).await.unwrap();
 
@@ -105,7 +105,7 @@ async fn main() {
             let path = path.as_str();
             let region = region.as_str();
 
-            let ctx = SessionContext::new();
+            let ctx = SessionContext::new_exon();
 
             let df = ctx.query_bam_file(path, region).await.unwrap();
             let batch_count = df.count().await.unwrap();
@@ -116,7 +116,7 @@ async fn main() {
             let path = path.as_str();
             let compression = compression.to_owned();
 
-            let ctx = SessionContext::new();
+            let ctx = SessionContext::new_exon();
 
             let df = ctx.read_fasta(path, compression).await.unwrap();
 
@@ -130,12 +130,8 @@ async fn main() {
             println!("Count: {count}");
         }
         Some(Commands::FASTAScanParallel { path, workers }) => {
-            let config = SessionConfig::new()
-                .with_repartition_file_scans(true)
-                .with_round_robin_repartition(true)
-                .with_target_partitions(*workers);
-
-            let ctx = SessionContext::with_config_exon(config);
+            let exon_config = new_exon_config().with_target_partitions(*workers);
+            let ctx = SessionContext::with_config_exon(exon_config);
             let compression = None;
             let df = ctx.read_fasta(path, compression).await.unwrap();
 
@@ -145,13 +141,14 @@ async fn main() {
                 .count()
                 .await
                 .unwrap();
+
             println!("Count: {count}");
         }
         Some(Commands::MzMLScan { path, compression }) => {
             let path = path.as_str();
             let compression = compression.to_owned();
 
-            let ctx = SessionContext::new();
+            let ctx = SessionContext::new_exon();
 
             let df = ctx.read_mzml(path, compression).await.unwrap();
 
