@@ -83,6 +83,9 @@
 mod context;
 pub use context::ExonSessionExt;
 
+mod config;
+pub use config::new_exon_config;
+
 /// Data sources for Exon.
 pub mod datasources;
 

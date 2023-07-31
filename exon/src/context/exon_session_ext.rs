@@ -26,9 +26,12 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::datasources::{
-    bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
-    ExonReadOptions,
+use crate::{
+    datasources::{
+        bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
+        ExonReadOptions,
+    },
+    new_exon_config,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -78,7 +81,8 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`].
     fn new_exon() -> SessionContext {
-        let ctx = SessionContext::with_config_exon(SessionConfig::new());
+        let exon_config = new_exon_config();
+        let ctx = SessionContext::with_config_exon(exon_config);
 
         // Register the mass spec UDFs
         #[cfg(feature = "mzml")]
