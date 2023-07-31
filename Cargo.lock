@@ -1387,7 +1387,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.2.6-beta.2"
+version = "0.2.6-beta.3"
 dependencies = [
  "arrow",
  "async-trait",
