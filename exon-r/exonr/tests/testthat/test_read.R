@@ -113,8 +113,8 @@ test_that("reading a mzml file works", {
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
-    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
+    expect_equal(colnames(df), c("id", "mz", "intensity", "wavelength", "cv_params", "precursor_list"))
 
     # Check there's two rows.
-    expect_equal(nrow(df), 61)
+    expect_equal(nrow(df), 2)
 })
