@@ -17,8 +17,9 @@ use std::sync::Arc;
 use arrow::ffi_stream::FFI_ArrowArrayStream;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::SessionContext;
-use exon::runtime_env::ExonRuntimeEnvExt;
-use exon::{context::ExonSessionExt, ffi::create_dataset_stream_from_table_provider};
+use exon::new_exon_config;
+use exon::ExonRuntimeEnvExt;
+use exon::{ffi::create_dataset_stream_from_table_provider, ExonSessionExt};
 use extendr_api::{extendr, extendr_module, list, Attributes, Conversions, IntoRobj};
 
 fn read_inferred_exon_table_inner(
@@ -27,7 +28,8 @@ fn read_inferred_exon_table_inner(
 ) -> Result<(), DataFusionError> {
     let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
-    let ctx = SessionContext::new();
+    let config = new_exon_config();
+    let ctx = SessionContext::with_config_exon(config);
 
     rt.block_on(async {
         ctx.runtime_env()
