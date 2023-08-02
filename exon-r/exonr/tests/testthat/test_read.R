@@ -107,3 +107,14 @@ test_that("reading a BAM works", {
     # Check there's two rows.
     expect_equal(nrow(df), 61)
 })
+
+test_that("reading a mzml file works", {
+    batch_reader <- read_mzml_file("../../../../exon/test-data/datasources/mzml/test.mzML")
+    df <- as.data.frame(batch_reader$read_table())
+
+    # Check the column names are what's expected.
+    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
+
+    # Check there's two rows.
+    expect_equal(nrow(df), 61)
+})

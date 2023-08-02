@@ -149,3 +149,22 @@ read_sam_file <- function(file_path) {
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
+
+#' Read MzML File
+#'
+#' This function reads a MzML file from a file and returns a RecordBatch
+#' stream.
+#'
+#' @param file_path The path to the MzML file.
+#'
+#' @return A RecordBatch stream representing the contents of the MzML file.
+#'
+#' @export
+read_mzml_file <- function(file_path) {
+    stream <- nanoarrow::nanoarrow_allocate_array_stream()
+    pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
+
+    read_inferred_exon_table_r(file_path, pointer_addr)
+
+    return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
+}
