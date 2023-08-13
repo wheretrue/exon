@@ -4,8 +4,8 @@
 
 Exon is an analysis toolkit for life-science applications. It features:
 
-* Support for over 10 (and counting) file formats from bioinformatics, proteomics, and others
-* Seamless transition between local and object storage (e.g. S3)
+* Support for many file formats from bioinformatics, proteomics, and others
+* Local filesystem and object storage support
 * Arrow FFI primitives for multi-language support
 * SQL based access to bioinformatics data -- general DML and some DDL support
 
@@ -18,11 +18,10 @@ Please note Exon was recently excised from a larger library, so please be patien
 
 ## Installation
 
-Exon is available via crates.io. To install, add the following to your `Cargo.toml`:
+Exon is available via crates.io. To install, run:
 
-```toml
-[dependencies]
-exon = "*"
+```bash
+cargo install exon
 ```
 
 ## Usage
