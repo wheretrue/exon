@@ -113,7 +113,8 @@ async fn run_tests() -> Result<(), DataFusionError> {
             continue;
         }
 
-        let mut runner = sqllogictest::Runner::new(ExonTextRunner::new(exon_context.clone()));
+        let mut runner =
+            sqllogictest::Runner::new(|| async { Ok(ExonTextRunner::new(exon_context.clone())) });
         runner.run_file_async(test_file.path()).await.unwrap();
     }
 
