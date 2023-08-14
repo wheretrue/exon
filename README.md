@@ -21,7 +21,7 @@ Please note Exon was recently excised from a larger library, so please be patien
 Exon is available via crates.io. To install, run:
 
 ```bash
-cargo install exon
+cargo add exon
 ```
 
 ## Usage
