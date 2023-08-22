@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
 use datafusion::{
-    common::tree_node::Transformed, datasource::listing::PartitionedFile,
-    physical_optimizer::PhysicalOptimizerRule, physical_plan::ExecutionPlan,
+    common::tree_node::Transformed,
+    datasource::listing::PartitionedFile,
+    error::Result,
+    physical_optimizer::PhysicalOptimizerRule,
+    physical_plan::{with_new_children_if_necessary, ExecutionPlan},
 };
 
 use crate::datasources::fasta::FASTAScan;
@@ -37,8 +40,6 @@ pub(crate) fn regroup_file_partitions(
     new_file_groups
 }
 
-use datafusion::error::Result;
-
 fn optimize_file_partitions(
     plan: Arc<dyn ExecutionPlan>,
     target_partitions: usize,
@@ -46,7 +47,18 @@ fn optimize_file_partitions(
     let new_plan = if plan.children().is_empty() {
         Transformed::No(plan) // no children, i.e. leaf
     } else {
-        Transformed::No(plan) // TODO;
+        let children = plan
+            .children()
+            .iter()
+            .map(|child| {
+                let optimized = optimize_file_partitions(child.clone(), target_partitions)
+                    .map(Transformed::into);
+
+                optimized
+            })
+            .collect::<Result<_>>()?;
+
+        with_new_children_if_necessary(plan, children)?
     };
 
     let (new_plan, _transformed) = new_plan.into_pair();
@@ -97,7 +109,7 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
 mod tests {
     use std::str::FromStr;
 
-    use datafusion::prelude::SessionContext;
+    use datafusion::{physical_plan::joins::HashJoinExec, prelude::SessionContext};
 
     use crate::{
         datasources::{fasta::FASTAScan, ExonFileType, ExonReadOptions},
@@ -113,7 +125,7 @@ mod tests {
 
         let options = ExonReadOptions::new(file_file);
 
-        let test_path = test_path("fasta2", "test.fasta")
+        let test_path = test_path("repartition-test", "test.fasta")
             .parent()
             .unwrap()
             .to_owned();
@@ -132,5 +144,32 @@ mod tests {
 
         // Assert we have two file groups vs the default one
         assert_eq!(scan.base_config.file_groups.len(), 2);
+
+        // Test a subquery
+        let df = ctx
+            .sql("SELECT * FROM test_fasta JOIN (SELECT * FROM test_fasta) AS t2 ON t2.id = test_fasta.id")
+            .await
+            .unwrap();
+
+        let plan = df.logical_plan();
+        let plan = ctx.state().create_physical_plan(plan).await.unwrap();
+
+        let hash_join_exec = plan.as_any().downcast_ref::<HashJoinExec>().unwrap();
+
+        let left_fasta = hash_join_exec
+            .left()
+            .as_any()
+            .downcast_ref::<FASTAScan>()
+            .unwrap();
+        assert_eq!(left_fasta.base_config.file_groups.len(), 2);
+
+        let right_fasta = hash_join_exec
+            .right()
+            .as_any()
+            .downcast_ref::<FASTAScan>()
+            .unwrap();
+
+        // Assert we have two file groups vs the default one
+        assert_eq!(right_fasta.base_config.file_groups.len(), 2);
     }
 }
