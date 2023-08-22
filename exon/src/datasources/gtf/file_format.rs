@@ -26,8 +26,6 @@ use datafusion::{
 };
 use object_store::{ObjectMeta, ObjectStore};
 
-use crate::optimizer;
-
 use super::scanner::GTFScan;
 
 #[derive(Debug)]
@@ -114,7 +112,7 @@ impl FileFormat for GTFFormat {
 
     async fn create_physical_plan(
         &self,
-        state: &SessionState,
+        _state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {

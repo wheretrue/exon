@@ -13,4 +13,3 @@
 // limitations under the License.
 
 pub(crate) mod file_repartitioner;
-pub(crate) mod repartitioning;

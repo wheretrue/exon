@@ -1,19 +1,17 @@
 use std::sync::Arc;
 
 use datafusion::{
-    common::tree_node::Transformed,
-    datasource::listing::PartitionedFile,
-    physical_optimizer::PhysicalOptimizerRule,
-    physical_plan::{with_new_children_if_necessary, ExecutionPlan},
+    common::tree_node::Transformed, datasource::listing::PartitionedFile,
+    physical_optimizer::PhysicalOptimizerRule, physical_plan::ExecutionPlan,
 };
 
-use crate::{datasources::fasta::FASTAScan, ExonSessionExt};
+use crate::datasources::fasta::FASTAScan;
 
 type FilePartitions = Vec<Vec<PartitionedFile>>;
 
 /// Regroup the file partition into a new set of file partitions of the target size.
 pub(crate) fn regroup_file_partitions(
-    file_partitions: FilePartitions,
+    file_partitions: &FilePartitions,
     target_group_size: usize,
 ) -> FilePartitions {
     let flattened_files = file_partitions
@@ -51,7 +49,7 @@ fn optimize_file_partitions(
         Transformed::No(plan) // TODO;
     };
 
-    let (new_plan, transformed) = new_plan.into_pair();
+    let (new_plan, _transformed) = new_plan.into_pair();
 
     if let Some(fasta_scan) = new_plan.as_any().downcast_ref::<FASTAScan>() {
         let new_scan = fasta_scan.get_repartitioned(target_partitions);
@@ -72,8 +70,6 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
         config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>>
     {
-        let enabled = config.optimizer.enable_round_robin_repartition;
-        let repartition_file_scans = config.optimizer.repartition_file_scans;
         let target_partitions = config.execution.target_partitions;
 
         // let plan = if !enabled || target_partitions == 1 {
@@ -83,7 +79,7 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
             Transformed::No(plan)
         };
 
-        let (plan, transformed) = plan.into_pair();
+        let (plan, _transformed) = plan.into_pair();
 
         Ok(plan)
     }
@@ -99,20 +95,15 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
+    use std::str::FromStr;
 
-    use datafusion::{
-        execution::{context::SessionState, runtime_env::RuntimeEnv},
-        prelude::{SessionConfig, SessionContext},
-    };
+    use datafusion::prelude::SessionContext;
 
     use crate::{
-        datasources::{ExonFileType, ExonReadOptions},
-        new_exon_config,
-        tests::{test_listing_table_url, test_path},
+        datasources::{fasta::FASTAScan, ExonFileType, ExonReadOptions},
+        tests::test_path,
+        ExonSessionExt,
     };
-
-    use super::*;
 
     #[tokio::test]
     async fn test_regroup_file_partitions() {
@@ -136,5 +127,10 @@ mod tests {
         let plan = df.logical_plan();
 
         let plan = ctx.state().create_physical_plan(plan).await.unwrap();
+
+        let scan = plan.as_any().downcast_ref::<FASTAScan>().unwrap();
+
+        // Assert we have two file groups vs the default one
+        assert_eq!(scan.base_config.file_groups.len(), 2);
     }
 }

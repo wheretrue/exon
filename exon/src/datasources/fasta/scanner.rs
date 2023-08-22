@@ -34,7 +34,7 @@ use super::{config::FASTAConfig, file_opener::FASTAOpener};
 /// Implements a datafusion `ExecutionPlan` for FASTA files.
 pub struct FASTAScan {
     /// The base configuration for the file scan.
-    base_config: FileScanConfig,
+    pub base_config: FileScanConfig,
 
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
@@ -62,6 +62,7 @@ impl FASTAScan {
         }
     }
 
+    /// Get a new FASTAScan with the file groups repartitioned.
     pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
         if target_partitions == 1 {
             return self.clone();
