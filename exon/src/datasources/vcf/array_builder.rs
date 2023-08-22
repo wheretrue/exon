@@ -40,6 +40,9 @@ pub struct VCFArrayBuilder {
     qualities: Float32Builder,
     filters: GenericListBuilder<i32, GenericStringBuilder<i32>>,
 
+    // TODO: VCF IMPV: maybe string builder for info and format, or maybe not existing
+    // May not need to change though, if the field in `create` can be used to create the builder
+    // (i.e. maybe just String)
     infos: InfosBuilder,
     formats: GenotypeBuilder,
 }

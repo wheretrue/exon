@@ -91,22 +91,22 @@ impl FileFormat for FASTAFormat {
         let target_partitions = config.target_partitions();
 
         let repartition_file_scans = config.options().optimizer.repartition_file_scans;
+        let scan = FASTAScan::new(conf.clone(), self.file_compression_type.clone());
 
-        if target_partitions == 1 || !repartition_file_scans {
-            let scan = FASTAScan::new(conf.clone(), self.file_compression_type.clone());
-            Ok(Arc::new(scan))
-        } else {
-            let mut scan_config = conf.clone();
+        Ok(Arc::new(scan))
+        // if target_partitions == 1 || !repartition_file_scans {
+        // } else {
+        //     let mut scan_config = conf.clone();
 
-            scan_config.file_groups = optimizer::repartitioning::regroup_file_partitions(
-                scan_config.file_groups,
-                target_partitions,
-            );
+        //     scan_config.file_groups = optimizer::repartitioning::regroup_file_partitions(
+        //         scan_config.file_groups,
+        //         target_partitions,
+        //     );
 
-            let scan = FASTAScan::new(scan_config, self.file_compression_type.clone());
+        //     let scan = FASTAScan::new(scan_config, self.file_compression_type.clone());
 
-            Ok(Arc::new(scan))
-        }
+        //     Ok(Arc::new(scan))
+        // }
     }
 }
 

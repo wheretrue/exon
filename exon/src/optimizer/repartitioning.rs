@@ -4,7 +4,7 @@ type FilePartitions = Vec<Vec<PartitionedFile>>;
 
 /// Regroup the file partition into a new set of file partitions of the target size.
 pub(crate) fn regroup_file_partitions(
-    file_partitions: FilePartitions,
+    file_partitions: &FilePartitions,
     target_group_size: usize,
 ) -> FilePartitions {
     let flattened_files = file_partitions

@@ -17,6 +17,8 @@ use std::sync::Arc;
 use arrow::datatypes::SchemaRef;
 use object_store::ObjectStore;
 
+// TODO: VCF IMPV: add option for not parsing VCF extra fields
+
 /// Configuration for a VCF datasource.
 pub struct VCFConfig {
     /// The number of records to read at a time.

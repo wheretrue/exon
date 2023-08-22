@@ -154,7 +154,7 @@ impl ExomeCatalogClient {
         let url = std::env::var("EXON_EXOME_URL")?;
         let url = url::Url::parse(&url)?;
 
-        // let token = std::env::var("EXON_EXOME_TOKEN")?;
+        let token = std::env::var("EXON_EXOME_TOKEN")?;
 
         let organization_id = std::env::var("EXON_EXOME_ORGANIZATION_ID")?;
 
