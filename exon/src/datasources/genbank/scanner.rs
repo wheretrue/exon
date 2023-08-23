@@ -26,9 +26,11 @@ use datafusion::{
     },
 };
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::GenbankConfig, file_opener::GenbankOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for Genbank files.
 pub struct GenbankScan {
     /// The base configuration for the file scan.
@@ -57,6 +59,22 @@ impl GenbankScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+
+    /// Get a new Genbank scan with the specified number of partitions.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 

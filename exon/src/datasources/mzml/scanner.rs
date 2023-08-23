@@ -27,9 +27,11 @@ use datafusion::{
     },
 };
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::MzMLConfig, file_opener::MzMLOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for MzML files.
 pub struct MzMLScan {
     /// The base configuration for the file scan.
@@ -59,6 +61,22 @@ impl MzMLScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+
+    /// Get a new MzML scan with a different number of partitions.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 

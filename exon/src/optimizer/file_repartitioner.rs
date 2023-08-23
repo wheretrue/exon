@@ -1,3 +1,17 @@
+// Copyright 2023 WHERE TRUE Technologies.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use std::sync::Arc;
 
 use datafusion::{
@@ -8,7 +22,10 @@ use datafusion::{
     physical_plan::{with_new_children_if_necessary, ExecutionPlan},
 };
 
-use crate::datasources::fasta::FASTAScan;
+use crate::datasources::{
+    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, genbank::GenbankScan, gff::GFFScan,
+    gtf::GTFScan, hmmdomtab::HMMDomTabScan,
+};
 
 type FilePartitions = Vec<Vec<PartitionedFile>>;
 
@@ -63,15 +80,72 @@ fn optimize_file_partitions(
 
     let (new_plan, _transformed) = new_plan.into_pair();
 
+    if let Some(bed_scan) = new_plan.as_any().downcast_ref::<BEDScan>() {
+        let new_scan = bed_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
     if let Some(fasta_scan) = new_plan.as_any().downcast_ref::<FASTAScan>() {
         let new_scan = fasta_scan.get_repartitioned(target_partitions);
 
-        Ok(Transformed::Yes(Arc::new(new_scan)))
-    } else {
-        Ok(Transformed::No(new_plan))
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
     }
+
+    if let Some(fastq_scan) = new_plan.as_any().downcast_ref::<FASTQScan>() {
+        let new_scan = fastq_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    // TODO: Add FCS support
+    // #[cfg(feature = "fcs")]
+    // if let Some(fcs_scan) = new_plan.as_any().downcast_ref::<FCSScan>() {
+    //     let new_scan = fcs_scan.get_repartitioned(target_partitions);
+
+    //     return Ok(Transformed::Yes(Arc::new(new_scan)));
+    // }
+
+    if let Some(genbank_scan) = new_plan.as_any().downcast_ref::<GenbankScan>() {
+        let new_scan = genbank_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    if let Some(gff_scan) = new_plan.as_any().downcast_ref::<GFFScan>() {
+        let new_scan = gff_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    if let Some(gtf_scan) = new_plan.as_any().downcast_ref::<GTFScan>() {
+        let new_scan = gtf_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    if let Some(hmm_scan) = new_plan.as_any().downcast_ref::<HMMDomTabScan>() {
+        let new_scan = hmm_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    if let Some(mzml_scan) = new_plan
+        .as_any()
+        .downcast_ref::<crate::datasources::mzml::MzMLScan>()
+    {
+        let new_scan = mzml_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    Ok(Transformed::No(new_plan))
 }
 
+/// Optimizer rule that repartitions the file partitions of a plan into a new set of file partitions.
+///
+/// This is useful for when you have a large number of files and want to reduce the number of partitions
+/// so they can be processed in parallel.
 #[derive(Default)]
 pub struct ExonRoundRobin {}
 
@@ -82,13 +156,13 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
         config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<std::sync::Arc<dyn datafusion::physical_plan::ExecutionPlan>>
     {
+        let repartition_file_scans = config.optimizer.repartition_file_scans;
         let target_partitions = config.execution.target_partitions;
 
-        // let plan = if !enabled || target_partitions == 1 {
-        let plan = if true {
-            optimize_file_partitions(plan, target_partitions)?
-        } else {
+        let plan = if !repartition_file_scans || target_partitions == 1 {
             Transformed::No(plan)
+        } else {
+            optimize_file_partitions(plan, target_partitions)?
         };
 
         let (plan, _transformed) = plan.into_pair();

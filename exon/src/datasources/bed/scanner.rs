@@ -26,9 +26,11 @@ use datafusion::{
     },
 };
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::BEDConfig, file_opener::BEDOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for BED files.
 pub struct BEDScan {
     /// The schema of the data source.
@@ -58,6 +60,22 @@ impl BEDScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+
+    /// Get a new BEDScan with the file groups repartitioned.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 

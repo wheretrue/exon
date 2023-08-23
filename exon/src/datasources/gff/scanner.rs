@@ -26,9 +26,11 @@ use datafusion::{
     },
 };
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::GFFConfig, file_opener::GFFOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for GFF files.
 pub struct GFFScan {
     /// The base configuration for the file scan.
@@ -57,6 +59,22 @@ impl GFFScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+
+    /// Get a new GFF scan with the specified number of partitions.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 

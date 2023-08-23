@@ -28,9 +28,11 @@ use datafusion::{
 
 // file format moted to physcial plan
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::FCSConfig, file_opener::FCSOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for FCS files.
 pub struct FCSScan {
     /// The base configuration for the file scan.
@@ -57,6 +59,24 @@ impl FCSScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+
+    /// Get a new scan with the number of partitions specified.
+    /// allow unused
+    #[allow(dead_code)]
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 
