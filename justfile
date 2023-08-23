@@ -19,7 +19,9 @@ run-benchmarks:
 		-n bcftools \
 		'bcftools view -r chr1:1-1000000 exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz chr1:1-1000000 | wc -l' \
 		-n exon-vcf-query \
-		'./target/release/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-1000000'
+		'./target/release/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-1000000' \
+		-n exon-vcf-query-projection \
+		'./target/release/exon-benchmarks vcf-query-projection -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-1000000'
 
 	# Run bam benchmarks.
 	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{GIT_SHA}}.json \

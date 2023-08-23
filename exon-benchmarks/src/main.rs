@@ -31,6 +31,16 @@ enum Commands {
         #[arg(short, long)]
         region: String,
     },
+    /// Run a VCF query with a projection.
+    VCFQueryProjection {
+        /// which path to use
+        #[arg(short, long)]
+        path: String,
+
+        /// which region to use
+        #[arg(short, long)]
+        region: String,
+    },
     /// Run a BAM query on a file with a region.
     BAMQuery {
         /// which path to use for the BAM file
@@ -98,6 +108,23 @@ async fn main() {
             let df = ctx.query_vcf_file(path, region).await.unwrap();
 
             let batch_count = df.count().await.unwrap();
+
+            println!("Row count: {batch_count}");
+        }
+        Some(Commands::VCFQueryProjection { path, region }) => {
+            let path = path.as_str();
+            let region = region.as_str();
+
+            let ctx = SessionContext::new_exon();
+
+            let df = ctx.query_vcf_file(path, region).await.unwrap();
+
+            let batch_count = df
+                .select(vec![col("chrom"), col("pos"), col("id")])
+                .unwrap()
+                .count()
+                .await
+                .unwrap();
 
             println!("Row count: {batch_count}");
         }

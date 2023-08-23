@@ -79,8 +79,11 @@ impl BatchReader {
     }
 
     fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
-        let mut record_batch =
-            VCFArrayBuilder::create(self.config.file_schema.clone(), self.config.batch_size)?;
+        let mut record_batch = VCFArrayBuilder::create(
+            self.config.file_schema.clone(),
+            self.config.batch_size,
+            self.config.projection.clone(),
+        )?;
 
         for _ in 0..self.config.batch_size {
             let record = self.record_iterator.next().transpose()?;
@@ -95,7 +98,8 @@ impl BatchReader {
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+        let schema = self.config.projected_schema();
+        let batch = RecordBatch::try_new(schema, record_batch.finish())?;
 
         match &self.config.projection {
             Some(projection) => {

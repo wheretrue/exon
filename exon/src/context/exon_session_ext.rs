@@ -127,7 +127,7 @@ pub trait ExonSessionExt {
         let mut state = SessionState::with_config_rt(config, runtime)
             .with_physical_optimizer_rules(vec![
                 Arc::new(round_robin_optimizer),
-                Arc::new(vcf_region_optimizer),
+                // Arc::new(vcf_region_optimizer),
             ]);
 
         let sources = vec![
@@ -893,8 +893,6 @@ mod tests {
         for i in 0..batches[0].num_rows() {
             let array = binned.value(i);
             let array = array.as_any().downcast_ref::<Float64Array>().unwrap();
-
-            eprintln!("{:?}", array.values());
 
             assert_eq!(array.len(), 3);
         }

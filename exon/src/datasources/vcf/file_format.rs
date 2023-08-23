@@ -208,7 +208,13 @@ mod tests {
             .with_schema(resolved_schema);
 
         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        let df = ctx.read_table(provider.clone()).unwrap();
+
+        ctx.register_table("vcf_file", provider).unwrap();
+
+        let df = ctx
+            .sql("SELECT chrom, pos, id FROM vcf_file")
+            .await
+            .unwrap();
 
         let mut row_cnt = 0;
         let bs = df.collect().await.unwrap();
@@ -240,7 +246,12 @@ mod tests {
             .with_schema(resolved_schema);
 
         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        let df = ctx.read_table(provider.clone()).unwrap();
+        ctx.register_table("vcf_file", provider).unwrap();
+
+        let df = ctx
+            .sql("SELECT chrom, pos, id FROM vcf_file")
+            .await
+            .unwrap();
 
         let mut row_cnt = 0;
         let bs = df.collect().await.unwrap();

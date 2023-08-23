@@ -45,13 +45,24 @@ pub struct VCFArrayBuilder {
     // (i.e. maybe just String)
     infos: InfosBuilder,
     formats: GenotypeBuilder,
+
+    projection: Vec<usize>,
 }
 
 impl VCFArrayBuilder {
     /// Creates a new `VCFArrayBuilder` from a `Schema`.
-    pub fn create(schema: SchemaRef, capacity: usize) -> Result<Self, ArrowError> {
+    pub fn create(
+        schema: SchemaRef,
+        capacity: usize,
+        projection: Option<Vec<usize>>,
+    ) -> Result<Self, ArrowError> {
         let info_field = schema.field_with_name("info")?;
         let format_field = schema.field_with_name("formats")?;
+
+        let projection = match projection {
+            Some(projection) => projection,
+            None => (0..schema.fields().len()).collect(),
+        };
 
         Ok(Self {
             chromosomes: GenericStringBuilder::<i32>::new(),
@@ -71,6 +82,8 @@ impl VCFArrayBuilder {
             infos: InfosBuilder::try_new(info_field, capacity)?,
 
             formats: GenotypeBuilder::try_new(format_field, capacity)?,
+
+            projection,
         })
     }
 
@@ -86,59 +99,70 @@ impl VCFArrayBuilder {
 
     /// Appends a record to the builder.
     pub fn append(&mut self, record: &Record) {
-        let chromosome: String = format!("{}", record.chromosome());
-        self.chromosomes.append_value(chromosome);
+        for col_idx in self.projection.iter() {
+            match col_idx {
+                0 => {
+                    let chromosome: String = format!("{}", record.chromosome());
+                    self.chromosomes.append_value(chromosome);
+                }
+                1 => {
+                    let position: usize = record.position().into();
+                    self.positions.append_value(position as i32);
+                }
+                2 => {
+                    for id in record.ids().iter() {
+                        self.ids.values().append_value(id.to_string());
+                    }
 
-        let position: usize = record.position().into();
-        self.positions.append_value(position as i32);
+                    self.ids.append(true);
+                }
+                3 => {
+                    let reference: String = format!("{}", record.reference_bases());
+                    self.references.append_value(reference);
+                }
+                4 => {
+                    for alt in record.alternate_bases().iter() {
+                        self.alternates.values().append_value(alt.to_string());
+                    }
 
-        for id in record.ids().iter() {
-            self.ids.values().append_value(id.to_string());
+                    self.alternates.append(true);
+                }
+                5 => {
+                    let quality = record.quality_score().map(f32::from);
+                    self.qualities.append_option(quality);
+                }
+                6 => {
+                    for filter in record.filters().iter() {
+                        self.filters.values().append_value(filter.to_string());
+                    }
+                    self.filters.append(true);
+                }
+                7 => self.infos.append_value(record.info()),
+                8 => self.formats.append_value(record.genotypes()),
+                _ => panic!("Not implemented"),
+            }
         }
-        self.ids.append(true);
-
-        let reference: String = format!("{}", record.reference_bases());
-        self.references.append_value(reference);
-
-        for alt in record.alternate_bases().iter() {
-            self.alternates.values().append_value(alt.to_string());
-        }
-        self.alternates.append(true);
-
-        let quality = record.quality_score().map(f32::from);
-        self.qualities.append_option(quality);
-
-        for filter in record.filters().iter() {
-            self.filters.values().append_value(filter.to_string());
-        }
-        self.filters.append(true);
-
-        self.infos.append_value(record.info());
-        self.formats.append_value(record.genotypes());
     }
 
     /// Builds the `ArrayRef`.
     pub fn finish(&mut self) -> Vec<ArrayRef> {
-        let chromosomes = self.chromosomes.finish();
-        let positions = self.positions.finish();
-        let ids = self.ids.finish();
-        let references = self.references.finish();
-        let alternates = self.alternates.finish();
-        let qualities = self.qualities.finish();
-        let filters = self.filters.finish();
-        let infos = self.infos.finish();
-        let formats = self.formats.finish();
+        let mut arrays: Vec<ArrayRef> = vec![];
 
-        vec![
-            Arc::new(chromosomes),
-            Arc::new(positions),
-            Arc::new(ids),
-            Arc::new(references),
-            Arc::new(alternates),
-            Arc::new(qualities),
-            Arc::new(filters),
-            Arc::new(infos),
-            Arc::new(formats),
-        ]
+        for col_idx in self.projection.iter() {
+            match col_idx {
+                0 => arrays.push(Arc::new(self.chromosomes.finish())),
+                1 => arrays.push(Arc::new(self.positions.finish())),
+                2 => arrays.push(Arc::new(self.ids.finish())),
+                3 => arrays.push(Arc::new(self.references.finish())),
+                4 => arrays.push(Arc::new(self.alternates.finish())),
+                5 => arrays.push(Arc::new(self.qualities.finish())),
+                6 => arrays.push(Arc::new(self.filters.finish())),
+                7 => arrays.push(Arc::new(self.infos.finish())),
+                8 => arrays.push(Arc::new(self.formats.finish())),
+                _ => panic!("Not implemented"),
+            }
+        }
+
+        arrays
     }
 }
