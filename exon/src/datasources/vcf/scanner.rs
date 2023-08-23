@@ -36,11 +36,11 @@ use super::{config::VCFConfig, file_opener::VCFOpener};
 /// Implements a datafusion `ExecutionPlan` for VCF files.
 pub struct VCFScan {
     /// The base configuration for the file scan.
-    base_config: FileScanConfig,
+    pub base_config: FileScanConfig,
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
     /// The compression type of the file.
-    file_compression_type: FileCompressionType,
+    pub file_compression_type: FileCompressionType,
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
     /// An optional region filter for the scan.

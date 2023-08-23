@@ -144,6 +144,8 @@ impl FileFormat for VCFFormat {
 mod tests {
     use std::sync::Arc;
 
+    use crate::ExonSessionExt;
+
     use super::VCFFormat;
     use datafusion::{
         datasource::{
@@ -153,6 +155,38 @@ mod tests {
         prelude::SessionContext,
     };
     use noodles::core::Region;
+
+    #[tokio::test]
+    async fn test_region_pushdown() {
+        let ctx = SessionContext::new_exon();
+
+        let ss = ctx.state();
+        let ss = ss.table_factories();
+        eprintln!("{:#?}", ss.keys());
+
+        let table_path =
+            "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/vcf/index.vcf";
+
+        let sql = format!(
+            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
+            table_path
+        );
+        eprintln!("{}", sql);
+
+        ctx.sql(&sql).await.unwrap();
+
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 10000;";
+
+        let df = ctx.sql(&sql).await.unwrap();
+
+        let physical_plan = ctx
+            .state()
+            .create_physical_plan(df.logical_plan())
+            .await
+            .unwrap();
+
+        eprintln!("{:#?}", physical_plan);
+    }
 
     #[tokio::test]
     async fn test_uncompressed_read() {

@@ -138,10 +138,7 @@ fn optimize_file_partitions(
     }
 
     #[cfg(feature = "mzml")]
-    if let Some(mzml_scan) = new_plan
-        .as_any()
-        .downcast_ref::<crate::datasources::mzml::MzMLScan>()
-    {
+    if let Some(mzml_scan) = new_plan.as_any().downcast_ref::<MzMLScan>() {
         let new_scan = mzml_scan.get_repartitioned(target_partitions);
 
         return Ok(Transformed::Yes(Arc::new(new_scan)));

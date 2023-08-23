@@ -33,6 +33,7 @@ use crate::{
     },
     new_exon_config,
     optimizer::file_repartitioner::ExonRoundRobin,
+    optimizer::vcf_region_optimizer_rule::ExonVCFRegionOptimizer,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -120,10 +121,14 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
-        let optimizer_rule = ExonRoundRobin::default();
+        let round_robin_optimizer = ExonRoundRobin::default();
+        let vcf_region_optimizer = ExonVCFRegionOptimizer::default();
 
         let mut state = SessionState::with_config_rt(config, runtime)
-            .with_physical_optimizer_rules(vec![Arc::new(optimizer_rule)]);
+            .with_physical_optimizer_rules(vec![
+                Arc::new(round_robin_optimizer),
+                Arc::new(vcf_region_optimizer),
+            ]);
 
         let sources = vec![
             "BAM",
