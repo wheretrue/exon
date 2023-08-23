@@ -23,9 +23,15 @@ use datafusion::{
 };
 
 use crate::datasources::{
-    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, genbank::GenbankScan, gff::GFFScan,
-    gtf::GTFScan, hmmdomtab::HMMDomTabScan,
+    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, gff::GFFScan, gtf::GTFScan,
+    hmmdomtab::HMMDomTabScan,
 };
+
+#[cfg(feature = "genbank")]
+use crate::datasources::genbank::GenbankScan;
+
+#[cfg(feature = "mzml")]
+use crate::datasources::mzml::MzMLScan;
 
 type FilePartitions = Vec<Vec<PartitionedFile>>;
 
@@ -106,6 +112,7 @@ fn optimize_file_partitions(
     //     return Ok(Transformed::Yes(Arc::new(new_scan)));
     // }
 
+    #[cfg(feature = "genbank")]
     if let Some(genbank_scan) = new_plan.as_any().downcast_ref::<GenbankScan>() {
         let new_scan = genbank_scan.get_repartitioned(target_partitions);
 
@@ -130,6 +137,7 @@ fn optimize_file_partitions(
         return Ok(Transformed::Yes(Arc::new(new_scan)));
     }
 
+    #[cfg(feature = "mzml")]
     if let Some(mzml_scan) = new_plan
         .as_any()
         .downcast_ref::<crate::datasources::mzml::MzMLScan>()
