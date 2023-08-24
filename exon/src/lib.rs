@@ -93,7 +93,10 @@ pub mod datasources;
 pub mod udfs;
 
 /// Query plan augmentations for Exon.
-mod optimizer;
+pub mod optimizer;
+
+/// Physical plan augmentations for Exon.
+pub mod physical_plan;
 
 /// Utilities for moving data across the FFI boundary.
 #[cfg(feature = "ffi")]
