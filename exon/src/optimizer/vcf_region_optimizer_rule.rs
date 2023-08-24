@@ -16,85 +16,45 @@ use std::sync::Arc;
 
 use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
-use datafusion::logical_expr::{BinaryExpr, Operator};
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::ExecutionPlan;
-use datafusion::prelude::*;
-use noodles::core::region::Interval;
-use noodles::core::{Position, Region};
 
 use crate::datasources::vcf::VCFScan;
+use crate::optimizer::region_physical_expr::RegionPhysicalExpr;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
     // if we get a FilterExec with the correct expression and its input is a VCFScan, we can
     // replace the FilterExec with a VCFScan with the same expression and push down the filter
 
-    if let Some(filter_exec) = plan.as_any().downcast_ref::<FilterExec>() {
-        let vcf_scan = filter_exec.input().as_any().downcast_ref::<VCFScan>();
+    let filter_exec = if let Some(filter_exec) = plan.as_any().downcast_ref::<FilterExec>() {
+        filter_exec
+    } else {
+        return Ok(Transformed::No(plan));
+    };
 
-        filter_exec.predicate();
+    let vcf_scan = match filter_exec.input().as_any().downcast_ref::<VCFScan>() {
+        Some(scan) => scan,
+        None => return Ok(Transformed::No(plan)),
+    };
 
-        let pred = filter_exec
-            .predicate()
-            .as_any()
-            .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>();
+    let pred = match filter_exec
+        .predicate()
+        .as_any()
+        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+    {
+        Some(expr) => expr,
+        None => return Ok(Transformed::No(plan)),
+    };
 
-        match (vcf_scan, pred) {
-            (Some(scan), Some(pred)) => {
-                let left_pred = pred
-                    .left()
-                    .as_any()
-                    .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
-                    .unwrap();
+    let region_expr = match RegionPhysicalExpr::try_from(pred.clone()) {
+        Ok(expr) => expr,
+        Err(_) => return Ok(Transformed::No(plan)),
+    };
 
-                // let left_column = left_pred
-                //     .left()
-                //     .as_any()
-                //     .downcast_ref::<datafusion::physical_expr::expressions::Column>()
-                //     .unwrap();
-                let right_literal = left_pred
-                    .right()
-                    .as_any()
-                    .downcast_ref::<datafusion::physical_expr::expressions::Literal>()
-                    .unwrap();
+    let new_scan = vcf_scan.clone().with_filter(region_expr.region().clone());
 
-                let chrom = Some("chr1".to_string());
-
-                // let chrom = match right_literal.value() {
-                //     Expr::BinaryExpr(left) => chrom_operator(left),
-                //     _ => None,
-                // };
-
-                // let pos = match pred.right.as_ref() {
-                //     Expr::BinaryExpr(right) => {
-                //         position_operator(right).map(|p| Position::new(p).unwrap())
-                //     }
-                //     _ => None,
-                // };
-
-                let pos = Some(Position::new(1).unwrap());
-
-                match (chrom, pos) {
-                    (Some(chrom), Some(pos)) => {
-                        let start = pos;
-                        let end = pos;
-                        let interval = Interval::from(start..=end);
-
-                        let region = Region::new(chrom, interval);
-
-                        let new_scan = scan.clone().with_filter(region);
-
-                        return Ok(Transformed::Yes(Arc::new(new_scan)));
-                    }
-                    (_, _) => return Ok(Transformed::No(plan)),
-                }
-            }
-            (_, _) => return Ok(Transformed::No(plan)),
-        }
-    }
-
-    Ok(Transformed::No(plan))
+    Ok(Transformed::Yes(Arc::new(new_scan)))
 }
 
 #[derive(Default)]
@@ -106,10 +66,7 @@ impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
         plan: std::sync::Arc<dyn ExecutionPlan>,
         _config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<std::sync::Arc<dyn ExecutionPlan>> {
-        eprintln!("ExonVCFRegionOptimizer::optimize");
-
         let plan = optimize(plan)?;
-
         let (plan, _transformed) = plan.into_pair();
 
         Ok(plan)
@@ -121,5 +78,53 @@ impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
 
     fn schema_check(&self) -> bool {
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use datafusion::prelude::SessionContext;
+
+    use crate::{
+        datasources::{ExonFileType, ExonReadOptions},
+        tests::test_path,
+        ExonSessionExt,
+    };
+
+    #[tokio::test]
+    async fn test_region_physical_expr() {
+        let ctx = SessionContext::new_exon();
+
+        let file_file = ExonFileType::from_str("vcf").unwrap();
+        let options = ExonReadOptions::new(file_file);
+
+        let path = test_path("vcf", "index.vcf");
+        let path = path.to_str().unwrap();
+        // let path = "exon/test-data/datasources/vcf/index.vcf";
+        let query = "1";
+
+        ctx.register_exon_table("test_vcf", path, options)
+            .await
+            .unwrap();
+
+        let sql = format!(
+            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos = 2",
+            query
+        );
+
+        let df = ctx.sql(&sql).await.unwrap();
+        let logical_plan = df.logical_plan();
+
+        eprintln!("logical_plan: {:?}", logical_plan);
+
+        let optimized_plan = ctx
+            .state()
+            .create_physical_plan(logical_plan)
+            .await
+            .unwrap();
+
+        eprintln!("optimized_plan: {:#?}", optimized_plan);
     }
 }

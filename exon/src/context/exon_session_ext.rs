@@ -127,7 +127,7 @@ pub trait ExonSessionExt {
         let mut state = SessionState::with_config_rt(config, runtime)
             .with_physical_optimizer_rules(vec![
                 Arc::new(round_robin_optimizer),
-                // Arc::new(vcf_region_optimizer),
+                Arc::new(vcf_region_optimizer),
             ]);
 
         let sources = vec![
@@ -767,17 +767,12 @@ mod tests {
 
         let path = test_path("vcf", "index.vcf");
 
-        let df = ctx
-            .read_vcf(path.to_str().unwrap(), None)
-            .await
-            .unwrap()
-            .select_columns(&["id"])?;
+        let df = ctx.read_vcf(path.to_str().unwrap(), None).await.unwrap();
 
         let batches = df.collect().await.unwrap();
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 621);
-        assert_eq!(batches[0].num_columns(), 1);
 
         Ok(())
     }

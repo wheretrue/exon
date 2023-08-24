@@ -32,31 +32,27 @@ fn chrom_operator(expr: &BinaryExpr) -> Option<String> {
     let left = expr.left().as_any().downcast_ref::<Column>();
     let right = expr.right().as_any().downcast_ref::<Literal>();
 
-    match (left, right, op) {
-        (Some(col), Some(lit), Operator::Eq) => {
-            if col.name() != "chrom" {
-                return None;
-            } else {
-                return Some(lit.value().to_string());
-            }
+    if let (Some(col), Some(lit), Operator::Eq) = (left, right, op) {
+        if col.name() != "chrom" {
+            return None;
+        } else {
+            return Some(lit.value().to_string());
         }
-        (_, _, _) => (),
-    }
+    };
 
     // Check the right expression is a column and the left is a literal
     let left = expr.left().as_any().downcast_ref::<Literal>();
     let right = expr.right().as_any().downcast_ref::<Column>();
 
-    match (left, right, op) {
-        (Some(literal), Some(col), Operator::Eq) => {
-            if col.name() != "chrom" {
-                return None;
-            } else {
-                return Some(literal.value().to_string());
-            }
+    if let (Some(lit), Some(col), Operator::Eq) = (left, right, op) {
+        if col.name() != "chrom" {
+            return None;
+        } else {
+            return Some(lit.value().to_string());
         }
-        (_, _, _) => return None,
-    }
+    };
+
+    None
 }
 
 // Extracts the pos from a binary expression to use for region optimization
@@ -67,31 +63,27 @@ fn position_operator(expr: &BinaryExpr) -> Option<usize> {
     let left = expr.left().as_any().downcast_ref::<Column>();
     let right = expr.right().as_any().downcast_ref::<Literal>();
 
-    match (left, right, op) {
-        (Some(col), Some(lit), Operator::Eq) => {
-            if col.name() != "pos" {
-                return None;
-            } else {
-                return Some(lit.value().to_string().parse::<usize>().unwrap());
-            }
+    if let (Some(col), Some(lit), Operator::Eq) = (left, right, op) {
+        if col.name() != "pos" {
+            return None;
+        } else {
+            return Some(lit.value().to_string().parse::<usize>().unwrap());
         }
-        (_, _, _) => (),
-    }
+    };
 
     // Check the right expression is a column and the left is a literal
     let left = expr.left().as_any().downcast_ref::<Literal>();
     let right = expr.right().as_any().downcast_ref::<Column>();
 
-    match (left, right, op) {
-        (Some(lit), Some(col), Operator::Eq) => {
-            if col.name() != "pos" {
-                return None;
-            } else {
-                return Some(lit.value().to_string().parse::<usize>().unwrap());
-            }
+    if let (Some(lit), Some(col), Operator::Eq) = (left, right, op) {
+        if col.name() != "pos" {
+            return None;
+        } else {
+            return Some(lit.value().to_string().parse::<usize>().unwrap());
         }
-        (_, _, _) => return None,
-    }
+    };
+
+    None
 }
 
 #[derive(Debug)]
@@ -110,6 +102,16 @@ pub struct RegionPhysicalExpr {
     region: Region,
 }
 
+impl RegionPhysicalExpr {
+    pub fn new(region: Region) -> Self {
+        Self { region }
+    }
+
+    pub fn region(&self) -> &Region {
+        &self.region
+    }
+}
+
 impl Display for RegionPhysicalExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // write struct fields
@@ -119,7 +121,38 @@ impl Display for RegionPhysicalExpr {
 
 impl From<Region> for RegionPhysicalExpr {
     fn from(region: Region) -> Self {
-        Self { region }
+        Self::new(region)
+    }
+}
+
+impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
+    type Error = DataFusionError;
+
+    fn try_from(expr: BinaryExpr) -> Result<Self, Self::Error> {
+        eprintln!("RegionPhysicalExpr::try_from {}", expr);
+
+        let chrom_op = match expr.left().as_any().downcast_ref::<BinaryExpr>() {
+            Some(binary_expr) => chrom_operator(binary_expr),
+            None => None,
+        };
+
+        let pos_op = match expr.right().as_any().downcast_ref::<BinaryExpr>() {
+            Some(binary_expr) => position_operator(binary_expr),
+            None => None,
+        };
+
+        match (chrom_op, pos_op) {
+            (Some(chrom), Some(pos)) => {
+                let start = Position::new(pos).unwrap();
+                let end = Position::new(pos).unwrap();
+                let interval = Interval::from(start..=end);
+
+                let region = Region::new(chrom, interval);
+
+                Ok(Self::from(region))
+            }
+            (_, _) => Err(DataFusionError::External(InvalidRegionError.into())),
+        }
     }
 }
 
@@ -128,21 +161,7 @@ impl TryFrom<Arc<dyn PhysicalExpr>> for RegionPhysicalExpr {
 
     fn try_from(expr: Arc<dyn PhysicalExpr>) -> Result<Self, Self::Error> {
         if let Some(binary_expr) = expr.as_any().downcast_ref::<BinaryExpr>() {
-            let chrom_op = chrom_operator(binary_expr);
-            let pos_op = position_operator(binary_expr);
-
-            match (chrom_op, pos_op) {
-                (Some(chrom), Some(pos)) => {
-                    let start = Position::new(pos).unwrap();
-                    let end = Position::new(pos).unwrap();
-                    let interval = Interval::from(start..=end);
-
-                    let region = Region::new(chrom, interval);
-
-                    Ok(Self::from(region))
-                }
-                (_, _) => Err(DataFusionError::External(InvalidRegionError.into())),
-            }
+            Self::try_from(binary_expr.clone())
         } else {
             Err(DataFusionError::External(InvalidRegionError.into()))
         }
@@ -150,8 +169,12 @@ impl TryFrom<Arc<dyn PhysicalExpr>> for RegionPhysicalExpr {
 }
 
 impl PartialEq<dyn Any> for RegionPhysicalExpr {
-    fn eq(&self, _other: &dyn Any) -> bool {
-        todo!()
+    fn eq(&self, other: &dyn Any) -> bool {
+        if let Some(other) = other.downcast_ref::<RegionPhysicalExpr>() {
+            self.region == other.region
+        } else {
+            false
+        }
     }
 }
 
@@ -178,10 +201,6 @@ impl PhysicalExpr for RegionPhysicalExpr {
         &self,
         batch: &arrow::record_batch::RecordBatch,
     ) -> datafusion::error::Result<datafusion::physical_plan::ColumnarValue> {
-        // Check if the batch contains the region
-        // which is if the 'chrom' column is equal to the region's name
-        // and the 'pos' column is within the region's interval
-
         let chrom = batch
             .column_by_name("chrom")
             .unwrap()
@@ -233,5 +252,126 @@ impl PhysicalExpr for RegionPhysicalExpr {
 
         self.region.interval().start().hash(&mut s);
         self.region.interval().end().hash(&mut s);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use arrow::{array::BooleanArray, record_batch::RecordBatch};
+    use datafusion::{
+        logical_expr::Operator,
+        physical_plan::{
+            expressions::{col, lit, BinaryExpr},
+            PhysicalExpr,
+        },
+        scalar::ScalarValue,
+    };
+    use noodles::core::{Position, Region};
+
+    #[test]
+    fn test_chrom_operator() {
+        let schema = Arc::new(arrow::datatypes::Schema::new(vec![
+            arrow::datatypes::Field::new("chrom", arrow::datatypes::DataType::Utf8, false),
+        ]));
+
+        let expr = BinaryExpr::new(
+            col("chrom", &schema).unwrap(),
+            Operator::Eq,
+            lit(ScalarValue::from("1")),
+        );
+
+        assert_eq!(super::chrom_operator(&expr), Some("1".to_string()));
+    }
+
+    #[test]
+    fn test_pos_operator() {
+        let schema = Arc::new(arrow::datatypes::Schema::new(vec![
+            arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
+        ]));
+
+        let expr = BinaryExpr::new(
+            col("pos", &schema).unwrap(),
+            Operator::Eq,
+            lit(ScalarValue::from(4)),
+        );
+
+        assert_eq!(super::position_operator(&expr), Some(4));
+    }
+
+    #[test]
+    fn test_from_binary_exprs() {
+        let schema = Arc::new(arrow::datatypes::Schema::new(vec![
+            arrow::datatypes::Field::new("chrom", arrow::datatypes::DataType::Utf8, false),
+            arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
+        ]));
+
+        let expr = BinaryExpr::new(
+            Arc::new(BinaryExpr::new(
+                col("chrom", &schema).unwrap(),
+                Operator::Eq,
+                lit(ScalarValue::from("1")),
+            )),
+            Operator::And,
+            Arc::new(BinaryExpr::new(
+                col("pos", &schema).unwrap(),
+                Operator::Eq,
+                lit(ScalarValue::from(4)),
+            )),
+        );
+
+        let region = super::RegionPhysicalExpr::try_from(expr).unwrap();
+
+        assert_eq!(
+            region.region(),
+            &Region::new(
+                "1",
+                noodles::core::region::Interval::from(
+                    Position::new(4).unwrap()..=Position::new(4).unwrap()
+                )
+            )
+        );
+    }
+
+    #[tokio::test]
+    async fn test_evaluate() {
+        let batch = RecordBatch::try_new(
+            Arc::new(arrow::datatypes::Schema::new(vec![
+                arrow::datatypes::Field::new("chrom", arrow::datatypes::DataType::Utf8, false),
+                arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
+            ])),
+            vec![
+                Arc::new(arrow::array::StringArray::from(vec![
+                    "chr1", "chr1", "chr2",
+                ])),
+                Arc::new(arrow::array::Int64Array::from(vec![1, 2, 3])),
+            ],
+        )
+        .unwrap();
+
+        let region = "chr1:1-1".parse::<Region>().unwrap();
+
+        let expr = super::RegionPhysicalExpr::from(region);
+
+        let result = match expr.evaluate(&batch).unwrap() {
+            datafusion::physical_plan::ColumnarValue::Array(array) => array,
+            _ => panic!("Expected array"),
+        };
+
+        // Convert the result to a boolean array
+        let result = result
+            .as_any()
+            .downcast_ref::<arrow::array::BooleanArray>()
+            .unwrap();
+
+        let expected = BooleanArray::from(vec![Some(true), Some(false), Some(false)]);
+
+        result
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(result, expected)| {
+                assert_eq!(result, expected);
+            });
     }
 }
