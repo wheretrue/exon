@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use datafusion::common::tree_node::{Transformed, TreeNode};
+use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
 use datafusion::logical_expr::{BinaryExpr, Operator};
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
@@ -24,33 +24,7 @@ use datafusion::prelude::*;
 use noodles::core::region::Interval;
 use noodles::core::{Position, Region};
 
-use crate::datasources::vcf::{self, VCFScan};
-
-fn chrom_operator(expr: &BinaryExpr) -> Option<String> {
-    match (expr.left.as_ref(), expr.right.as_ref(), expr.op) {
-        (Expr::Column(left), Expr::Literal(right), Operator::Eq) => {
-            if left.name != "chrom" {
-                return None;
-            } else {
-                return Some(right.to_string());
-            }
-        }
-        (_, _, _) => None,
-    }
-}
-
-fn position_operator(expr: &BinaryExpr) -> Option<usize> {
-    match (expr.left.as_ref(), expr.right.as_ref(), expr.op) {
-        (Expr::Column(left), Expr::Literal(right), Operator::Eq) => {
-            if left.name != "pos" {
-                return None;
-            } else {
-                return Some(right.to_string().parse::<usize>().unwrap());
-            }
-        }
-        (_, _, _) => None,
-    }
-}
+use crate::datasources::vcf::VCFScan;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
     // if we get a FilterExec with the correct expression and its input is a VCFScan, we can
