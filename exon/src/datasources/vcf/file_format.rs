@@ -144,7 +144,7 @@ impl FileFormat for VCFFormat {
 mod tests {
     use std::sync::Arc;
 
-    use crate::ExonSessionExt;
+    use crate::{tests::test_path, ExonSessionExt};
 
     use super::VCFFormat;
     use datafusion::{
@@ -160,19 +160,12 @@ mod tests {
     async fn test_region_pushdown() {
         let ctx = SessionContext::new_exon();
 
-        let ss = ctx.state();
-        let ss = ss.table_factories();
-        eprintln!("{:#?}", ss.keys());
-
-        let table_path =
-            "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/vcf/index.vcf";
+        let table_path = test_path("vcf", "index.vcf");
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
-            table_path
+            table_path.to_str().unwrap(),
         );
-        eprintln!("{}", sql);
-
         ctx.sql(&sql).await.unwrap();
 
         let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 10000;";
