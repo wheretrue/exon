@@ -129,8 +129,6 @@ impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
     type Error = DataFusionError;
 
     fn try_from(expr: BinaryExpr) -> Result<Self, Self::Error> {
-        eprintln!("RegionPhysicalExpr::try_from {}", expr);
-
         let chrom_op = match expr.left().as_any().downcast_ref::<BinaryExpr>() {
             Some(binary_expr) => chrom_operator(binary_expr),
             None => None,

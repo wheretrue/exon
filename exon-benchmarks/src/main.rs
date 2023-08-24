@@ -31,16 +31,6 @@ enum Commands {
         #[arg(short, long)]
         region: String,
     },
-    /// Run a VCF query with a projection.
-    VCFQueryProjection {
-        /// which path to use
-        #[arg(short, long)]
-        path: String,
-
-        /// which region to use
-        #[arg(short, long)]
-        region: String,
-    },
     /// Run a BAM query on a file with a region.
     BAMQuery {
         /// which path to use for the BAM file

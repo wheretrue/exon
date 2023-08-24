@@ -24,9 +24,6 @@ use crate::datasources::vcf::VCFScan;
 use crate::optimizer::region_physical_expr::RegionPhysicalExpr;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
-    // if we get a FilterExec with the correct expression and its input is a VCFScan, we can
-    // replace the FilterExec with a VCFScan with the same expression and push down the filter
-
     let filter_exec = if let Some(filter_exec) = plan.as_any().downcast_ref::<FilterExec>() {
         filter_exec
     } else {
@@ -102,7 +99,6 @@ mod tests {
 
         let path = test_path("vcf", "index.vcf");
         let path = path.to_str().unwrap();
-        // let path = "exon/test-data/datasources/vcf/index.vcf";
         let query = "1";
 
         ctx.register_exon_table("test_vcf", path, options)

@@ -23,8 +23,6 @@ use noodles::vcf::{
     Header,
 };
 
-// TODO: VCF IMPV: options to produce Arrow schema contingent on options for fields
-
 /// A builder for an arrow schema from a VCF header.
 pub struct VCFSchemaBuilder {
     /// The fields of the schema.
