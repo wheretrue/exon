@@ -111,23 +111,6 @@ async fn main() {
 
             println!("Row count: {batch_count}");
         }
-        Some(Commands::VCFQueryProjection { path, region }) => {
-            let path = path.as_str();
-            let region = region.as_str();
-
-            let ctx = SessionContext::new_exon();
-
-            let df = ctx.query_vcf_file(path, region).await.unwrap();
-
-            let batch_count = df
-                .select(vec![col("chrom"), col("pos"), col("id")])
-                .unwrap()
-                .count()
-                .await
-                .unwrap();
-
-            println!("Row count: {batch_count}");
-        }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();
             let region = region.as_str();
