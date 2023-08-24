@@ -26,8 +26,6 @@ use datafusion::{
 };
 use object_store::{ObjectMeta, ObjectStore};
 
-use crate::optimizer;
-
 use super::{config::schema, scanner::FASTQScan};
 
 #[derive(Debug)]
@@ -82,30 +80,12 @@ impl FileFormat for FASTQFormat {
 
     async fn create_physical_plan(
         &self,
-        state: &SessionState,
+        _state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let config = state.config();
-        let target_partitions = config.target_partitions();
-
-        let repartition_file_scans = config.options().optimizer.repartition_file_scans;
-
-        if target_partitions == 1 || !repartition_file_scans {
-            let scan = FASTQScan::new(conf.clone(), self.file_compression_type.clone());
-            Ok(Arc::new(scan))
-        } else {
-            let mut scan_config = conf.clone();
-
-            scan_config.file_groups = optimizer::repartitioning::regroup_file_partitions(
-                scan_config.file_groups,
-                target_partitions,
-            );
-
-            let scan = FASTQScan::new(scan_config, self.file_compression_type.clone());
-
-            Ok(Arc::new(scan))
-        }
+        let scan = FASTQScan::new(conf.clone(), self.file_compression_type.clone());
+        Ok(Arc::new(scan))
     }
 }
 

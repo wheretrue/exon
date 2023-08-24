@@ -32,7 +32,7 @@ use noodles::core::Region;
 
 use super::{config::VCFConfig, file_opener::VCFOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for VCF files.
 pub struct VCFScan {
     /// The base configuration for the file scan.

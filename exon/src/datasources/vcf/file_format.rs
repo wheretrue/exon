@@ -144,6 +144,8 @@ impl FileFormat for VCFFormat {
 mod tests {
     use std::sync::Arc;
 
+    use crate::{tests::test_path, ExonSessionExt};
+
     use super::VCFFormat;
     use datafusion::{
         datasource::{
@@ -153,6 +155,31 @@ mod tests {
         prelude::SessionContext,
     };
     use noodles::core::Region;
+
+    #[tokio::test]
+    async fn test_region_pushdown() {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_path("vcf", "index.vcf");
+
+        let sql = format!(
+            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
+            table_path.to_str().unwrap(),
+        );
+        ctx.sql(&sql).await.unwrap();
+
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 10000;";
+
+        let df = ctx.sql(sql).await.unwrap();
+
+        let physical_plan = ctx
+            .state()
+            .create_physical_plan(df.logical_plan())
+            .await
+            .unwrap();
+
+        eprintln!("{:#?}", physical_plan);
+    }
 
     #[tokio::test]
     async fn test_uncompressed_read() {
@@ -174,7 +201,13 @@ mod tests {
             .with_schema(resolved_schema);
 
         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        let df = ctx.read_table(provider.clone()).unwrap();
+
+        ctx.register_table("vcf_file", provider).unwrap();
+
+        let df = ctx
+            .sql("SELECT chrom, pos, id FROM vcf_file")
+            .await
+            .unwrap();
 
         let mut row_cnt = 0;
         let bs = df.collect().await.unwrap();
@@ -206,7 +239,12 @@ mod tests {
             .with_schema(resolved_schema);
 
         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        let df = ctx.read_table(provider.clone()).unwrap();
+        ctx.register_table("vcf_file", provider).unwrap();
+
+        let df = ctx
+            .sql("SELECT chrom, pos, id FROM vcf_file")
+            .await
+            .unwrap();
 
         let mut row_cnt = 0;
         let bs = df.collect().await.unwrap();

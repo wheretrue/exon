@@ -26,13 +26,15 @@ use datafusion::{
     },
 };
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::FASTAConfig, file_opener::FASTAOpener};
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for FASTA files.
 pub struct FASTAScan {
     /// The base configuration for the file scan.
-    base_config: FileScanConfig,
+    pub base_config: FileScanConfig,
 
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
@@ -58,6 +60,22 @@ impl FASTAScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
         }
+    }
+
+    /// Get a new FASTAScan with the file groups repartitioned.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 

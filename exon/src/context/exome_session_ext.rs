@@ -111,7 +111,7 @@ mod tests {
         let table_name = "test_table";
 
         session
-            .register_library("31a11811-d563-490c-840c-2954c25500e3".to_string())
+            .register_library("00000000-0000-0000-0000-000000000000".to_string())
             .await?;
 
         let catalog_names = session.catalog_names();

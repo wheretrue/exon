@@ -32,6 +32,8 @@ use crate::{
         ExonReadOptions,
     },
     new_exon_config,
+    optimizer::file_repartitioner::ExonRoundRobin,
+    optimizer::vcf_region_optimizer_rule::ExonVCFRegionOptimizer,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -119,7 +121,14 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
-        let mut state = SessionState::with_config_rt(config, runtime);
+        let round_robin_optimizer = ExonRoundRobin::default();
+        let vcf_region_optimizer = ExonVCFRegionOptimizer::default();
+
+        let mut state = SessionState::with_config_rt(config, runtime)
+            .with_physical_optimizer_rules(vec![
+                Arc::new(round_robin_optimizer),
+                Arc::new(vcf_region_optimizer),
+            ]);
 
         let sources = vec![
             "BAM",
@@ -758,17 +767,12 @@ mod tests {
 
         let path = test_path("vcf", "index.vcf");
 
-        let df = ctx
-            .read_vcf(path.to_str().unwrap(), None)
-            .await
-            .unwrap()
-            .select_columns(&["id"])?;
+        let df = ctx.read_vcf(path.to_str().unwrap(), None).await.unwrap();
 
         let batches = df.collect().await.unwrap();
 
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_rows(), 621);
-        assert_eq!(batches[0].num_columns(), 1);
 
         Ok(())
     }
@@ -884,8 +888,6 @@ mod tests {
         for i in 0..batches[0].num_rows() {
             let array = binned.value(i);
             let array = array.as_any().downcast_ref::<Float64Array>().unwrap();
-
-            eprintln!("{:?}", array.values());
 
             assert_eq!(array.len(), 3);
         }

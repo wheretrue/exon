@@ -74,3 +74,6 @@ pub use self::exon_listing_table_factory::ExonListingTableFactory;
 /// Options that control reading files exon files.
 mod options;
 pub use self::options::ExonReadOptions;
+
+mod exon_file_scan_config;
+pub use self::exon_file_scan_config::ExonFileScanConfig;

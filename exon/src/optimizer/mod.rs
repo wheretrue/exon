@@ -12,4 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(crate) mod repartitioning;
+pub(crate) mod file_repartitioner;
+pub(crate) mod region_physical_expr;
+pub(crate) mod vcf_region_optimizer_rule;
