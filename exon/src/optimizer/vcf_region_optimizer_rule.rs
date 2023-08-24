@@ -113,14 +113,18 @@ mod tests {
         let df = ctx.sql(&sql).await.unwrap();
         let logical_plan = df.logical_plan();
 
-        eprintln!("logical_plan: {:?}", logical_plan);
-
         let optimized_plan = ctx
             .state()
             .create_physical_plan(logical_plan)
             .await
             .unwrap();
 
-        eprintln!("optimized_plan: {:#?}", optimized_plan);
+        // Downcast the execution plan to a VCFScan
+        let scan = optimized_plan
+            .as_any()
+            .downcast_ref::<crate::datasources::vcf::VCFScan>()
+            .unwrap();
+
+        assert_eq!(scan.filter().unwrap().to_string(), "1:2-2");
     }
 }
