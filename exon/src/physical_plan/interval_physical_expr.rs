@@ -22,7 +22,6 @@ use datafusion::{
         expressions::{col, lit, BinaryExpr, Column, Literal},
         PhysicalExpr,
     },
-    scalar::ScalarValue,
 };
 use noodles::core::{
     region::{self, Interval},

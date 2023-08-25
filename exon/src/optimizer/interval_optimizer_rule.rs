@@ -14,14 +14,12 @@
 
 use std::sync::Arc;
 
-use datafusion::common::tree_node::{Transformed, TreeNode};
+use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
-use datafusion::logical_expr::utils::from_plan;
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
-use crate::datasources::vcf::VCFScan;
 use crate::physical_plan::interval_physical_expr::IntervalPhysicalExpr;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
@@ -95,22 +93,17 @@ mod tests {
     use datafusion::prelude::SessionContext;
     use noodles::core::region::Interval;
 
-    use crate::{
-        datasources::{ExonFileType, ExonReadOptions},
-        physical_plan::interval_physical_expr::IntervalPhysicalExpr,
-        tests::test_path,
-        ExonSessionExt,
-    };
+    use crate::{physical_plan::interval_physical_expr::IntervalPhysicalExpr, ExonSessionExt};
 
     #[tokio::test]
     async fn test_interval_rule_eq() {
         let ctx = SessionContext::new_exon();
 
         let sql = "CREATE TABLE test AS (SELECT 1 as pos UNION ALL SELECT 2 as pos)";
-        ctx.sql(&sql).await.unwrap();
+        ctx.sql(sql).await.unwrap();
 
         let sql = "SELECT * FROM test WHERE pos = 1";
-        let df = ctx.sql(&sql).await.unwrap();
+        let df = ctx.sql(sql).await.unwrap();
 
         let logical_plan = df.logical_plan();
 
@@ -142,10 +135,10 @@ mod tests {
         let ctx = SessionContext::new_exon();
 
         let sql = "CREATE TABLE test AS (SELECT 1 as pos UNION ALL SELECT 2 as pos)";
-        ctx.sql(&sql).await.unwrap();
+        ctx.sql(sql).await.unwrap();
 
         let sql = "SELECT * FROM test WHERE pos BETWEEN 1 AND 2";
-        let df = ctx.sql(&sql).await.unwrap();
+        let df = ctx.sql(sql).await.unwrap();
 
         let logical_plan = df.logical_plan();
 

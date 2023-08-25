@@ -17,11 +17,9 @@ use std::{any::Any, fmt::Display, hash::Hash, sync::Arc};
 use arrow::datatypes::SchemaRef;
 use datafusion::{
     error::{DataFusionError, Result},
-    logical_expr::type_coercion::binary,
     physical_plan::{expressions::BinaryExpr, PhysicalExpr},
-    prelude::and,
 };
-use noodles::core::{Position, Region};
+use noodles::core::Region;
 
 use super::{
     chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr,
@@ -67,21 +65,6 @@ impl Display for RegionPhysicalExpr {
         write!(f, "RegionPhysicalExpr {{ region: {} }}", self.region)
     }
 }
-
-// impl TryFrom<Region> for RegionPhysicalExpr {
-//     type Error = DataFusionError;
-
-//     fn try_from(region: Region) -> Result<Self, Self::Error> {
-//         let interval_expr = IntervalPhysicalExpr::from(region.interval());
-//         let chrom_expr = ChromPhysicalExpr::from(region.name());
-
-//         Ok(Self::new(
-//             region,
-//             Arc::new(interval_expr),
-//             Arc::new(chrom_expr),
-//         ))
-//     }
-// }
 
 impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
     type Error = DataFusionError;

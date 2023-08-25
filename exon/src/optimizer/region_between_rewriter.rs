@@ -19,11 +19,7 @@ use datafusion::error::Result;
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
 use datafusion::physical_plan::expressions::BinaryExpr;
 use datafusion::physical_plan::filter::FilterExec;
-use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan, PhysicalExpr};
-use noodles::csi::index::reference_sequence::Bin;
-
-use crate::datasources::vcf::VCFScan;
-use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
+use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
 fn transform_expression(
     binary_expression: &datafusion::physical_expr::expressions::BinaryExpr,
@@ -182,7 +178,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         None => return Ok(Transformed::No(plan)),
     };
 
-    if let Some(expr) = transform_expression(&pred) {
+    if let Some(expr) = transform_expression(pred) {
         let exec = FilterExec::try_new(Arc::new(expr), filter_exec.input().clone())?;
         Ok(Transformed::Yes(Arc::new(exec)))
     } else {
