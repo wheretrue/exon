@@ -14,10 +14,12 @@
 
 use std::{any::Any, fmt::Display, hash::Hash, sync::Arc};
 
+use arrow::datatypes::SchemaRef;
 use datafusion::{
-    error::DataFusionError,
-    physical_expr::intervals::Interval,
+    error::{DataFusionError, Result},
+    logical_expr::type_coercion::binary,
     physical_plan::{expressions::BinaryExpr, PhysicalExpr},
+    prelude::and,
 };
 use noodles::core::{Position, Region};
 
@@ -29,15 +31,34 @@ use super::{
 #[derive(Debug)]
 pub struct RegionPhysicalExpr {
     region: Region,
+    interval_expr: Arc<dyn PhysicalExpr>,
+    chrom_expr: Arc<dyn PhysicalExpr>,
 }
 
 impl RegionPhysicalExpr {
-    pub fn new(region: Region) -> Self {
-        Self { region }
+    pub fn new(
+        region: Region,
+        interval_expr: Arc<dyn PhysicalExpr>,
+        chrom_expr: Arc<dyn PhysicalExpr>,
+    ) -> Self {
+        Self {
+            region,
+            interval_expr,
+            chrom_expr,
+        }
     }
 
     pub fn region(&self) -> &Region {
         &self.region
+    }
+
+    pub fn from_region(region: Region, schema: SchemaRef) -> Result<Self> {
+        let interval_expr = IntervalPhysicalExpr::from_interval(region.interval(), &schema)?;
+        let chrom_expr = ChromPhysicalExpr::from_chrom(region.name(), &schema)?;
+
+        let region_expr = Self::new(region, Arc::new(interval_expr), Arc::new(chrom_expr));
+
+        Ok(region_expr)
     }
 }
 
@@ -47,30 +68,43 @@ impl Display for RegionPhysicalExpr {
     }
 }
 
-impl From<Region> for RegionPhysicalExpr {
-    fn from(region: Region) -> Self {
-        Self::new(region)
-    }
-}
+// impl TryFrom<Region> for RegionPhysicalExpr {
+//     type Error = DataFusionError;
+
+//     fn try_from(region: Region) -> Result<Self, Self::Error> {
+//         let interval_expr = IntervalPhysicalExpr::from(region.interval());
+//         let chrom_expr = ChromPhysicalExpr::from(region.name());
+
+//         Ok(Self::new(
+//             region,
+//             Arc::new(interval_expr),
+//             Arc::new(chrom_expr),
+//         ))
+//     }
+// }
 
 impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
     type Error = DataFusionError;
 
     fn try_from(expr: BinaryExpr) -> Result<Self, Self::Error> {
-        let chrom_op = match expr.left().as_any().downcast_ref::<BinaryExpr>() {
-            Some(binary_expr) => Some(ChromPhysicalExpr::try_from(binary_expr.clone()).unwrap()),
-            None => None,
-        };
+        let chrom_op = expr
+            .left()
+            .as_any()
+            .downcast_ref::<BinaryExpr>()
+            .map(|e| ChromPhysicalExpr::try_from(e.clone()))
+            .transpose()?;
 
-        let pos_op = match expr.right().as_any().downcast_ref::<BinaryExpr>() {
-            Some(binary_expr) => Some(IntervalPhysicalExpr::try_from(binary_expr.clone()).unwrap()),
-            None => None,
-        };
+        let pos_op = expr
+            .right()
+            .as_any()
+            .downcast_ref::<BinaryExpr>()
+            .map(|binary_expr| IntervalPhysicalExpr::try_from(binary_expr.clone()))
+            .transpose()?;
 
         match (chrom_op, pos_op) {
             (Some(chrom), Some(pos)) => {
-                let region = Region::new(chrom.chrom(), pos.interval().clone());
-                Ok(Self::from(region))
+                let region = Region::new(chrom.chrom(), *pos.interval());
+                Ok(Self::new(region, Arc::new(pos), Arc::new(chrom)))
             }
             (_, _) => Err(DataFusionError::External(InvalidRegionError.into())),
         }
@@ -122,38 +156,13 @@ impl PhysicalExpr for RegionPhysicalExpr {
         &self,
         batch: &arrow::record_batch::RecordBatch,
     ) -> datafusion::error::Result<datafusion::physical_plan::ColumnarValue> {
-        let chrom = batch
-            .column_by_name("chrom")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .unwrap();
+        let binary_expr = BinaryExpr::new(
+            self.chrom_expr.clone(),
+            datafusion::logical_expr::Operator::And,
+            self.interval_expr.clone(),
+        );
 
-        let pos = batch
-            .column_by_name("pos")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<arrow::array::Int64Array>()
-            .unwrap();
-
-        let mut values = Vec::with_capacity(batch.num_rows());
-
-        for i in 0..batch.num_rows() {
-            let chrom_value = chrom.value(i);
-            let pos_value = pos.value(i);
-
-            let is_in_region = chrom_value == self.region.name()
-                && self
-                    .region
-                    .interval()
-                    .contains(Position::new(pos_value as usize).unwrap());
-
-            values.push(is_in_region);
-        }
-
-        Ok(datafusion::physical_plan::ColumnarValue::Array(Arc::new(
-            arrow::array::BooleanArray::from(values),
-        )))
+        binary_expr.evaluate(batch)
     }
 
     fn children(&self) -> Vec<std::sync::Arc<dyn PhysicalExpr>> {
@@ -164,7 +173,11 @@ impl PhysicalExpr for RegionPhysicalExpr {
         self: std::sync::Arc<Self>,
         _children: Vec<std::sync::Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn PhysicalExpr>> {
-        Ok(Arc::new(RegionPhysicalExpr::from(self.region.clone())))
+        Ok(Arc::new(RegionPhysicalExpr::new(
+            self.region().clone(),
+            self.interval_expr.clone(),
+            self.chrom_expr.clone(),
+        )))
     }
 
     fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
@@ -243,7 +256,7 @@ mod tests {
 
         let region = "chr1:1-1".parse::<Region>().unwrap();
 
-        let expr = super::RegionPhysicalExpr::from(region);
+        let expr = super::RegionPhysicalExpr::from_region(region, batch.schema()).unwrap();
 
         let result = match expr.evaluate(&batch).unwrap() {
             datafusion::physical_plan::ColumnarValue::Array(array) => array,

@@ -13,5 +13,6 @@
 // limitations under the License.
 
 pub(crate) mod file_repartitioner;
-pub(crate) mod region_physical_expr;
+pub(crate) mod interval_optimizer_rule;
+pub(crate) mod region_between_rewriter;
 pub(crate) mod vcf_region_optimizer_rule;

@@ -14,17 +14,19 @@
 
 use std::{any::Any, fmt::Display, hash::Hash, sync::Arc};
 
+use arrow::datatypes::SchemaRef;
 use datafusion::{
-    error::DataFusionError,
+    error::{DataFusionError, Result},
     logical_expr::Operator,
     physical_plan::{
-        expressions::{BinaryExpr, Column, Literal},
+        expressions::{col, lit, BinaryExpr, Column, Literal},
         PhysicalExpr,
     },
+    scalar::ScalarValue,
 };
 use noodles::core::{
     region::{self, Interval},
-    Position, Region,
+    Position,
 };
 
 use super::InvalidRegionError;
@@ -32,27 +34,71 @@ use super::InvalidRegionError;
 #[derive(Debug)]
 pub struct IntervalPhysicalExpr {
     interval: Interval,
+    inner: Arc<dyn PhysicalExpr>,
 }
 
 impl IntervalPhysicalExpr {
-    pub fn new(interval: Interval) -> Self {
-        Self { interval }
+    pub fn new(interval: Interval, inner: Arc<dyn PhysicalExpr>) -> Self {
+        Self { interval, inner }
     }
 
     pub fn interval(&self) -> &Interval {
         &self.interval
+    }
+
+    pub fn from_interval(interval: Interval, schema: &SchemaRef) -> Result<Self> {
+        match (interval.start(), interval.end()) {
+            (Some(start), Some(end)) => {
+                // Create the binary expression for the interval
+                let start_expr = BinaryExpr::new(
+                    col("pos", schema).unwrap(),
+                    Operator::GtEq,
+                    lit(usize::from(start) as i64),
+                );
+
+                let end_expr = BinaryExpr::new(
+                    col("pos", schema).unwrap(),
+                    Operator::LtEq,
+                    lit(usize::from(end) as i64),
+                );
+
+                let interval_expr =
+                    BinaryExpr::new(Arc::new(start_expr), Operator::And, Arc::new(end_expr));
+
+                let interval_expr = IntervalPhysicalExpr::new(interval, Arc::new(interval_expr));
+
+                Ok(Self::new(interval, Arc::new(interval_expr)))
+            }
+            (Some(start), None) => {
+                let start_expr = BinaryExpr::new(
+                    col("pos", schema).unwrap(),
+                    Operator::GtEq,
+                    lit(usize::from(start) as i64),
+                );
+
+                let interval_expr = IntervalPhysicalExpr::try_from(start_expr)?;
+
+                Ok(Self::new(interval, Arc::new(interval_expr)))
+            }
+            (None, Some(end)) => {
+                let end_expr = BinaryExpr::new(
+                    col("pos", schema).unwrap(),
+                    Operator::LtEq,
+                    lit(usize::from(end) as i64),
+                );
+
+                let interval_expr = IntervalPhysicalExpr::try_from(end_expr)?;
+
+                Ok(Self::new(interval, Arc::new(interval_expr)))
+            }
+            (None, None) => Err(DataFusionError::External(InvalidRegionError.into())),
+        }
     }
 }
 
 impl Display for IntervalPhysicalExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "IntervalPhysicalExpr {{ interval: {} }}", self.interval)
-    }
-}
-
-impl From<Interval> for IntervalPhysicalExpr {
-    fn from(interval: Interval) -> Self {
-        Self::new(interval)
     }
 }
 
@@ -84,7 +130,7 @@ impl TryFrom<BinaryExpr> for IntervalPhysicalExpr {
                 let end = Position::new(pos).unwrap();
                 let interval = region::Interval::from(start..=end);
 
-                return Ok(Self::from(interval));
+                return Ok(Self::new(interval, Arc::new(expr)));
             }
         };
 
@@ -101,11 +147,56 @@ impl TryFrom<BinaryExpr> for IntervalPhysicalExpr {
                 let end = Position::new(pos).unwrap();
                 let interval = region::Interval::from(start..=end);
 
-                return Ok(Self::from(interval));
+                return Ok(Self::new(interval, Arc::new(expr)));
             }
         };
 
-        // TODO: Check between and/or gt/lt operators
+        // Check the case for between, which is a combination of two binary expressions
+        let left = expr.left().as_any().downcast_ref::<BinaryExpr>();
+        let right = expr.right().as_any().downcast_ref::<BinaryExpr>();
+
+        // The left is a binary expression, where 'chrom' >= the left literal
+        let left = match left {
+            Some(left) => left,
+            None => return Err(DataFusionError::External(InvalidRegionError.into())),
+        };
+
+        // The right is a binary expression, where 'chrom' =< the right literal
+        let right = match right {
+            Some(right) => right,
+            None => return Err(DataFusionError::External(InvalidRegionError.into())),
+        };
+
+        // Check the left side of the between expression
+        let left_left = left.left().as_any().downcast_ref::<Column>();
+        let left_right = left.right().as_any().downcast_ref::<Literal>();
+        let left_op = left.op();
+
+        // Check the right side of the between expression
+        let right_left = right.left().as_any().downcast_ref::<Column>();
+        let right_right = right.right().as_any().downcast_ref::<Literal>();
+        let right_op = right.op();
+
+        if left_op != &Operator::GtEq || right_op != &Operator::LtEq {
+            return Err(DataFusionError::External(InvalidRegionError.into()));
+        }
+
+        if let (Some(left_left), Some(left_right), Some(right_left), Some(right_right)) =
+            (left_left, left_right, right_left, right_right)
+        {
+            if left_left.name() != "pos" || right_left.name() != "pos" {
+                return Err(DataFusionError::External(InvalidRegionError.into()));
+            }
+
+            let start = left_right.value().to_string().parse::<usize>().unwrap();
+            let end = right_right.value().to_string().parse::<usize>().unwrap();
+
+            let interval =
+                region::Interval::from(Position::new(start).unwrap()..=Position::new(end).unwrap());
+
+            return Ok(Self::new(interval, Arc::new(expr)));
+        }
+
         Err(DataFusionError::External(InvalidRegionError.into()))
     }
 }
@@ -155,28 +246,7 @@ impl PhysicalExpr for IntervalPhysicalExpr {
         &self,
         batch: &arrow::record_batch::RecordBatch,
     ) -> datafusion::error::Result<datafusion::physical_plan::ColumnarValue> {
-        let pos = batch
-            .column_by_name("pos")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<arrow::array::Int64Array>()
-            .unwrap();
-
-        let mut values = Vec::with_capacity(batch.num_rows());
-
-        for i in 0..batch.num_rows() {
-            let pos_value = pos.value(i);
-
-            let is_in_interval = self
-                .interval()
-                .contains(Position::new(pos_value as usize).unwrap());
-
-            values.push(is_in_interval);
-        }
-
-        Ok(datafusion::physical_plan::ColumnarValue::Array(Arc::new(
-            arrow::array::BooleanArray::from(values),
-        )))
+        self.inner.evaluate(batch)
     }
 
     fn children(&self) -> Vec<std::sync::Arc<dyn PhysicalExpr>> {
@@ -187,8 +257,9 @@ impl PhysicalExpr for IntervalPhysicalExpr {
         self: std::sync::Arc<Self>,
         _children: Vec<std::sync::Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn PhysicalExpr>> {
-        Ok(Arc::new(IntervalPhysicalExpr::from(
-            self.interval().clone(),
+        Ok(Arc::new(IntervalPhysicalExpr::new(
+            *self.interval(),
+            self.inner.clone(),
         )))
     }
 
@@ -212,7 +283,7 @@ mod tests {
         },
         scalar::ScalarValue,
     };
-    use noodles::core::{region::Interval, Position, Region};
+    use noodles::core::{region::Interval, Position};
 
     use crate::physical_plan::interval_physical_expr;
 
@@ -238,6 +309,36 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_from_between_expr() {
+        let schema = Arc::new(arrow::datatypes::Schema::new(vec![
+            arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
+        ]));
+
+        let pos_expr = BinaryExpr::new(
+            Arc::new(BinaryExpr::new(
+                col("pos", &schema).unwrap(),
+                Operator::GtEq,
+                lit(ScalarValue::from(4)),
+            )),
+            Operator::And,
+            Arc::new(BinaryExpr::new(
+                col("pos", &schema).unwrap(),
+                Operator::LtEq,
+                lit(ScalarValue::from(10)),
+            )),
+        );
+
+        let interval = super::IntervalPhysicalExpr::try_from(pos_expr).unwrap();
+
+        assert_eq!(
+            interval.interval(),
+            &noodles::core::region::Interval::from(
+                Position::new(4).unwrap()..=Position::new(10).unwrap()
+            )
+        );
+    }
+
     #[tokio::test]
     async fn test_evaluate() {
         let batch = RecordBatch::try_new(
@@ -249,8 +350,14 @@ mod tests {
         .unwrap();
 
         let interval = "1-1".parse::<Interval>().unwrap();
+        let binary_expr = BinaryExpr::new(
+            col("pos", &batch.schema()).unwrap(),
+            Operator::Eq,
+            lit(ScalarValue::from(1)),
+        );
 
-        let expr = interval_physical_expr::IntervalPhysicalExpr::from(interval);
+        let expr =
+            interval_physical_expr::IntervalPhysicalExpr::new(interval, Arc::new(binary_expr));
 
         let result = match expr.evaluate(&batch).unwrap() {
             datafusion::physical_plan::ColumnarValue::Array(array) => array,

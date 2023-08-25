@@ -15,40 +15,39 @@
 use std::{any::Any, fmt::Display, hash::Hash, sync::Arc};
 
 use datafusion::{
-    error::DataFusionError,
+    error::{DataFusionError, Result},
     logical_expr::Operator,
     physical_plan::{
-        expressions::{BinaryExpr, Column, Literal},
+        expressions::{col, lit, BinaryExpr, Column, Literal},
         PhysicalExpr,
     },
 };
 
-use super::interval_physical_expr::IntervalPhysicalExpr;
-
 #[derive(Debug)]
 pub struct ChromPhysicalExpr {
     chrom: String,
+    inner: Arc<dyn PhysicalExpr>,
 }
 
 impl ChromPhysicalExpr {
-    pub fn new(chrom: String) -> Self {
-        Self { chrom }
+    pub fn new(chrom: String, inner: Arc<dyn PhysicalExpr>) -> Self {
+        Self { chrom, inner }
     }
 
     pub fn chrom(&self) -> &str {
         &self.chrom
+    }
+
+    pub fn from_chrom(chrom: &str, schema: &arrow::datatypes::Schema) -> Result<Self> {
+        let inner = BinaryExpr::new(col("chrom", schema).unwrap(), Operator::Eq, lit(chrom));
+
+        Ok(Self::new(chrom.to_string(), Arc::new(inner)))
     }
 }
 
 impl Display for ChromPhysicalExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "ChromPhysicalExpr {{ chrom: {} }}", self.chrom)
-    }
-}
-
-impl From<String> for ChromPhysicalExpr {
-    fn from(chrom: String) -> Self {
-        Self::new(chrom)
     }
 }
 
@@ -60,8 +59,8 @@ impl TryFrom<BinaryExpr> for ChromPhysicalExpr {
 
         if op != &Operator::Eq {
             return Err(DataFusionError::Internal(format!(
-                "Invalid operator for chrom: {}",
-                op
+                "Invalid operator for chrom from expression: {}",
+                expr,
             )));
         }
 
@@ -76,7 +75,7 @@ impl TryFrom<BinaryExpr> for ChromPhysicalExpr {
                     col.name()
                 )));
             } else {
-                return Ok(Self::new(lit.value().to_string()));
+                return Ok(Self::new(lit.value().to_string(), Arc::new(expr)));
             }
         };
 
@@ -91,7 +90,7 @@ impl TryFrom<BinaryExpr> for ChromPhysicalExpr {
                     col.name()
                 )));
             } else {
-                return Ok(Self::new(lit.value().to_string()));
+                return Ok(Self::new(lit.value().to_string(), Arc::new(expr)));
             }
         };
 
@@ -134,26 +133,7 @@ impl PhysicalExpr for ChromPhysicalExpr {
         &self,
         batch: &arrow::record_batch::RecordBatch,
     ) -> datafusion::error::Result<datafusion::physical_plan::ColumnarValue> {
-        let chrom = batch
-            .column_by_name("chrom")
-            .unwrap()
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .unwrap();
-
-        let mut values = Vec::with_capacity(batch.num_rows());
-
-        let test_chrom = self.chrom();
-
-        for i in 0..batch.num_rows() {
-            let chrom = chrom.value(i);
-
-            values.push(chrom == test_chrom);
-        }
-
-        Ok(datafusion::physical_plan::ColumnarValue::Array(Arc::new(
-            arrow::array::BooleanArray::from(values),
-        )))
+        self.inner.evaluate(batch)
     }
 
     fn children(&self) -> Vec<std::sync::Arc<dyn PhysicalExpr>> {
@@ -164,7 +144,10 @@ impl PhysicalExpr for ChromPhysicalExpr {
         self: std::sync::Arc<Self>,
         _children: Vec<std::sync::Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn PhysicalExpr>> {
-        Ok(Arc::new(ChromPhysicalExpr::new(self.chrom().to_string())))
+        Ok(Arc::new(ChromPhysicalExpr::new(
+            self.chrom().to_string(),
+            self.inner.clone(),
+        )))
     }
 
     fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
