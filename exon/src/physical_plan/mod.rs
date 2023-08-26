@@ -12,7 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(crate) mod file_repartitioner;
-pub(crate) mod interval_optimizer_rule;
-pub(crate) mod region_between_rewriter;
-pub(crate) mod vcf_region_optimizer_rule;
+use std::fmt::Display;
+
+#[derive(Debug)]
+struct InvalidRegionError;
+
+impl Display for InvalidRegionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid expression for region")
+    }
+}
+
+impl std::error::Error for InvalidRegionError {}
+
+pub(crate) mod chrom_physical_expr;
+pub(crate) mod interval_physical_expr;
+pub(crate) mod region_physical_expr;

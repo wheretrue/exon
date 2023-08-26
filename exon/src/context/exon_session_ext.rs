@@ -32,8 +32,13 @@ use crate::{
         ExonReadOptions,
     },
     new_exon_config,
-    optimizer::file_repartitioner::ExonRoundRobin,
-    optimizer::vcf_region_optimizer_rule::ExonVCFRegionOptimizer,
+    optimizer::{
+        file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,
+    },
+    optimizer::{
+        region_between_rewriter::RegionBetweenRule,
+        vcf_region_optimizer_rule::ExonVCFRegionOptimizer,
+    },
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -123,11 +128,15 @@ pub trait ExonSessionExt {
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let round_robin_optimizer = ExonRoundRobin::default();
         let vcf_region_optimizer = ExonVCFRegionOptimizer::default();
+        let region_between_optimizer = RegionBetweenRule::default();
+        let interval_region_optimizer = ExonIntervalOptimizer::default();
 
         let mut state = SessionState::with_config_rt(config, runtime)
             .with_physical_optimizer_rules(vec![
                 Arc::new(round_robin_optimizer),
+                Arc::new(region_between_optimizer),
                 Arc::new(vcf_region_optimizer),
+                Arc::new(interval_region_optimizer),
             ]);
 
         let sources = vec![

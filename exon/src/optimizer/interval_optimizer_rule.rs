@@ -17,14 +17,14 @@ use std::sync::Arc;
 use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
+use datafusion::physical_plan::expressions::BinaryExpr;
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
-use crate::datasources::vcf::VCFScan;
-use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
+use crate::physical_plan::interval_physical_expr::IntervalPhysicalExpr;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
-    let new_plan = if plan.children().is_empty() {
+    let plan = if plan.children().is_empty() {
         Transformed::No(plan)
     } else {
         let children = plan
@@ -36,7 +36,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         with_new_children_if_necessary(plan, children)?
     };
 
-    let (plan, _transformed) = new_plan.into_pair();
+    let (plan, _transformed) = plan.into_pair();
 
     let filter_exec = if let Some(filter_exec) = plan.as_any().downcast_ref::<FilterExec>() {
         filter_exec
@@ -44,34 +44,29 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         return Ok(Transformed::No(plan));
     };
 
-    let vcf_scan = match filter_exec.input().as_any().downcast_ref::<VCFScan>() {
-        Some(scan) => scan,
-        None => return Ok(Transformed::No(plan)),
-    };
-
     let pred = match filter_exec
         .predicate()
         .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        .downcast_ref::<BinaryExpr>()
     {
         Some(expr) => expr,
         None => return Ok(Transformed::No(plan)),
     };
 
-    let region_expr = match RegionPhysicalExpr::try_from(pred.clone()) {
+    let interval_expr = match IntervalPhysicalExpr::try_from(pred.clone()) {
         Ok(expr) => expr,
         Err(_) => return Ok(Transformed::No(plan)),
     };
 
-    let new_scan = vcf_scan.clone().with_filter(region_expr.region().clone());
+    let exec = FilterExec::try_new(Arc::new(interval_expr), filter_exec.input().clone())?;
 
-    Ok(Transformed::Yes(Arc::new(new_scan)))
+    Ok(Transformed::Yes(Arc::new(exec)))
 }
 
 #[derive(Default)]
-pub struct ExonVCFRegionOptimizer {}
+pub struct ExonIntervalOptimizer {}
 
-impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
+impl PhysicalOptimizerRule for ExonIntervalOptimizer {
     fn optimize(
         &self,
         plan: std::sync::Arc<dyn ExecutionPlan>,
@@ -84,7 +79,7 @@ impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
     }
 
     fn name(&self) -> &str {
-        "exon_vcf_region_optimizer_rule"
+        "exon_interval_optimizer_rule"
     }
 
     fn schema_check(&self) -> bool {
@@ -96,37 +91,21 @@ impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
 mod tests {
     use std::str::FromStr;
 
-    use datafusion::prelude::SessionContext;
+    use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
+    use noodles::core::region::Interval;
 
-    use crate::{
-        datasources::{ExonFileType, ExonReadOptions},
-        tests::test_path,
-        ExonSessionExt,
-    };
+    use crate::{physical_plan::interval_physical_expr::IntervalPhysicalExpr, ExonSessionExt};
 
     #[tokio::test]
-    async fn test_region_physical_expr() {
+    async fn test_interval_rule_eq() {
         let ctx = SessionContext::new_exon();
 
-        let file_file = ExonFileType::from_str("vcf").unwrap();
-        let options = ExonReadOptions::new(file_file);
+        let sql = "CREATE TABLE test AS (SELECT 1 as pos UNION ALL SELECT 2 as pos)";
+        ctx.sql(sql).await.unwrap();
 
-        // let path = "exon/test-data/datasources/vcf/index.vcf";
-        let path = test_path("vcf", "index.vcf");
-        let path = path.to_str().unwrap();
-        let query = "1";
+        let sql = "SELECT * FROM test WHERE pos = 1";
+        let df = ctx.sql(sql).await.unwrap();
 
-        ctx.register_exon_table("test_vcf", path, options)
-            .await
-            .unwrap();
-
-        // Check between
-        let sql = format!(
-            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos BETWEEN 2 and 3",
-            query
-        );
-
-        let df = ctx.sql(&sql).await.unwrap();
         let logical_plan = df.logical_plan();
 
         let optimized_plan = ctx
@@ -135,19 +114,33 @@ mod tests {
             .await
             .unwrap();
 
-        // Assert that the optimized plan is a VCFScan not a FilterExec
-        assert!(optimized_plan
+        // Downcast to FilterExec and check that the predicate is a IntervalPhysicalExpr
+        let filter_exec = optimized_plan
             .as_any()
-            .downcast_ref::<crate::datasources::vcf::VCFScan>()
-            .is_some());
+            .downcast_ref::<FilterExec>()
+            .unwrap();
 
-        // Check eq
-        let sql = format!(
-            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos = 2",
-            query
-        );
+        let pred = filter_exec
+            .predicate()
+            .as_any()
+            .downcast_ref::<IntervalPhysicalExpr>()
+            .unwrap();
 
-        let df = ctx.sql(&sql).await.unwrap();
+        let expected_interval = Interval::from_str("1-1").unwrap();
+
+        assert_eq!(pred.interval(), &expected_interval);
+    }
+
+    #[tokio::test]
+    async fn test_interval_rule_between() {
+        let ctx = SessionContext::new_exon();
+
+        let sql = "CREATE TABLE test AS (SELECT 1 as pos UNION ALL SELECT 2 as pos)";
+        ctx.sql(sql).await.unwrap();
+
+        let sql = "SELECT * FROM test WHERE pos BETWEEN 1 AND 2";
+        let df = ctx.sql(sql).await.unwrap();
+
         let logical_plan = df.logical_plan();
 
         let optimized_plan = ctx
@@ -156,10 +149,20 @@ mod tests {
             .await
             .unwrap();
 
-        // Assert that the optimized plan is a VCFScan not a FilterExec
-        assert!(optimized_plan
+        // Downcast to FilterExec and check that the predicate is a IntervalPhysicalExpr
+        let filter_exec = optimized_plan
             .as_any()
-            .downcast_ref::<crate::datasources::vcf::VCFScan>()
-            .is_some());
+            .downcast_ref::<FilterExec>()
+            .unwrap();
+
+        let pred = filter_exec
+            .predicate()
+            .as_any()
+            .downcast_ref::<IntervalPhysicalExpr>()
+            .unwrap();
+
+        let expected_interval = Interval::from_str("1-2").unwrap();
+
+        assert_eq!(pred.interval(), &expected_interval);
     }
 }
