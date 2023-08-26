@@ -17,10 +17,8 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        file_format::{file_type::FileCompressionType, FileFormat},
-        physical_plan::FileScanConfig,
-    },
+    common::FileCompressionType,
+    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
     error::DataFusionError,
     execution::context::SessionState,
     physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
@@ -130,7 +128,7 @@ impl FileFormat for VCFFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let mut scan = VCFScan::new(conf, self.file_compression_type.clone());
+        let mut scan = VCFScan::new(conf, self.file_compression_type);
 
         if let Some(region_filter) = &self.region_filter {
             scan = scan.with_filter(region_filter.clone());
@@ -148,10 +146,8 @@ mod tests {
 
     use super::VCFFormat;
     use datafusion::{
-        datasource::{
-            file_format::file_type::FileCompressionType,
-            listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        },
+        common::FileCompressionType,
+        datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         prelude::SessionContext,
     };
     use noodles::core::Region;

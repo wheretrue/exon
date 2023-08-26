@@ -59,7 +59,7 @@
 //!
 //! use datafusion::prelude::*;
 //! use datafusion::error::Result;
-//! use datafusion::datasource::file_format::file_type::FileCompressionType;
+//! use datafusion::common::FileCompressionType;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {

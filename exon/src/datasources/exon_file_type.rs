@@ -15,8 +15,7 @@
 use std::{fmt::Display, str::FromStr, sync::Arc};
 
 use datafusion::{
-    datasource::file_format::{file_type::FileCompressionType, FileFormat},
-    error::DataFusionError,
+    common::FileCompressionType, datasource::file_format::FileFormat, error::DataFusionError,
 };
 
 use super::{

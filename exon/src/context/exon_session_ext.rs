@@ -16,10 +16,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-    },
+    common::FileCompressionType,
+    datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     error::DataFusionError,
     execution::{context::SessionState, options::ReadOptions, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
@@ -50,7 +48,7 @@ use crate::{
 ///
 /// use datafusion::prelude::*;
 /// use datafusion::error::Result;
-/// use datafusion::datasource::file_format::file_type::FileCompressionType;
+/// use datafusion::common::FileCompressionType;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
@@ -485,7 +483,7 @@ impl ExonSessionExt for SessionContext {
 mod tests {
     use std::str::FromStr;
 
-    use arrow::array::{as_list_array, Float32Array, Float64Array};
+    use arrow::array::Float32Array;
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
     use crate::{
@@ -870,6 +868,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "mzml")]
     #[tokio::test]
     async fn test_bin_vector_udf_on_context() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new_exon();
@@ -891,12 +890,15 @@ mod tests {
 
         let batches = v.collect().await.unwrap();
 
-        let binned = as_list_array(batches[0].column(0));
+        let binned = arrow::array::as_list_array(batches[0].column(0));
 
         // iterate over the rows
         for i in 0..batches[0].num_rows() {
             let array = binned.value(i);
-            let array = array.as_any().downcast_ref::<Float64Array>().unwrap();
+            let array = array
+                .as_any()
+                .downcast_ref::<arrow::array::Float64Array>()
+                .unwrap();
 
             assert_eq!(array.len(), 3);
         }

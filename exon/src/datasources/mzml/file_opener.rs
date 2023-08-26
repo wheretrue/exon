@@ -15,10 +15,8 @@
 use std::sync::Arc;
 
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
@@ -48,7 +46,7 @@ impl MzMLOpener {
 impl FileOpener for MzMLOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let mzml_config = self.config.clone();
-        let file_compression_type = self.file_compression_type.clone();
+        let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
             let get_result = mzml_config.object_store.get(file_meta.location()).await?;
@@ -73,9 +71,9 @@ impl FileOpener for MzMLOpener {
 mod test {
     use std::sync::Arc;
 
-    use datafusion::datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpener},
+    use datafusion::{
+        common::FileCompressionType,
+        datasource::physical_plan::{FileMeta, FileOpener},
     };
     use futures::StreamExt;
 

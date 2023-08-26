@@ -16,10 +16,8 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileScanConfig, FileStream},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
         Partitioning, SendableRecordBatchStream, Statistics,
@@ -122,7 +120,7 @@ impl ExecutionPlan for VCFScan {
             config = config.with_projection(projections.clone());
         }
 
-        let mut opener = VCFOpener::new(Arc::new(config), self.file_compression_type.clone());
+        let mut opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
 
         if let Some(x) = &self.region_filter {
             opener = opener.with_region(x.clone());

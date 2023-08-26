@@ -15,10 +15,8 @@
 use std::sync::Arc;
 
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
@@ -45,7 +43,7 @@ impl GFFOpener {
 impl FileOpener for GFFOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let gff_config = self.config.clone();
-        let file_compression_type = self.file_compression_type.clone();
+        let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
             let get_result = gff_config.object_store.get(file_meta.location()).await?;
