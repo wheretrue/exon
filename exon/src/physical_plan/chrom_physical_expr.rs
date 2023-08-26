@@ -23,6 +23,9 @@ use datafusion::{
     },
 };
 
+/// A physical expression that represents a chromosome.
+///
+/// Under the hood, this is a binary expression that compares the `chrom` column to a literal. But may be used to optimize queries.
 #[derive(Debug)]
 pub struct ChromPhysicalExpr {
     chrom: String,
@@ -30,14 +33,17 @@ pub struct ChromPhysicalExpr {
 }
 
 impl ChromPhysicalExpr {
+    /// Create a new `ChromPhysicalExpr` from a chromosome name and an inner expression.
     pub fn new(chrom: String, inner: Arc<dyn PhysicalExpr>) -> Self {
         Self { chrom, inner }
     }
 
+    /// Get the chromosome name.
     pub fn chrom(&self) -> &str {
         &self.chrom
     }
 
+    /// Create a new `ChromPhysicalExpr` from a chromosome name and a schema.
     pub fn from_chrom(chrom: &str, schema: &arrow::datatypes::Schema) -> Result<Self> {
         let inner = BinaryExpr::new(col("chrom", schema)?, Operator::Eq, lit(chrom));
 

@@ -30,6 +30,7 @@ use noodles::core::{
 
 use super::InvalidRegionError;
 
+/// A physical expression that represents a genomic interval.
 #[derive(Debug)]
 pub struct IntervalPhysicalExpr {
     interval: Interval,
@@ -37,14 +38,39 @@ pub struct IntervalPhysicalExpr {
 }
 
 impl IntervalPhysicalExpr {
+    /// Create a new interval physical expression from an interval and an inner expression.
     pub fn new(interval: Interval, inner: Arc<dyn PhysicalExpr>) -> Self {
         Self { interval, inner }
     }
 
+    /// Returns the interval for this expression without taking ownership.
     pub fn interval(&self) -> &Interval {
         &self.interval
     }
 
+    /// Create a new interval physical expression from an interval and a schema.
+    ///
+    /// # Example
+    ///
+    /// ## Single position interval
+    ///
+    /// ```rust
+    /// use exon::physical_plan::interval_physical_expr::IntervalPhysicalExpr;
+    /// use std::sync::Arc;
+    ///
+    /// use datafusion::prelude::*;
+    ///
+    /// let schema = Arc::new(arrow::datatypes::Schema::new(vec![
+    ///    arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
+    /// ]));
+    ///
+    /// let interval = "1-1".parse::<noodles::core::region::Interval>().unwrap();
+    ///
+    /// let expr = IntervalPhysicalExpr::from_interval(interval, &schema).unwrap();
+    ///
+    /// assert_eq!(expr.interval().start(), Some(noodles::core::Position::new(1).unwrap()));
+    /// assert_eq!(expr.interval().end(), Some(noodles::core::Position::new(1).unwrap()));
+    /// ```
     pub fn from_interval(interval: Interval, schema: &SchemaRef) -> Result<Self> {
         match (interval.start(), interval.end()) {
             (Some(start), Some(end)) => {

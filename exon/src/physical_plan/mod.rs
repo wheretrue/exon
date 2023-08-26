@@ -25,6 +25,11 @@ impl Display for InvalidRegionError {
 
 impl std::error::Error for InvalidRegionError {}
 
-pub(crate) mod chrom_physical_expr;
-pub(crate) mod interval_physical_expr;
-pub(crate) mod region_physical_expr;
+/// A physical expression that represents a chromosome.
+pub mod chrom_physical_expr;
+
+/// A physical expression that represents a genomic interval.
+pub mod interval_physical_expr;
+
+/// A physical expression that represents a region, e.g. chr1:100-200.
+pub mod region_physical_expr;
