@@ -890,12 +890,15 @@ mod tests {
 
         let batches = v.collect().await.unwrap();
 
-        let binned = as_list_array(batches[0].column(0));
+        let binned = arrow::array::as_list_array(batches[0].column(0));
 
         // iterate over the rows
         for i in 0..batches[0].num_rows() {
             let array = binned.value(i);
-            let array = array.as_any().downcast_ref::<Float64Array>().unwrap();
+            let array = array
+                .as_any()
+                .downcast_ref::<arrow::array::Float64Array>()
+                .unwrap();
 
             assert_eq!(array.len(), 3);
         }
