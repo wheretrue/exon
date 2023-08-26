@@ -135,7 +135,26 @@ mod tests {
             .await
             .unwrap();
 
-        eprintln!("optimized_plan: {:#?}", optimized_plan);
+        // Assert that the optimized plan is a VCFScan not a FilterExec
+        assert!(optimized_plan
+            .as_any()
+            .downcast_ref::<crate::datasources::vcf::VCFScan>()
+            .is_some());
+
+        // Check eq
+        let sql = format!(
+            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos = 2",
+            query
+        );
+
+        let df = ctx.sql(&sql).await.unwrap();
+        let logical_plan = df.logical_plan();
+
+        let optimized_plan = ctx
+            .state()
+            .create_physical_plan(logical_plan)
+            .await
+            .unwrap();
 
         // Assert that the optimized plan is a VCFScan not a FilterExec
         assert!(optimized_plan

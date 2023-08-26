@@ -144,7 +144,7 @@ impl FileFormat for VCFFormat {
 mod tests {
     use std::sync::Arc;
 
-    use crate::{tests::test_path, ExonSessionExt};
+    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
 
     use super::VCFFormat;
     use datafusion::{
@@ -178,7 +178,8 @@ mod tests {
             .await
             .unwrap();
 
-        eprintln!("{:#?}", physical_plan);
+        let scan = physical_plan.as_any().downcast_ref::<VCFScan>();
+        assert!(scan.is_some());
     }
 
     #[tokio::test]
