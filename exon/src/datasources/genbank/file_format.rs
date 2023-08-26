@@ -17,10 +17,8 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{DataType, Field, Fields, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        file_format::{file_type::FileCompressionType, FileFormat},
-        physical_plan::FileScanConfig,
-    },
+    common::FileCompressionType,
+    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
     execution::context::SessionState,
     physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
@@ -129,7 +127,7 @@ impl FileFormat for GenbankFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = GenbankScan::new(conf, self.file_compression_type.clone());
+        let scan = GenbankScan::new(conf, self.file_compression_type);
 
         Ok(Arc::new(scan))
     }

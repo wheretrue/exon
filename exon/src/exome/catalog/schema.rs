@@ -3,8 +3,8 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use async_trait::async_trait;
 use datafusion::{
     catalog::schema::SchemaProvider,
+    common::FileCompressionType,
     datasource::{
-        file_format::file_type::FileCompressionType,
         listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         TableProvider,
     },

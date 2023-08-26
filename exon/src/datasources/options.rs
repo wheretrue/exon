@@ -1,10 +1,8 @@
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        listing::{ListingOptions, ListingTableUrl},
-    },
+    common::FileCompressionType,
+    datasource::listing::{ListingOptions, ListingTableUrl},
     error::DataFusionError,
     execution::{context::SessionState, options::ReadOptions},
     prelude::SessionConfig,
@@ -51,7 +49,7 @@ impl ReadOptions<'_> for ExonReadOptions<'_> {
         let file_format = self
             .exon_file_type
             .clone()
-            .get_file_format(self.file_compression_type.clone());
+            .get_file_format(self.file_compression_type);
 
         ListingOptions::new(file_format)
     }

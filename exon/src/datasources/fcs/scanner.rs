@@ -16,10 +16,8 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileScanConfig, FileStream},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
         SendableRecordBatchStream, Statistics,
@@ -135,7 +133,7 @@ impl ExecutionPlan for FCSScan {
             config = config.with_projection(projections.clone());
         }
 
-        let opener = FCSOpener::new(Arc::new(config), self.file_compression_type.clone());
+        let opener = FCSOpener::new(Arc::new(config), self.file_compression_type);
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)

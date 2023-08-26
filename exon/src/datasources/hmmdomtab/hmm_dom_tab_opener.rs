@@ -17,10 +17,8 @@ use std::{sync::Arc, task::Poll};
 use bytes::{Buf, Bytes};
 
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use futures::{ready, StreamExt, TryStreamExt};
@@ -46,7 +44,7 @@ impl HMMDomTabOpener {
 impl FileOpener for HMMDomTabOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let gff_config = self.config.clone();
-        let file_compression_type = self.file_compression_type.clone();
+        let file_compression_type = self.file_compression_type;
         let mut decoder = build_hmm_dom_tab_decoder();
         let projection = self.config.projection.clone();
 
@@ -100,9 +98,9 @@ impl FileOpener for HMMDomTabOpener {
 mod test {
     use std::sync::Arc;
 
-    use datafusion::datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpener},
+    use datafusion::{
+        common::FileCompressionType,
+        datasource::physical_plan::{FileMeta, FileOpener},
     };
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};

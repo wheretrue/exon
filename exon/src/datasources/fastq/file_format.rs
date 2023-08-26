@@ -17,10 +17,8 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        file_format::{file_type::FileCompressionType, FileFormat},
-        physical_plan::FileScanConfig,
-    },
+    common::FileCompressionType,
+    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
     execution::context::SessionState,
     physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
@@ -84,7 +82,7 @@ impl FileFormat for FASTQFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTQScan::new(conf.clone(), self.file_compression_type.clone());
+        let scan = FASTQScan::new(conf.clone(), self.file_compression_type);
         Ok(Arc::new(scan))
     }
 }

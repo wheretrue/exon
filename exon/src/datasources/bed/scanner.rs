@@ -16,10 +16,8 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileScanConfig, FileStream},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
         Partitioning, SendableRecordBatchStream, Statistics,
@@ -129,7 +127,7 @@ impl ExecutionPlan for BEDScan {
             .with_some_projection(self.base_config.projection.clone());
 
         let config = Arc::new(config);
-        let opener = BEDOpener::new(config, self.file_compression_type.clone());
+        let opener = BEDOpener::new(config, self.file_compression_type);
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

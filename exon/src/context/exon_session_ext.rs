@@ -16,10 +16,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-    },
+    common::FileCompressionType,
+    datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     error::DataFusionError,
     execution::{context::SessionState, options::ReadOptions, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},

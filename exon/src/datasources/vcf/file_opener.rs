@@ -15,10 +15,8 @@
 use std::sync::Arc;
 
 use datafusion::{
-    datasource::{
-        file_format::file_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
-    },
+    common::FileCompressionType,
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
@@ -64,7 +62,7 @@ impl FileOpener for VCFOpener {
         let config = self.config.clone();
         let region = self.region.clone();
 
-        let file_compression_type = self.file_compression_type.clone();
+        let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
             match config.object_store.get(file_meta.location()).await? {
