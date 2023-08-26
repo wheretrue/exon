@@ -48,7 +48,7 @@ use crate::{
 ///
 /// use datafusion::prelude::*;
 /// use datafusion::error::Result;
-/// use datafusion::datasource::file_format::file_type::FileCompressionType;
+/// use datafusion::common::FileCompressionType;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
@@ -483,7 +483,7 @@ impl ExonSessionExt for SessionContext {
 mod tests {
     use std::str::FromStr;
 
-    use arrow::array::{as_list_array, Float32Array, Float64Array};
+    use arrow::array::Float32Array;
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
     use crate::{
@@ -868,6 +868,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "mzml")]
     #[tokio::test]
     async fn test_bin_vector_udf_on_context() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new_exon();
