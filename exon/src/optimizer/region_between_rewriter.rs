@@ -17,58 +17,38 @@ use std::sync::Arc;
 use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
-use datafusion::physical_plan::expressions::BinaryExpr;
+use datafusion::physical_plan::expressions::{BinaryExpr, Column, Literal};
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
-fn transform_expression(
-    binary_expression: &datafusion::physical_expr::expressions::BinaryExpr,
-) -> Option<BinaryExpr> {
-    // first downcast the left and right expressions to BinaryExpr
-
-    eprintln!("binary_expression: {:#?}", binary_expression);
-
+fn transform_expression(binary_expression: &BinaryExpr) -> Option<BinaryExpr> {
     let left = match binary_expression
         .left()
         .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        .downcast_ref::<BinaryExpr>()
     {
         Some(expr) => expr,
         None => return None,
     };
-
-    eprintln!("left: {:#?}", left);
 
     let right = match binary_expression
         .right()
         .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        .downcast_ref::<BinaryExpr>()
     {
         Some(expr) => expr,
         None => return None,
     };
-
-    eprintln!("right: {:#?}", right);
 
     // second check that the left expression is a (chrom = '1' AND pos >= 2) and the right is a
     // (pos <= 3)
-    let left_chrom = match left
-        .left()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
-    {
+    let left_chrom = match left.left().as_any().downcast_ref::<BinaryExpr>() {
         Some(expr) => expr,
         None => return None,
     };
 
-    eprintln!("left_chrom: {:#?}", left_chrom);
-
     // Check the left_chrom is a Column and the right is a Literal
-    let left_chrom_col = match left_chrom
-        .left()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::Column>()
-    {
+    let left_chrom_col = match left_chrom.left().as_any().downcast_ref::<Column>() {
         Some(expr) => expr,
         None => return None,
     };
@@ -79,32 +59,20 @@ fn transform_expression(
         return None;
     }
 
-    let left_chrom_lit = match left_chrom
-        .right()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::Literal>()
-    {
+    let left_chrom_lit = match left_chrom.right().as_any().downcast_ref::<Literal>() {
         Some(expr) => expr,
         None => return None,
     };
 
     eprintln!("left_chrom_lit: {:#?}", left_chrom_lit);
 
-    let left_pos = match left
-        .right()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
-    {
+    let left_pos = match left.right().as_any().downcast_ref::<BinaryExpr>() {
         Some(expr) => expr,
         None => return None,
     };
 
     // Check the left_pos is a Column and the right is a Literal
-    let left_pos_col = match left_pos
-        .left()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::Column>()
-    {
+    let left_pos_col = match left_pos.left().as_any().downcast_ref::<Column>() {
         Some(expr) => expr,
         None => return None,
     };
@@ -113,33 +81,23 @@ fn transform_expression(
         return None;
     }
 
-    let right_pos_col = match right
-        .left()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::Column>()
-    {
+    let right_pos_col = match right.left().as_any().downcast_ref::<Column>() {
         Some(expr) => expr,
         None => return None,
     };
 
-    let right_pos_lit = match right
-        .right()
-        .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::Literal>()
-    {
+    let right_pos_lit = match right.right().as_any().downcast_ref::<Literal>() {
         Some(expr) => expr,
         None => return None,
     };
 
-    let pos_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+    let pos_expr = BinaryExpr::new(
         Arc::new(left_pos.clone()),
         datafusion::logical_expr::Operator::And,
         Arc::new(right.clone()),
     );
 
-    eprintln!("pos_expr: {:#?}", pos_expr);
-
-    let full_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+    let full_expr = BinaryExpr::new(
         Arc::new(left_chrom.clone()),
         datafusion::logical_expr::Operator::And,
         Arc::new(pos_expr),
@@ -172,7 +130,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
     let pred = match filter_exec
         .predicate()
         .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        .downcast_ref::<BinaryExpr>()
     {
         Some(expr) => expr,
         None => return Ok(Transformed::No(plan)),
@@ -214,7 +172,7 @@ impl PhysicalOptimizerRule for RegionBetweenRule {
 mod tests {
     use std::sync::Arc;
 
-    use datafusion::physical_plan::expressions::{col, lit};
+    use datafusion::physical_plan::expressions::{col, lit, BinaryExpr};
 
     use crate::optimizer::region_between_rewriter::transform_expression;
 
@@ -228,7 +186,7 @@ mod tests {
         let chrom_expr = col("chrom", &schema).unwrap();
         let chrom_lit = lit("1");
 
-        let full_chrom_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+        let full_chrom_expr = BinaryExpr::new(
             chrom_expr,
             datafusion::logical_expr::Operator::Eq,
             chrom_lit,
@@ -237,13 +195,13 @@ mod tests {
         let left_pos_expr = col("pos", &schema).unwrap();
         let left_pos_lit = lit(2);
 
-        let bin_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+        let bin_expr = BinaryExpr::new(
             left_pos_expr,
             datafusion::logical_expr::Operator::GtEq,
             left_pos_lit,
         );
 
-        let left_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+        let left_expr = BinaryExpr::new(
             Arc::new(full_chrom_expr),
             datafusion::logical_expr::Operator::And,
             Arc::new(bin_expr),
@@ -252,13 +210,13 @@ mod tests {
         let right_pos_expr = col("pos", &schema).unwrap();
         let right_pos_lit = lit(3);
 
-        let bin_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+        let bin_expr = BinaryExpr::new(
             right_pos_expr,
             datafusion::logical_expr::Operator::LtEq,
             right_pos_lit,
         );
 
-        let full_expr = datafusion::physical_expr::expressions::BinaryExpr::new(
+        let full_expr = BinaryExpr::new(
             Arc::new(left_expr),
             datafusion::logical_expr::Operator::And,
             Arc::new(bin_expr),

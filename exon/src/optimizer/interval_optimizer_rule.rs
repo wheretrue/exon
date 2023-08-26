@@ -17,6 +17,7 @@ use std::sync::Arc;
 use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
+use datafusion::physical_plan::expressions::BinaryExpr;
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
@@ -46,7 +47,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
     let pred = match filter_exec
         .predicate()
         .as_any()
-        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        .downcast_ref::<BinaryExpr>()
     {
         Some(expr) => expr,
         None => return Ok(Transformed::No(plan)),
@@ -90,7 +91,7 @@ impl PhysicalOptimizerRule for ExonIntervalOptimizer {
 mod tests {
     use std::str::FromStr;
 
-    use datafusion::prelude::SessionContext;
+    use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
     use noodles::core::region::Interval;
 
     use crate::{physical_plan::interval_physical_expr::IntervalPhysicalExpr, ExonSessionExt};
@@ -116,7 +117,7 @@ mod tests {
         // Downcast to FilterExec and check that the predicate is a IntervalPhysicalExpr
         let filter_exec = optimized_plan
             .as_any()
-            .downcast_ref::<datafusion::physical_plan::filter::FilterExec>()
+            .downcast_ref::<FilterExec>()
             .unwrap();
 
         let pred = filter_exec
@@ -151,7 +152,7 @@ mod tests {
         // Downcast to FilterExec and check that the predicate is a IntervalPhysicalExpr
         let filter_exec = optimized_plan
             .as_any()
-            .downcast_ref::<datafusion::physical_plan::filter::FilterExec>()
+            .downcast_ref::<FilterExec>()
             .unwrap();
 
         let pred = filter_exec
