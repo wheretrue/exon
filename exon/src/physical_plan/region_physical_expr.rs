@@ -50,6 +50,7 @@ impl RegionPhysicalExpr {
         &self.region
     }
 
+    #[allow(dead_code)]
     pub fn from_region(region: Region, schema: SchemaRef) -> Result<Self> {
         let interval_expr = IntervalPhysicalExpr::from_interval(region.interval(), &schema)?;
         let chrom_expr = ChromPhysicalExpr::from_chrom(region.name(), &schema)?;

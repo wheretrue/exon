@@ -50,13 +50,13 @@ impl IntervalPhysicalExpr {
             (Some(start), Some(end)) => {
                 // Create the binary expression for the interval
                 let start_expr = BinaryExpr::new(
-                    col("pos", schema).unwrap(),
+                    col("pos", schema)?,
                     Operator::GtEq,
                     lit(usize::from(start) as i64),
                 );
 
                 let end_expr = BinaryExpr::new(
-                    col("pos", schema).unwrap(),
+                    col("pos", schema)?,
                     Operator::LtEq,
                     lit(usize::from(end) as i64),
                 );
@@ -70,7 +70,7 @@ impl IntervalPhysicalExpr {
             }
             (Some(start), None) => {
                 let start_expr = BinaryExpr::new(
-                    col("pos", schema).unwrap(),
+                    col("pos", schema)?,
                     Operator::GtEq,
                     lit(usize::from(start) as i64),
                 );
@@ -81,7 +81,7 @@ impl IntervalPhysicalExpr {
             }
             (None, Some(end)) => {
                 let end_expr = BinaryExpr::new(
-                    col("pos", schema).unwrap(),
+                    col("pos", schema)?,
                     Operator::LtEq,
                     lit(usize::from(end) as i64),
                 );

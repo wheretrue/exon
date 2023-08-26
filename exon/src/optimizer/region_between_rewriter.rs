@@ -17,7 +17,7 @@ use std::sync::Arc;
 use datafusion::common::tree_node::Transformed;
 use datafusion::error::Result;
 use datafusion::physical_optimizer::PhysicalOptimizerRule;
-use datafusion::physical_plan::expressions::{BinaryExpr, Column, Literal};
+use datafusion::physical_plan::expressions::{BinaryExpr, Column};
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
@@ -59,13 +59,6 @@ fn transform_expression(binary_expression: &BinaryExpr) -> Option<BinaryExpr> {
         return None;
     }
 
-    let left_chrom_lit = match left_chrom.right().as_any().downcast_ref::<Literal>() {
-        Some(expr) => expr,
-        None => return None,
-    };
-
-    eprintln!("left_chrom_lit: {:#?}", left_chrom_lit);
-
     let left_pos = match left.right().as_any().downcast_ref::<BinaryExpr>() {
         Some(expr) => expr,
         None => return None,
@@ -86,10 +79,9 @@ fn transform_expression(binary_expression: &BinaryExpr) -> Option<BinaryExpr> {
         None => return None,
     };
 
-    let right_pos_lit = match right.right().as_any().downcast_ref::<Literal>() {
-        Some(expr) => expr,
-        None => return None,
-    };
+    if right_pos_col.name() != "pos" || right.op() != &datafusion::logical_expr::Operator::LtEq {
+        return None;
+    }
 
     let pos_expr = BinaryExpr::new(
         Arc::new(left_pos.clone()),
@@ -172,7 +164,7 @@ impl PhysicalOptimizerRule for RegionBetweenRule {
 mod tests {
     use std::sync::Arc;
 
-    use datafusion::physical_plan::expressions::{col, lit, BinaryExpr};
+    use datafusion::physical_plan::expressions::{col, lit, BinaryExpr, Column, Literal};
 
     use crate::optimizer::region_between_rewriter::transform_expression;
 
@@ -224,6 +216,29 @@ mod tests {
 
         let actual_expr = transform_expression(&full_expr).unwrap();
 
-        eprintln!("actual_expr: {:#?}", actual_expr);
+        // Assert left is chrom = '1'
+        let left_chrom = actual_expr
+            .left()
+            .as_any()
+            .downcast_ref::<BinaryExpr>()
+            .unwrap();
+
+        let left_chrom_col = left_chrom.left().as_any().downcast_ref::<Column>().unwrap();
+        assert_eq!(
+            left_chrom_col.name(),
+            "chrom",
+            "left_chrom_col.name() != 'chrom'"
+        );
+
+        let left_chrom_lit = left_chrom
+            .right()
+            .as_any()
+            .downcast_ref::<Literal>()
+            .unwrap();
+        assert_eq!(
+            left_chrom_lit.value(),
+            &datafusion::scalar::ScalarValue::Utf8(Some("1".to_owned())),
+            "left_chrom_lit.value() != '1'"
+        );
     }
 }

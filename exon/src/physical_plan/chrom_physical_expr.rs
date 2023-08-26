@@ -39,7 +39,7 @@ impl ChromPhysicalExpr {
     }
 
     pub fn from_chrom(chrom: &str, schema: &arrow::datatypes::Schema) -> Result<Self> {
-        let inner = BinaryExpr::new(col("chrom", schema).unwrap(), Operator::Eq, lit(chrom));
+        let inner = BinaryExpr::new(col("chrom", schema)?, Operator::Eq, lit(chrom));
 
         Ok(Self::new(chrom.to_string(), Arc::new(inner)))
     }
