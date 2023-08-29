@@ -114,7 +114,7 @@ mod runtime_env;
 pub use runtime_env::ExonRuntimeEnvExt;
 
 #[cfg(feature = "exome")]
-mod exome;
+pub mod exome;
 
 #[cfg(feature = "exome")]
 pub use context::ExomeSessionExt;
