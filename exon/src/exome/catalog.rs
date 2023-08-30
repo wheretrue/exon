@@ -1,3 +1,17 @@
+// Copyright 2023 WHERE TRUE Technologies.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 mod schema;
 
 pub use schema::Schema;
@@ -12,8 +26,8 @@ type CatalogServiceClient =
 #[derive(Clone)]
 pub struct ExomeCatalogClient {
     organization_id: String,
-
     catalog_service_client: CatalogServiceClient,
+    token: String,
 }
 
 /// Implement Debug for ExomeCatalogClient.
@@ -33,6 +47,7 @@ impl ExomeCatalogClient {
     pub async fn connect(
         url: String,
         organization_id: String,
+        token: String,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let catalog_service_client =
             proto::catalog_service_client::CatalogServiceClient::connect(url.clone()).await?;
@@ -40,9 +55,33 @@ impl ExomeCatalogClient {
         let s = Self {
             organization_id,
             catalog_service_client,
+            token,
         };
 
         Ok(s)
+    }
+
+    /// Make a request to the Exome service.
+    ///
+    /// # Arguments
+    ///
+    /// * `request_body` - The request to make.
+    fn make_request<T>(&self, request_body: T) -> Result<tonic::Request<T>, tonic::Status> {
+        let mut request = tonic::Request::new(request_body);
+
+        let metadata_value =
+            tonic::metadata::MetadataValue::try_from(&self.token).map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    format!("Error creating metadata value: {}", e),
+                )
+            })?;
+
+        request
+            .metadata_mut()
+            .insert("authorization", metadata_value);
+
+        Ok(request)
     }
 
     /// Retrieves a library by its name from the Exome Catalog service.
@@ -58,10 +97,10 @@ impl ExomeCatalogClient {
         &mut self,
         name: String,
     ) -> Result<Option<proto::Library>, Box<dyn std::error::Error>> {
-        let request = tonic::Request::new(proto::GetLibraryByNameRequest {
+        let request = self.make_request(proto::GetLibraryByNameRequest {
             name,
             organization_id: self.organization_id.clone(),
-        });
+        })?;
 
         let response = self
             .catalog_service_client
@@ -85,7 +124,7 @@ impl ExomeCatalogClient {
         &mut self,
         library_id: String,
     ) -> Result<Vec<proto::Catalog>, Box<dyn std::error::Error>> {
-        let request = tonic::Request::new(proto::ListCatalogsRequest { library_id });
+        let request = self.make_request(proto::ListCatalogsRequest { library_id })?;
 
         let response = self
             .catalog_service_client
@@ -109,7 +148,7 @@ impl ExomeCatalogClient {
         &mut self,
         catalog_id: String,
     ) -> Result<Vec<proto::Schema>, Box<dyn std::error::Error>> {
-        let request = tonic::Request::new(proto::ListSchemasRequest { catalog_id });
+        let request = self.make_request(proto::ListSchemasRequest { catalog_id })?;
 
         let response = self
             .catalog_service_client
@@ -154,11 +193,11 @@ impl ExomeCatalogClient {
         let url = std::env::var("EXON_EXOME_URL")?;
         let url = url::Url::parse(&url)?;
 
-        let _token = std::env::var("EXON_EXOME_TOKEN")?;
+        let token = std::env::var("EXON_EXOME_TOKEN")?;
 
         let organization_id = std::env::var("EXON_EXOME_ORGANIZATION_ID")?;
 
-        let client = Self::connect(url.to_string(), organization_id).await?;
+        let client = Self::connect(url.to_string(), organization_id, token).await?;
 
         Ok(client)
     }
@@ -182,7 +221,7 @@ impl ExomeCatalogClient {
         &self,
         schema_id: String,
     ) -> Result<Vec<proto::Table>, Box<dyn std::error::Error>> {
-        let request = tonic::Request::new(proto::ListTablesRequest { schema_id });
+        let request = self.make_request(proto::ListTablesRequest { schema_id })?;
 
         let mut client = self.catalog_service_client.clone();
         let response = client.list_tables(request).await?.into_inner();

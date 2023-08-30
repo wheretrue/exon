@@ -23,26 +23,30 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait ExomeSessionExt {
     /// Registers the library on the SessionContext.
-    async fn register_library(&mut self, library_id: String) -> Result<(), DataFusionError>;
+    async fn register_library(
+        &mut self,
+        library_id: String,
+        client: &mut ExomeCatalogClient,
+    ) -> Result<(), DataFusionError>;
 
     /// Registers the library on the SessionContext by name.
     async fn register_library_by_name(
         &mut self,
         library_name: String,
+        client: &mut ExomeCatalogClient,
     ) -> Result<(), DataFusionError>;
 }
 
 #[async_trait]
 impl ExomeSessionExt for SessionContext {
-    async fn register_library(&mut self, library_id: String) -> Result<(), DataFusionError> {
-        let mut client = ExomeCatalogClient::from_env().await.map_err(|e| {
-            DataFusionError::Execution(format!(
-                "Failed to create ExomeCatalogClient from environment: {}",
-                e
-            ))
+    async fn register_library(
+        &mut self,
+        library_id: String,
+        client: &mut ExomeCatalogClient,
+    ) -> Result<(), DataFusionError> {
+        let exome_catalogs = client.get_catalogs(library_id).await.map_err(|e| {
+            DataFusionError::Execution(format!("Error getting catalogs for library {}", e))
         })?;
-
-        let exome_catalogs = client.get_catalogs(library_id).await.unwrap();
 
         for catalog in exome_catalogs {
             let catalog_name = catalog.name.clone();
@@ -54,8 +58,7 @@ impl ExomeSessionExt for SessionContext {
                 catalog_name,
                 catalog_id,
             )
-            .await
-            .unwrap();
+            .await?;
         }
 
         Ok(())
@@ -64,21 +67,15 @@ impl ExomeSessionExt for SessionContext {
     async fn register_library_by_name(
         &mut self,
         library_name: String,
+        client: &mut ExomeCatalogClient,
     ) -> Result<(), DataFusionError> {
-        let mut client = ExomeCatalogClient::from_env().await.map_err(|e| {
-            DataFusionError::Execution(format!(
-                "Failed to create ExomeCatalogClient from environment: {}",
-                e
-            ))
-        })?;
-
         let library = client.get_library_by_name(library_name).await.unwrap();
 
         match library {
             Some(library) => {
                 let library_id = library.id.clone();
 
-                self.register_library(library_id).await
+                self.register_library(library_id, client).await
             }
             None => return Err(DataFusionError::Execution("Library not found".to_string())),
         }
@@ -99,6 +96,7 @@ mod tests {
         let mut client = ExomeCatalogClient::connect(
             "http://localhost:50051".to_string(),
             "00000000-0000-0000-0000-000000000000".to_string(),
+            "token".to_string(),
         )
         .await?;
 
@@ -111,7 +109,10 @@ mod tests {
         let table_name = "test_table";
 
         session
-            .register_library("00000000-0000-0000-0000-000000000000".to_string())
+            .register_library(
+                "00000000-0000-0000-0000-000000000000".to_string(),
+                &mut client,
+            )
             .await?;
 
         let catalog_names = session.catalog_names();

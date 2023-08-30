@@ -36,18 +36,24 @@ pub async fn register_catalog(
     let memory_catalog = MemoryCatalogProvider::new();
 
     let mut client = client.clone();
-    let schemas = client.get_schemas(exome_catalog_id).await.unwrap();
+    let schemas = client.get_schemas(exome_catalog_id).await.map_err(|e| {
+        DataFusionError::Execution(format!("Error getting schemas for catalog {}", e))
+    })?;
 
     for schema in schemas {
         let schema_name = schema.name.clone();
 
         let schema = catalog::Schema::new(schema, session.clone(), client.clone())
             .await
-            .unwrap();
+            .map_err(|e| {
+                DataFusionError::Execution(format!("Error creating schema for catalog {}", e))
+            })?;
 
         memory_catalog
             .register_schema(&schema_name, Arc::new(schema))
-            .unwrap();
+            .map_err(|e| {
+                DataFusionError::Execution(format!("Error registering schema for catalog {}", e))
+            })?;
     }
 
     session.register_catalog(catalog_name, Arc::new(memory_catalog));

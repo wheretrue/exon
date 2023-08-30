@@ -26,6 +26,7 @@ use super::{
     InvalidRegionError,
 };
 
+/// A physical expression that represents a region, e.g. chr1:100-200.
 #[derive(Debug)]
 pub struct RegionPhysicalExpr {
     region: Region,
@@ -34,6 +35,7 @@ pub struct RegionPhysicalExpr {
 }
 
 impl RegionPhysicalExpr {
+    /// Create a new `RegionPhysicalExpr` from a region and two inner expressions.
     pub fn new(
         region: Region,
         interval_expr: Arc<dyn PhysicalExpr>,
@@ -46,11 +48,12 @@ impl RegionPhysicalExpr {
         }
     }
 
+    /// Get the region.
     pub fn region(&self) -> &Region {
         &self.region
     }
 
-    #[allow(dead_code)]
+    /// Create a new `RegionPhysicalExpr` from a region and a schema.
     pub fn from_region(region: Region, schema: SchemaRef) -> Result<Self> {
         let interval_expr = IntervalPhysicalExpr::from_interval(region.interval(), &schema)?;
         let chrom_expr = ChromPhysicalExpr::from_chrom(region.name(), &schema)?;

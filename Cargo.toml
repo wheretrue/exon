@@ -17,3 +17,7 @@ members = [
 arrow = {version = "45"}
 datafusion = {version = "30", features = ["default"]}
 object_store = {version = "0.6.1"}
+
+[profile.profiling]
+debug = true
+inherits = "release"
