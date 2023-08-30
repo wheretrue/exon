@@ -18,14 +18,18 @@ use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
-    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
+    datasource::{
+        file_format::FileFormat,
+        listing::{FileRange, PartitionedFile},
+        physical_plan::FileScanConfig,
+    },
     error::DataFusionError,
     execution::context::SessionState,
     physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
 use futures::TryStreamExt;
 use noodles::{bgzf, core::Region, vcf};
-use object_store::{ObjectMeta, ObjectStore};
+use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
@@ -124,27 +128,108 @@ impl FileFormat for VCFFormat {
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let mut scan = VCFScan::new(conf, self.file_compression_type);
-
         if let Some(region_filter) = &self.region_filter {
-            scan = scan.with_filter(region_filter.clone());
-        }
+            let mut new_conf = conf.clone();
 
-        Ok(Arc::new(scan))
+            let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
+
+            let new_groups =
+                add_region_bytes_to_file_groups(object_store, &conf.file_groups, &region_filter)
+                    .await;
+
+            new_conf.file_groups = new_groups;
+
+            let mut scan = VCFScan::new(new_conf, self.file_compression_type);
+
+            scan = scan.with_filter(region_filter.clone());
+
+            return Ok(Arc::new(scan));
+        } else {
+            let scan = VCFScan::new(conf, self.file_compression_type);
+            return Ok(Arc::new(scan));
+        }
     }
+}
+
+pub async fn add_region_bytes_to_file_groups(
+    object_store: Arc<dyn ObjectStore>,
+    file_groups: &Vec<Vec<PartitionedFile>>,
+    region: &Region,
+) -> Vec<Vec<PartitionedFile>> {
+    let mut new_list = Vec::new();
+
+    // iterate through the nested list of files
+    for file_group in file_groups {
+        // iterate through the files in the file group
+        for file in file_group {
+            let tbi_path = file.object_meta.location.clone().to_string() + ".tbi";
+            let tbi_path = Path::from(tbi_path);
+
+            let index_bytes = object_store.get(&tbi_path).await.unwrap();
+            let index_bytes = index_bytes.bytes().await.unwrap();
+
+            let cursor = std::io::Cursor::new(index_bytes);
+
+            let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
+
+            let (id, s) = resolve_region(&index, region).unwrap();
+            let chunks = index.query(id, region.interval()).unwrap();
+
+            for chunk in chunks {
+                let start = chunk.start().compressed();
+                let end = chunk.end().compressed();
+
+                let mut new_file = file.clone();
+                new_file.range = Some(FileRange {
+                    start: start as i64,
+                    end: end as i64,
+                });
+
+                eprintln!("new file: {:?}", new_file);
+
+                new_list.push(new_file);
+            }
+        }
+    }
+
+    vec![new_list]
+}
+
+fn resolve_region(
+    index: &noodles::csi::Index,
+    region: &Region,
+) -> std::io::Result<(usize, String)> {
+    let header = index.header().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")
+    })?;
+
+    let i = header
+        .reference_sequence_names()
+        .get_index_of(region.name())
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "region reference sequence does not exist in reference sequences: {region:?}"
+                ),
+            )
+        })?;
+
+    Ok((i, region.name().into()))
 }
 
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
+    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonRuntimeEnvExt, ExonSessionExt};
 
     use super::VCFFormat;
+    use arrow::ipc::List;
     use datafusion::{
         common::FileCompressionType,
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
@@ -183,7 +268,14 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
+        let path = "s3://wtt-01-dist-prd/vcff";
+
+        ctx.runtime_env()
+            .exon_register_object_store_uri(path)
+            .await
+            .unwrap();
+
+        let table_path = ListingTableUrl::parse(path).unwrap();
 
         let vcf_format = Arc::new(VCFFormat::default());
         let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf");
@@ -219,9 +311,16 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
+        let path = "s3://wtt-01-dist-prd/vcff/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz";
 
-        let region: Region = "1".parse().unwrap();
+        ctx.runtime_env()
+            .exon_register_object_store_uri(path)
+            .await
+            .unwrap();
+
+        let table_path = ListingTableUrl::parse(path).unwrap();
+
+        let region: Region = "chr1:1-1000000".parse().unwrap();
         let vcf_format =
             Arc::new(VCFFormat::new(FileCompressionType::GZIP).with_region_filter(region));
         let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");

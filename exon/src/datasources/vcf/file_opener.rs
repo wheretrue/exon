@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
 
 use datafusion::{
     common::FileCompressionType,
@@ -63,6 +63,45 @@ impl FileOpener for VCFOpener {
         let region = self.region.clone();
 
         let file_compression_type = self.file_compression_type;
+
+        if let Some(region) = &region {
+            return Ok(Box::pin(async move {
+                let s = config.object_store.get(file_meta.location()).await?;
+                let s = s.into_stream();
+
+                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                let stream_reader = StreamReader::new(stream_reader);
+
+                let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+                let mut vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
+
+                let header = vcf_reader.read_header().await?;
+
+                let byte_region = config
+                    .object_store
+                    .get_range(
+                        file_meta.location(),
+                        Range {
+                            start: file_meta.range.clone().map(|r| r.start).unwrap_or(0) as usize,
+                            end: file_meta.range.clone().map(|r| r.end).unwrap_or(0) as usize,
+                        },
+                    )
+                    .await?;
+
+                let cursor = std::io::Cursor::new(byte_region);
+                let bgzf_reader = bgzf::Reader::new(cursor);
+                // let vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
+
+                let record_iterator = UnIndexedRecordIterator::new_with_header(bgzf_reader, header);
+                let boxed_iter = Box::new(record_iterator);
+
+                let batch_reader = BatchReader::new(boxed_iter, config);
+
+                let batch_stream = futures::stream::iter(batch_reader);
+
+                Ok(batch_stream.boxed())
+            }));
+        }
 
         Ok(Box::pin(async move {
             match config.object_store.get(file_meta.location()).await? {

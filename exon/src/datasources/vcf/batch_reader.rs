@@ -37,12 +37,22 @@ where
         Ok(Self { reader, header })
     }
 
+    pub fn new_with_header(reader: R, header: noodles::vcf::Header) -> Self {
+        let reader = noodles::vcf::Reader::new(reader);
+        Self { reader, header }
+    }
+
     fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
         let mut record = noodles::vcf::Record::default();
 
-        match self.reader.read_record(&self.header, &mut record)? {
-            0 => Ok(None),
-            _ => Ok(Some(record)),
+        loop {
+            match self.reader.read_record(&self.header, &mut record) {
+                Ok(0) => return Ok(None),
+                Ok(_) => return Ok(Some(record)),
+                Err(e) => {
+                    eprintln!("error reading record: {}", e);
+                }
+            }
         }
     }
 }
