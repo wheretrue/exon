@@ -94,17 +94,10 @@ impl BatchReader {
         )?;
 
         for _ in 0..self.config.batch_size {
-            loop {
-                let record = self.record_iterator.next().transpose()?;
-                match record {
-                    Some(record) => match record_batch.append(&record) {
-                        Ok(_) => break,
-                        Err(e) => {
-                            eprintln!("Error appending record: {}", e);
-                        }
-                    },
-                    None => break,
-                }
+            let record = self.record_iterator.next().transpose()?;
+            match record {
+                Some(record) => record_batch.append(&record)?,
+                None => break,
             }
         }
 
