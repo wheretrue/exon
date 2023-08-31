@@ -21,7 +21,7 @@ use tokio::io::{AsyncBufRead, AsyncRead};
 
 use crate::datasources::vcf::VCFArrayBuilder;
 
-use super::BCFConfig;
+use super::{lazy_array_builder::BCFLazyArrayBuilder, BCFConfig};
 
 pub struct BatchReader<R>
 where
@@ -89,7 +89,7 @@ where
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut record_batch = VCFArrayBuilder::create(
+        let mut record_batch = BCFLazyArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
             None,
@@ -156,7 +156,7 @@ impl BatchAdapter {
         )?;
 
         for _ in 0..self.config.batch_size {
-            todo!("implement batch reader")
+            todo!()
             // match self.record_iterator.next() {
             //     Some(Ok(record)) => record_batch.append(&record),
             //     Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),

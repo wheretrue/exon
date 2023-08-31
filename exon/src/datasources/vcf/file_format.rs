@@ -173,10 +173,9 @@ pub async fn add_region_bytes_to_file_groups(
             let index_bytes = index_bytes.bytes().await.unwrap();
 
             let cursor = std::io::Cursor::new(index_bytes);
-
             let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
 
-            let (id, s) = resolve_region(&index, region).unwrap();
+            let (id, _) = resolve_region(&index, region).unwrap();
             let chunks = index.query(id, region.interval()).unwrap();
 
             for chunk in chunks {
@@ -229,7 +228,6 @@ mod tests {
     use crate::{datasources::vcf::VCFScan, tests::test_path, ExonRuntimeEnvExt, ExonSessionExt};
 
     use super::VCFFormat;
-    use arrow::ipc::List;
     use datafusion::{
         common::FileCompressionType,
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},

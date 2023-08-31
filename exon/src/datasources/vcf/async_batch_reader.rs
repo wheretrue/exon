@@ -49,20 +49,6 @@ where
         })
     }
 
-    pub async fn new_with_header(
-        inner: R,
-        config: Arc<VCFConfig>,
-        header: noodles::vcf::Header,
-    ) -> std::io::Result<Self> {
-        let reader = noodles::vcf::AsyncReader::new(inner);
-
-        Ok(Self {
-            reader,
-            header,
-            config,
-        })
-    }
-
     pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
@@ -74,15 +60,7 @@ where
     }
 
     async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
-        let mut record = noodles::vcf::lazy::Record::default();
-
-        Ok(None)
-
-        // match self.reader.read_record(&self.header, &mut record).await? {
-        // match self.reader.read_lazy_record(&mut record).await? {
-        //     0 => Ok(None),
-        //     _ => Ok(Some(record)),
-        // }
+        todo!("Implement after noodles::vcf::AsyncReader::read_lazy_record is implemented")
     }
 
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {

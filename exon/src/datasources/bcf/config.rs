@@ -60,4 +60,12 @@ impl BCFConfig {
         self.projection = projection;
         self
     }
+
+    /// Get the projected schema.
+    pub fn projected_schema(&self) -> SchemaRef {
+        match &self.projection {
+            Some(p) => Arc::new(self.file_schema.project(p).unwrap()),
+            None => self.file_schema.clone(),
+        }
+    }
 }

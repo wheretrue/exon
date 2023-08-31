@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod genotype_builder;
-mod info_builder;
-
 use std::sync::Arc;
 
 use arrow::{
@@ -26,12 +23,9 @@ use arrow::{
     error::ArrowError,
 };
 
-use self::genotype_builder::GenotypeBuilder;
-use self::info_builder::InfosBuilder;
-
 /// A builder for creating a `ArrayRef` from a `VCF` file.
-pub struct VCFArrayBuilder {
-    chromosomes: GenericStringBuilder<i32>,
+pub struct BCFLazyArrayBuilder {
+    chromosomes: Int32Builder,
     positions: Int32Builder,
     ids: GenericListBuilder<i32, GenericStringBuilder<i32>>,
     references: GenericStringBuilder<i32>,
@@ -39,17 +33,11 @@ pub struct VCFArrayBuilder {
     qualities: Float32Builder,
     filters: GenericListBuilder<i32, GenericStringBuilder<i32>>,
 
-    // TODO: VCF IMPV: maybe string builder for info and format, or maybe not existing
-    // May not need to change though, if the field in `create` can be used to create the builder
-    // (i.e. maybe just String)
-    infos: InfosBuilder,
-    formats: GenotypeBuilder,
-
     projection: Vec<usize>,
 }
 
-impl VCFArrayBuilder {
-    /// Creates a new `VCFArrayBuilder` from a `Schema`.
+impl BCFLazyArrayBuilder {
+    /// Creates a new `BCFLazyArrayBuilder` from a `Schema`.
     pub fn create(
         schema: SchemaRef,
         capacity: usize,
@@ -64,7 +52,7 @@ impl VCFArrayBuilder {
         };
 
         Ok(Self {
-            chromosomes: GenericStringBuilder::<i32>::new(),
+            chromosomes: Int32Builder::new(),
             positions: Int32Builder::new(),
             ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
                 i32,
@@ -77,10 +65,6 @@ impl VCFArrayBuilder {
             filters: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(
                 GenericStringBuilder::<i32>::new(),
             ),
-
-            infos: InfosBuilder::try_new(info_field, capacity)?,
-
-            formats: GenotypeBuilder::try_new(format_field, capacity)?,
 
             projection,
         })
@@ -97,12 +81,12 @@ impl VCFArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &noodles::vcf::lazy::Record) {
+    pub fn append(&mut self, record: &noodles::bcf::lazy::Record) {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let chromosome = record.chromosome();
-                    self.chromosomes.append_value(chromosome);
+                    let chromosome = record.chromosome_id();
+                    self.chromosomes.append_value(chromosome as i32);
                 }
                 1 => {
                     todo!();
@@ -162,8 +146,8 @@ impl VCFArrayBuilder {
                 4 => arrays.push(Arc::new(self.alternates.finish())),
                 5 => arrays.push(Arc::new(self.qualities.finish())),
                 6 => arrays.push(Arc::new(self.filters.finish())),
-                7 => arrays.push(Arc::new(self.infos.finish())),
-                8 => arrays.push(Arc::new(self.formats.finish())),
+                // 7 => arrays.push(Arc::new(self.infos.finish())),
+                // 8 => arrays.push(Arc::new(self.formats.finish())),
                 _ => panic!("Not implemented"),
             }
         }

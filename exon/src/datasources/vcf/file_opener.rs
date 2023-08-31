@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{ops::Range, sync::Arc};
+use std::sync::Arc;
 
 use datafusion::{
     common::FileCompressionType,
@@ -21,8 +21,9 @@ use datafusion::{
 };
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf, core::Region};
-use object_store::GetResult;
 use tokio_util::io::StreamReader;
+
+use crate::physical_plan::object_store::get_byte_region;
 
 use super::{
     async_batch_reader::AsyncBatchReader,
@@ -64,35 +65,25 @@ impl FileOpener for VCFOpener {
 
         let file_compression_type = self.file_compression_type;
 
-        if let Some(region) = &region {
-            return Ok(Box::pin(async move {
-                let s = config.object_store.get(file_meta.location()).await?;
-                let s = s.into_stream();
+        match (region, file_compression_type) {
+            (Some(_), FileCompressionType::GZIP) => Ok(Box::pin(async move {
+                // let s = config.object_store.get(file_meta.location()).await?;
+                // let s = s.into_stream();
 
-                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
-                let stream_reader = StreamReader::new(stream_reader);
+                // let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                // let stream_reader = StreamReader::new(stream_reader);
 
-                let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
-                let mut vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
+                // let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+                // let mut vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
 
-                let header = vcf_reader.read_header().await?;
+                // let header = vcf_reader.read_header().await?;
 
-                let byte_region = config
-                    .object_store
-                    .get_range(
-                        file_meta.location(),
-                        Range {
-                            start: file_meta.range.clone().map(|r| r.start).unwrap_or(0) as usize,
-                            end: file_meta.range.clone().map(|r| r.end).unwrap_or(0) as usize,
-                        },
-                    )
-                    .await?;
+                let byte_region = get_byte_region(&config.object_store, file_meta).await?;
 
                 let cursor = std::io::Cursor::new(byte_region);
                 let bgzf_reader = bgzf::Reader::new(cursor);
-                // let vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
 
-                let record_iterator = UnIndexedRecordIterator::new_with_header(bgzf_reader, header);
+                let record_iterator = UnIndexedRecordIterator::new_with_header(bgzf_reader);
                 let boxed_iter = Box::new(record_iterator);
 
                 let batch_reader = BatchReader::new(boxed_iter, config);
@@ -100,85 +91,33 @@ impl FileOpener for VCFOpener {
                 let batch_stream = futures::stream::iter(batch_reader);
 
                 Ok(batch_stream.boxed())
-            }));
+            })),
+            (None, FileCompressionType::GZIP) => Ok(Box::pin(async move {
+                let s = config.object_store.get(file_meta.location()).await?;
+                let s = s.into_stream();
+
+                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                let stream_reader = StreamReader::new(stream_reader);
+
+                let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+
+                let record_iterator = AsyncBatchReader::new(bgzf_reader, config).await?;
+
+                Ok(record_iterator.into_stream().boxed())
+            })),
+            (_, FileCompressionType::UNCOMPRESSED) => Ok(Box::pin(async move {
+                let s = config.object_store.get(file_meta.location()).await?;
+                let s = s.into_stream();
+
+                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                let stream_reader = StreamReader::new(stream_reader);
+
+                let batch_reader = AsyncBatchReader::new(stream_reader, config).await?;
+                Ok(batch_reader.into_stream().boxed())
+            })),
+            (_, _) => Err(DataFusionError::NotImplemented(
+                "Only uncompressed and gzip compressed VCF files are supported".to_string(),
+            )),
         }
-
-        Ok(Box::pin(async move {
-            match config.object_store.get(file_meta.location()).await? {
-                GetResult::File(file, path) => {
-                    let buf_reader = std::io::BufReader::new(file);
-
-                    match (file_compression_type, region) {
-                        (FileCompressionType::UNCOMPRESSED, None) => {
-                            let record_iterator = UnIndexedRecordIterator::try_new(buf_reader)?;
-                            let boxed_iter = Box::new(record_iterator);
-
-                            let batch_reader = BatchReader::new(boxed_iter, config);
-
-                            let batch_stream = futures::stream::iter(batch_reader);
-
-                            Ok(batch_stream.boxed())
-                        }
-                        (FileCompressionType::GZIP, None) => {
-                            let bgzf_reader = bgzf::Reader::new(buf_reader);
-
-                            let record_iterator = UnIndexedRecordIterator::try_new(bgzf_reader)?;
-                            let boxed_iter = Box::new(record_iterator);
-
-                            let batch_reader = BatchReader::new(boxed_iter, config);
-
-                            let batch_stream = futures::stream::iter(batch_reader);
-
-                            Ok(batch_stream.boxed())
-                        }
-                        (FileCompressionType::GZIP, Some(region)) => {
-                            panic!("Region filtering not supported for GZIP files")
-                            // let mut reader = noodles::vcf::indexed_reader::Builder::default()
-                            //     .build_from_path(path)?;
-
-                            // let header = reader.read_header()?;
-
-                            // let query = reader.query(&header, &region)?;
-                            // let mut records = Vec::new();
-
-                            // for result in query {
-                            //     records.push(result);
-                            // }
-
-                            // let boxed_iter = Box::new(records.into_iter());
-
-                            // let batch_reader = BatchReader::new(boxed_iter, config);
-                            // let batch_stream = futures::stream::iter(batch_reader);
-
-                            // Ok(batch_stream.boxed())
-                        }
-                        _ => Err(DataFusionError::NotImplemented(
-                            "Unsupported file compression type".to_string(),
-                        )),
-                    }
-                }
-                GetResult::Stream(s) => {
-                    todo!("GetResult::Stream")
-                    // let stream_reader = Box::pin(s.map_err(DataFusionError::from));
-                    // let stream_reader = StreamReader::new(stream_reader);
-
-                    // match file_compression_type {
-                    //     FileCompressionType::UNCOMPRESSED => {
-                    //         let batch_reader = AsyncBatchReader::new(stream_reader, config).await?;
-                    //         Ok(batch_reader.into_stream().boxed())
-                    //     }
-                    //     FileCompressionType::GZIP => {
-                    //         let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
-                    //         let batch_reader = AsyncBatchReader::new(bgzf_reader, config).await?;
-
-                    //         Ok(batch_reader.into_stream().boxed())
-                    //     }
-                    //     _ => Err(DataFusionError::NotImplemented(format!(
-                    //         "Unsupported file compression type {file_compression_type:?}"
-                    //     ))),
-                    // }
-                }
-            }
-        }))
     }
 }

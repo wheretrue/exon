@@ -20,6 +20,8 @@ mod batch_reader;
 mod config;
 mod file_format;
 mod file_opener;
+mod lazy_array_builder;
+mod lazy_batch_reader;
 mod scanner;
 
 pub use self::config::BCFConfig;

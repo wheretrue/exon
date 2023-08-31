@@ -19,27 +19,25 @@ use arrow::{
     record_batch::RecordBatch,
 };
 
-use super::{array_builder::VCFArrayBuilder, config::VCFConfig};
+use crate::datasources::vcf::VCFArrayBuilder;
 
-trait VCFRecordIterator: Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send {
-    fn header(&self) -> &noodles::vcf::Header;
+use super::{config::BCFConfig, lazy_array_builder::BCFLazyArrayBuilder};
+
+pub struct LazyBCFRecordReader<R> {
+    reader: noodles::bcf::Reader<noodles::bgzf::Reader<R>>,
 }
 
-pub struct UnIndexedRecordIterator<R> {
-    reader: noodles::vcf::Reader<R>,
-}
-
-impl<R> UnIndexedRecordIterator<R>
+impl<R> LazyBCFRecordReader<R>
 where
     R: std::io::BufRead,
 {
-    pub fn new_with_header(reader: R) -> Self {
-        let reader = noodles::vcf::Reader::new(reader);
+    pub fn new(reader: R) -> Self {
+        let reader = noodles::bcf::Reader::new(reader);
         Self { reader }
     }
 
-    fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
-        let mut record = noodles::vcf::lazy::Record::default();
+    fn read_record(&mut self) -> std::io::Result<Option<noodles::bcf::lazy::Record>> {
+        let mut record = noodles::bcf::lazy::Record::default();
 
         loop {
             match self.reader.read_lazy_record(&mut record) {
@@ -53,11 +51,11 @@ where
     }
 }
 
-impl<R> Iterator for UnIndexedRecordIterator<R>
+impl<R> Iterator for LazyBCFRecordReader<R>
 where
     R: std::io::BufRead,
 {
-    type Item = std::io::Result<noodles::vcf::lazy::Record>;
+    type Item = std::io::Result<noodles::bcf::lazy::Record>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.read_record().transpose()
@@ -65,20 +63,20 @@ where
 }
 
 /// A VCF record batch reader.
-pub struct BatchReader {
+pub struct LazyBCFBatchReader {
     /// The underlying VCF record iterator.
-    record_iterator: Box<dyn Iterator<Item = std::io::Result<noodles::vcf::lazy::Record>> + Send>,
+    record_iterator: Box<dyn Iterator<Item = std::io::Result<noodles::bcf::lazy::Record>> + Send>,
 
     /// The VCF configuration.
-    config: Arc<VCFConfig>,
+    config: Arc<BCFConfig>,
 }
 
-impl BatchReader {
+impl LazyBCFBatchReader {
     pub fn new(
         record_iterator: Box<
-            dyn Iterator<Item = std::io::Result<noodles::vcf::lazy::Record>> + Send,
+            dyn Iterator<Item = std::io::Result<noodles::bcf::lazy::Record>> + Send,
         >,
-        config: Arc<VCFConfig>,
+        config: Arc<BCFConfig>,
     ) -> Self {
         Self {
             record_iterator,
@@ -87,7 +85,7 @@ impl BatchReader {
     }
 
     fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
-        let mut record_batch = VCFArrayBuilder::create(
+        let mut record_batch = BCFLazyArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
             self.config.projection.clone(),
@@ -107,13 +105,13 @@ impl BatchReader {
             return Ok(None);
         }
 
-        let schema = self.config.projected_schema();
+        let schema: Arc<arrow::datatypes::Schema> = self.config.projected_schema();
 
         RecordBatch::try_new(schema, record_batch.finish()).map(Some)
     }
 }
 
-impl Iterator for BatchReader {
+impl Iterator for LazyBCFBatchReader {
     type Item = ArrowResult<RecordBatch>;
 
     fn next(&mut self) -> Option<Self::Item> {
