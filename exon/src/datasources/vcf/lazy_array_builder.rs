@@ -156,7 +156,7 @@ impl LazyVCFArrayBuilder {
                         }
                         Filters::Fail(ids) => {
                             for id in ids.iter() {
-                                self.filters.values().append_value(id.to_string());
+                                self.filters.values().append_value(id);
                             }
                         }
                     }

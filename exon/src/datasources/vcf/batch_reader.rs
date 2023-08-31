@@ -15,7 +15,6 @@
 use std::sync::Arc;
 
 use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
-use noodles::core::Region;
 
 use super::{config::VCFConfig, lazy_array_builder::LazyVCFArrayBuilder};
 
@@ -40,16 +39,10 @@ where
     fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
         let mut record = noodles::vcf::lazy::Record::default();
 
-        loop {
-            match self.reader.read_lazy_record(&mut record) {
-                Ok(0) => return Ok(None),
-                Ok(_) => {
-                    return Ok(Some(record));
-                }
-                Err(e) => {
-                    eprint!("Error reading record: {}", e);
-                }
-            }
+        match self.reader.read_lazy_record(&mut record) {
+            Ok(0) => Ok(None),
+            Ok(_) => Ok(Some(record)),
+            Err(e) => Err(e),
         }
     }
 }

@@ -150,7 +150,6 @@ mod tests {
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         prelude::SessionContext,
     };
-    use noodles::core::Region;
 
     #[tokio::test]
     async fn test_region_pushdown() {
