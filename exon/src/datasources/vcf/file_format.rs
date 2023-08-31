@@ -150,7 +150,6 @@ mod tests {
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         prelude::SessionContext,
     };
-    use noodles::core::Region;
 
     #[tokio::test]
     async fn test_region_pushdown() {
@@ -221,9 +220,7 @@ mod tests {
 
         let table_path = ListingTableUrl::parse("test-data").unwrap();
 
-        let region: Region = "1".parse().unwrap();
-        let vcf_format =
-            Arc::new(VCFFormat::new(FileCompressionType::GZIP).with_region_filter(region));
+        let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
         let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
 
         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
@@ -239,7 +236,7 @@ mod tests {
         ctx.register_table("vcf_file", provider).unwrap();
 
         let df = ctx
-            .sql("SELECT chrom, pos, id FROM vcf_file")
+            .sql("SELECT chrom FROM vcf_file WHERE chrom = 1")
             .await
             .unwrap();
 

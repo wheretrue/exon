@@ -22,6 +22,7 @@ mod batch_reader;
 mod config;
 mod file_format;
 mod file_opener;
+mod lazy_array_builder;
 mod scanner;
 mod schema_builder;
 

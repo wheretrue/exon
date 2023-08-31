@@ -484,7 +484,10 @@ mod tests {
     use std::str::FromStr;
 
     use arrow::array::Float32Array;
-    use datafusion::{error::DataFusionError, prelude::SessionContext};
+    use datafusion::{
+        error::DataFusionError,
+        prelude::{col, SessionContext},
+    };
 
     use crate::{
         context::exon_session_ext::ExonSessionExt,
@@ -655,13 +658,16 @@ mod tests {
     async fn test_query_vcf() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
 
+        // let path = "exon/test-data/datasources/vcf/index.vcf.gz";
         let path = test_path("vcf", "index.vcf.gz");
+        let path = path.to_str().unwrap();
         let query = "1";
 
         let df = ctx
-            .query_vcf_file(path.to_str().unwrap(), query)
+            .query_vcf_file(path, query)
             .await
-            .unwrap();
+            .unwrap()
+            .select(vec![col("chrom")])?;
 
         let batches = df.collect().await.unwrap();
 
