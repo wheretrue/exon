@@ -73,13 +73,16 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
-        let mut record = noodles::vcf::Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
+        let mut record = noodles::vcf::lazy::Record::default();
 
-        match self.reader.read_record(&self.header, &mut record).await? {
-            0 => Ok(None),
-            _ => Ok(Some(record)),
-        }
+        Ok(None)
+
+        // match self.reader.read_record(&self.header, &mut record).await? {
+        // match self.reader.read_lazy_record(&mut record).await? {
+        //     0 => Ok(None),
+        //     _ => Ok(Some(record)),
+        // }
     }
 
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {

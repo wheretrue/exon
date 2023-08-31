@@ -84,12 +84,13 @@ impl FileOpener for BCFOpener {
                         Ok(batch_stream.boxed())
                     }
                     None => {
-                        let buf_reader = tokio::fs::File::open(path).await.map(BufReader::new)?;
-                        let batch_reader = BatchReader::new(buf_reader, config).await?;
+                        todo!("implement non-region filtering")
+                        // let buf_reader = tokio::fs::File::open(path).await.map(BufReader::new)?;
+                        // let batch_reader = BatchReader::new(buf_reader, config).await?;
 
-                        let batch_stream = batch_reader.into_stream();
+                        // let batch_stream = batch_reader.into_stream();
 
-                        Ok(batch_stream.boxed())
+                        // Ok(batch_stream.boxed())
                     }
                 },
                 GetResult::Stream(s) => {

@@ -132,24 +132,25 @@ impl FileOpener for VCFOpener {
                             Ok(batch_stream.boxed())
                         }
                         (FileCompressionType::GZIP, Some(region)) => {
-                            let mut reader = noodles::vcf::indexed_reader::Builder::default()
-                                .build_from_path(path)?;
+                            panic!("Region filtering not supported for GZIP files")
+                            // let mut reader = noodles::vcf::indexed_reader::Builder::default()
+                            //     .build_from_path(path)?;
 
-                            let header = reader.read_header()?;
+                            // let header = reader.read_header()?;
 
-                            let query = reader.query(&header, &region)?;
-                            let mut records = Vec::new();
+                            // let query = reader.query(&header, &region)?;
+                            // let mut records = Vec::new();
 
-                            for result in query {
-                                records.push(result);
-                            }
+                            // for result in query {
+                            //     records.push(result);
+                            // }
 
-                            let boxed_iter = Box::new(records.into_iter());
+                            // let boxed_iter = Box::new(records.into_iter());
 
-                            let batch_reader = BatchReader::new(boxed_iter, config);
-                            let batch_stream = futures::stream::iter(batch_reader);
+                            // let batch_reader = BatchReader::new(boxed_iter, config);
+                            // let batch_stream = futures::stream::iter(batch_reader);
 
-                            Ok(batch_stream.boxed())
+                            // Ok(batch_stream.boxed())
                         }
                         _ => Err(DataFusionError::NotImplemented(
                             "Unsupported file compression type".to_string(),
@@ -157,24 +158,25 @@ impl FileOpener for VCFOpener {
                     }
                 }
                 GetResult::Stream(s) => {
-                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
-                    let stream_reader = StreamReader::new(stream_reader);
+                    todo!("GetResult::Stream")
+                    // let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                    // let stream_reader = StreamReader::new(stream_reader);
 
-                    match file_compression_type {
-                        FileCompressionType::UNCOMPRESSED => {
-                            let batch_reader = AsyncBatchReader::new(stream_reader, config).await?;
-                            Ok(batch_reader.into_stream().boxed())
-                        }
-                        FileCompressionType::GZIP => {
-                            let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
-                            let batch_reader = AsyncBatchReader::new(bgzf_reader, config).await?;
+                    // match file_compression_type {
+                    //     FileCompressionType::UNCOMPRESSED => {
+                    //         let batch_reader = AsyncBatchReader::new(stream_reader, config).await?;
+                    //         Ok(batch_reader.into_stream().boxed())
+                    //     }
+                    //     FileCompressionType::GZIP => {
+                    //         let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+                    //         let batch_reader = AsyncBatchReader::new(bgzf_reader, config).await?;
 
-                            Ok(batch_reader.into_stream().boxed())
-                        }
-                        _ => Err(DataFusionError::NotImplemented(format!(
-                            "Unsupported file compression type {file_compression_type:?}"
-                        ))),
-                    }
+                    //         Ok(batch_reader.into_stream().boxed())
+                    //     }
+                    //     _ => Err(DataFusionError::NotImplemented(format!(
+                    //         "Unsupported file compression type {file_compression_type:?}"
+                    //     ))),
+                    // }
                 }
             }
         }))

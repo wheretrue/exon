@@ -17,7 +17,7 @@ use datafusion::{
     common::FileCompressionType,
     prelude::{col, lit, SessionContext},
 };
-use exon::{new_exon_config, ExonSessionExt};
+use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
 
 #[derive(Subcommand)]
 enum Commands {
@@ -94,6 +94,10 @@ async fn main() {
             let region = region.as_str();
 
             let ctx = SessionContext::new_exon();
+            ctx.runtime_env()
+                .exon_register_object_store_uri(path)
+                .await
+                .unwrap();
 
             let df = ctx.query_vcf_file(path, region).await.unwrap();
 

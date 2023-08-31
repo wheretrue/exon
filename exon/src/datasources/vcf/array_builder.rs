@@ -98,7 +98,7 @@ impl VCFArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &Record) {
+    pub fn append(&mut self, record: &noodles::vcf::lazy::Record) {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
@@ -106,39 +106,45 @@ impl VCFArrayBuilder {
                     self.chromosomes.append_value(chromosome);
                 }
                 1 => {
-                    let position: usize = record.position().into();
-                    self.positions.append_value(position as i32);
+                    todo!();
+                    // let position: usize = record.position().into();
+                    // self.positions.append_value(position as i32);
                 }
                 2 => {
-                    for id in record.ids().iter() {
-                        self.ids.values().append_value(id.to_string());
-                    }
+                    todo!();
+                    // for id in record.ids().iter() {
+                    //     self.ids.values().append_value(id.to_string());
+                    // }
 
-                    self.ids.append(true);
+                    // self.ids.append(true);
                 }
                 3 => {
-                    let reference: String = format!("{}", record.reference_bases());
-                    self.references.append_value(reference);
+                    todo!();
+                    // let reference: String = format!("{}", record.reference_bases());
+                    // self.references.append_value(reference);
                 }
                 4 => {
-                    for alt in record.alternate_bases().iter() {
-                        self.alternates.values().append_value(alt.to_string());
-                    }
+                    todo!();
+                    // for alt in record.alternate_bases().iter() {
+                    //     self.alternates.values().append_value(alt.to_string());
+                    // }
 
-                    self.alternates.append(true);
+                    // self.alternates.append(true);
                 }
                 5 => {
-                    let quality = record.quality_score().map(f32::from);
-                    self.qualities.append_option(quality);
+                    todo!();
+                    // let quality = record.quality_score().map(f32::from);
+                    // self.qualities.append_option(quality);
                 }
                 6 => {
-                    for filter in record.filters().iter() {
-                        self.filters.values().append_value(filter.to_string());
-                    }
-                    self.filters.append(true);
+                    todo!();
+                    // for filter in record.filters().iter() {
+                    //     self.filters.values().append_value(filter.to_string());
+                    // }
+                    // self.filters.append(true);
                 }
-                7 => self.infos.append_value(record.info()),
-                8 => self.formats.append_value(record.genotypes()),
+                // 7 => self.infos.append_value(record.info()),
+                // 8 => self.formats.append_value(record.genotypes()),
                 _ => panic!("Not implemented"),
             }
         }

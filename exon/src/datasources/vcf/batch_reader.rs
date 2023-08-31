@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
+use arrow::{
+    error::{ArrowError, Result as ArrowResult},
+    record_batch::RecordBatch,
+};
 
 use super::{array_builder::VCFArrayBuilder, config::VCFConfig};
 
@@ -42,17 +45,26 @@ where
         Self { reader, header }
     }
 
-    fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
-        let mut record = noodles::vcf::Record::default();
+    fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
+        // let mut record = noodles::vcf::Record::default();
+        let mut record = noodles::vcf::lazy::Record::default();
 
         loop {
-            match self.reader.read_record(&self.header, &mut record) {
+            match self.reader.read_lazy_record(&mut record) {
                 Ok(0) => return Ok(None),
                 Ok(_) => return Ok(Some(record)),
                 Err(e) => {
                     eprintln!("error reading record: {}", e);
                 }
             }
+            // match self.read_record()
+            // match self.reader.read_record(&self.header, &mut record) {
+            //     Ok(0) => return Ok(None),
+            //     Ok(_) => return Ok(Some(record)),
+            //     Err(e) => {
+            //         eprintln!("error reading record: {}", e);
+            //     }
+            // }
         }
     }
 }
@@ -61,7 +73,7 @@ impl<R> Iterator for UnIndexedRecordIterator<R>
 where
     R: std::io::BufRead,
 {
-    type Item = std::io::Result<noodles::vcf::Record>;
+    type Item = std::io::Result<noodles::vcf::lazy::Record>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.read_record().transpose()
@@ -71,7 +83,7 @@ where
 /// A VCF record batch reader.
 pub struct BatchReader {
     /// The underlying VCF record iterator.
-    record_iterator: Box<dyn Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send>,
+    record_iterator: Box<dyn Iterator<Item = std::io::Result<noodles::vcf::lazy::Record>> + Send>,
 
     /// The VCF configuration.
     config: Arc<VCFConfig>,
@@ -79,7 +91,9 @@ pub struct BatchReader {
 
 impl BatchReader {
     pub fn new(
-        record_iterator: Box<dyn Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send>,
+        record_iterator: Box<
+            dyn Iterator<Item = std::io::Result<noodles::vcf::lazy::Record>> + Send,
+        >,
         config: Arc<VCFConfig>,
     ) -> Self {
         Self {
@@ -96,10 +110,11 @@ impl BatchReader {
         )?;
 
         for _ in 0..self.config.batch_size {
-            let record = self.record_iterator.next().transpose()?;
-
-            match record {
-                Some(record) => record_batch.append(&record),
+            match self.record_iterator.next() {
+                Some(Ok(record)) => record_batch.append(&record),
+                Some(Err(e)) => {
+                    return Err(ArrowError::ExternalError(Box::new(e)));
+                }
                 None => break,
             }
         }
@@ -109,16 +124,8 @@ impl BatchReader {
         }
 
         let schema = self.config.projected_schema();
-        let batch = RecordBatch::try_new(schema, record_batch.finish())?;
 
-        match &self.config.projection {
-            Some(projection) => {
-                let projected_batch = batch.project(projection)?;
-
-                Ok(Some(projected_batch))
-            }
-            None => Ok(Some(batch)),
-        }
+        RecordBatch::try_new(schema, record_batch.finish()).map(Some)
     }
 }
 
