@@ -12,53 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{
     array::{
         ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
-        Int64Builder,
+        Int32Builder,
     },
     datatypes::SchemaRef,
     error::ArrowError,
 };
-use noodles::vcf::{
-    record::{AlternateBases, Chromosome, Filters, Ids, Position, QualityScore, ReferenceBases},
-    Header,
-};
+use noodles::vcf::Record;
+
+use super::{GenotypeBuilder, InfosBuilder};
 
 /// A builder for creating a `ArrayRef` from a `VCF` file.
-pub struct LazyVCFArrayBuilder {
+pub struct VCFArrayBuilder {
     chromosomes: GenericStringBuilder<i32>,
-    positions: Int64Builder,
+    positions: Int32Builder,
     ids: GenericListBuilder<i32, GenericStringBuilder<i32>>,
     references: GenericStringBuilder<i32>,
     alternates: GenericListBuilder<i32, GenericStringBuilder<i32>>,
     qualities: Float32Builder,
     filters: GenericListBuilder<i32, GenericStringBuilder<i32>>,
 
-    // TODO: VCF IMPV: maybe string builder for info and format, or maybe not existing
-    // May not need to change though, if the field in `create` can be used to create the builder
-    // (i.e. maybe just String)
-    // infos: InfosBuilder,
-    // formats: GenotypeBuilder,
-    projection: Vec<usize>,
+    infos: InfosBuilder,
+    formats: GenotypeBuilder,
 
-    // Allow dead code
-    #[allow(dead_code)]
-    header: Arc<Header>,
+    projection: Vec<usize>,
 }
 
-impl LazyVCFArrayBuilder {
+impl VCFArrayBuilder {
     /// Creates a new `VCFArrayBuilder` from a `Schema`.
     pub fn create(
         schema: SchemaRef,
-        _capacity: usize,
+        capacity: usize,
         projection: Option<Vec<usize>>,
-        header: Arc<Header>,
     ) -> Result<Self, ArrowError> {
-        // let info_field = schema.field_with_name("info")?;
-        // let format_field = schema.field_with_name("formats")?;
+        let info_field = schema.field_with_name("info")?;
+        let format_field = schema.field_with_name("formats")?;
 
         let projection = match projection {
             Some(projection) => projection,
@@ -67,7 +59,7 @@ impl LazyVCFArrayBuilder {
 
         Ok(Self {
             chromosomes: GenericStringBuilder::<i32>::new(),
-            positions: Int64Builder::new(),
+            positions: Int32Builder::new(),
             ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
                 i32,
             >::new()),
@@ -80,11 +72,11 @@ impl LazyVCFArrayBuilder {
                 GenericStringBuilder::<i32>::new(),
             ),
 
-            // infos: InfosBuilder::try_new(info_field, capacity)?,
-            // formats: GenotypeBuilder::try_new(format_field, capacity)?,
-            projection,
+            infos: InfosBuilder::try_new(info_field, capacity)?,
 
-            header,
+            formats: GenotypeBuilder::try_new(format_field, capacity)?,
+
+            projection,
         })
     }
 
@@ -99,74 +91,50 @@ impl LazyVCFArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &noodles::vcf::lazy::Record) -> Result<(), ArrowError> {
+    pub fn append(&mut self, record: &Record) {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let chromosome = Chromosome::from_str(record.chromosome())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-
-                    self.chromosomes.append_value(chromosome.to_string());
+                    let chromosome: String = format!("{}", record.chromosome());
+                    self.chromosomes.append_value(chromosome);
                 }
                 1 => {
-                    let position = Position::from_str(record.position()).unwrap();
-
-                    let pos_usize: usize = position.into();
-
-                    self.positions.append_value(pos_usize as i64);
+                    let position: usize = record.position().into();
+                    self.positions.append_value(position as i32);
                 }
                 2 => {
-                    let ids = Ids::from_str(record.ids())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-
-                    for id in ids.iter() {
+                    for id in record.ids().iter() {
                         self.ids.values().append_value(id.to_string());
                     }
 
                     self.ids.append(true);
                 }
                 3 => {
-                    let reference_bases = ReferenceBases::from_str(record.reference_bases())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-                    self.references.append_value(reference_bases.to_string());
+                    let reference: String = format!("{}", record.reference_bases());
+                    self.references.append_value(reference);
                 }
                 4 => {
-                    let alternate_bases = AlternateBases::from_str(record.alternate_bases())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-
-                    for alt in alternate_bases.iter() {
+                    for alt in record.alternate_bases().iter() {
                         self.alternates.values().append_value(alt.to_string());
                     }
 
                     self.alternates.append(true);
                 }
-                5 => match QualityScore::from_str(record.quality_score()) {
-                    Ok(quality_score) => self.qualities.append_value(f32::from(quality_score)),
-                    Err(_) => {
-                        self.qualities.append_null();
-                    }
-                },
+                5 => {
+                    let quality = record.quality_score().map(f32::from);
+                    self.qualities.append_option(quality);
+                }
                 6 => {
-                    let filters = Filters::from_str(record.filters())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-
-                    match filters {
-                        Filters::Pass => {
-                            self.filters.values().append_value("PASS");
-                        }
-                        Filters::Fail(ids) => {
-                            for id in ids.iter() {
-                                self.filters.values().append_value(id);
-                            }
-                        }
+                    for filter in record.filters().iter() {
+                        self.filters.values().append_value(filter.to_string());
                     }
-
                     self.filters.append(true);
                 }
+                7 => self.infos.append_value(record.info()),
+                8 => self.formats.append_value(record.genotypes()),
                 _ => panic!("Not implemented"),
             }
         }
-        Ok(())
     }
 
     /// Builds the `ArrayRef`.
@@ -182,6 +150,8 @@ impl LazyVCFArrayBuilder {
                 4 => arrays.push(Arc::new(self.alternates.finish())),
                 5 => arrays.push(Arc::new(self.qualities.finish())),
                 6 => arrays.push(Arc::new(self.filters.finish())),
+                7 => arrays.push(Arc::new(self.infos.finish())),
+                8 => arrays.push(Arc::new(self.formats.finish())),
                 _ => panic!("Not implemented"),
             }
         }

@@ -236,7 +236,7 @@ mod tests {
         ctx.register_table("vcf_file", provider).unwrap();
 
         let df = ctx
-            .sql("SELECT chrom FROM vcf_file WHERE chrom = 1")
+            .sql("SELECT * FROM vcf_file WHERE chrom = 1")
             .await
             .unwrap();
 

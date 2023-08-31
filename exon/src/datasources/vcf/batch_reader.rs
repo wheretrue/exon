@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
 
-use super::{config::VCFConfig, lazy_array_builder::LazyVCFArrayBuilder};
+use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 
 trait VCFRecordIterator: Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send {
     fn header(&self) -> &noodles::vcf::Header;
