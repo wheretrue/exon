@@ -16,12 +16,14 @@ use std::sync::Arc;
 
 use datafusion::{
     common::FileCompressionType,
-    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    datasource::{
+        listing::FileRange,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf, core::Region};
-use object_store::GetResult;
 use tokio_util::io::StreamReader;
 
 use super::{
@@ -64,80 +66,92 @@ impl FileOpener for VCFOpener {
 
         let file_compression_type = self.file_compression_type;
 
-        Ok(Box::pin(async move {
-            match config.object_store.get(file_meta.location()).await? {
-                GetResult::File(file, path) => {
-                    let buf_reader = std::io::BufReader::new(file);
+        match (region, file_compression_type) {
+            (Some(region), FileCompressionType::GZIP) => Ok(Box::pin(async move {
+                let s = config.object_store.get(file_meta.location()).await?;
+                let s = s.into_stream();
 
-                    match (file_compression_type, region) {
-                        (FileCompressionType::UNCOMPRESSED, None) => {
-                            let record_iterator = UnIndexedRecordIterator::try_new(buf_reader)?;
-                            let boxed_iter = Box::new(record_iterator);
+                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                let stream_reader = StreamReader::new(stream_reader);
 
-                            let batch_reader = BatchReader::new(boxed_iter, config);
+                let first_bgzf_reader = bgzf::AsyncReader::new(stream_reader);
 
-                            let batch_stream = futures::stream::iter(batch_reader);
+                let mut vcf_reader = noodles::vcf::AsyncReader::new(first_bgzf_reader);
+                let header = vcf_reader.read_header().await?;
 
-                            Ok(batch_stream.boxed())
-                        }
-                        (FileCompressionType::GZIP, None) => {
-                            let bgzf_reader = bgzf::Reader::new(buf_reader);
+                let vp = vcf_reader.virtual_position();
 
-                            let record_iterator = UnIndexedRecordIterator::try_new(bgzf_reader)?;
-                            let boxed_iter = Box::new(record_iterator);
+                // let byte_region = get_byte_region(&config.object_store, file_meta).await?;
+                let bgzf_reader = match file_meta.range {
+                    Some(FileRange { start: _, end }) if end == 0 => {
+                        let bytes = config
+                            .object_store
+                            .get(file_meta.location())
+                            .await?
+                            .bytes()
+                            .await?;
 
-                            let batch_reader = BatchReader::new(boxed_iter, config);
+                        let cursor = std::io::Cursor::new(bytes);
+                        let mut bgzf_reader = bgzf::Reader::new(cursor);
 
-                            let batch_stream = futures::stream::iter(batch_reader);
+                        bgzf_reader.seek(vp)?;
 
-                            Ok(batch_stream.boxed())
-                        }
-                        (FileCompressionType::GZIP, Some(region)) => {
-                            let mut reader = noodles::vcf::indexed_reader::Builder::default()
-                                .build_from_path(path)?;
-
-                            let header = reader.read_header()?;
-
-                            let query = reader.query(&header, &region)?;
-                            let mut records = Vec::new();
-
-                            for result in query {
-                                records.push(result);
-                            }
-
-                            let boxed_iter = Box::new(records.into_iter());
-
-                            let batch_reader = BatchReader::new(boxed_iter, config);
-                            let batch_stream = futures::stream::iter(batch_reader);
-
-                            Ok(batch_stream.boxed())
-                        }
-                        _ => Err(DataFusionError::NotImplemented(
-                            "Unsupported file compression type".to_string(),
-                        )),
+                        bgzf_reader
                     }
-                }
-                GetResult::Stream(s) => {
-                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
-                    let stream_reader = StreamReader::new(stream_reader);
+                    None => {
+                        let bytes = config
+                            .object_store
+                            .get(file_meta.location())
+                            .await?
+                            .bytes()
+                            .await?;
 
-                    match file_compression_type {
-                        FileCompressionType::UNCOMPRESSED => {
-                            let batch_reader = AsyncBatchReader::new(stream_reader, config).await?;
-                            Ok(batch_reader.into_stream().boxed())
-                        }
-                        FileCompressionType::GZIP => {
-                            let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
-                            let batch_reader = AsyncBatchReader::new(bgzf_reader, config).await?;
+                        let cursor = std::io::Cursor::new(bytes);
+                        let mut bgzf_reader = bgzf::Reader::new(cursor);
 
-                            Ok(batch_reader.into_stream().boxed())
-                        }
-                        _ => Err(DataFusionError::NotImplemented(format!(
-                            "Unsupported file compression type {file_compression_type:?}"
-                        ))),
+                        eprintln!("seeking to {:?}", vp);
+                        bgzf_reader.seek(vp)?;
+
+                        bgzf_reader
                     }
-                }
-            }
-        }))
+                    _ => panic!("Only uncompressed and gzip compressed VCF files are supported"),
+                };
+
+                let record_iterator = UnIndexedRecordIterator::new(bgzf_reader);
+                let boxed_iter = Box::new(record_iterator);
+
+                let batch_reader = BatchReader::new(boxed_iter, config, Arc::new(header));
+
+                let batch_stream = futures::stream::iter(batch_reader);
+
+                Ok(batch_stream.boxed())
+            })),
+            (None, FileCompressionType::GZIP) => Ok(Box::pin(async move {
+                let s = config.object_store.get(file_meta.location()).await?;
+                let s = s.into_stream();
+
+                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                let stream_reader = StreamReader::new(stream_reader);
+
+                let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+
+                let record_iterator = AsyncBatchReader::new(bgzf_reader, config).await?;
+
+                Ok(record_iterator.into_stream().boxed())
+            })),
+            (_, FileCompressionType::UNCOMPRESSED) => Ok(Box::pin(async move {
+                let s = config.object_store.get(file_meta.location()).await?;
+                let s = s.into_stream();
+
+                let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                let stream_reader = StreamReader::new(stream_reader);
+
+                let batch_reader = AsyncBatchReader::new(stream_reader, config).await?;
+                Ok(batch_reader.into_stream().boxed())
+            })),
+            (_, _) => Err(DataFusionError::NotImplemented(
+                "Only uncompressed and gzip compressed VCF files are supported".to_string(),
+            )),
+        }
     }
 }

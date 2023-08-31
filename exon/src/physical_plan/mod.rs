@@ -33,3 +33,6 @@ pub mod interval_physical_expr;
 
 /// A physical expression that represents a region, e.g. chr1:100-200.
 pub mod region_physical_expr;
+
+/// Utilities for working with object stores.
+pub mod object_store;

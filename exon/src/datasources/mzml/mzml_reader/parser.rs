@@ -84,7 +84,9 @@ where
                                     "Unexpected Eof Event",
                                 ))
                             }
-                            Err(_) => panic!("fuck"),
+                            Err(_) => {
+                                panic!("Error at position: {}", self.reader.buffer_position())
+                            }
                             Ok(e) => panic!("event: {e:?}"),
                         }
                     }
