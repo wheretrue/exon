@@ -120,6 +120,7 @@ impl ExecutionPlan for VCFScan {
 
         let mut config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(batch_size);
+
         if let Some(projections) = &self.base_config.projection {
             config = config.with_projection(projections.clone());
         }

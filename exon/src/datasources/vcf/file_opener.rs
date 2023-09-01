@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use core::panic;
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use datafusion::{
     common::FileCompressionType,
@@ -67,6 +67,11 @@ impl FileOpener for VCFOpener {
 
         let file_compression_type = self.file_compression_type;
 
+        eprintln!(
+            "Got region and compression type: {:?} {:?}",
+            region, file_compression_type,
+        );
+
         match (region, file_compression_type) {
             (Some(_), FileCompressionType::GZIP) => Ok(Box::pin(async move {
                 let s = config.object_store.get(file_meta.location()).await?;
@@ -99,6 +104,25 @@ impl FileOpener for VCFOpener {
 
                         bgzf_reader
                     }
+                    Some(FileRange { start, end }) => {
+                        let bytes = config
+                            .object_store
+                            .get_range(
+                                file_meta.location(),
+                                std::ops::Range {
+                                    start: start as usize,
+                                    end: end as usize,
+                                },
+                            )
+                            .await?;
+
+                        let cursor = std::io::Cursor::new(bytes);
+                        let mut bgzf_reader = bgzf::Reader::new(cursor);
+
+                        bgzf_reader.seek(vp)?;
+
+                        bgzf_reader
+                    }
                     None => {
                         let bytes = config
                             .object_store
@@ -110,12 +134,10 @@ impl FileOpener for VCFOpener {
                         let cursor = std::io::Cursor::new(bytes);
                         let mut bgzf_reader = bgzf::Reader::new(cursor);
 
-                        eprintln!("seeking to {:?}", vp);
                         bgzf_reader.seek(vp)?;
 
                         bgzf_reader
                     }
-                    _ => panic!("Only uncompressed and gzip compressed VCF files are supported"),
                 };
 
                 let record_iterator = UnIndexedRecordIterator::new(bgzf_reader);

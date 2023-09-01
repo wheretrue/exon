@@ -14,7 +14,7 @@
 
 use datafusion::datasource::{listing::PartitionedFile, physical_plan::FileScanConfig};
 
-use crate::optimizer::file_repartitioner::regroup_file_partitions;
+use crate::physical_optimizer::file_repartitioner::regroup_file_partitions;
 
 /// Extension trait for [`FileScanConfig`] that adds whole file repartitioning.
 pub trait ExonFileScanConfig {

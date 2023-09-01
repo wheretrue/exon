@@ -22,3 +22,6 @@ pub mod samflags;
 
 /// UDFs for Mass Spectrometry.
 pub mod massspec;
+
+/// UDFs for VCF files.
+pub mod vcf;

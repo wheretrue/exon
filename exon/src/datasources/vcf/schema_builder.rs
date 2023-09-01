@@ -460,7 +460,7 @@ mod tests {
         assert_eq!(schema.field(1).name(), "pos");
         assert_eq!(
             schema.field(1).data_type(),
-            &arrow::datatypes::DataType::Int32
+            &arrow::datatypes::DataType::Int64
         );
 
         assert_eq!(schema.field(2).name(), "id");

@@ -58,14 +58,15 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         None => return Ok(Transformed::No(plan)),
     };
 
-    let region_expr = match RegionPhysicalExpr::try_from(pred.clone()) {
+    let region_expr: RegionPhysicalExpr = match RegionPhysicalExpr::try_from(pred.clone()) {
         Ok(expr) => expr,
         Err(_) => return Ok(Transformed::No(plan)),
     };
 
     let new_scan = vcf_scan.clone().with_filter(region_expr.region().clone());
+    let new_filter = FilterExec::try_new(Arc::new(region_expr), Arc::new(new_scan))?;
 
-    Ok(Transformed::Yes(Arc::new(new_scan)))
+    Ok(Transformed::Yes(Arc::new(new_filter)))
 }
 
 #[derive(Default)]

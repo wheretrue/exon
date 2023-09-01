@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::{
     array::{
         ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
-        Int32Builder,
+        Int64Builder,
     },
     datatypes::SchemaRef,
     error::ArrowError,
@@ -29,7 +29,7 @@ use super::{GenotypeBuilder, InfosBuilder};
 /// A builder for creating a `ArrayRef` from a `VCF` file.
 pub struct VCFArrayBuilder {
     chromosomes: GenericStringBuilder<i32>,
-    positions: Int32Builder,
+    positions: Int64Builder,
     ids: GenericListBuilder<i32, GenericStringBuilder<i32>>,
     references: GenericStringBuilder<i32>,
     alternates: GenericListBuilder<i32, GenericStringBuilder<i32>>,
@@ -59,7 +59,7 @@ impl VCFArrayBuilder {
 
         Ok(Self {
             chromosomes: GenericStringBuilder::<i32>::new(),
-            positions: Int32Builder::new(),
+            positions: Int64Builder::new(),
             ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
                 i32,
             >::new()),
@@ -100,7 +100,7 @@ impl VCFArrayBuilder {
                 }
                 1 => {
                     let position: usize = record.position().into();
-                    self.positions.append_value(position as i32);
+                    self.positions.append_value(position as i64);
                 }
                 2 => {
                     for id in record.ids().iter() {

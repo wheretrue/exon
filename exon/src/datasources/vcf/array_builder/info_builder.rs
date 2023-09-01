@@ -79,7 +79,6 @@ impl InfosBuilder {
 
     pub fn append_null(&mut self) {
         for (i, f) in self.fields.iter().enumerate() {
-            let field_name = f.name().to_string();
             let field_type = f.data_type();
 
             match field_type {

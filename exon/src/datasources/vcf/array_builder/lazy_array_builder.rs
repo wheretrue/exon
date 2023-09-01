@@ -50,7 +50,6 @@ pub struct LazyVCFArrayBuilder {
     projection: Vec<usize>,
 
     // Allow dead code
-    #[allow(dead_code)]
     header: Arc<Header>,
 }
 

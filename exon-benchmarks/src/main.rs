@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use datafusion::{
     common::FileCompressionType,
+    datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     prelude::{col, lit, SessionContext},
 };
 use exon::{
-    datasources::{ExonFileType, ExonReadOptions},
+    datasources::{vcf::VCFFormat, ExonFileType, ExonReadOptions},
     new_exon_config, ExonSessionExt,
 };
 
@@ -90,7 +91,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -99,22 +100,30 @@ async fn main() {
             let region = region.as_str();
 
             let ctx = SessionContext::new_exon();
+            let session_state = ctx.state();
 
-            let file_file = ExonFileType::from_str("vcf").unwrap();
-            let options = ExonReadOptions::new(file_file);
+            let table_path = ListingTableUrl::parse("exon-benchmarks/data").unwrap();
 
-            ctx.register_exon_table("test_vcf", path, options)
-                .await
-                .unwrap();
+            let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
+            let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
+
+            let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+            let config = ListingTableConfig::new(table_path)
+                .with_listing_options(lo)
+                .with_schema(resolved_schema);
+
+            let provider = Arc::new(ListingTable::try_new(config).unwrap());
+            ctx.register_table("vcf_file", provider).unwrap();
 
             let df = ctx
-                .sql("SELECT COUNT(*) FROM test_vcf WHERE chrom = 'chr1' and pos BETWEEN 1 and 100000")
-                .await
-                .unwrap();
+                .sql("SELECT COUNT(*) FROM vcf_file WHERE chrom = 'chr1' and pos BETWEEN 1 and 1000000")
+                .await?;
 
-            let batches = df.collect().await.unwrap();
+            let batches = df.collect().await?;
 
-            // println!("Row count: {batches}");
+            let batch_count = &batches[0];
+            eprintln!("Batch count: {:#?}", batch_count);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();
@@ -173,4 +182,6 @@ async fn main() {
         }
         None => {}
     }
+
+    Ok(())
 }
