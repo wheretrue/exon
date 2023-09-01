@@ -109,8 +109,12 @@ impl LazyVCFArrayBuilder {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let chromosome = Chromosome::from_str(record.chromosome())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                    let chromosome = Chromosome::from_str(record.chromosome()).map_err(|_| {
+                        ArrowError::ParseError(format!(
+                            "Could not parse chromosome: {}",
+                            record.chromosome()
+                        ))
+                    })?;
 
                     self.chromosomes.append_value(chromosome.to_string());
                 }
@@ -121,24 +125,31 @@ impl LazyVCFArrayBuilder {
 
                     self.positions.append_value(pos_usize as i64);
                 }
-                2 => {
-                    let ids = Ids::from_str(record.ids())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                2 => match record.ids() {
+                    "." => self.ids.append_null(),
+                    _ => {
+                        let ids = Ids::from_str(record.ids())
+                            .map_err(|_| ArrowError::ParseError("Invalid ids".to_string()))?;
 
-                    for id in ids.iter() {
-                        self.ids.values().append_value(id.to_string());
+                        for id in ids.iter() {
+                            self.ids.values().append_value(id.to_string());
+                        }
+
+                        self.ids.append(true);
                     }
-
-                    self.ids.append(true);
-                }
+                },
                 3 => {
                     let reference_bases = ReferenceBases::from_str(record.reference_bases())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                        .map_err(|_| {
+                            ArrowError::ParseError("Invalid reference bases".to_string())
+                        })?;
                     self.references.append_value(reference_bases.to_string());
                 }
                 4 => {
                     let alternate_bases = AlternateBases::from_str(record.alternate_bases())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                        .map_err(|_| {
+                            ArrowError::ParseError("Invalid alternate bases".to_string())
+                        })?;
 
                     for alt in alternate_bases.iter() {
                         self.alternates.values().append_value(alt.to_string());
@@ -154,7 +165,7 @@ impl LazyVCFArrayBuilder {
                 },
                 6 => {
                     let filters = Filters::from_str(record.filters())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                        .map_err(|_| ArrowError::ParseError("Invalid filters".to_string()))?;
 
                     match filters {
                         Filters::Pass => {
@@ -169,17 +180,24 @@ impl LazyVCFArrayBuilder {
 
                     self.filters.append(true);
                 }
-                7 => {
-                    let infos = Info::from_str(record.info().as_ref())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                7 => match record.info().as_ref() {
+                    "." => self.infos.append_null(),
+                    _ => {
+                        let infos = Info::from_str(record.info().as_ref()).map_err(|_| {
+                            ArrowError::ParseError(format!(
+                                "Invalid info {}",
+                                record.info().as_ref()
+                            ))
+                        })?;
 
-                    self.infos.append_value(&infos);
-                }
+                        self.infos.append_value(&infos);
+                    }
+                },
                 8 => {
                     let genotypes = Genotypes::parse(record.genotypes().as_ref(), &self.header)
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                        .map_err(|_| ArrowError::ParseError("Invalid genotypes".to_string()))?;
 
-                    self.formats.append_value(&genotypes);
+                    self.formats.append_value(&genotypes)?;
                 }
                 _ => {
                     return Err(ArrowError::SchemaError(

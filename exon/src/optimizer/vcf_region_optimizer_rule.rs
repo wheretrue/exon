@@ -111,7 +111,6 @@ mod tests {
         let file_file = ExonFileType::from_str("vcf").unwrap();
         let options = ExonReadOptions::new(file_file);
 
-        // let path = "exon/test-data/datasources/vcf/index.vcf";
         let path = test_path("vcf", "index.vcf");
         let path = path.to_str().unwrap();
         let query = "1";

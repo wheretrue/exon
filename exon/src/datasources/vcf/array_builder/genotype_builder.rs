@@ -94,13 +94,18 @@ impl GenotypeBuilder {
     ///
     /// It is important that the passed genotypes was parsed using the same header as the one used
     /// to create this builder. If not, some types may not match and the append will fail.
-    pub fn append_value(&mut self, genotypes: &Genotypes) {
+    pub fn append_value(&mut self, genotypes: &Genotypes) -> Result<(), ArrowError> {
         for genotype in genotypes.values() {
             for (i, field) in self.fields.clone().iter().enumerate() {
                 let field_name = field.name().to_string();
                 let field_type = field.data_type();
 
-                let key = Key::from_str(field_name.as_str()).unwrap();
+                let key = Key::from_str(field_name.as_str()).map_err(|_| {
+                    ArrowError::InvalidArgumentError(format!(
+                        "invalid field name: {}",
+                        field_name.as_str()
+                    ))
+                })?;
                 let value = genotype.get(&key);
 
                 match value {
@@ -249,6 +254,8 @@ impl GenotypeBuilder {
             self.inner.values().append(true);
         }
         self.inner.append(true);
+
+        Ok(())
     }
 }
 
@@ -498,7 +505,7 @@ mod tests {
         );
         let mut gb = GenotypeBuilder::try_new(&field, 0).unwrap();
 
-        gb.append_value(&gt);
+        gb.append_value(&gt).unwrap();
 
         let array = Arc::new(gb.finish());
 

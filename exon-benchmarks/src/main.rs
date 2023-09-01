@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::str::FromStr;
+
 use clap::{Parser, Subcommand};
 use datafusion::{
     common::FileCompressionType,
     prelude::{col, lit, SessionContext},
 };
-use exon::{new_exon_config, ExonSessionExt};
+use exon::{
+    datasources::{ExonFileType, ExonReadOptions},
+    new_exon_config, ExonSessionExt,
+};
 
 #[derive(Subcommand)]
 enum Commands {
@@ -95,11 +100,21 @@ async fn main() {
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.query_vcf_file(path, region).await.unwrap();
+            let file_file = ExonFileType::from_str("vcf").unwrap();
+            let options = ExonReadOptions::new(file_file);
 
-            let batch_count = df.count().await.unwrap();
+            ctx.register_exon_table("test_vcf", path, options)
+                .await
+                .unwrap();
 
-            println!("Row count: {batch_count}");
+            let df = ctx
+                .sql("SELECT COUNT(*) FROM test_vcf WHERE chrom = 'chr1' and pos BETWEEN 1 and 100000")
+                .await
+                .unwrap();
+
+            let batches = df.collect().await.unwrap();
+
+            // println!("Row count: {batches}");
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();

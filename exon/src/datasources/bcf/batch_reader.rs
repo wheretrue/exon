@@ -97,7 +97,7 @@ where
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
-                Some(record) => record_batch.append(&record),
+                Some(record) => record_batch.append(&record)?,
                 None => break,
             }
         }
@@ -156,7 +156,7 @@ impl BatchAdapter {
 
         for _ in 0..self.config.batch_size {
             match self.record_iterator.next() {
-                Some(Ok(record)) => record_batch.append(&record),
+                Some(Ok(record)) => record_batch.append(&record)?,
                 Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
                 None => break,
             }

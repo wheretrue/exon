@@ -30,8 +30,6 @@ use tokio_util::io::StreamReader;
 
 use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
 
-// use super::{config::schema, scanner::VCFScan};
-
 #[derive(Debug)]
 /// Implements a datafusion `FileFormat` for VCF files.
 pub struct VCFFormat {
@@ -128,7 +126,7 @@ impl FileFormat for VCFFormat {
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let mut scan = VCFScan::new(conf, self.file_compression_type);
+        let mut scan = VCFScan::new(conf, self.file_compression_type)?;
 
         if let Some(region_filter) = &self.region_filter {
             scan = scan.with_filter(region_filter.clone());
@@ -236,7 +234,7 @@ mod tests {
         ctx.register_table("vcf_file", provider).unwrap();
 
         let df = ctx
-            .sql("SELECT * FROM vcf_file WHERE chrom = 1")
+            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 1 and pos BETWEEN 1 and 100000000000")
             .await
             .unwrap();
 

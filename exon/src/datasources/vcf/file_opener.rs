@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use core::panic;
+use std::{str::FromStr, sync::Arc};
 
 use datafusion::{
     common::FileCompressionType,

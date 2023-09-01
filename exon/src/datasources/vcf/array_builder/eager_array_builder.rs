@@ -91,7 +91,7 @@ impl VCFArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &Record) {
+    pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
@@ -131,10 +131,14 @@ impl VCFArrayBuilder {
                     self.filters.append(true);
                 }
                 7 => self.infos.append_value(record.info()),
-                8 => self.formats.append_value(record.genotypes()),
-                _ => panic!("Not implemented"),
+                8 => self.formats.append_value(record.genotypes())?,
+                _ => Err(ArrowError::InvalidArgumentError(
+                    "Invalid column index".to_string(),
+                ))?,
             }
         }
+
+        Ok(())
     }
 
     /// Builds the `ArrayRef`.

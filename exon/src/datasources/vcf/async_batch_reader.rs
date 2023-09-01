@@ -19,7 +19,7 @@ use arrow::{error::ArrowError, error::Result as ArrowResult, record_batch::Recor
 use futures::Stream;
 use tokio::io::AsyncBufRead;
 
-use super::{array_builder::VCFArrayBuilder, config::VCFConfig};
+use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 
 /// A VCF record batch reader.
 pub struct AsyncBatchReader<R> {
@@ -27,7 +27,7 @@ pub struct AsyncBatchReader<R> {
     reader: noodles::vcf::AsyncReader<R>,
 
     /// The VCF header.
-    header: noodles::vcf::Header,
+    header: Arc<noodles::vcf::Header>,
 
     /// The VCF configuration.
     config: Arc<VCFConfig>,
@@ -44,7 +44,7 @@ where
 
         Ok(Self {
             reader,
-            header,
+            header: Arc::new(header),
             config,
         })
     }
@@ -59,25 +59,26 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
-        let mut record = noodles::vcf::Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
+        let mut record = noodles::vcf::lazy::Record::default();
 
-        match self.reader.read_record(&self.header, &mut record).await? {
+        match self.reader.read_lazy_record(&mut record).await? {
             0 => Ok(None),
             _ => Ok(Some(record)),
         }
     }
 
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
-        let mut record_batch = VCFArrayBuilder::create(
+        let mut record_batch = LazyVCFArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
             None,
+            self.header.clone(),
         )?;
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
-                Some(record) => record_batch.append(&record),
+                Some(record) => record_batch.append(&record)?,
                 None => break,
             }
         }
