@@ -27,16 +27,9 @@ use datafusion::{
 use datafusion::error::Result;
 
 /// Exon physical planner.
+#[derive(Default)]
 pub struct ExonPhysicalPlanner {
     inner: datafusion::physical_planner::DefaultPhysicalPlanner,
-}
-
-impl Default for ExonPhysicalPlanner {
-    fn default() -> Self {
-        Self {
-            inner: datafusion::physical_planner::DefaultPhysicalPlanner::default(),
-        }
-    }
 }
 
 #[async_trait]

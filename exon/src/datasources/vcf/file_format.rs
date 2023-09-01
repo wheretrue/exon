@@ -153,21 +153,20 @@ impl FileFormat for VCFFormat {
             _ => None,
         };
 
-        eprintln!("Got new filters: {:#?}", new_filters);
-
         if let Some(region_filter) = new_filters {
             let mut new_conf = conf.clone();
 
             let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
 
-            let new_groups = add_region_bytes_to_file_groups(
+            if let Ok(new_groups) = add_region_bytes_to_file_groups(
                 object_store,
                 &conf.file_groups,
-                &region_filter.region(),
+                region_filter.region(),
             )
-            .await;
-
-            new_conf.file_groups = new_groups;
+            .await
+            {
+                new_conf.file_groups = new_groups;
+            }
 
             let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
             scan = scan.with_filter(region_filter.region().clone());
@@ -184,7 +183,7 @@ pub async fn add_region_bytes_to_file_groups(
     object_store: Arc<dyn ObjectStore>,
     file_groups: &Vec<Vec<PartitionedFile>>,
     region: &Region,
-) -> Vec<Vec<PartitionedFile>> {
+) -> std::io::Result<Vec<Vec<PartitionedFile>>> {
     let mut new_list = Vec::new();
 
     // iterate through the nested list of files
@@ -194,14 +193,13 @@ pub async fn add_region_bytes_to_file_groups(
             let tbi_path = file.object_meta.location.clone().to_string() + ".tbi";
             let tbi_path = Path::from(tbi_path);
 
-            let index_bytes = object_store.get(&tbi_path).await.unwrap();
-            let index_bytes = index_bytes.bytes().await.unwrap();
+            let index_bytes = object_store.get(&tbi_path).await?.bytes().await?;
 
             let cursor = std::io::Cursor::new(index_bytes);
             let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
 
             let (id, _) = resolve_region(&index, region).unwrap();
-            let chunks = index.query(id, region.interval()).unwrap();
+            let chunks = index.query(id, region.interval())?;
 
             for chunk in chunks {
                 let start = chunk.start().compressed();
@@ -213,14 +211,12 @@ pub async fn add_region_bytes_to_file_groups(
                     end: end as i64,
                 });
 
-                eprintln!("new file: {:?}", new_file);
-
                 new_list.push(new_file);
             }
         }
     }
 
-    vec![new_list]
+    Ok(vec![new_list])
 }
 
 fn resolve_region(
@@ -250,13 +246,16 @@ fn resolve_region(
 mod tests {
     use std::sync::Arc;
 
-    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
+    use crate::{
+        datasources::vcf::VCFScan, physical_plan::region_physical_expr::RegionPhysicalExpr,
+        tests::test_path, ExonSessionExt,
+    };
 
     use super::VCFFormat;
-    use aws_config::default_provider::region;
     use datafusion::{
         common::FileCompressionType,
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        physical_plan::filter::FilterExec,
         prelude::SessionContext,
     };
 
@@ -282,8 +281,17 @@ mod tests {
             .await
             .unwrap();
 
-        let scan = physical_plan.as_any().downcast_ref::<VCFScan>();
-        assert!(scan.is_some());
+        if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+            scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
+            scan.predicate()
+                .as_any()
+                .downcast_ref::<RegionPhysicalExpr>()
+                .unwrap();
+        } else {
+            panic!("physical plan is not a filter exec");
+        }
+
+        // assert!(scan.is_some());
     }
 
     #[tokio::test]
@@ -327,10 +335,7 @@ mod tests {
         let ctx = SessionContext::new_exon();
         let session_state = ctx.state();
 
-        let table_path = ListingTableUrl::parse(
-            "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon-benchmarks/data",
-        )
-        .unwrap();
+        let table_path = ListingTableUrl::parse("test-data").unwrap();
 
         let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
         let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
@@ -348,21 +353,16 @@ mod tests {
         ctx.register_table("vcf_file", provider).unwrap();
 
         let df = ctx
-            .sql(
-                "SELECT chrom, pos FROM vcf_file WHERE chrom = 'chr1' and pos BETWEEN 1 and 10000000",
-            )
+            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 1")
             .await
             .unwrap();
-
-        // let ph_plan = df.create_physical_plan().await.unwrap();
-        // eprintln!("Got physical plan: {:#?}", ph_plan);
 
         let mut row_cnt = 0;
         let bs = df.collect().await.unwrap();
         for batch in bs {
             row_cnt += batch.num_rows();
         }
-        assert!(true);
+
         assert_eq!(row_cnt, 191)
     }
 }

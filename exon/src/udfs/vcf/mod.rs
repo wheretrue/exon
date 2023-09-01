@@ -27,7 +27,7 @@ use datafusion::{
 };
 use noodles::core::{Position, Region};
 
-// TODO: implement this
+/// A UDF that takes a chrom, pos, and region string and returns true if the chrom and pos are in the region.
 pub fn region_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     if args.len() != 3 {
         return Err(datafusion::error::DataFusionError::Execution(
@@ -64,6 +64,7 @@ pub fn region_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     Ok(Arc::new(new_bool_array.finish()))
 }
 
+/// A UDF that takes a chrom and chrom string and returns true if the chrom is in the region.
 pub fn chrom_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     if args.len() != 2 {
         return Err(datafusion::error::DataFusionError::Execution(
@@ -77,6 +78,7 @@ pub fn chrom_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     Ok(Arc::new(array))
 }
 
+/// A UDF that takes a pos and interval string and returns true if the pos is in the region.
 pub fn interval_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     if args.len() != 2 {
         return Err(datafusion::error::DataFusionError::Execution(
@@ -90,6 +92,7 @@ pub fn interval_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     Ok(Arc::new(array))
 }
 
+/// Create the interval_match UDF.
 pub fn create_interval_udf() -> ScalarUDF {
     create_udf(
         "interval_match",
@@ -100,6 +103,7 @@ pub fn create_interval_udf() -> ScalarUDF {
     )
 }
 
+/// Create the chrom_match UDF.
 pub fn create_chrom_udf() -> ScalarUDF {
     create_udf(
         "chrom_match",
@@ -110,6 +114,7 @@ pub fn create_chrom_udf() -> ScalarUDF {
     )
 }
 
+/// Create the region_match UDF.
 pub fn create_region_udf() -> ScalarUDF {
     create_udf(
         "region_match",
@@ -120,6 +125,7 @@ pub fn create_region_udf() -> ScalarUDF {
     )
 }
 
+/// Register the VCF UDFs.
 pub fn register_vcf_udfs() -> Vec<ScalarUDF> {
     vec![
         create_udf(

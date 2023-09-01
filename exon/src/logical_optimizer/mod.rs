@@ -13,10 +13,9 @@
 // limitations under the License.
 
 use datafusion::common::tree_node::{Transformed, TreeNode};
-use datafusion::logical_expr::utils::from_plan;
-use datafusion::logical_expr::{Between, BinaryExpr, Filter, LogicalPlan, Operator, TableScan};
+use datafusion::logical_expr::{Between, BinaryExpr, Filter, LogicalPlan};
 use datafusion::optimizer::{optimize_children, OptimizerConfig, OptimizerRule};
-use datafusion::prelude::{create_udf, Expr};
+use datafusion::prelude::Expr;
 
 use datafusion::error::Result;
 use datafusion::scalar::ScalarValue;
@@ -127,7 +126,7 @@ fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
                     }
                 };
 
-                let region_string = format!("{}-{}", low.to_string(), high.to_string());
+                let region_string = format!("{}-{}", low, high);
 
                 let interval_udf = create_interval_udf().call(vec![
                     Expr::Column(column.clone()),
@@ -141,7 +140,7 @@ fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
     })
 }
 
-pub struct PositionBetweenRewriter {}
+struct PositionBetweenRewriter {}
 
 impl OptimizerRule for PositionBetweenRewriter {
     fn name(&self) -> &str {
@@ -169,11 +168,9 @@ impl OptimizerRule for PositionBetweenRewriter {
 
                 let new_plan = Filter::try_new(predicate.clone(), filters.input.clone())?;
 
-                return Ok(Some(LogicalPlan::Filter(new_plan)));
+                Ok(Some(LogicalPlan::Filter(new_plan)))
             }
-            _ => {
-                return Ok(Some(plan.clone()));
-            }
+            _ => Ok(Some(plan.clone())),
         }
     }
 }

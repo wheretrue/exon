@@ -36,7 +36,6 @@ use crate::{
         bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
         ExonReadOptions,
     },
-    logical_optimizer::PositionBetweenRewriter,
     new_exon_config,
     physical_optimizer::{
         file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,
@@ -161,8 +160,6 @@ pub trait ExonSessionExt {
         let region_between_optimizer = RegionBetweenRule::default();
         let interval_region_optimizer = ExonIntervalOptimizer::default();
 
-        let query_planner = DefaultQueryPlanner {};
-
         let mut state = SessionState::with_config_rt(config, runtime)
             .with_physical_optimizer_rules(vec![
                 Arc::new(round_robin_optimizer),
@@ -170,7 +167,6 @@ pub trait ExonSessionExt {
                 Arc::new(vcf_region_optimizer),
                 Arc::new(interval_region_optimizer),
             ]);
-        // .with_optimizer_rules(vec![Arc::new(PositionBetweenRewriter {})]);
 
         let sources = vec![
             "BAM",

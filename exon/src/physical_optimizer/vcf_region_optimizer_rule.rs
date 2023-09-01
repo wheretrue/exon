@@ -97,7 +97,7 @@ impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
 mod tests {
     use std::str::FromStr;
 
-    use datafusion::prelude::SessionContext;
+    use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
 
     use crate::{
         datasources::{ExonFileType, ExonReadOptions},
@@ -135,8 +135,11 @@ mod tests {
             .await
             .unwrap();
 
-        // Assert that the optimized plan is a VCFScan not a FilterExec
         assert!(optimized_plan
+            .as_any()
+            .downcast_ref::<FilterExec>()
+            .unwrap()
+            .input()
             .as_any()
             .downcast_ref::<crate::datasources::vcf::VCFScan>()
             .is_some());
@@ -156,8 +159,11 @@ mod tests {
             .await
             .unwrap();
 
-        // Assert that the optimized plan is a VCFScan not a FilterExec
         assert!(optimized_plan
+            .as_any()
+            .downcast_ref::<FilterExec>()
+            .unwrap()
+            .input()
             .as_any()
             .downcast_ref::<crate::datasources::vcf::VCFScan>()
             .is_some());

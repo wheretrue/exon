@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 use datafusion::{
@@ -20,10 +20,7 @@ use datafusion::{
     datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     prelude::{col, lit, SessionContext},
 };
-use exon::{
-    datasources::{vcf::VCFFormat, ExonFileType, ExonReadOptions},
-    new_exon_config, ExonRuntimeEnvExt, ExonSessionExt,
-};
+use exon::{datasources::vcf::VCFFormat, new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
 use noodles::core::Region;
 
 #[derive(Subcommand)]
