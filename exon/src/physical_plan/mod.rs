@@ -36,3 +36,6 @@ pub mod region_physical_expr;
 
 /// Utilities for working with object stores.
 pub mod object_store;
+
+/// A physical planner with exon specific extensions.
+pub mod exon_physical_planner;

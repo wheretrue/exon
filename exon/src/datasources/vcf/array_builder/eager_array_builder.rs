@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::{
     array::{
         ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
-        Int32Builder,
+        Int64Builder,
     },
     datatypes::SchemaRef,
     error::ArrowError,
@@ -29,7 +29,7 @@ use super::{GenotypeBuilder, InfosBuilder};
 /// A builder for creating a `ArrayRef` from a `VCF` file.
 pub struct VCFArrayBuilder {
     chromosomes: GenericStringBuilder<i32>,
-    positions: Int32Builder,
+    positions: Int64Builder,
     ids: GenericListBuilder<i32, GenericStringBuilder<i32>>,
     references: GenericStringBuilder<i32>,
     alternates: GenericListBuilder<i32, GenericStringBuilder<i32>>,
@@ -59,7 +59,7 @@ impl VCFArrayBuilder {
 
         Ok(Self {
             chromosomes: GenericStringBuilder::<i32>::new(),
-            positions: Int32Builder::new(),
+            positions: Int64Builder::new(),
             ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
                 i32,
             >::new()),
@@ -91,7 +91,7 @@ impl VCFArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &Record) {
+    pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
@@ -100,7 +100,7 @@ impl VCFArrayBuilder {
                 }
                 1 => {
                     let position: usize = record.position().into();
-                    self.positions.append_value(position as i32);
+                    self.positions.append_value(position as i64);
                 }
                 2 => {
                     for id in record.ids().iter() {
@@ -131,10 +131,14 @@ impl VCFArrayBuilder {
                     self.filters.append(true);
                 }
                 7 => self.infos.append_value(record.info()),
-                8 => self.formats.append_value(record.genotypes()),
-                _ => panic!("Not implemented"),
+                8 => self.formats.append_value(record.genotypes())?,
+                _ => Err(ArrowError::InvalidArgumentError(
+                    "Invalid column index".to_string(),
+                ))?,
             }
         }
+
+        Ok(())
     }
 
     /// Builds the `ArrayRef`.

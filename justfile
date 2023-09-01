@@ -12,21 +12,21 @@ GIT_SHA := `git describe --always --abbrev=7 --dirty`
 
 run-benchmarks:
 	# Build the benchmark crate.
-	cargo build --profile profiling --package exon-benchmarks
+	cargo build --profile profiling --package exon-benchmarks \
 
 	# Run vcf benchmarks.
-	# hyperfine --runs 2 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
-	# 	-n bcftools \
-	# 	'bcftools view -r chr1:1-1000000 exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz chr1:1-1000000 | wc -l' \
-	# 	-n exon-vcf-query \
-	# 	'./target/release/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-1000000'
+	hyperfine --runs 2 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
+		-n bcftools \
+		'bcftools view -r chr1:1-1000000 exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz chr1:1-1000000 | wc -l' \
+		-n exon-vcf-query \
+		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-1000000'
 
 	# Run bam benchmarks.
-	# hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{GIT_SHA}}.json \
-	# 	-n samtools \
-	# 	'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam 20:1000000-100000000' \
-	# 	-n exon-bam-query \
-	# 	'./target/release/exon-benchmarks bam-query -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -r 20:1000000-100000000'
+	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{GIT_SHA}}.json \
+		-n samtools \
+		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam 20:1000000-100000000' \
+		-n exon-bam-query \
+		'./target/profiling/exon-benchmarks bam-query -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -r 20:1000000-100000000'
 
 	# Run FASTA scan benchmarks.
 	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-meth-scan_{{GIT_SHA}}.json \
@@ -74,10 +74,3 @@ plot-benchmarks:
 coverage:
 	cargo tarpaulin --out Html
 	open tarpaulin-report.html
-
-
-hyperfine --warmup 2 --runs 5 \
-	-n 'pre-alloc' \
-	'./target/profiling/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 2' \
-	-n 'no-pre-alloc' \
-	'./target/release/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 2'

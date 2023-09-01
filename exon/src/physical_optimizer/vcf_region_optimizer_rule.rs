@@ -58,14 +58,15 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         None => return Ok(Transformed::No(plan)),
     };
 
-    let region_expr = match RegionPhysicalExpr::try_from(pred.clone()) {
+    let region_expr: RegionPhysicalExpr = match RegionPhysicalExpr::try_from(pred.clone()) {
         Ok(expr) => expr,
         Err(_) => return Ok(Transformed::No(plan)),
     };
 
     let new_scan = vcf_scan.clone().with_filter(region_expr.region().clone());
+    let new_filter = FilterExec::try_new(Arc::new(region_expr), Arc::new(new_scan))?;
 
-    Ok(Transformed::Yes(Arc::new(new_scan)))
+    Ok(Transformed::Yes(Arc::new(new_filter)))
 }
 
 #[derive(Default)]
@@ -96,7 +97,7 @@ impl PhysicalOptimizerRule for ExonVCFRegionOptimizer {
 mod tests {
     use std::str::FromStr;
 
-    use datafusion::prelude::SessionContext;
+    use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
 
     use crate::{
         datasources::{ExonFileType, ExonReadOptions},
@@ -111,7 +112,6 @@ mod tests {
         let file_file = ExonFileType::from_str("vcf").unwrap();
         let options = ExonReadOptions::new(file_file);
 
-        // let path = "exon/test-data/datasources/vcf/index.vcf";
         let path = test_path("vcf", "index.vcf");
         let path = path.to_str().unwrap();
         let query = "1";
@@ -135,8 +135,11 @@ mod tests {
             .await
             .unwrap();
 
-        // Assert that the optimized plan is a VCFScan not a FilterExec
         assert!(optimized_plan
+            .as_any()
+            .downcast_ref::<FilterExec>()
+            .unwrap()
+            .input()
             .as_any()
             .downcast_ref::<crate::datasources::vcf::VCFScan>()
             .is_some());
@@ -156,8 +159,11 @@ mod tests {
             .await
             .unwrap();
 
-        // Assert that the optimized plan is a VCFScan not a FilterExec
         assert!(optimized_plan
+            .as_any()
+            .downcast_ref::<FilterExec>()
+            .unwrap()
+            .input()
             .as_any()
             .downcast_ref::<crate::datasources::vcf::VCFScan>()
             .is_some());

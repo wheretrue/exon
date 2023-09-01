@@ -77,6 +77,55 @@ impl InfosBuilder {
         self.inner.finish()
     }
 
+    pub fn append_null(&mut self) {
+        for (i, f) in self.fields.iter().enumerate() {
+            let field_type = f.data_type();
+
+            match field_type {
+                DataType::Int32 => {
+                    self.inner
+                        .field_builder::<Int32Builder>(i)
+                        .unwrap()
+                        .append_null();
+                }
+                DataType::Boolean => {
+                    self.inner
+                        .field_builder::<BooleanBuilder>(i)
+                        .unwrap()
+                        .append_null();
+                }
+                DataType::Float32 => {
+                    self.inner
+                        .field_builder::<Float32Builder>(i)
+                        .unwrap()
+                        .append_null();
+                }
+                DataType::List(l) => match l.data_type() {
+                    DataType::Int32 => {
+                        let builder = self
+                            .inner
+                            .field_builder::<GenericListBuilder<i32, Int32Builder>>(i)
+                            .unwrap();
+
+                        builder.append_null();
+                    }
+                    DataType::Float32 => {
+                        let builder = self
+                            .inner
+                            .field_builder::<GenericListBuilder<i32, Float32Builder>>(i)
+                            .unwrap();
+
+                        builder.append_null();
+                    }
+                    _ => unimplemented!(),
+                },
+                _ => unimplemented!("{:?}", field_type),
+            }
+        }
+
+        self.inner.append_null()
+    }
+
     /// Appends a new value to the end of the builder.
     pub fn append_value(&mut self, info: &Info) {
         for (i, f) in self.fields.iter().enumerate() {

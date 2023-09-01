@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
 use clap::{Parser, Subcommand};
 use datafusion::{
     common::FileCompressionType,
+    datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     prelude::{col, lit, SessionContext},
 };
-use exon::{new_exon_config, ExonSessionExt};
+use exon::{datasources::vcf::VCFFormat, new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
+use noodles::core::Region;
 
 #[derive(Subcommand)]
 enum Commands {
@@ -85,21 +89,48 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match &cli.command {
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
-            let region = region.as_str();
+            let region: Region = region.parse().unwrap();
 
             let ctx = SessionContext::new_exon();
+            ctx.runtime_env()
+                .exon_register_object_store_uri(path)
+                .await
+                .unwrap();
 
-            let df = ctx.query_vcf_file(path, region).await.unwrap();
+            let session_state = ctx.state();
 
-            let batch_count = df.count().await.unwrap();
+            let table_path = ListingTableUrl::parse(path).unwrap();
 
-            println!("Row count: {batch_count}");
+            let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
+            let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
+
+            let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+            let config = ListingTableConfig::new(table_path)
+                .with_listing_options(lo)
+                .with_schema(resolved_schema);
+
+            let provider = Arc::new(ListingTable::try_new(config).unwrap());
+            ctx.register_table("vcf_file", provider).unwrap();
+
+            let chrom = region.name();
+            let start = region.interval().start().unwrap();
+            let end = region.interval().end().unwrap();
+
+            let df = ctx
+                .sql(format!("SELECT COUNT(*) AS cnt FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
+                .await?;
+
+            let batches = df.collect().await?;
+
+            let batch_count = &batches[0];
+            eprintln!("Batch count: {:#?}", batch_count);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();
@@ -158,4 +189,6 @@ async fn main() {
         }
         None => {}
     }
+
+    Ok(())
 }

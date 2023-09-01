@@ -41,7 +41,7 @@ impl VCFSchemaBuilder {
         Self {
             fields: vec![
                 Field::new("chrom", arrow::datatypes::DataType::Utf8, false),
-                Field::new("pos", arrow::datatypes::DataType::Int32, false),
+                Field::new("pos", arrow::datatypes::DataType::Int64, false),
                 Field::new(
                     "id",
                     arrow::datatypes::DataType::List(Arc::new(Field::new(
@@ -146,7 +146,7 @@ fn vcf_info_to_field(infos: Infos) -> arrow::datatypes::Field {
 
     let fields = Fields::from(arrow_fields);
 
-    arrow::datatypes::Field::new("info", arrow::datatypes::DataType::Struct(fields), false)
+    arrow::datatypes::Field::new("info", arrow::datatypes::DataType::Struct(fields), true)
 }
 
 fn vcf_formats_to_field(formats: Formats) -> arrow::datatypes::Field {
@@ -460,7 +460,7 @@ mod tests {
         assert_eq!(schema.field(1).name(), "pos");
         assert_eq!(
             schema.field(1).data_type(),
-            &arrow::datatypes::DataType::Int32
+            &arrow::datatypes::DataType::Int64
         );
 
         assert_eq!(schema.field(2).name(), "id");

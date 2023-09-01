@@ -18,6 +18,7 @@ use arrow::datatypes::SchemaRef;
 use datafusion::{
     common::FileCompressionType,
     datasource::physical_plan::{FileScanConfig, FileStream},
+    error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
         Partitioning, SendableRecordBatchStream, Statistics,
@@ -47,19 +48,22 @@ pub struct VCFScan {
 
 impl VCFScan {
     /// Create a new VCF scan.
-    pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
+    pub fn new(
+        base_config: FileScanConfig,
+        file_compression_type: FileCompressionType,
+    ) -> Result<Self> {
         let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
+            Some(p) => Arc::new(base_config.file_schema.project(p)?),
             None => base_config.file_schema.clone(),
         };
 
-        Self {
+        Ok(Self {
             base_config,
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
             region_filter: None,
-        }
+        })
     }
 
     /// Create a new VCF scan with a region filter.
@@ -116,6 +120,7 @@ impl ExecutionPlan for VCFScan {
 
         let mut config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(batch_size);
+
         if let Some(projections) = &self.base_config.projection {
             config = config.with_projection(projections.clone());
         }

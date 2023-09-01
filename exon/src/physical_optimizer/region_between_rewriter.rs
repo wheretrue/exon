@@ -21,7 +21,7 @@ use datafusion::physical_plan::expressions::{BinaryExpr, Column};
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
-fn transform_expression(binary_expression: &BinaryExpr) -> Option<BinaryExpr> {
+pub fn transform_interval_expression(binary_expression: &BinaryExpr) -> Option<BinaryExpr> {
     let left = match binary_expression
         .left()
         .as_any()
@@ -128,7 +128,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         None => return Ok(Transformed::No(plan)),
     };
 
-    if let Some(expr) = transform_expression(pred) {
+    if let Some(expr) = transform_interval_expression(pred) {
         let exec = FilterExec::try_new(Arc::new(expr), filter_exec.input().clone())?;
         Ok(Transformed::Yes(Arc::new(exec)))
     } else {
@@ -166,7 +166,7 @@ mod tests {
 
     use datafusion::physical_plan::expressions::{col, lit, BinaryExpr, Column, Literal};
 
-    use crate::optimizer::region_between_rewriter::transform_expression;
+    use crate::physical_optimizer::region_between_rewriter::transform_interval_expression;
 
     #[tokio::test]
     async fn test_region_between_rule() {
@@ -214,7 +214,7 @@ mod tests {
             Arc::new(bin_expr),
         );
 
-        let actual_expr = transform_expression(&full_expr).unwrap();
+        let actual_expr = transform_interval_expression(&full_expr).unwrap();
 
         // Assert left is chrom = '1'
         let left_chrom = actual_expr
