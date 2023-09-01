@@ -272,7 +272,7 @@ mod tests {
         );
         ctx.sql(&sql).await.unwrap();
 
-        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 10000;";
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
 
         let df = ctx.sql(sql).await.unwrap();
 

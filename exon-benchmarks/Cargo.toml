@@ -9,4 +9,5 @@ version = "0.1.0"
 clap = {version = "4.4.2", features = ["derive"]}
 datafusion = {workspace = true}
 exon = {path = "../exon", features = ["all"]}
+noodles = {version = "0.50", features = ["core", "vcf", "bgzf"]}
 tokio = {version = "1", features = ["full"]}

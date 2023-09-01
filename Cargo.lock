@@ -1459,6 +1459,7 @@ dependencies = [
  "clap",
  "datafusion",
  "exon",
+ "noodles",
  "tokio",
 ]
 

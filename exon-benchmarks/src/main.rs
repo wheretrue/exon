@@ -22,8 +22,9 @@ use datafusion::{
 };
 use exon::{
     datasources::{vcf::VCFFormat, ExonFileType, ExonReadOptions},
-    new_exon_config, ExonSessionExt,
+    new_exon_config, ExonRuntimeEnvExt, ExonSessionExt,
 };
+use noodles::core::Region;
 
 #[derive(Subcommand)]
 enum Commands {
@@ -97,12 +98,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match &cli.command {
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
-            let region = region.as_str();
+            let region: Region = region.parse().unwrap();
 
             let ctx = SessionContext::new_exon();
+            ctx.runtime_env()
+                .exon_register_object_store_uri(path)
+                .await
+                .unwrap();
+
             let session_state = ctx.state();
 
-            let table_path = ListingTableUrl::parse("exon-benchmarks/data").unwrap();
+            let table_path = ListingTableUrl::parse(path).unwrap();
 
             let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
             let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
@@ -116,8 +122,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let provider = Arc::new(ListingTable::try_new(config).unwrap());
             ctx.register_table("vcf_file", provider).unwrap();
 
+            let chrom = region.name();
+            let start = region.interval().start().unwrap();
+            let end = region.interval().end().unwrap();
+
             let df = ctx
-                .sql("SELECT COUNT(*) FROM vcf_file WHERE chrom = 'chr1' and pos BETWEEN 1 and 1000000")
+                .sql(format!("SELECT COUNT(*) AS cnt FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
                 .await?;
 
             let batches = df.collect().await?;
