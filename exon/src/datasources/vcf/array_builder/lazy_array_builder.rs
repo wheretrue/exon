@@ -19,7 +19,7 @@ use arrow::{
         ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
         Int64Builder,
     },
-    datatypes::SchemaRef,
+    datatypes::{DataType, SchemaRef},
     error::ArrowError,
 };
 use noodles::vcf::{
@@ -32,6 +32,16 @@ use noodles::vcf::{
 
 use super::{GenotypeBuilder, InfosBuilder};
 
+enum InfosFormat {
+    Struct(InfosBuilder),
+    String(GenericStringBuilder<i32>),
+}
+
+enum FormatsFormat {
+    List(GenotypeBuilder),
+    String(GenericStringBuilder<i32>),
+}
+
 /// A builder for creating a `ArrayRef` from a `VCF` file.
 pub struct LazyVCFArrayBuilder {
     chromosomes: GenericStringBuilder<i32>,
@@ -42,11 +52,8 @@ pub struct LazyVCFArrayBuilder {
     qualities: Float32Builder,
     filters: GenericListBuilder<i32, GenericStringBuilder<i32>>,
 
-    // TODO: VCF IMPV: maybe string builder for info and format, or maybe not existing
-    // May not need to change though, if the field in `create` can be used to create the builder
-    // (i.e. maybe just String)
-    infos: InfosBuilder,
-    formats: GenotypeBuilder,
+    infos: InfosFormat,
+    formats: FormatsFormat,
     projection: Vec<usize>,
 
     // Allow dead code
@@ -62,7 +69,37 @@ impl LazyVCFArrayBuilder {
         header: Arc<Header>,
     ) -> Result<Self, ArrowError> {
         let info_field = schema.field_with_name("info")?;
+
+        let infos = match &info_field.data_type() {
+            DataType::Utf8 => InfosFormat::String(GenericStringBuilder::<i32>::new()),
+            DataType::Struct(_) => {
+                InfosFormat::Struct(InfosBuilder::try_new(info_field, capacity)?)
+            }
+            _ => {
+                return Err(ArrowError::SchemaError(
+                    format!("Unexpected type for VCF file: {:?}", info_field.data_type())
+                        .to_string(),
+                ))
+            }
+        };
+
         let format_field = schema.field_with_name("formats")?;
+
+        let formats = match &format_field.data_type() {
+            DataType::Utf8 => FormatsFormat::String(GenericStringBuilder::<i32>::new()),
+            DataType::List(_) => {
+                FormatsFormat::List(GenotypeBuilder::try_new(format_field, capacity)?)
+            }
+            _ => {
+                return Err(ArrowError::SchemaError(
+                    format!(
+                        "Unexpected type for VCF file: {:?}",
+                        format_field.data_type()
+                    )
+                    .to_string(),
+                ))
+            }
+        };
 
         let projection = match projection {
             Some(projection) => projection,
@@ -84,8 +121,8 @@ impl LazyVCFArrayBuilder {
                 GenericStringBuilder::<i32>::new(),
             ),
 
-            infos: InfosBuilder::try_new(info_field, capacity)?,
-            formats: GenotypeBuilder::try_new(format_field, capacity)?,
+            infos,
+            formats,
 
             projection,
 
@@ -179,25 +216,40 @@ impl LazyVCFArrayBuilder {
 
                     self.filters.append(true);
                 }
-                7 => match record.info().as_ref() {
-                    "." => self.infos.append_null(),
-                    _ => {
-                        let infos = Info::from_str(record.info().as_ref()).map_err(|_| {
-                            ArrowError::ParseError(format!(
-                                "Invalid info {}",
-                                record.info().as_ref()
-                            ))
-                        })?;
+                7 => match self.infos {
+                    InfosFormat::String(ref mut builder) => {
+                        builder.append_value(record.info().as_ref());
+                    }
+                    InfosFormat::Struct(ref mut builder) => match record.info().as_ref() {
+                        "." => builder.append_null(),
+                        _ => {
+                            let infos = Info::from_str(record.info().as_ref()).map_err(|_| {
+                                ArrowError::ParseError(format!(
+                                    "Invalid info {}",
+                                    record.info().as_ref()
+                                ))
+                            })?;
 
-                        self.infos.append_value(&infos);
+                            builder.append_value(&infos);
+                        }
+                    },
+                },
+                8 => match self.formats {
+                    FormatsFormat::String(ref mut builder) => {
+                        builder.append_value(record.genotypes().as_ref());
+                    }
+                    FormatsFormat::List(ref mut builder) => {
+                        let genotypes = Genotypes::parse(record.genotypes().as_ref(), &self.header)
+                            .map_err(|_| {
+                                ArrowError::ParseError(format!(
+                                    "Invalid genotypes {}",
+                                    record.genotypes().as_ref()
+                                ))
+                            })?;
+
+                        builder.append_value(&genotypes)?;
                     }
                 },
-                8 => {
-                    let genotypes = Genotypes::parse(record.genotypes().as_ref(), &self.header)
-                        .map_err(|_| ArrowError::ParseError("Invalid genotypes".to_string()))?;
-
-                    self.formats.append_value(&genotypes)?;
-                }
                 _ => {
                     return Err(ArrowError::SchemaError(
                         "Unexpected number of columns for VCF file".to_string(),
@@ -221,8 +273,22 @@ impl LazyVCFArrayBuilder {
                 4 => arrays.push(Arc::new(self.alternates.finish())),
                 5 => arrays.push(Arc::new(self.qualities.finish())),
                 6 => arrays.push(Arc::new(self.filters.finish())),
-                7 => arrays.push(Arc::new(self.infos.finish())),
-                8 => arrays.push(Arc::new(self.formats.finish())),
+                7 => match self.infos {
+                    InfosFormat::String(ref mut builder) => {
+                        arrays.push(Arc::new(builder.finish()));
+                    }
+                    InfosFormat::Struct(ref mut builder) => {
+                        arrays.push(Arc::new(builder.finish()));
+                    }
+                },
+                8 => match self.formats {
+                    FormatsFormat::String(ref mut builder) => {
+                        arrays.push(Arc::new(builder.finish()));
+                    }
+                    FormatsFormat::List(ref mut builder) => {
+                        arrays.push(Arc::new(builder.finish()));
+                    }
+                },
                 _ => panic!("Not implemented"),
             }
         }

@@ -14,6 +14,7 @@ Please note Exon was recently excised from a larger library, so please be patien
 * [Installation](#installation)
 * [Usage](#usage)
 * [File Formats](#file-formats)
+* [Settings](#settings)
 * [Benchmarks](#benchmarks)
 
 ## Installation
@@ -34,7 +35,7 @@ use exon::context::ExonSessionExt;
 use datafusion::prelude::*;
 use datafusion::error::Result;
 
-let ctx = SessionContext::new();
+let ctx = SessionContext::new_exon();
 
 let df = ctx.read_fasta("test-data/datasources/fasta/test.fasta", None).await?;
 ```
@@ -60,6 +61,27 @@ Please see the [rust docs](https://docs.rs/exon) for more information.
 
 [^1]: Uses bgzip not gzip.
 [^2]: mzML also works.
+
+## Settings
+
+Exon using the following settings:
+
+| Setting | Default | Description |
+| ------- | ------- | ----------- |
+| `exon.parse_vcf_info` | `true` | Parse VCF INFO fields. If False, INFO fields will be returned as a single string. |
+| `exon.parse_vcf_format` | `true` | Parse VCF FORMAT fields. If False, FORMAT fields will be returned as a single string. |
+
+You can update the settings by running:
+
+```sql
+SET <setting> = <value>;
+```
+
+For example, to disable parsing of VCF INFO fields:
+
+```sql
+SET exon.parse_vcf_info = false;
+```
 
 ## Benchmarks
 

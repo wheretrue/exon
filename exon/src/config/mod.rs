@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::{config::ConfigOptions, prelude::SessionConfig};
+use datafusion::{
+    common::extensions_options,
+    config::{ConfigExtension, ConfigOptions},
+    prelude::SessionConfig,
+};
 
 pub const BATCH_SIZE: usize = 8 * 1024;
 
@@ -23,6 +27,8 @@ pub fn new_exon_config() -> SessionConfig {
     options.execution.parquet.reorder_filters = true;
     options.optimizer.repartition_sorts = true;
 
+    options.extensions.insert(ExonConfigExtension::default());
+
     SessionConfig::from(options)
         .with_batch_size(BATCH_SIZE)
         .with_create_default_catalog_and_schema(true)
@@ -32,4 +38,19 @@ pub fn new_exon_config() -> SessionConfig {
         .with_repartition_joins(true)
         .with_repartition_windows(true)
         .with_target_partitions(num_cpus::get())
+}
+
+extensions_options! {
+    /// My own config options.
+    pub struct ExonConfigExtension {
+        /// Should "foo" be replaced by "bar"?
+        pub parse_vcf_info: bool, default = true
+
+        /// Should "foo" be replaced by "bar"?
+        pub parse_vcf_format: bool, default = true
+    }
+}
+
+impl ConfigExtension for ExonConfigExtension {
+    const PREFIX: &'static str = "exon";
 }
