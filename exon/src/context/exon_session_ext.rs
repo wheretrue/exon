@@ -33,9 +33,12 @@ use noodles::core::Region;
 
 use crate::{
     datasources::{
-        bam::BAMFormat, bcf::BCFFormat, vcf::VCFFormat, ExonFileType, ExonListingTableFactory,
-        ExonReadOptions,
+        bam::BAMFormat,
+        bcf::BCFFormat,
+        vcf::{VCFFormat, VCFTableProviderFactory},
+        ExonFileType, ExonListingTableFactory, ExonReadOptions,
     },
+    logical_optimizer::PositionBetweenRewriter,
     new_exon_config,
     physical_optimizer::{
         file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,
@@ -167,6 +170,7 @@ pub trait ExonSessionExt {
                 Arc::new(vcf_region_optimizer),
                 Arc::new(interval_region_optimizer),
             ]);
+        // .with_optimizer_rules(vec![Arc::new(PositionBetweenRewriter {})]);
 
         let sources = vec![
             "BAM",
@@ -178,8 +182,8 @@ pub trait ExonSessionExt {
             "GFF",
             "GTF",
             "HMMDOMTAB",
+            // "VCF",
             "SAM",
-            "VCF",
             #[cfg(feature = "mzml")]
             "MZML",
         ];
@@ -189,6 +193,10 @@ pub trait ExonSessionExt {
                 .table_factories_mut()
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
+
+        state
+            .table_factories_mut()
+            .insert("VCF".into(), Arc::new(VCFTableProviderFactory::default()));
 
         SessionContext::with_state(state)
     }

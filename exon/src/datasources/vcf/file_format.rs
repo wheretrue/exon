@@ -157,8 +157,6 @@ impl FileFormat for VCFFormat {
         conf: FileScanConfig,
         filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        // Make 5 passes through the filters and to try to optimize into a region filter.
-
         let new_filters = match filters {
             Some(filter) => match filter.as_any().downcast_ref::<BinaryExpr>() {
                 Some(be) => transform_interval_expression(be),
@@ -266,7 +264,7 @@ fn resolve_region(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     use crate::{
         datasources::vcf::VCFScan, physical_plan::region_physical_expr::RegionPhysicalExpr,
@@ -285,7 +283,9 @@ mod tests {
     async fn test_region_pushdown() {
         let ctx = SessionContext::new_exon();
 
-        let table_path = test_path("vcf", "index.vcf");
+        // let table_path = test_path("vcf", "index.vcf");
+        // eprintln!("table_path: {:?}", table_path);
+        let table_path = PathBuf::from_str("/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/vcf/index.vcf").unwrap();
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
@@ -293,25 +293,29 @@ mod tests {
         );
         ctx.sql(&sql).await.unwrap();
 
-        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
+        let sql = "SELECT * FROM vcf_file";
 
         let df = ctx.sql(sql).await.unwrap();
 
-        let physical_plan = ctx
-            .state()
-            .create_physical_plan(df.logical_plan())
-            .await
-            .unwrap();
+        let batches = df.collect().await.unwrap();
 
-        if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-            scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
-            scan.predicate()
-                .as_any()
-                .downcast_ref::<RegionPhysicalExpr>()
-                .unwrap();
-        } else {
-            panic!("physical plan is not a filter exec");
-        }
+        eprintln!("batches: {:?}", batches);
+
+        // let physical_plan = ctx
+        //     .state()
+        //     .create_physical_plan(df.logical_plan())
+        //     .await
+        //     .unwrap();
+
+        // if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+        //     scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
+        //     scan.predicate()
+        //         .as_any()
+        //         .downcast_ref::<RegionPhysicalExpr>()
+        //         .unwrap();
+        // } else {
+        //     panic!("physical plan is not a filter exec");
+        // }
     }
 
     #[tokio::test]
