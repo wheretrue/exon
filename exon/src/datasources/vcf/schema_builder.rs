@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{Field, Fields};
+use datafusion::error::Result;
 use noodles::vcf::{
     header::{
         record::value::map::format::Type as FormatType, record::value::map::info::Type as InfoType,
@@ -27,17 +28,39 @@ use noodles::vcf::{
 pub struct VCFSchemaBuilder {
     /// The fields of the schema.
     fields: Vec<arrow::datatypes::Field>,
+
+    /// The header to use for schema inference.
+    header: Option<Header>,
+
+    /// Whether to parse the INFO field.
+    parse_info: bool,
+
+    /// Whether to parse the FORMAT field.
+    parse_formats: bool,
+}
+
+impl VCFSchemaBuilder {
+    /// Add a header to the schema builder.
+    pub fn with_header(mut self, header: Header) -> Self {
+        self.header = Some(header);
+        self
+    }
+
+    /// Set the parse_info flag.
+    pub fn with_parse_info(mut self, parse_info: bool) -> Self {
+        self.parse_info = parse_info;
+        self
+    }
+
+    /// Set the parse_formats flag.
+    pub fn with_parse_formats(mut self, parse_formats: bool) -> Self {
+        self.parse_formats = parse_formats;
+        self
+    }
 }
 
 impl Default for VCFSchemaBuilder {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl VCFSchemaBuilder {
-    /// Creates a new VCF schema builder.
-    pub fn new() -> Self {
         Self {
             fields: vec![
                 Field::new("chrom", arrow::datatypes::DataType::Utf8, false),
@@ -71,10 +94,17 @@ impl VCFSchemaBuilder {
                     ))),
                     false,
                 ),
+                Field::new("info", arrow::datatypes::DataType::Utf8, true),
+                Field::new("formats", arrow::datatypes::DataType::Utf8, true),
             ],
+            parse_info: false,
+            parse_formats: false,
+            header: None,
         }
     }
+}
 
+impl VCFSchemaBuilder {
     /// Updates the schema from a VCF header.
     pub fn update_from_header(&mut self, header: &noodles::vcf::Header) {
         self.fields.push(vcf_info_to_field(header.infos().clone()));
@@ -83,17 +113,34 @@ impl VCFSchemaBuilder {
     }
 
     /// Builds the schema.
-    pub fn build(self) -> arrow::datatypes::Schema {
-        arrow::datatypes::Schema::new(self.fields)
-    }
-}
+    pub fn build(&mut self) -> Result<arrow::datatypes::Schema> {
+        // If both parse_info and parse_formats are false, then we can just return the default schema
+        if !self.parse_info && !self.parse_formats {
+            return Ok(arrow::datatypes::Schema::new(self.fields.clone()));
+        }
 
-/// Creates a new builder from a VCF header.
-impl From<Header> for VCFSchemaBuilder {
-    fn from(header: Header) -> Self {
-        let mut builder = Self::new();
-        builder.update_from_header(&header);
-        builder
+        // Make sure we have a header to parse
+        let header = match &self.header {
+            Some(header) => header,
+            None => {
+                return Err(datafusion::error::DataFusionError::Execution(
+                    "No header provided to parse".to_string(),
+                ))
+            }
+        };
+
+        // If we are parsing info, then we need to update the info field
+        if self.parse_info {
+            let info_field = vcf_info_to_field(header.infos().clone());
+            self.fields[7] = info_field;
+        }
+
+        if self.parse_formats {
+            let format_field = vcf_formats_to_field(header.formats().clone());
+            self.fields[8] = format_field;
+        }
+
+        Ok(arrow::datatypes::Schema::new(self.fields.clone()))
     }
 }
 
@@ -192,7 +239,7 @@ mod tests {
     use super::VCFSchemaBuilder;
 
     #[test]
-    fn test_genotype_schema_inference() {
+    fn test_genotype_schema_inference() -> Result<(), Box<dyn std::error::Error>> {
         let mut header_builder = Header::builder();
         let mut expected_fields = Vec::new();
 
@@ -290,7 +337,10 @@ mod tests {
 
         let header = header_builder.build();
 
-        let schema = VCFSchemaBuilder::from(header).build();
+        let schema = VCFSchemaBuilder::default()
+            .with_header(header)
+            .with_parse_formats(true)
+            .build()?;
 
         let info_field = schema.field(8);
 
@@ -301,6 +351,8 @@ mod tests {
 
         assert_eq!(info_field.name(), "formats");
         assert_eq!(info_field.data_type(), &expected_type);
+
+        Ok(())
     }
 
     #[test]
@@ -433,7 +485,11 @@ mod tests {
         }
 
         let header = header.build();
-        let schema = VCFSchemaBuilder::from(header).build();
+        let schema = VCFSchemaBuilder::default()
+            .with_header(header)
+            .with_parse_info(true)
+            .build()
+            .unwrap();
 
         let info_field = schema.field(7);
 
@@ -446,8 +502,7 @@ mod tests {
 
     #[test]
     fn test_default_header_to_schema() {
-        let header = noodles::vcf::Header::default();
-        let schema = super::VCFSchemaBuilder::from(header).build();
+        let schema = super::VCFSchemaBuilder::default().build().unwrap();
 
         assert_eq!(schema.fields().len(), 9);
 
@@ -508,17 +563,13 @@ mod tests {
         assert_eq!(schema.field(7).name(), "info");
         assert_eq!(
             schema.field(7).data_type(),
-            &arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::empty())
+            &arrow::datatypes::DataType::Utf8,
         );
 
         assert_eq!(schema.field(8).name(), "formats");
         assert_eq!(
             schema.field(8).data_type(),
-            &arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
-                "item",
-                arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::empty()),
-                true
-            )))
+            &arrow::datatypes::DataType::Utf8,
         );
     }
 }

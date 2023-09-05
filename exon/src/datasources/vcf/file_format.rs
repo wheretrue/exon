@@ -82,7 +82,7 @@ impl FileFormat for VCFFormat {
 
     async fn infer_schema(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
     ) -> datafusion::error::Result<SchemaRef> {
@@ -91,21 +91,43 @@ impl FileFormat for VCFFormat {
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
         let stream_reader = StreamReader::new(stream_reader);
 
-        let schema_builder = match self.file_compression_type {
+        let exon_settings = state
+            .config()
+            .get_extension::<crate::config::ExonConfigExtension>();
+
+        let parse_vcf_info = exon_settings
+            .as_ref()
+            .map(|s| s.parse_vcf_info)
+            .unwrap_or(false);
+
+        let parse_vcf_format = exon_settings
+            .as_ref()
+            .map(|s| s.parse_vcf_format)
+            .unwrap_or(false);
+
+        eprintln!("exon_settings: {:?}", exon_settings);
+
+        let mut schema_builder = match self.file_compression_type {
             FileCompressionType::GZIP => {
                 let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
                 let mut vcf_reader = vcf::AsyncReader::new(bgzf_reader);
 
                 let header = vcf_reader.read_header().await?;
 
-                VCFSchemaBuilder::from(header)
+                VCFSchemaBuilder::default()
+                    .with_header(header)
+                    .with_parse_info(parse_vcf_info)
+                    .with_parse_formats(parse_vcf_format)
             }
             FileCompressionType::UNCOMPRESSED => {
                 let mut vcf_reader = vcf::AsyncReader::new(stream_reader);
 
                 let header = vcf_reader.read_header().await?;
 
-                VCFSchemaBuilder::from(header)
+                VCFSchemaBuilder::default()
+                    .with_header(header)
+                    .with_parse_info(parse_vcf_info)
+                    .with_parse_formats(parse_vcf_format)
             }
             _ => {
                 return Err(DataFusionError::Execution(
@@ -114,7 +136,7 @@ impl FileFormat for VCFFormat {
             }
         };
 
-        let schema = schema_builder.build();
+        let schema = schema_builder.build()?;
 
         Ok(Arc::new(schema))
     }
@@ -290,8 +312,34 @@ mod tests {
         } else {
             panic!("physical plan is not a filter exec");
         }
+    }
 
-        // assert!(scan.is_some());
+    #[tokio::test]
+    async fn test_vcf_parsing_string() {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_path("vcf", "index.vcf");
+
+        let sql = "SET exon.parse_vcf_info = true;";
+        ctx.sql(sql).await.unwrap();
+
+        let sql = "SET exon.parse_vcf_format = true;";
+        ctx.sql(sql).await.unwrap();
+
+        let sql = format!(
+            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
+            table_path.to_str().unwrap(),
+        );
+        ctx.sql(&sql).await.unwrap();
+
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
+        let df = ctx.sql(sql).await.unwrap();
+
+        // Check that the last two columns are strings.
+        let schema = df.schema();
+
+        assert_eq!(schema.field(7).data_type().to_string(), "Utf8");
+        assert_eq!(schema.field(8).data_type().to_string(), "Utf8");
     }
 
     #[tokio::test]

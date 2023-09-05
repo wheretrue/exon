@@ -80,9 +80,12 @@ impl FileFormat for BCFFormat {
             .parse::<noodles::vcf::Header>()
             .map_err(|e| DataFusionError::Execution(e.to_string()))?;
 
-        let schema_builder = VCFSchemaBuilder::from(header);
+        let mut schema_builder = VCFSchemaBuilder::default()
+            .with_header(header)
+            .with_parse_formats(true)
+            .with_parse_info(true);
 
-        let schema = schema_builder.build();
+        let schema = schema_builder.build()?;
 
         Ok(Arc::new(schema))
     }

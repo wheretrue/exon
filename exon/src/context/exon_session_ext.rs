@@ -553,7 +553,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_infer() -> Result<(), DataFusionError> {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
         let test_table = vec![
             ("bam", "test.bam"),
             ("sam", "test.sam"),
@@ -687,9 +687,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_vcf() -> Result<(), DataFusionError> {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
 
-        // let path = "exon/test-data/datasources/vcf/index.vcf.gz";
         let path = test_path("vcf", "index.vcf.gz");
         let path = path.to_str().unwrap();
         let query = "1";
@@ -807,7 +806,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_vcf() -> Result<(), DataFusionError> {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
 
         let path = test_path("vcf", "index.vcf");
 
