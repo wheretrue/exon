@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::{config::ConfigOptions, prelude::SessionConfig};
+use std::sync::Arc;
+
+use datafusion::{
+    config::{ConfigExtension, ConfigOptions, ExtensionOptions},
+    prelude::SessionConfig,
+};
 
 pub const BATCH_SIZE: usize = 8 * 1024;
 
@@ -32,4 +37,87 @@ pub fn new_exon_config() -> SessionConfig {
         .with_repartition_joins(true)
         .with_repartition_windows(true)
         .with_target_partitions(num_cpus::get())
+        .with_extension(Arc::new(ExonConfigExtension::default()))
+}
+
+#[derive(Debug, Clone)]
+pub struct ExonConfigExtension {
+    /// If true, the VCF parser will parse the INFO field into a struct.
+    pub parse_vcf_info: bool,
+
+    /// If true, the VCF parser will parse the FORMAT field into a list of structs.
+    pub parse_vcf_format: bool,
+}
+
+impl Default for ExonConfigExtension {
+    fn default() -> Self {
+        Self {
+            parse_vcf_info: true,
+            parse_vcf_format: true,
+        }
+    }
+}
+
+impl ConfigExtension for ExonConfigExtension {
+    const PREFIX: &'static str = "exon";
+}
+
+impl ExtensionOptions for ExonConfigExtension {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn cloned(&self) -> Box<dyn ExtensionOptions> {
+        Box::new(Self {
+            parse_vcf_info: self.parse_vcf_info,
+            parse_vcf_format: self.parse_vcf_format,
+        })
+    }
+
+    fn set(&mut self, key: &str, value: &str) -> datafusion::error::Result<()> {
+        match key {
+            "parse_vcf_info" => {
+                self.parse_vcf_info = value.parse().map_err(|e| {
+                    datafusion::error::DataFusionError::Execution(format!(
+                        "Could not parse value for {}: {}",
+                        key, e
+                    ))
+                })?;
+                Ok(())
+            }
+            "parse_vcf_format" => {
+                self.parse_vcf_format = value.parse().map_err(|e| {
+                    datafusion::error::DataFusionError::Execution(format!(
+                        "Could not parse value for {}: {}",
+                        key, e
+                    ))
+                })?;
+                Ok(())
+            }
+            _ => Err(datafusion::error::DataFusionError::NotImplemented(format!(
+                "Unknown option: {}",
+                key
+            ))),
+        }
+    }
+
+    fn entries(&self) -> Vec<datafusion::config::ConfigEntry> {
+        vec![
+            datafusion::config::ConfigEntry {
+                key: "parse_vcf_info".to_string(),
+                value: Some("false".to_string()),
+                description: "If true, the VCF parser will parse the INFO field into a struct.",
+            },
+            datafusion::config::ConfigEntry {
+                key: "parse_vcf_format".to_string(),
+                value: Some("false".to_string()),
+                description:
+                    "If true, the VCF parser will parse the FORMAT field into a list of structs.",
+            },
+        ]
+    }
 }
