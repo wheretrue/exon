@@ -200,7 +200,7 @@ impl TableProvider for ListingVCFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        // TODO: Implement this
+        // TODO: Make this more accurate, potentially exact
         Ok(filters
             .iter()
             .map(|_f| TableProviderFilterPushDown::Exact)

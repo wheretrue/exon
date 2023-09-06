@@ -34,7 +34,9 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     physical_optimizer::region_between_rewriter::transform_interval_expression,
-    physical_plan::region_physical_expr::RegionPhysicalExpr,
+    physical_plan::{
+        chrom_physical_expr::ChromPhysicalExpr, region_physical_expr::RegionPhysicalExpr,
+    },
 };
 
 use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
@@ -155,45 +157,66 @@ impl FileFormat for VCFFormat {
         conf: FileScanConfig,
         filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        // Check we at least got a binary expression, if not, quick return.
         let new_filters = match filters {
             Some(filter) => match filter.as_any().downcast_ref::<BinaryExpr>() {
-                Some(be) => transform_interval_expression(be),
-                None => None,
+                Some(be) => be,
+                None => {
+                    let scan = VCFScan::new(conf, self.file_compression_type)?;
+                    return Ok(Arc::new(scan));
+                }
             },
-            _ => None,
+            _ => {
+                let scan = VCFScan::new(conf, self.file_compression_type)?;
+                return Ok(Arc::new(scan));
+            }
         };
 
-        let new_filters = match new_filters {
-            Some(f) => match f.as_any().downcast_ref::<BinaryExpr>() {
-                Some(be) => Some(RegionPhysicalExpr::try_from(be.clone())?),
-                None => None,
-            },
-            _ => None,
-        };
+        // If we got passed only a Chrom column.
+        if let Ok(chrom_expr) = ChromPhysicalExpr::try_from(new_filters.clone()) {
+            let region = chrom_expr.region();
 
-        if let Some(region_filter) = new_filters {
             let mut new_conf = conf.clone();
 
             let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
 
-            if let Ok(new_groups) = add_region_bytes_to_file_groups(
-                object_store,
-                &conf.file_groups,
-                region_filter.region(),
-            )
-            .await
+            if let Ok(new_groups) =
+                add_region_bytes_to_file_groups(object_store, &conf.file_groups, &region).await
             {
                 new_conf.file_groups = new_groups;
             }
 
             let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
-            scan = scan.with_filter(region_filter.region().clone());
+            scan = scan.with_filter(region);
 
             return Ok(Arc::new(scan));
-        } else {
-            let scan = VCFScan::new(conf, self.file_compression_type)?;
-            return Ok(Arc::new(scan));
         }
+
+        if let Some(s) = transform_interval_expression(new_filters) {
+            if let Ok(region_expr) = RegionPhysicalExpr::try_from(s) {
+                let mut new_conf = conf.clone();
+
+                let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
+
+                if let Ok(new_groups) = add_region_bytes_to_file_groups(
+                    object_store,
+                    &conf.file_groups,
+                    region_expr.region(),
+                )
+                .await
+                {
+                    new_conf.file_groups = new_groups;
+                }
+
+                let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
+                scan = scan.with_filter(region_expr.region().clone());
+
+                return Ok(Arc::new(scan));
+            }
+        }
+
+        let scan = VCFScan::new(conf, self.file_compression_type)?;
+        Ok(Arc::new(scan))
     }
 }
 
@@ -264,10 +287,7 @@ fn resolve_region(
 mod tests {
     use std::{path::PathBuf, str::FromStr, sync::Arc};
 
-    use crate::{
-        datasources::vcf::VCFScan, physical_plan::region_physical_expr::RegionPhysicalExpr,
-        tests::test_path, ExonSessionExt,
-    };
+    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
 
     use super::VCFFormat;
     use datafusion::{
@@ -291,26 +311,31 @@ mod tests {
         );
         ctx.sql(&sql).await.unwrap();
 
-        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
+        let sql_statements = vec![
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 200000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1'",
+        ];
 
-        let df = ctx.sql(sql).await.unwrap();
+        for sql_statement in sql_statements {
+            let df = ctx.sql(sql_statement).await.unwrap();
 
-        let physical_plan = ctx
-            .state()
-            .create_physical_plan(df.logical_plan())
-            .await
-            .unwrap();
-
-        eprintln!("physical_plan: {:#?}", physical_plan);
-
-        if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-            scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
-            scan.predicate()
-                .as_any()
-                .downcast_ref::<RegionPhysicalExpr>()
+            let physical_plan = ctx
+                .state()
+                .create_physical_plan(df.logical_plan())
+                .await
                 .unwrap();
-        } else {
-            panic!("physical plan is not a filter exec");
+
+            eprintln!("physical_plan: {:#?}", physical_plan);
+
+            if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+                scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
+            } else {
+                panic!(
+                    "expected FilterExec for {} in {:#?}",
+                    sql_statement, physical_plan
+                );
+            }
         }
     }
 

@@ -22,8 +22,6 @@ use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
 pub fn transform_interval_expression(binary_expression: &BinaryExpr) -> Option<BinaryExpr> {
-    eprintln!("transform_interval_expression: {:?}", binary_expression);
-
     let left = match binary_expression
         .left()
         .as_any()
