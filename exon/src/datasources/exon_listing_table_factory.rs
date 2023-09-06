@@ -50,6 +50,7 @@ impl TableProviderFactory for ExonListingTableFactory {
         let file_format = file_type.get_file_format(file_compression_type);
 
         let options = ListingOptions::new(file_format);
+
         let table_path = ListingTableUrl::parse(&cmd.location)?;
         let resolved_schema = options.infer_schema(state, &table_path).await?;
 

@@ -66,11 +66,6 @@ impl FileOpener for VCFOpener {
 
         let file_compression_type = self.file_compression_type;
 
-        eprintln!(
-            "Got region and compression type: {:?} {:?}",
-            region, file_compression_type,
-        );
-
         match (region, file_compression_type) {
             (Some(_), FileCompressionType::GZIP) => Ok(Box::pin(async move {
                 let s = config.object_store.get(file_meta.location()).await?;

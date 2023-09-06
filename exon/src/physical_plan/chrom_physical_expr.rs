@@ -43,6 +43,14 @@ impl ChromPhysicalExpr {
         &self.chrom
     }
 
+    /// Return the noodles region with just the chromosome name.
+    pub fn region(&self) -> noodles::core::Region {
+        // TODO: how to do this w/o parsing?
+        let region = self.chrom().parse().unwrap();
+
+        region
+    }
+
     /// Create a new `ChromPhysicalExpr` from a chromosome name and a schema.
     pub fn from_chrom(chrom: &str, schema: &arrow::datatypes::Schema) -> Result<Self> {
         let inner = BinaryExpr::new(col("chrom", schema)?, Operator::Eq, lit(chrom));

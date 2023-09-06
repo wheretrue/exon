@@ -14,7 +14,7 @@
 
 use datafusion::common::tree_node::{Transformed, TreeNode};
 use datafusion::logical_expr::{Between, BinaryExpr, Filter, LogicalPlan};
-use datafusion::optimizer::{optimize_children, OptimizerConfig, OptimizerRule};
+use datafusion::optimizer::{OptimizerConfig, OptimizerRule};
 use datafusion::prelude::Expr;
 
 use datafusion::error::Result;
@@ -23,19 +23,25 @@ use datafusion::scalar::ScalarValue;
 use crate::udfs::vcf::{create_chrom_udf, create_interval_udf, create_region_udf};
 
 fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
-    eprintln!("expr: {:?}", expr);
-
     expr.transform(&|expr| {
         Ok(match expr {
             Expr::BinaryExpr(BinaryExpr { left, op, right }) => {
                 match (left.as_ref(), right.as_ref()) {
-                    (Expr::Column(column), Expr::Literal(literal)) => {
-                        let interval_udf = create_chrom_udf().call(vec![
+                    (Expr::Column(column), Expr::Literal(literal)) if column.name == "pos" => {
+                        let interval_udf = create_interval_udf().call(vec![
                             Expr::Column(column.clone()),
                             Expr::Literal(literal.clone()),
                         ]);
 
                         return Ok(Transformed::Yes(interval_udf));
+                    }
+                    (Expr::Column(column), Expr::Literal(literal)) if column.name == "chrom" => {
+                        let chrom_udf = create_chrom_udf().call(vec![
+                            Expr::Column(column.clone()),
+                            Expr::Literal(literal.clone()),
+                        ]);
+
+                        return Ok(Transformed::Yes(chrom_udf));
                     }
                     (Expr::ScalarUDF(left_udf), Expr::ScalarUDF(right_udf)) => {
                         // TODO: stricter checks (e.g. func names equal)
@@ -140,7 +146,8 @@ fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
     })
 }
 
-struct PositionBetweenRewriter {}
+/// A rule that rewrites BETWEEN expressions to interval_match UDF calls.
+pub struct PositionBetweenRewriter {}
 
 impl OptimizerRule for PositionBetweenRewriter {
     fn name(&self) -> &str {
@@ -150,13 +157,8 @@ impl OptimizerRule for PositionBetweenRewriter {
     fn try_optimize(
         &self,
         plan: &LogicalPlan,
-        config: &dyn OptimizerConfig,
+        _config: &dyn OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
-        eprintln!("plan: {:?}", plan);
-
-        let optimized_plan = optimize_children(self, plan, config)?;
-        eprintln!("optimized_plan: {:?}", optimized_plan);
-
         match plan {
             LogicalPlan::Filter(filters) => {
                 let predicate = &filters

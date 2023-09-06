@@ -124,13 +124,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let end = region.interval().end().unwrap();
 
             let df = ctx
-                .sql(format!("SELECT COUNT(*) AS cnt FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
+                .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
                 .await?;
 
-            let batches = df.collect().await?;
+            let cnt = df.count().await?;
 
-            let batch_count = &batches[0];
-            eprintln!("Batch count: {:#?}", batch_count);
+            println!("Batch count: {:#?}", cnt);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();

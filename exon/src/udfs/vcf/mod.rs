@@ -72,8 +72,17 @@ pub fn chrom_match(args: &[ArrayRef]) -> Result<ArrayRef> {
         ));
     }
 
-    let array = as_string_array(&args[0]);
-    let array = array.iter().map(|_| Some(true)).collect::<BooleanArray>();
+    let chrom_array = as_string_array(&args[0]);
+    let value_array = as_string_array(&args[1]);
+
+    let array = chrom_array
+        .iter()
+        .zip(value_array.iter())
+        .map(|(chrom, value)| match (chrom, value) {
+            (Some(chrom), Some(value)) => Some(chrom == value),
+            _ => None,
+        })
+        .collect::<BooleanArray>();
 
     Ok(Arc::new(array))
 }
