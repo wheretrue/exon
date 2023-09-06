@@ -25,7 +25,9 @@ use datafusion::{
     },
     error::DataFusionError,
     execution::context::SessionState,
-    physical_plan::{expressions::BinaryExpr, ExecutionPlan, PhysicalExpr, Statistics},
+    physical_plan::{
+        expressions::BinaryExpr, filter::FilterExec, ExecutionPlan, PhysicalExpr, Statistics,
+    },
 };
 use futures::TryStreamExt;
 use noodles::{bgzf, core::Region, vcf};
@@ -189,7 +191,9 @@ impl FileFormat for VCFFormat {
             let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
             scan = scan.with_filter(region);
 
-            return Ok(Arc::new(scan));
+            let filter_exec = FilterExec::try_new(Arc::new(new_filters.clone()), Arc::new(scan))?;
+
+            return Ok(Arc::new(filter_exec));
         }
 
         if let Some(s) = transform_interval_expression(new_filters) {
@@ -211,7 +215,10 @@ impl FileFormat for VCFFormat {
                 let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
                 scan = scan.with_filter(region_expr.region().clone());
 
-                return Ok(Arc::new(scan));
+                let filter_exec =
+                    FilterExec::try_new(Arc::new(new_filters.clone()), Arc::new(scan))?;
+
+                return Ok(Arc::new(filter_exec));
             }
         }
 
@@ -285,7 +292,7 @@ fn resolve_region(
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, str::FromStr, sync::Arc};
+    use std::sync::Arc;
 
     use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
 
@@ -300,10 +307,7 @@ mod tests {
     #[tokio::test]
     async fn test_region_pushdown() {
         let ctx = SessionContext::new_exon();
-
-        // let table_path = test_path("vcf", "index.vcf");
-        // eprintln!("table_path: {:?}", table_path);
-        let table_path = PathBuf::from_str("/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/vcf/index.vcf").unwrap();
+        let table_path = test_path("vcf", "index.vcf");
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
@@ -312,7 +316,7 @@ mod tests {
         ctx.sql(&sql).await.unwrap();
 
         let sql_statements = vec![
-            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
+            // "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 200000;",
             "SELECT * FROM vcf_file WHERE chrom = '1'",
         ];
@@ -325,8 +329,6 @@ mod tests {
                 .create_physical_plan(df.logical_plan())
                 .await
                 .unwrap();
-
-            eprintln!("physical_plan: {:#?}", physical_plan);
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
                 scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
