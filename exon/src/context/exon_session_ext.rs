@@ -33,7 +33,7 @@ use noodles::core::Region;
 
 use crate::{
     datasources::{
-        bam::BAMFormat,
+        bam::{table_provider_factory::BAMTableProviderFactory, BAMFormat},
         bcf::BCFFormat,
         vcf::{VCFFormat, VCFTableProviderFactory},
         ExonFileType, ExonListingTableFactory, ExonReadOptions,
@@ -196,6 +196,10 @@ pub trait ExonSessionExt {
         state
             .table_factories_mut()
             .insert("VCF".into(), Arc::new(VCFTableProviderFactory::default()));
+
+        state
+            .table_factories_mut()
+            .insert("BAM".into(), Arc::new(BAMTableProviderFactory::default()));
 
         SessionContext::with_state(state)
     }

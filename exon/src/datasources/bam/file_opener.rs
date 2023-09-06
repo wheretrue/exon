@@ -15,17 +15,27 @@
 use std::{io, sync::Arc};
 
 use datafusion::{
-    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    datasource::{
+        listing::FileRange,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::core::Region;
-use object_store::GetResult;
+use noodles::{
+    bam,
+    bgzf::{self, VirtualPosition},
+    core::Region,
+    sam::Header,
+};
+use object_store::{GetOptions, GetResult, ObjectStore};
+use tokio::io::AsyncReadExt;
 use tokio_util::io::StreamReader;
 
 use super::{
     batch_reader::{BatchReader, StreamRecordBatchAdapter},
     config::BAMConfig,
+    lazy_record_stream::{LazyBatchReader, LazyRecordIterator},
     record_stream::RecordIterator,
 };
 
@@ -54,61 +64,116 @@ impl BAMOpener {
     }
 }
 
+// Given the file meta, read just the header and return it along with the size of the header
+async fn get_header_and_size(
+    object_store: Arc<dyn ObjectStore>,
+    file_meta: &FileMeta,
+) -> Result<(Header, VirtualPosition), DataFusionError> {
+    let get_result = object_store.get(file_meta.location()).await?;
+
+    match get_result {
+        GetResult::File(file, _) => {
+            let mut reader = noodles::bam::Reader::new(file);
+
+            let header = reader.read_header()?;
+
+            let vp = reader.virtual_position();
+
+            Ok((header, vp))
+        }
+        GetResult::Stream(s) => {
+            let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+
+            let stream_reader = StreamReader::new(stream_reader);
+            let mut reader = noodles::bam::AsyncReader::new(stream_reader);
+
+            let header = reader.read_header().await?;
+            let header: Header = header.parse().map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("invalid header: {e}"),
+                )
+            })?;
+
+            let vp = reader.virtual_position();
+
+            Ok((header, vp))
+        }
+    }
+}
+
 impl FileOpener for BAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
         let region = self.region.clone();
 
-        Ok(Box::pin(async move {
-            match config.object_store.get(file_meta.location()).await? {
-                GetResult::File(file, path) => match region {
-                    Some(region) => {
-                        let mut reader = noodles::bam::indexed_reader::Builder::default()
-                            .build_from_path(path)?;
+        match region {
+            Some(region) => Ok(Box::pin(async move {
+                // Maybe don't need to do this in the no range case :shrug:
+                let (header, vp) =
+                    get_header_and_size(config.object_store.clone(), &file_meta).await?;
 
-                        let header = reader.read_header()?;
+                let bgzf_reader = match file_meta.range {
+                    Some(FileRange { start: _, end }) if end == 0 => {
+                        let get_result = config
+                            .object_store
+                            .get(file_meta.location())
+                            .await?
+                            .into_stream();
 
-                        let query = reader
-                            .query(&header, &region)?
-                            .map(Ok)
-                            .collect::<io::Result<Vec<_>>>()?;
+                        let mut stream_reader =
+                            StreamReader::new(Box::pin(get_result.map_err(DataFusionError::from)));
 
-                        let record_stream = futures::stream::iter(query).boxed();
+                        let mut bgzf_reader = bgzf::AsyncReader::new(stream_reader);
 
-                        let batch_adapter =
-                            StreamRecordBatchAdapter::new(record_stream, header, config.clone());
+                        bgzf_reader
+                    }
+                    Some(FileRange { start, end }) => {
+                        let mut get_options = GetOptions::default();
+                        get_options.range = Some(std::ops::Range {
+                            start: start as usize,
+                            end: end as usize,
+                        });
 
-                        let batch_stream = batch_adapter.into_stream();
+                        let get_result = config
+                            .object_store
+                            .get_opts(file_meta.location(), get_options)
+                            .await?
+                            .into_stream();
 
-                        Ok(batch_stream.boxed())
+                        let mut stream_reader =
+                            StreamReader::new(Box::pin(get_result.map_err(DataFusionError::from)));
+
+                        let mut bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+
+                        bgzf_reader
                     }
                     None => {
-                        let mut reader = noodles::bam::Reader::new(file);
+                        let get_result = config
+                            .object_store
+                            .get(file_meta.location())
+                            .await?
+                            .into_stream();
 
-                        let header = reader.read_header()?;
+                        let mut stream_reader =
+                            StreamReader::new(Box::pin(get_result.map_err(DataFusionError::from)));
 
-                        let record_iterator = RecordIterator::new(reader, header.clone()).unwrap();
-                        let record_stream = futures::stream::iter(record_iterator).boxed();
+                        let mut bgzf_reader = bgzf::AsyncReader::new(stream_reader);
 
-                        let batch_adapter =
-                            StreamRecordBatchAdapter::new(record_stream, header, config.clone());
-
-                        let batch_stream = batch_adapter.into_stream();
-
-                        Ok(batch_stream.boxed())
+                        bgzf_reader
                     }
-                },
-                GetResult::Stream(s) => {
-                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+                };
 
-                    let stream_reader = StreamReader::new(stream_reader);
-                    let batch_reader = BatchReader::new(stream_reader, config).await?;
+                let bam_reader = bam::AsyncReader::from(bgzf_reader);
+                let record_iterator = LazyRecordIterator::new(bam_reader).into_stream().boxed();
 
-                    let batch_stream = batch_reader.into_stream();
+                let batch_stream = LazyBatchReader::new(record_iterator, header, config)
+                    .into_stream()
+                    .boxed();
 
-                    Ok(batch_stream.boxed())
-                }
-            }
-        }))
+                Ok(batch_stream)
+            })),
+            None => panic!("no region"),
+        }
     }
 }

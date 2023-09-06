@@ -48,7 +48,7 @@ pub struct VCFScan {
 
 impl VCFScan {
     /// Create a new VCF scan.
-    pub fn new(
+    pub fn try_new(
         base_config: FileScanConfig,
         file_compression_type: FileCompressionType,
     ) -> Result<Self> {
@@ -67,7 +67,7 @@ impl VCFScan {
     }
 
     /// Create a new VCF scan with a region filter.
-    pub fn with_filter(mut self, region_filter: Region) -> Self {
+    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
         self
     }

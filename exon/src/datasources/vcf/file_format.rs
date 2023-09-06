@@ -164,12 +164,12 @@ impl FileFormat for VCFFormat {
             Some(filter) => match filter.as_any().downcast_ref::<BinaryExpr>() {
                 Some(be) => be,
                 None => {
-                    let scan = VCFScan::new(conf, self.file_compression_type)?;
+                    let scan = VCFScan::try_new(conf, self.file_compression_type)?;
                     return Ok(Arc::new(scan));
                 }
             },
             _ => {
-                let scan = VCFScan::new(conf, self.file_compression_type)?;
+                let scan = VCFScan::try_new(conf, self.file_compression_type)?;
                 return Ok(Arc::new(scan));
             }
         };
@@ -183,13 +183,14 @@ impl FileFormat for VCFFormat {
             let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
 
             if let Ok(new_groups) =
-                add_region_bytes_to_file_groups(object_store, &conf.file_groups, &region).await
+                add_csi_ranges_to_file_groups(object_store, &conf.file_groups, &region, ".tbi")
+                    .await
             {
                 new_conf.file_groups = new_groups;
             }
 
-            let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
-            scan = scan.with_filter(region);
+            let mut scan = VCFScan::try_new(new_conf, self.file_compression_type)?;
+            scan = scan.with_region_filter(region);
 
             let filter_exec = FilterExec::try_new(Arc::new(new_filters.clone()), Arc::new(scan))?;
 
@@ -202,18 +203,19 @@ impl FileFormat for VCFFormat {
 
                 let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
 
-                if let Ok(new_groups) = add_region_bytes_to_file_groups(
+                if let Ok(new_groups) = add_csi_ranges_to_file_groups(
                     object_store,
                     &conf.file_groups,
                     region_expr.region(),
+                    ".tbi",
                 )
                 .await
                 {
                     new_conf.file_groups = new_groups;
                 }
 
-                let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
-                scan = scan.with_filter(region_expr.region().clone());
+                let mut scan = VCFScan::try_new(new_conf, self.file_compression_type)?;
+                scan = scan.with_region_filter(region_expr.region().clone());
 
                 let filter_exec =
                     FilterExec::try_new(Arc::new(new_filters.clone()), Arc::new(scan))?;
@@ -222,12 +224,13 @@ impl FileFormat for VCFFormat {
             }
         }
 
-        let scan = VCFScan::new(conf, self.file_compression_type)?;
+        let scan = VCFScan::try_new(conf, self.file_compression_type)?;
         Ok(Arc::new(scan))
     }
 }
 
-pub async fn add_region_bytes_to_file_groups(
+// TODO: better VCF related name
+async fn add_csi_ranges_to_file_groups(
     object_store: Arc<dyn ObjectStore>,
     file_groups: &Vec<Vec<PartitionedFile>>,
     region: &Region,
@@ -244,9 +247,11 @@ pub async fn add_region_bytes_to_file_groups(
             let index_bytes = object_store.get(&tbi_path).await?.bytes().await?;
 
             let cursor = std::io::Cursor::new(index_bytes);
+
             let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
 
             let (id, _) = resolve_region(&index, region).unwrap();
+
             let chunks = index.query(id, region.interval())?;
 
             for chunk in chunks {

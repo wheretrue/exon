@@ -39,3 +39,6 @@ pub mod object_store;
 
 /// A physical planner with exon specific extensions.
 pub mod exon_physical_planner;
+
+/// A physical expression that represents a reference.
+pub mod reference_physical_expr;

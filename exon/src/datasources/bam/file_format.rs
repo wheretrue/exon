@@ -17,12 +17,19 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
+    datasource::{
+        file_format::FileFormat, listing::PartitionedFile, physical_plan::FileScanConfig,
+    },
     execution::context::SessionState,
-    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
+    physical_plan::{expressions::BinaryExpr, ExecutionPlan, PhysicalExpr, Statistics},
 };
 use noodles::core::Region;
 use object_store::{ObjectMeta, ObjectStore};
+
+use crate::{
+    datasources::vcf::add_csi_ranges_to_file_groups,
+    physical_plan::reference_physical_expr::ReferencePhysicalExpr,
+};
 
 use super::{array_builder::schema, scanner::BAMScan};
 
@@ -75,11 +82,45 @@ impl FileFormat for BAMFormat {
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         conf: FileScanConfig,
-        _filters: Option<&Arc<dyn PhysicalExpr>>,
+        filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let mut scan = BAMScan::new(conf);
+        let new_filters = match filters {
+            Some(filter) => match filter.as_any().downcast_ref::<BinaryExpr>() {
+                Some(be) => be,
+                None => {
+                    let scan = BAMScan::try_new(conf)?;
+                    return Ok(Arc::new(scan));
+                }
+            },
+            _ => {
+                let scan = BAMScan::try_new(conf)?;
+                return Ok(Arc::new(scan));
+            }
+        };
+
+        if let Ok(reference_expr) = ReferencePhysicalExpr::try_from(new_filters.clone()) {
+            let region = reference_expr.region();
+
+            let mut new_conf = conf.clone();
+
+            let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
+
+            if let Ok(new_groups) =
+                add_csi_ranges_to_file_groups(object_store, &conf.file_groups, &region, ".bai")
+                    .await
+            {
+                new_conf.file_groups = new_groups;
+            }
+
+            let mut scan = BAMScan::try_new(new_conf)?;
+            scan = scan.with_region_filter(region);
+
+            return Ok(Arc::new(scan));
+        }
+
+        let mut scan = BAMScan::try_new(conf)?;
 
         if let Some(region_filter) = &self.region_filter {
             scan = scan.with_region_filter(region_filter.clone());
@@ -93,12 +134,51 @@ impl FileFormat for BAMFormat {
 mod tests {
     use std::sync::Arc;
 
+    use crate::{datasources::bam::BAMScan, tests::test_path, ExonSessionExt};
+
     use super::BAMFormat;
     use datafusion::{
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        physical_plan::filter::FilterExec,
         prelude::SessionContext,
     };
     use noodles::core::Region;
+
+    #[tokio::test]
+    async fn test_region_pushdown() {
+        let ctx = SessionContext::new_exon();
+
+        // let table_path = test_path("bam", "test.bam").to_str().unwrap()
+        let table_path = "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/bam/test.bam";
+        eprintln!("table_path: {:?}", table_path);
+
+        let sql = format!(
+            "CREATE EXTERNAL TABLE bam_file STORED AS BAM LOCATION '{}';",
+            table_path,
+        );
+        ctx.sql(&sql).await.unwrap();
+
+        let sql_statements = vec!["SELECT * FROM bam_file WHERE reference = 'chr1'"];
+
+        for sql_statement in sql_statements {
+            let df = ctx.sql(sql_statement).await.unwrap();
+
+            let physical_plan = ctx
+                .state()
+                .create_physical_plan(df.logical_plan())
+                .await
+                .unwrap();
+
+            if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+                scan.input().as_any().downcast_ref::<BAMScan>().unwrap();
+            } else {
+                panic!(
+                    "expected FilterExec for {} in {:#?}",
+                    sql_statement, physical_plan
+                );
+            }
+        }
+    }
 
     #[tokio::test]
     async fn test_read_bam() {

@@ -25,7 +25,7 @@ use super::{array_builder::BAMArrayBuilder, config::BAMConfig};
 /// A batch reader for BAM files.
 pub struct BatchReader<R>
 where
-    R: AsyncRead,
+    R: AsyncBufRead + Unpin + Send + AsyncRead,
 {
     /// The underlying BAM reader.
     reader: noodles::bam::AsyncReader<noodles::bgzf::AsyncReader<R>>,

@@ -17,6 +17,7 @@ use std::{any::Any, fmt, sync::Arc};
 use arrow::datatypes::SchemaRef;
 use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
+    error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
         Partitioning, SendableRecordBatchStream, Statistics,
@@ -44,18 +45,18 @@ pub struct BAMScan {
 
 impl BAMScan {
     /// Create a new BAM scan.
-    pub fn new(base_config: FileScanConfig) -> Self {
+    pub fn try_new(base_config: FileScanConfig) -> Result<Self> {
         let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
+            Some(p) => Arc::new(base_config.file_schema.project(p)?),
             None => base_config.file_schema.clone(),
         };
 
-        Self {
+        Ok(Self {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
             region_filter: None,
-        }
+        })
     }
 
     /// Set the region filter for the scan.

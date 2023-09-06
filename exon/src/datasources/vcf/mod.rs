@@ -29,6 +29,7 @@ mod table_provider_factory;
 
 pub use self::array_builder::VCFArrayBuilder;
 pub use self::config::VCFConfig;
+pub(crate) use self::file_format::add_csi_ranges_to_file_groups;
 pub use self::file_format::VCFFormat;
 pub use self::file_opener::VCFOpener;
 pub use self::scanner::VCFScan;
