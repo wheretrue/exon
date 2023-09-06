@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{
-    common::ExprSchema,
-    datasource::{
-        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        provider::TableProviderFactory,
-        TableProvider,
-    },
+    datasource::{listing::ListingTableUrl, provider::TableProviderFactory, TableProvider},
     execution::context::SessionState,
     logical_expr::CreateExternalTable,
 };
-
-use crate::datasources::ExonFileType;
 
 use super::{
     table_provider::{ListingVCFTable, VCFListingTableConfig},
@@ -46,18 +39,11 @@ impl TableProviderFactory for VCFTableProviderFactory {
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let file_compression_type = cmd.file_compression_type.into();
 
-        // Should be BCF too?
-        let file_type = ExonFileType::VCF;
-        let file_format = file_type.get_file_format(file_compression_type);
-
-        let options = ListingVCFTableOptions::new(file_format);
+        let options = ListingVCFTableOptions::new(file_compression_type);
 
         let table_path = ListingTableUrl::parse(&cmd.location)?;
         let schema = options.infer_schema(state, &table_path).await?;
 
-        let table_path = ListingTableUrl::parse(&cmd.location)?;
-
-        // let config = ListingTableConfig::new(table_path)
         let config = VCFListingTableConfig::new(table_path).with_options(options);
 
         let table = ListingVCFTable::try_new(config, schema)?;

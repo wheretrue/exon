@@ -105,8 +105,6 @@ impl FileFormat for VCFFormat {
             .map(|s| s.parse_vcf_format)
             .unwrap_or(false);
 
-        eprintln!("exon_settings: {:?}", exon_settings);
-
         let mut schema_builder = match self.file_compression_type {
             FileCompressionType::GZIP => {
                 let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
@@ -293,29 +291,27 @@ mod tests {
         );
         ctx.sql(&sql).await.unwrap();
 
-        let sql = "SELECT * FROM vcf_file";
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
 
         let df = ctx.sql(sql).await.unwrap();
 
-        let batches = df.collect().await.unwrap();
+        let physical_plan = ctx
+            .state()
+            .create_physical_plan(df.logical_plan())
+            .await
+            .unwrap();
 
-        eprintln!("batches: {:?}", batches);
+        eprintln!("physical_plan: {:#?}", physical_plan);
 
-        // let physical_plan = ctx
-        //     .state()
-        //     .create_physical_plan(df.logical_plan())
-        //     .await
-        //     .unwrap();
-
-        // if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-        //     scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
-        //     scan.predicate()
-        //         .as_any()
-        //         .downcast_ref::<RegionPhysicalExpr>()
-        //         .unwrap();
-        // } else {
-        //     panic!("physical plan is not a filter exec");
-        // }
+        if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+            scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
+            scan.predicate()
+                .as_any()
+                .downcast_ref::<RegionPhysicalExpr>()
+                .unwrap();
+        } else {
+            panic!("physical plan is not a filter exec");
+        }
     }
 
     #[tokio::test]

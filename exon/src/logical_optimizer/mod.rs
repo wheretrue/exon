@@ -14,7 +14,7 @@
 
 use datafusion::common::tree_node::{Transformed, TreeNode};
 use datafusion::logical_expr::{Between, BinaryExpr, Filter, LogicalPlan};
-use datafusion::optimizer::{optimize_children, OptimizerConfig, OptimizerRule};
+use datafusion::optimizer::{OptimizerConfig, OptimizerRule};
 use datafusion::prelude::Expr;
 
 use datafusion::error::Result;
@@ -23,8 +23,6 @@ use datafusion::scalar::ScalarValue;
 use crate::udfs::vcf::{create_chrom_udf, create_interval_udf, create_region_udf};
 
 fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
-    eprintln!("between expr: {:?}", expr);
-
     expr.transform(&|expr| {
         Ok(match expr {
             Expr::BinaryExpr(BinaryExpr { left, op, right }) => {
@@ -148,6 +146,7 @@ fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
     })
 }
 
+/// A rule that rewrites BETWEEN expressions to interval_match UDF calls.
 pub struct PositionBetweenRewriter {}
 
 impl OptimizerRule for PositionBetweenRewriter {
@@ -158,13 +157,8 @@ impl OptimizerRule for PositionBetweenRewriter {
     fn try_optimize(
         &self,
         plan: &LogicalPlan,
-        config: &dyn OptimizerConfig,
+        _config: &dyn OptimizerConfig,
     ) -> Result<Option<LogicalPlan>> {
-        eprintln!("plan: {:?}", plan);
-
-        let optimized_plan = optimize_children(self, plan, config)?;
-        eprintln!("optimized_plan: {:?}", optimized_plan);
-
         match plan {
             LogicalPlan::Filter(filters) => {
                 let predicate = &filters

@@ -38,7 +38,6 @@ use crate::{
         vcf::{VCFFormat, VCFTableProviderFactory},
         ExonFileType, ExonListingTableFactory, ExonReadOptions,
     },
-    logical_optimizer::PositionBetweenRewriter,
     new_exon_config,
     physical_optimizer::{
         file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,

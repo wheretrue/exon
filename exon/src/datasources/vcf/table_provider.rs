@@ -3,10 +3,10 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::ToDFSchema,
+    common::{FileCompressionType, ToDFSchema},
     datasource::{
         file_format::FileFormat,
-        listing::{self, ListingTableConfig, ListingTableUrl, PartitionedFile},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -18,14 +18,10 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan, Statistics},
     prelude::Expr,
 };
-use futures::{
-    future::{self, join_all},
-    stream::{self, BoxStream},
-    FutureExt, StreamExt, TryStreamExt,
-};
-use object_store::{ObjectMeta, ObjectStore};
+use futures::TryStreamExt;
+use object_store::ObjectMeta;
 
-use super::VCFFormat;
+use crate::datasources::ExonFileType;
 
 #[derive(Debug, Clone)]
 pub struct VCFListingTableConfig {
@@ -48,25 +44,31 @@ impl VCFListingTableConfig {
             ..self
         }
     }
-
-    pub fn with_schema(self, schema: SchemaRef) -> Self {
-        Self {
-            inner: self.inner.with_schema(schema),
-            ..self
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
+/// Options specific to the VCF file format
 pub struct ListingVCFTableOptions {
-    pub format: Arc<dyn FileFormat>,
+    /// The file format
+    format: Arc<dyn FileFormat>,
+
+    /// The extension of the files to read
+    file_extension: String,
 }
 
 impl ListingVCFTableOptions {
-    pub fn new(format: Arc<dyn FileFormat>) -> Self {
-        Self { format }
+    /// Create a new set of options
+    pub fn new(file_compression_type: FileCompressionType) -> Self {
+        let format = ExonFileType::VCF.get_file_format(file_compression_type);
+        let file_extension = ExonFileType::VCF.get_file_extension(file_compression_type);
+
+        Self {
+            format,
+            file_extension,
+        }
     }
 
+    /// Infer the schema of the files in the table
     pub async fn infer_schema<'a>(
         &'a self,
         state: &SessionState,
@@ -76,18 +78,15 @@ impl ListingVCFTableOptions {
 
         let mut files: Vec<ObjectMeta> = Vec::new();
 
-        eprintln!("table_path: {:?}", table_path.as_str());
-        eprintln!("table_path: {:?}", table_path.prefix());
-
-        if table_path.to_string().ends_with("/") {
+        if table_path.to_string().ends_with('/') {
             let store_list = store.list(Some(table_path.prefix())).await?;
             store_list
                 .try_for_each(|v| {
                     let path = v.location.clone();
-                    let extension_match = path.as_ref().ends_with(".vcf.gz"); // TODO: Make this configurable
+                    let extension_match = path.as_ref().ends_with(self.file_extension.as_str());
                     let glob_match = table_path.contains(&path);
                     if extension_match && glob_match {
-                        files.push(v.into());
+                        files.push(v);
                     }
                     futures::future::ready(Ok(()))
                 })
@@ -140,29 +139,43 @@ impl ListingVCFTable {
             return Ok(vec![]);
         };
 
-        let file_extension = ".vcf.gz";
-
         let mut lists = Vec::new();
 
+        let file_extension = self.options.file_extension.as_str();
+
         for table_path in &self.table_paths {
-            let store_list = store.list(Some(table_path.prefix())).await?;
+            if table_path.as_str().ends_with('/') {
+                let store_list = store.list(Some(table_path.prefix())).await?;
 
-            // iterate over all files in the listing
-            let mut result_vec = vec![];
+                // iterate over all files in the listing
+                let mut result_vec = vec![];
 
-            store_list
-                .try_for_each(|v| {
-                    let path = v.location.clone();
-                    let extension_match = path.as_ref().ends_with(file_extension);
-                    let glob_match = table_path.contains(&path);
-                    if extension_match && glob_match {
-                        result_vec.push(v.into());
+                store_list
+                    .try_for_each(|v| {
+                        let path = v.location.clone();
+                        let extension_match = path.as_ref().ends_with(file_extension);
+                        let glob_match = table_path.contains(&path);
+                        if extension_match && glob_match {
+                            result_vec.push(v.into());
+                        }
+                        futures::future::ready(Ok(()))
+                    })
+                    .await?;
+
+                lists.push(result_vec);
+            } else {
+                let store_head = match store.head(table_path.prefix()).await {
+                    Ok(object_meta) => object_meta,
+                    Err(e) => {
+                        return Err(DataFusionError::Execution(format!(
+                            "Unable to get path info: {}",
+                            e
+                        )))
                     }
-                    futures::future::ready(Ok(()))
-                })
-                .await?;
+                };
 
-            lists.push(result_vec);
+                lists.push(vec![store_head.into()]);
+            }
         }
 
         Ok(lists)
@@ -187,12 +200,10 @@ impl TableProvider for ListingVCFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
+        // TODO: Implement this
         Ok(filters
             .iter()
-            .map(|f| {
-                eprintln!("filter: {:?}", f);
-                TableProviderFilterPushDown::Exact
-            })
+            .map(|_f| TableProviderFilterPushDown::Exact)
             .collect())
     }
 
@@ -204,8 +215,6 @@ impl TableProvider for ListingVCFTable {
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let partitioned_file_lists = self.list_files_for_scan(state).await?;
-
-        eprintln!("scan filters {:#?}", filters);
 
         // if no files need to be read, return an `EmptyExec`
         if partitioned_file_lists.is_empty() {

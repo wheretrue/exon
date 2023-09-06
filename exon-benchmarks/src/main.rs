@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let batches = df.collect().await?;
 
             let batch_count = &batches[0];
-            eprintln!("Batch count: {:#?}", batch_count);
+            println!("Batch count: {:#?}", batch_count);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();

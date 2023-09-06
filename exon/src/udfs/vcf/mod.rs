@@ -78,11 +78,9 @@ pub fn chrom_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     let array = chrom_array
         .iter()
         .zip(value_array.iter())
-        .map(|(chrom, value)| {
-            let chrom = chrom.unwrap();
-            let value = value.unwrap();
-
-            Some(chrom == value)
+        .map(|(chrom, value)| match (chrom, value) {
+            (Some(chrom), Some(value)) => Some(chrom == value),
+            _ => None,
         })
         .collect::<BooleanArray>();
 

@@ -132,6 +132,18 @@ impl ExonFileType {
             Self::MZML => Arc::new(MzMLFormat::new(file_compression_type)),
         }
     }
+
+    /// Get the file extension for the given file type with the given compression.
+    pub fn get_file_extension(&self, file_compression_type: FileCompressionType) -> String {
+        match (self, file_compression_type) {
+            (_, FileCompressionType::UNCOMPRESSED) => self.to_string(),
+            (_, FileCompressionType::GZIP) => format!("{}.gz", self),
+            (_, FileCompressionType::ZSTD) => format!("{}.zst", self),
+            (_, FileCompressionType::BZIP2) => format!("{}.bz2", self),
+            (_, FileCompressionType::XZ) => format!("{}.xz", self),
+        }
+        .to_lowercase()
+    }
 }
 
 /// Infer the file type from the file extension.
