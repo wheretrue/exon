@@ -183,8 +183,7 @@ impl FileFormat for VCFFormat {
             let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
 
             if let Ok(new_groups) =
-                add_csi_ranges_to_file_groups(object_store, &conf.file_groups, &region, ".tbi")
-                    .await
+                add_csi_ranges_to_file_groups(object_store, &conf.file_groups, &region).await
             {
                 new_conf.file_groups = new_groups;
             }
@@ -207,7 +206,6 @@ impl FileFormat for VCFFormat {
                     object_store,
                     &conf.file_groups,
                     region_expr.region(),
-                    ".tbi",
                 )
                 .await
                 {

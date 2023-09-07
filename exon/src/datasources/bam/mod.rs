@@ -20,15 +20,15 @@ mod array_builder;
 mod batch_reader;
 mod config;
 mod file_format;
-mod file_opener;
 mod lazy_array_builder;
 mod lazy_record_stream;
 mod record_stream;
-mod scanner;
+
+pub(crate) mod indexed;
+pub(crate) mod unindexed;
+
 pub(crate) mod table_provider;
 pub(crate) mod table_provider_factory;
 
 pub use config::BAMConfig;
 pub use file_format::BAMFormat;
-pub use file_opener::BAMOpener;
-pub use scanner::BAMScan;

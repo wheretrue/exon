@@ -25,11 +25,13 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use super::{config::BAMConfig, file_opener::BAMOpener};
+use crate::datasources::bam::BAMConfig;
+
+use super::file_opener::UnIndexedBAMOpener;
 
 #[derive(Debug)]
 /// Implements a datafusion `ExecutionPlan` for BAM files.
-pub struct BAMScan {
+pub struct UnIndexedBAMScan {
     /// The schema of the data source.
     projected_schema: SchemaRef,
 
@@ -43,7 +45,7 @@ pub struct BAMScan {
     region_filter: Option<Region>,
 }
 
-impl BAMScan {
+impl UnIndexedBAMScan {
     /// Create a new BAM scan.
     pub fn try_new(base_config: FileScanConfig) -> Result<Self> {
         let projected_schema = match &base_config.projection {
@@ -66,13 +68,13 @@ impl BAMScan {
     }
 }
 
-impl DisplayAs for BAMScan {
+impl DisplayAs for UnIndexedBAMScan {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
-        write!(f, "BAMScan")
+        write!(f, "UnIndexedBAMScan")
     }
 }
 
-impl ExecutionPlan for BAMScan {
+impl ExecutionPlan for UnIndexedBAMScan {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -118,13 +120,8 @@ impl ExecutionPlan for BAMScan {
             config = config.with_some_projection(Some(projection.clone()));
         }
 
-        let mut opener = BAMOpener::new(Arc::new(config));
-        if let Some(region) = &self.region_filter {
-            opener = opener.with_region(region.clone());
-        }
-
+        let opener = UnIndexedBAMOpener::new(Arc::new(config));
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
-
         Ok(Box::pin(stream) as SendableRecordBatchStream)
     }
 

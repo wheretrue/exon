@@ -77,7 +77,7 @@ pub struct BAMArrayBuilder {
     quality_scores: GenericStringBuilder<i32>,
 
     schema: SchemaRef,
-    header: Header,
+    header: Arc<Header>,
     projection: Vec<usize>,
 }
 
@@ -86,7 +86,7 @@ impl BAMArrayBuilder {
         schema: SchemaRef,
         capacity: usize,
         projection: Option<Vec<usize>>,
-        header: Header,
+        header: Arc<Header>,
     ) -> Result<Self, ArrowError> {
         let projection = match projection {
             Some(p) => p,

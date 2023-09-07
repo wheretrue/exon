@@ -44,14 +44,14 @@ where
 // Given an input stream of records, adapt it to a stream of `RecordBatch`s.
 pub struct LazyBatchReader {
     stream: Pin<Box<dyn Stream<Item = std::io::Result<Record>> + Send>>,
-    header: noodles::sam::Header,
+    header: Arc<noodles::sam::Header>,
     config: Arc<BAMConfig>,
 }
 
 impl LazyBatchReader {
     pub fn new(
         stream: Pin<Box<dyn Stream<Item = std::io::Result<Record>> + Send>>,
-        header: noodles::sam::Header,
+        header: Arc<noodles::sam::Header>,
         config: Arc<BAMConfig>,
     ) -> Self {
         Self {
@@ -70,11 +70,13 @@ impl LazyBatchReader {
         )?;
 
         for _ in 0..self.config.batch_size {
-            match self.stream.next().await {
-                Some(Ok(record)) => record_batch.append(&record)?,
+            let record = match self.stream.next().await {
+                Some(Ok(record)) => record,
                 Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
                 None => break,
-            }
+            };
+
+            record_batch.append(&record)?;
         }
 
         if record_batch.is_empty() {

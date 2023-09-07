@@ -16,6 +16,7 @@ aws-credential-types = {version = "0.56.0", optional = true}
 base64 = {version = "0.21", optional = true}
 byteorder = {version = "1.4.3", optional = true}
 bytes = "1.4.0"
+dashmap = "5.5.3"
 datafusion = {workspace = true}
 flate2 = {version = "1.0.27", optional = true}
 futures = "0.3.28"

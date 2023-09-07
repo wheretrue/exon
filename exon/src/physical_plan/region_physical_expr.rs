@@ -23,7 +23,7 @@ use noodles::core::Region;
 
 use super::{
     chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr,
-    InvalidRegionError,
+    reference_physical_expr::ReferencePhysicalExpr, InvalidRegionError,
 };
 
 /// A physical expression that represents a region, e.g. chr1:100-200.

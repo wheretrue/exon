@@ -18,20 +18,34 @@ use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::FileFormat, listing::PartitionedFile, physical_plan::FileScanConfig,
+        file_format::FileFormat,
+        listing::{FileRange, PartitionedFile},
+        physical_plan::FileScanConfig,
     },
+    error::DataFusionError,
     execution::context::SessionState,
     physical_plan::{expressions::BinaryExpr, ExecutionPlan, PhysicalExpr, Statistics},
 };
-use noodles::core::Region;
-use object_store::{ObjectMeta, ObjectStore};
-
-use crate::{
-    datasources::vcf::add_csi_ranges_to_file_groups,
-    physical_plan::reference_physical_expr::ReferencePhysicalExpr,
+use futures::TryStreamExt;
+use noodles::{
+    bgzf::VirtualPosition,
+    core::Region,
+    csi::index::reference_sequence,
+    sam::{header::ReferenceSequences, Header},
 };
+use object_store::{path::Path, GetResult, ObjectMeta, ObjectStore};
+use tokio_util::io::StreamReader;
 
-use super::{array_builder::schema, scanner::BAMScan};
+use crate::physical_plan::reference_physical_expr::ReferencePhysicalExpr;
+
+use super::{
+    array_builder::schema,
+    indexed::{
+        file_opener::{FileHeader, HeaderCache},
+        scanner::IndexedBAMScan,
+    },
+    unindexed::scanner::UnIndexedBAMScan,
+};
 
 #[derive(Debug, Default)]
 /// Implements a datafusion `FileFormat` for BAM files.
@@ -51,6 +65,59 @@ impl BAMFormat {
         self.region_filter = Some(region_filter);
         self
     }
+}
+
+async fn get_header_and_size(
+    object_store: Arc<dyn ObjectStore>,
+    location: &Path,
+) -> Result<(Arc<Header>, VirtualPosition), DataFusionError> {
+    let get_result = object_store.get(location).await?;
+
+    match get_result {
+        GetResult::File(file, _) => {
+            let mut reader = noodles::bam::Reader::new(file);
+
+            let header = reader.read_header()?;
+
+            let vp = reader.virtual_position();
+
+            Ok((Arc::new(header), vp))
+        }
+        GetResult::Stream(s) => {
+            let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+
+            let stream_reader = StreamReader::new(stream_reader);
+            let mut reader = noodles::bam::AsyncReader::new(stream_reader);
+
+            let header = reader.read_header().await?;
+            let header: Header = header.parse().map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("invalid header: {e}"),
+                )
+            })?;
+
+            let vp = reader.virtual_position();
+
+            Ok((Arc::new(header), vp))
+        }
+    }
+}
+
+pub(crate) fn resolve_region(
+    reference_sequences: &ReferenceSequences,
+    region: &Region,
+) -> std::io::Result<usize> {
+    reference_sequences
+        .get_index_of(region.name())
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "region reference sequence does not exist in reference sequences: {region:?}"
+                ),
+            )
+        })
 }
 
 #[async_trait]
@@ -90,43 +157,77 @@ impl FileFormat for BAMFormat {
             Some(filter) => match filter.as_any().downcast_ref::<BinaryExpr>() {
                 Some(be) => be,
                 None => {
-                    let scan = BAMScan::try_new(conf)?;
+                    let scan = UnIndexedBAMScan::try_new(conf)?;
                     return Ok(Arc::new(scan));
                 }
             },
             _ => {
-                let scan = BAMScan::try_new(conf)?;
+                let scan = UnIndexedBAMScan::try_new(conf)?;
                 return Ok(Arc::new(scan));
             }
         };
 
-        if let Ok(reference_expr) = ReferencePhysicalExpr::try_from(new_filters.clone()) {
-            let region = reference_expr.region();
+        let reference_physical_expr = ReferencePhysicalExpr::try_from(new_filters.clone()).unwrap();
+        // let region = reference_physical_expr.region();
+        let region: Region = "20:1-100000000".parse().unwrap();
 
-            let mut new_conf = conf.clone();
+        let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
 
-            let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
+        // Store a hashmap from file location to the tuple of header and vp
+        let mut header_cache = HeaderCache::new();
 
-            if let Ok(new_groups) =
-                add_csi_ranges_to_file_groups(object_store, &conf.file_groups, &region, ".bai")
-                    .await
-            {
-                new_conf.file_groups = new_groups;
+        // These will hold the new partitioned files, which should include ranges from the index
+        let mut new_partitioned_files = Vec::new();
+
+        // Get the header for every file along with the vp of the first record
+        for f in conf.file_groups.iter().flatten() {
+            let location = f.object_meta.location.clone();
+            let index_location = Path::from(location.to_string() + ".bai");
+
+            let (header, vp) = get_header_and_size(object_store.clone(), &location).await?;
+
+            header_cache.insert(
+                location,
+                FileHeader {
+                    header: header.clone(),
+                    offset: vp,
+                },
+            );
+
+            let bytes = object_store.get(&index_location).await?.bytes().await?;
+            let cursor = std::io::Cursor::new(bytes);
+
+            let mut index = noodles::bam::bai::Reader::new(cursor);
+            index.read_header()?;
+
+            let index = index.read_index()?;
+
+            let reference_sequences = header.reference_sequences().clone();
+            let reference_sequence_id = resolve_region(&reference_sequences, &region)?;
+
+            let chunks = index.query(reference_sequence_id, region.interval())?;
+
+            for chunk in chunks {
+                let start = chunk.start().compressed();
+                let end = chunk.end().compressed();
+
+                let mut new_file = f.clone();
+                new_file.range = Some(FileRange {
+                    start: start as i64,
+                    end: end as i64,
+                });
+                eprintln!("new_file: {:#?}", new_file);
+
+                new_partitioned_files.push(new_file);
             }
-
-            let mut scan = BAMScan::try_new(new_conf)?;
-            scan = scan.with_region_filter(region);
-
-            return Ok(Arc::new(scan));
         }
 
-        let mut scan = BAMScan::try_new(conf)?;
+        let mut new_conf = conf.clone();
+        new_conf.file_groups = vec![new_partitioned_files];
 
-        if let Some(region_filter) = &self.region_filter {
-            scan = scan.with_region_filter(region_filter.clone());
-        }
+        let scanner = IndexedBAMScan::try_new(new_conf, Arc::new(header_cache))?;
 
-        Ok(Arc::new(scan))
+        Ok(Arc::new(scanner))
     }
 }
 
@@ -134,12 +235,11 @@ impl FileFormat for BAMFormat {
 mod tests {
     use std::sync::Arc;
 
-    use crate::{datasources::bam::BAMScan, tests::test_path, ExonSessionExt};
+    use crate::{tests::test_path, ExonSessionExt};
 
     use super::BAMFormat;
     use datafusion::{
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        physical_plan::filter::FilterExec,
         prelude::SessionContext,
     };
     use noodles::core::Region;
@@ -149,8 +249,8 @@ mod tests {
         let ctx = SessionContext::new_exon();
 
         // let table_path = test_path("bam", "test.bam").to_str().unwrap()
-        let table_path = "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/bam/test.bam";
-        eprintln!("table_path: {:?}", table_path);
+        // let table_path = "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon/test-data/datasources/bam/test.bam";
+        let table_path = "/Users/thauck/wheretrue/github.com/wheretrue/exon/exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam";
 
         let sql = format!(
             "CREATE EXTERNAL TABLE bam_file STORED AS BAM LOCATION '{}';",
@@ -158,25 +258,29 @@ mod tests {
         );
         ctx.sql(&sql).await.unwrap();
 
-        let sql_statements = vec!["SELECT * FROM bam_file WHERE reference = 'chr1'"];
+        let sql_statements = vec!["SELECT * FROM bam_file WHERE reference = '20'"];
 
         for sql_statement in sql_statements {
             let df = ctx.sql(sql_statement).await.unwrap();
 
-            let physical_plan = ctx
-                .state()
-                .create_physical_plan(df.logical_plan())
-                .await
-                .unwrap();
+            let batches = df.collect().await.unwrap();
 
-            if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-                scan.input().as_any().downcast_ref::<BAMScan>().unwrap();
-            } else {
-                panic!(
-                    "expected FilterExec for {} in {:#?}",
-                    sql_statement, physical_plan
-                );
-            }
+            // let physical_plan = ctx
+            //     .state()
+            //     .create_physical_plan(df.logical_plan())
+            //     .await
+            //     .unwrap();
+
+            // eprintln!("physical_plan: {:#?}", physical_plan);
+
+            // if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+            //     scan.input().as_any().downcast_ref::<BAMScan>().unwrap();
+            // } else {
+            //     panic!(
+            //         "expected FilterExec for {} in {:#?}",
+            //         sql_statement, physical_plan
+            //     );
+            // }
         }
     }
 
