@@ -90,21 +90,6 @@ fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
                     }
                 }
             }
-
-            // Expr::BinaryExpr(expr) if expr.op == Operator::Eq => {
-            //     // We have a binary expression, the left should be a col and the right should be a literal
-            //     let (column, literal) = match (expr.left.as_ref(), expr.right.as_ref()) {
-            //         (Expr::Column(column), Expr::Literal(literal)) => (column, literal),
-            //         _ => return Ok(Transformed::Yes(Expr::BinaryExpr(expr))),
-            //     };
-
-            //     let interval_udf = create_interval_udf().call(vec![
-            //         Expr::Column(column.clone()),
-            //         Expr::Literal(literal.clone()),
-            //     ]);
-
-            //     Transformed::Yes(interval_udf)
-            // }
             Expr::Between(between) if !between.negated => {
                 // We have a standard BETWEEN expression, first get the column, and make sure it's name is pos
                 let column = match between.expr.as_ref() {
@@ -173,6 +158,57 @@ impl OptimizerRule for PositionBetweenRewriter {
                 Ok(Some(LogicalPlan::Filter(new_plan)))
             }
             _ => Ok(Some(plan.clone())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use datafusion::prelude::{col, lit, Expr};
+
+    use crate::logical_optimizer::between_to_interval_udf;
+
+    #[test]
+    fn test_between_to_interval() {
+        let expr = col("pos").between(lit(1), lit(100));
+
+        let new_expr = between_to_interval_udf(expr).unwrap();
+
+        match new_expr {
+            Expr::ScalarUDF(scalar_udf) => {
+                assert_eq!(scalar_udf.fun.name, "interval_match");
+            }
+            _ => panic!("Expected ScalarUDF"),
+        }
+    }
+
+    #[test]
+    fn test_chrom() {
+        let expr = col("chrom").eq(lit("1"));
+
+        let new_expr = between_to_interval_udf(expr).unwrap();
+
+        match new_expr {
+            Expr::ScalarUDF(scalar_udf) => {
+                assert_eq!(scalar_udf.fun.name, "chrom_match");
+            }
+            _ => panic!("Expected ScalarUDF"),
+        }
+    }
+
+    #[test]
+    fn test_chrom_and_interval_is_region() {
+        let expr = col("chrom")
+            .eq(lit("1"))
+            .and(col("pos").between(lit(1), lit(100)));
+
+        let new_expr = between_to_interval_udf(expr).unwrap();
+
+        match new_expr {
+            Expr::ScalarUDF(scalar_udf) => {
+                assert_eq!(scalar_udf.fun.name, "region_match");
+            }
+            _ => panic!("Expected ScalarUDF"),
         }
     }
 }

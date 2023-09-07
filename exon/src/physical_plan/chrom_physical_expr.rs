@@ -169,3 +169,42 @@ impl PhysicalExpr for ChromPhysicalExpr {
         self.chrom().hash(&mut s);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ChromPhysicalExpr;
+    use arrow::datatypes::Schema;
+    use datafusion::{
+        common::DFSchema,
+        physical_expr::{create_physical_expr, execution_props::ExecutionProps},
+        prelude::{col, lit},
+    };
+
+    #[test]
+    fn test_try_from_binary_expr() {
+        let exprs = vec![col("chrom").eq(lit(5)), lit(5).eq(col("chrom"))];
+        let arrow_schema = Schema::new(vec![arrow::datatypes::Field::new(
+            "chrom",
+            arrow::datatypes::DataType::Utf8,
+            false,
+        )]);
+
+        let df_schema = DFSchema::try_from(arrow_schema.clone()).unwrap();
+        let execution_props = ExecutionProps::default();
+
+        for expr in exprs {
+            let phy_expr =
+                create_physical_expr(&expr, &df_schema, &arrow_schema, &execution_props).unwrap();
+
+            let binary_expr = phy_expr
+                .as_any()
+                .downcast_ref::<datafusion::physical_plan::expressions::BinaryExpr>()
+                .unwrap();
+
+            let chrom_phy_expr = ChromPhysicalExpr::try_from(binary_expr.clone()).unwrap();
+
+            assert_eq!(chrom_phy_expr.chrom(), "5");
+            assert_eq!(chrom_phy_expr.region(), "5".parse().unwrap());
+        }
+    }
+}
