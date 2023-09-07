@@ -19,14 +19,7 @@ use datafusion::{
     common::FileCompressionType,
     datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
     error::{DataFusionError, Result},
-    execution::{
-        context::{QueryPlanner, SessionState},
-        options::ReadOptions,
-        runtime_env::RuntimeEnv,
-    },
-    logical_expr::LogicalPlan,
-    physical_plan::ExecutionPlan,
-    physical_planner::PhysicalPlanner,
+    execution::{context::SessionState, options::ReadOptions, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 use noodles::core::Region;
@@ -46,26 +39,7 @@ use crate::{
         region_between_rewriter::RegionBetweenRule,
         vcf_region_optimizer_rule::ExonVCFRegionOptimizer,
     },
-    physical_plan::exon_physical_planner::ExonPhysicalPlanner,
 };
-
-struct DefaultQueryPlanner {}
-
-#[async_trait]
-impl QueryPlanner for DefaultQueryPlanner {
-    /// Given a `LogicalPlan`, create an [`ExecutionPlan`] suitable for execution
-    async fn create_physical_plan(
-        &self,
-        logical_plan: &LogicalPlan,
-        session_state: &SessionState,
-    ) -> Result<Arc<dyn ExecutionPlan>> {
-        let planner = ExonPhysicalPlanner::default();
-
-        planner
-            .create_physical_plan(logical_plan, session_state)
-            .await
-    }
-}
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
 ///

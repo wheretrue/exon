@@ -25,7 +25,7 @@ use datafusion::{
     physical_plan::functions::make_scalar_function,
     prelude::create_udf,
 };
-use noodles::core::{Position, Region};
+use noodles::core::{region::Interval, Position, Region};
 
 /// A UDF that takes a chrom, pos, and region string and returns true if the chrom and pos are in the region.
 pub fn region_match(args: &[ArrayRef]) -> Result<ArrayRef> {
@@ -91,14 +91,29 @@ pub fn chrom_match(args: &[ArrayRef]) -> Result<ArrayRef> {
 pub fn interval_match(args: &[ArrayRef]) -> Result<ArrayRef> {
     if args.len() != 2 {
         return Err(datafusion::error::DataFusionError::Execution(
-            "interval_match takes two arguments, the pos col and the region string".to_string(),
+            "interval_match takes two arguments, the pos col and the interval string".to_string(),
         ));
     }
 
-    let array = as_int64_array(&args[0]);
-    let array = array.iter().map(|_| Some(true)).collect::<BooleanArray>();
+    let position = as_int64_array(&args[0])?;
+    let interval = as_string_array(&args[1]);
 
-    Ok(Arc::new(array))
+    let intersects = position
+        .iter()
+        .zip(interval.iter())
+        .map(|(pos, interval)| match (pos, interval) {
+            (Some(pos), Some(interval)) => {
+                let interval: Interval = interval.parse().unwrap();
+
+                let position = Position::try_from(pos as usize).unwrap();
+
+                Some(interval.contains(position))
+            }
+            _ => Some(false),
+        })
+        .collect::<BooleanArray>();
+
+    Ok(Arc::new(intersects))
 }
 
 /// Create the interval_match UDF.
@@ -159,4 +174,109 @@ pub fn register_vcf_udfs() -> Vec<ScalarUDF> {
             make_scalar_function(interval_match),
         ),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    #[test]
+    fn test_region_match() {
+        let chroms = vec!["1", "1", "1", "2", "2"];
+        let positions = vec![1, 1, 2, 2, 3];
+        let region_strings = vec!["1:1-1", "2:1-2", "1:1-2", "1:1-2", "2:2-3"];
+
+        assert_eq!(chroms.len(), positions.len());
+        assert_eq!(positions.len(), region_strings.len());
+
+        let chrom_array = arrow::array::StringArray::from(chroms);
+        let position_array = arrow::array::Int64Array::from(positions);
+        let region_array = arrow::array::StringArray::from(region_strings);
+
+        let result = super::region_match(&[
+            Arc::new(chrom_array),
+            Arc::new(position_array),
+            Arc::new(region_array),
+        ])
+        .unwrap();
+
+        // Check the result
+        let expected = vec![true, false, true, false, true];
+        let expected_array = arrow::array::BooleanArray::from(expected);
+
+        // Downcast the result to a BooleanArray
+        let result = result
+            .as_any()
+            .downcast_ref::<arrow::array::BooleanArray>()
+            .unwrap();
+
+        assert_eq!(result, &expected_array);
+    }
+
+    #[test]
+    fn test_interval_match() {
+        let positions = vec![1, 1, 2, 2, 3];
+        let region_intervals = vec!["1-1", "1-2", "1-2", "2-3", "1-2"];
+
+        assert_eq!(positions.len(), region_intervals.len());
+
+        let position_array = arrow::array::Int64Array::from(positions);
+        let region_array = arrow::array::StringArray::from(region_intervals);
+
+        let result =
+            super::interval_match(&[Arc::new(position_array), Arc::new(region_array)]).unwrap();
+
+        // Check the result
+        let expected = vec![true, true, true, true, false];
+        let expected_array = arrow::array::BooleanArray::from(expected);
+
+        // Downcast the result to a BooleanArray
+        let result = result
+            .as_any()
+            .downcast_ref::<arrow::array::BooleanArray>()
+            .unwrap();
+
+        assert_eq!(result, &expected_array);
+    }
+
+    #[test]
+    fn test_chrom_match() {
+        // Test the happy path of chrom_match
+        let chrom_val = vec!["1", "1", "1", "1", "2", "2", "2", "2", "2"];
+        let region_string = vec!["1", "1", "1", "1", "1", "1", "1", "1", "1"];
+
+        let chrom_array = arrow::array::StringArray::from(chrom_val);
+        let region_array = arrow::array::StringArray::from(region_string);
+
+        let result = super::chrom_match(&[Arc::new(chrom_array), Arc::new(region_array)]).unwrap();
+
+        // Check the result
+        let expected = vec![true, true, true, true, false, false, false, false, false];
+        let expected_array = arrow::array::BooleanArray::from(expected);
+
+        // Downcast the result to a BooleanArray
+        let result = result
+            .as_any()
+            .downcast_ref::<arrow::array::BooleanArray>()
+            .unwrap();
+
+        assert_eq!(result, &expected_array);
+    }
+
+    #[test]
+    fn test_chrom_match_bad_arg_count() {
+        // Check we throw an error if chrom_match is called with anything but two arguments
+        let dummy = vec!["1", "1", "1", "1", "2", "2", "2", "2", "2"];
+        let dummy = arrow::array::StringArray::from(dummy);
+        let dummy = Arc::new(dummy);
+
+        let result = super::chrom_match(&[dummy.clone(), dummy.clone(), dummy.clone()]);
+        assert!(result.is_err());
+
+        let result = super::chrom_match(&[dummy.clone()]);
+        assert!(result.is_err());
+
+        let result = super::chrom_match(&[]);
+        assert!(result.is_err());
+    }
 }
