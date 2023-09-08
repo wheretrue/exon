@@ -3,10 +3,13 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::{FileCompressionType, ToDFSchema},
+    common::{
+        tree_node::{Transformed, TreeNode},
+        FileCompressionType, ToDFSchema,
+    },
     datasource::{
         file_format::FileFormat,
-        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
+        listing::{FileRange, ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -15,13 +18,23 @@ use datafusion::{
     logical_expr::{TableProviderFilterPushDown, TableType},
     optimizer::utils::conjunction,
     physical_expr::create_physical_expr,
-    physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan, PhysicalExpr, Statistics},
     prelude::Expr,
 };
 use futures::TryStreamExt;
+use noodles::core::Region;
 use object_store::ObjectMeta;
 
-use crate::datasources::ExonFileType;
+use crate::{
+    datasources::ExonFileType,
+    physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_region_with_interval},
+    physical_plan::{
+        chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr,
+        region_physical_expr::RegionPhysicalExpr,
+    },
+};
+
+use super::file_format::get_byte_range_for_file;
 
 #[derive(Debug, Clone)]
 pub struct VCFListingTableConfig {
@@ -129,9 +142,10 @@ impl ListingVCFTable {
         })
     }
 
-    pub async fn list_files_for_scan<'a>(
-        &'a self,
-        state: &'a SessionState,
+    pub async fn list_files_for_scan(
+        &self,
+        state: &SessionState,
+        regions: Vec<Region>,
     ) -> Result<Vec<Vec<PartitionedFile>>> {
         let store = if let Some(url) = self.table_paths.get(0) {
             state.runtime_env().object_store(url)?
@@ -148,7 +162,7 @@ impl ListingVCFTable {
                 let store_list = store.list(Some(table_path.prefix())).await?;
 
                 // iterate over all files in the listing
-                let mut result_vec = vec![];
+                let mut result_vec: Vec<PartitionedFile> = vec![];
 
                 store_list
                     .try_for_each(|v| {
@@ -178,9 +192,94 @@ impl ListingVCFTable {
             }
         }
 
-        Ok(lists)
+        let mut new_list = vec![];
+        for partition_files in lists {
+            let mut new_partition_files = vec![];
+
+            for partition_file in partition_files {
+                for region in regions.iter() {
+                    let byte_ranges =
+                        get_byte_range_for_file(store.clone(), &partition_file.object_meta, region)
+                            .await?;
+
+                    for byte_range in byte_ranges {
+                        let mut new_partition_file = partition_file.clone();
+
+                        new_partition_file.range = Some(FileRange {
+                            start: byte_range.start().compressed() as i64,
+                            end: byte_range.end().compressed() as i64,
+                        });
+
+                        new_partition_files.push(new_partition_file);
+                    }
+                }
+            }
+
+            new_list.push(new_partition_files);
+        }
+
+        Ok(new_list)
     }
 }
+
+fn transform(e: Arc<dyn PhysicalExpr>) -> Result<Transformed<Arc<dyn PhysicalExpr>>> {
+    match e
+        .as_any()
+        .downcast_ref::<datafusion::physical_plan::expressions::BinaryExpr>()
+    {
+        Some(be) => {
+            if let Ok(chrom_expr) = ChromPhysicalExpr::try_from(be.clone()) {
+                return Ok(Transformed::Yes(Arc::new(chrom_expr)));
+            }
+
+            if let Ok(interval_expr) = IntervalPhysicalExpr::try_from(be.clone()) {
+                return Ok(Transformed::Yes(Arc::new(interval_expr)));
+            }
+
+            // Now we need to check if the left and right side can be merged in a single expression.
+
+            // Case 1: left and right are both chrom expressions, and need to be downcast to chrom expressions
+            if let Some(left_chrom) = be.left().as_any().downcast_ref::<ChromPhysicalExpr>() {
+                if let Some(right_chrom) = be.right().as_any().downcast_ref::<ChromPhysicalExpr>() {
+                    match try_merge_chrom_exprs(left_chrom, right_chrom) {
+                        Ok(Some(new_expr)) => return Ok(Transformed::Yes(Arc::new(new_expr))),
+                        Ok(None) => return Ok(Transformed::No(e)),
+                        Err(e) => return Err(e),
+                    }
+                }
+            }
+
+            // Case 2: left is a chrom expression and right is an interval expression
+            if let Some(_left_chrom) = be.left().as_any().downcast_ref::<ChromPhysicalExpr>() {
+                if let Some(_right_interval) =
+                    be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
+                {
+                    let new_expr = RegionPhysicalExpr::new(be.right().clone(), be.left().clone());
+
+                    return Ok(Transformed::Yes(Arc::new(new_expr)));
+                }
+            }
+
+            // Case 3: left is a region expression and the right is an interval expression
+            if let Some(left_region) = be.left().as_any().downcast_ref::<RegionPhysicalExpr>() {
+                if let Some(right_interval) =
+                    be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
+                {
+                    let new_region = try_merge_region_with_interval(left_region, right_interval)?;
+
+                    if let Some(new_region) = new_region {
+                        return Ok(Transformed::Yes(Arc::new(new_region)));
+                    }
+                }
+            }
+
+            Ok(Transformed::No(e))
+        }
+        None => Ok(Transformed::No(e)),
+    }
+}
+
+// F: Fn(Self) -> Result<Transformed<Self>>,
 
 #[async_trait]
 impl TableProvider for ListingVCFTable {
@@ -200,7 +299,6 @@ impl TableProvider for ListingVCFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        // TODO: Make this more accurate, potentially exact
         Ok(filters
             .iter()
             .map(|_f| TableProviderFilterPushDown::Exact)
@@ -214,15 +312,6 @@ impl TableProvider for ListingVCFTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let partitioned_file_lists = self.list_files_for_scan(state).await?;
-
-        // if no files need to be read, return an `EmptyExec`
-        if partitioned_file_lists.is_empty() {
-            let schema = self.schema();
-            let projected_schema = project_schema(&schema, projection)?;
-            return Ok(Arc::new(EmptyExec::new(false, projected_schema)));
-        }
-
         let filters = if let Some(expr) = conjunction(filters.to_vec()) {
             // NOTE: Use the table schema (NOT file schema) here because `expr` may contain references to partition columns.
             let table_df_schema = self.table_schema.as_ref().clone().to_dfschema()?;
@@ -232,7 +321,11 @@ impl TableProvider for ListingVCFTable {
                 &self.table_schema,
                 state.execution_props(),
             )?;
-            Some(filters)
+
+            // TODO: transform the filters to push down partition filters
+            let new_filters = filters.transform(&transform)?;
+
+            Some(new_filters)
         } else {
             None
         };
@@ -243,26 +336,49 @@ impl TableProvider for ListingVCFTable {
             return Ok(Arc::new(EmptyExec::new(false, Arc::new(Schema::empty()))));
         };
 
-        // Do we want to downcast FileFormat and set the region filter here?
+        if filters.clone().is_none() {
+            todo!("Implement no filter case for VCF scan");
+        }
 
-        // create the execution plan
-        self.options
-            .format
-            .create_physical_plan(
-                state,
-                FileScanConfig {
-                    object_store_url,
-                    file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-                    file_groups: partitioned_file_lists,
-                    statistics: Statistics::default(),
-                    projection: projection.cloned(),
-                    limit,
-                    output_ordering: Vec::new(),
-                    table_partition_cols: Vec::new(),
-                    infinite_source: false,
-                },
-                filters.as_ref(),
-            )
-            .await
+        let region_exprr = filters.clone().unwrap();
+        let new_region_expr = region_exprr.as_any().downcast_ref::<RegionPhysicalExpr>();
+
+        // if we got a filter check if it is a RegionFilter
+        if let Some(region_expr) = new_region_expr {
+            let regions = vec![region_expr.region()?];
+
+            let partitioned_file_lists = self.list_files_for_scan(state, regions).await?;
+
+            // if no files need to be read, return an `EmptyExec`
+            if partitioned_file_lists.is_empty() {
+                let schema = self.schema();
+                let projected_schema = project_schema(&schema, projection)?;
+                return Ok(Arc::new(EmptyExec::new(false, projected_schema)));
+            }
+
+            let f = filters.unwrap().clone();
+
+            return self
+                .options
+                .format
+                .create_physical_plan(
+                    state,
+                    FileScanConfig {
+                        object_store_url,
+                        file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                        file_groups: partitioned_file_lists,
+                        statistics: Statistics::default(),
+                        projection: projection.cloned(),
+                        limit,
+                        output_ordering: Vec::new(),
+                        table_partition_cols: Vec::new(),
+                        infinite_source: false,
+                    },
+                    Some(&f),
+                )
+                .await;
+        }
+
+        todo!("Implement non-region filter case for VCF scan");
     }
 }

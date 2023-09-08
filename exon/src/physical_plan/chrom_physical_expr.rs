@@ -43,6 +43,11 @@ impl ChromPhysicalExpr {
         &self.chrom
     }
 
+    /// Get the inner expression.
+    pub fn inner(&self) -> &Arc<dyn PhysicalExpr> {
+        &self.inner
+    }
+
     /// Return the noodles region with just the chromosome name.
     pub fn region(&self) -> noodles::core::Region {
         // TODO: how to do this w/o parsing?
@@ -121,6 +126,12 @@ impl PartialEq<dyn Any> for ChromPhysicalExpr {
         } else {
             false
         }
+    }
+}
+
+impl PartialEq for ChromPhysicalExpr {
+    fn eq(&self, other: &Self) -> bool {
+        self.chrom == other.chrom
     }
 }
 

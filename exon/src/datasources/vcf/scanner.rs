@@ -71,6 +71,11 @@ impl VCFScan {
         self.region_filter = Some(region_filter);
         self
     }
+
+    /// Return the region filter.
+    pub fn region_filter(&self) -> Option<&Region> {
+        self.region_filter.as_ref()
+    }
 }
 
 impl DisplayAs for VCFScan {

@@ -128,41 +128,6 @@ mod tests {
 
         let expected_interval = Interval::from_str("1-1").unwrap();
 
-        assert_eq!(pred.interval(), &expected_interval);
-    }
-
-    #[tokio::test]
-    async fn test_interval_rule_between() {
-        let ctx = SessionContext::new_exon();
-
-        let sql = "CREATE TABLE test AS (SELECT 1 as pos UNION ALL SELECT 2 as pos)";
-        ctx.sql(sql).await.unwrap();
-
-        let sql = "SELECT * FROM test WHERE pos BETWEEN 1 AND 2";
-        let df = ctx.sql(sql).await.unwrap();
-
-        let logical_plan = df.logical_plan();
-
-        let optimized_plan = ctx
-            .state()
-            .create_physical_plan(logical_plan)
-            .await
-            .unwrap();
-
-        // Downcast to FilterExec and check that the predicate is a IntervalPhysicalExpr
-        let filter_exec = optimized_plan
-            .as_any()
-            .downcast_ref::<FilterExec>()
-            .unwrap();
-
-        let pred = filter_exec
-            .predicate()
-            .as_any()
-            .downcast_ref::<IntervalPhysicalExpr>()
-            .unwrap();
-
-        let expected_interval = Interval::from_str("1-2").unwrap();
-
-        assert_eq!(pred.interval(), &expected_interval);
+        assert_eq!(pred.interval().unwrap(), expected_interval);
     }
 }

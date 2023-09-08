@@ -14,12 +14,26 @@
 
 use std::fmt::Display;
 
+use datafusion::error::DataFusionError;
+
 #[derive(Debug)]
 struct InvalidRegionError;
 
 impl Display for InvalidRegionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Invalid expression for region")
+    }
+}
+
+impl From<InvalidRegionError> for DataFusionError {
+    fn from(e: InvalidRegionError) -> Self {
+        DataFusionError::Execution(e.to_string())
+    }
+}
+
+impl From<InvalidRegionError> for std::fmt::Error {
+    fn from(_: InvalidRegionError) -> Self {
+        std::fmt::Error
     }
 }
 

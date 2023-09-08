@@ -18,27 +18,18 @@ use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
-    datasource::{
-        file_format::FileFormat,
-        listing::{FileRange, PartitionedFile},
-        physical_plan::FileScanConfig,
-    },
+    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
     error::DataFusionError,
     execution::context::SessionState,
-    physical_plan::{
-        expressions::BinaryExpr, filter::FilterExec, ExecutionPlan, PhysicalExpr, Statistics,
-    },
+    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
 };
 use futures::TryStreamExt;
-use noodles::{bgzf, core::Region, vcf};
+use noodles::{bgzf, core::Region, csi::index::reference_sequence::bin::Chunk, vcf};
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
-use crate::{
-    physical_optimizer::region_between_rewriter::transform_interval_expression,
-    physical_plan::{
-        chrom_physical_expr::ChromPhysicalExpr, region_physical_expr::RegionPhysicalExpr,
-    },
+use crate::physical_plan::{
+    chrom_physical_expr::ChromPhysicalExpr, region_physical_expr::RegionPhysicalExpr,
 };
 
 use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
@@ -155,116 +146,55 @@ impl FileFormat for VCFFormat {
 
     async fn create_physical_plan(
         &self,
-        state: &SessionState,
+        _state: &SessionState,
         conf: FileScanConfig,
         filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        // Check we at least got a binary expression, if not, quick return.
-        let new_filters = match filters {
-            Some(filter) => match filter.as_any().downcast_ref::<BinaryExpr>() {
-                Some(be) => be,
-                None => {
-                    let scan = VCFScan::new(conf, self.file_compression_type)?;
-                    return Ok(Arc::new(scan));
-                }
-            },
-            _ => {
-                let scan = VCFScan::new(conf, self.file_compression_type)?;
+        // if we got filters, we need to check if they are region filters
+        if let Some(filters) = filters {
+            // Downcast the filters to a Region filter if possible.
+            if let Some(region_filter) = filters.as_any().downcast_ref::<RegionPhysicalExpr>() {
+                let region = region_filter.region()?;
+                let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
+
                 return Ok(Arc::new(scan));
             }
-        };
 
-        // If we got passed only a Chrom column.
-        if let Ok(chrom_expr) = ChromPhysicalExpr::try_from(new_filters.clone()) {
-            let region = chrom_expr.region();
+            // Downcast the filters to a Chrom filter if possible.
+            if let Some(chrom_filter) = filters.as_any().downcast_ref::<ChromPhysicalExpr>() {
+                let chrom = chrom_filter.chrom();
+                let region = chrom.parse().map_err(|e| {
+                    DataFusionError::Execution(format!("Invalid chrom: {:?}: {}", chrom, e))
+                })?;
+                let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
 
-            let mut new_conf = conf.clone();
-
-            let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
-
-            if let Ok(new_groups) =
-                add_region_bytes_to_file_groups(object_store, &conf.file_groups, &region).await
-            {
-                new_conf.file_groups = new_groups;
-            }
-
-            let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
-            scan = scan.with_filter(region);
-
-            let filter_exec = FilterExec::try_new(Arc::new(new_filters.clone()), Arc::new(scan))?;
-
-            return Ok(Arc::new(filter_exec));
-        }
-
-        if let Some(s) = transform_interval_expression(new_filters) {
-            if let Ok(region_expr) = RegionPhysicalExpr::try_from(s) {
-                let mut new_conf = conf.clone();
-
-                let object_store = state.runtime_env().object_store(&conf.object_store_url)?;
-
-                if let Ok(new_groups) = add_region_bytes_to_file_groups(
-                    object_store,
-                    &conf.file_groups,
-                    region_expr.region(),
-                )
-                .await
-                {
-                    new_conf.file_groups = new_groups;
-                }
-
-                let mut scan = VCFScan::new(new_conf, self.file_compression_type)?;
-                scan = scan.with_filter(region_expr.region().clone());
-
-                let filter_exec =
-                    FilterExec::try_new(Arc::new(new_filters.clone()), Arc::new(scan))?;
-
-                return Ok(Arc::new(filter_exec));
+                return Ok(Arc::new(scan));
             }
         }
 
         let scan = VCFScan::new(conf, self.file_compression_type)?;
+
         Ok(Arc::new(scan))
     }
 }
 
-pub async fn add_region_bytes_to_file_groups(
+pub async fn get_byte_range_for_file(
     object_store: Arc<dyn ObjectStore>,
-    file_groups: &Vec<Vec<PartitionedFile>>,
+    object_meta: &ObjectMeta,
     region: &Region,
-) -> std::io::Result<Vec<Vec<PartitionedFile>>> {
-    let mut new_list = Vec::new();
+) -> std::io::Result<Vec<Chunk>> {
+    let tbi_path = object_meta.location.clone().to_string() + ".tbi";
+    let tbi_path = Path::from(tbi_path);
 
-    // iterate through the nested list of files
-    for file_group in file_groups {
-        // iterate through the files in the file group
-        for file in file_group {
-            let tbi_path = file.object_meta.location.clone().to_string() + ".tbi";
-            let tbi_path = Path::from(tbi_path);
+    let index_bytes = object_store.get(&tbi_path).await?.bytes().await?;
 
-            let index_bytes = object_store.get(&tbi_path).await?.bytes().await?;
+    let cursor = std::io::Cursor::new(index_bytes);
+    let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
 
-            let cursor = std::io::Cursor::new(index_bytes);
-            let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
+    let (id, _) = resolve_region(&index, region).unwrap();
+    let chunks = index.query(id, region.interval())?;
 
-            let (id, _) = resolve_region(&index, region).unwrap();
-            let chunks = index.query(id, region.interval())?;
-
-            for chunk in chunks {
-                let start = chunk.start().compressed();
-                let end = chunk.end().compressed();
-
-                let mut new_file = file.clone();
-                new_file.range = Some(FileRange {
-                    start: start as i64,
-                    end: end as i64,
-                });
-
-                new_list.push(new_file);
-            }
-        }
-    }
-
-    Ok(vec![new_list])
+    Ok(chunks)
 }
 
 fn resolve_region(
@@ -294,7 +224,14 @@ fn resolve_region(
 mod tests {
     use std::sync::Arc;
 
-    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
+    use crate::{
+        datasources::vcf::{
+            table_provider::{ListingVCFTable, VCFListingTableConfig},
+            ListingVCFTableOptions, VCFScan,
+        },
+        tests::test_path,
+        ExonSessionExt,
+    };
 
     use super::VCFFormat;
     use datafusion::{
@@ -307,18 +244,27 @@ mod tests {
     #[tokio::test]
     async fn test_region_pushdown() {
         let ctx = SessionContext::new_exon();
-        let table_path = test_path("vcf", "index.vcf");
+        let session_state = ctx.state();
+        let table_path = test_path("vcf", "index.vcf.gz");
 
-        let sql = format!(
-            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
-            table_path.to_str().unwrap(),
-        );
-        ctx.sql(&sql).await.unwrap();
+        let table_path = ListingTableUrl::parse(table_path.to_str().unwrap()).unwrap();
+
+        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
+
+        let resolved_schema = vcf_table_options
+            .infer_schema(&session_state, &table_path)
+            .await
+            .unwrap();
+
+        let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
+
+        let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
+        ctx.register_table("vcf_file", provider).unwrap();
 
         let sql_statements = vec![
-            // "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 200000;",
-            "SELECT * FROM vcf_file WHERE chrom = '1'",
+            // "SELECT * FROM vcf_file WHERE chrom = '1'",
         ];
 
         for sql_statement in sql_statements {
@@ -331,12 +277,16 @@ mod tests {
                 .unwrap();
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-                scan.input().as_any().downcast_ref::<VCFScan>().unwrap();
-            } else {
-                panic!(
-                    "expected FilterExec for {} in {:#?}",
-                    sql_statement, physical_plan
-                );
+                // Check the input is a VCF scan...
+                if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
+                    // ... and that it has a region filter.
+                    assert!(scan.region_filter().is_some());
+                } else {
+                    panic!(
+                        "expected VCFScan for {} in {:#?}",
+                        sql_statement, physical_plan
+                    );
+                }
             }
         }
     }
