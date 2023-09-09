@@ -25,7 +25,7 @@ use datafusion::{
 };
 use noodles::core::region::Interval;
 
-use super::InvalidRegionError;
+use crate::error::invalid_interval::InvalidIntervalError;
 
 pub(crate) fn pos_schema() -> SchemaRef {
     Arc::new(arrow::datatypes::Schema::new(vec![
@@ -53,11 +53,11 @@ impl IntervalPhysicalExpr {
             Some(end) => {
                 let interval = format!("{}-{}", self.start, end)
                     .parse::<Interval>()
-                    .map_err(|_| DataFusionError::External(InvalidRegionError.into()))?;
+                    .map_err(|_| DataFusionError::External(InvalidIntervalError.into()))?;
 
                 Ok(interval)
             }
-            None => Err(DataFusionError::External(InvalidRegionError.into())),
+            None => Err(DataFusionError::External(InvalidIntervalError.into())),
         }
     }
 
@@ -126,7 +126,7 @@ impl TryFrom<BinaryExpr> for IntervalPhysicalExpr {
 
         if let (Some(col), Some(lit), _) = (left, right, op) {
             if col.name() != "pos" {
-                return Err(DataFusionError::External(InvalidRegionError.into()));
+                return Err(DataFusionError::External("Invalid column for pos".into()));
             } else {
                 match op {
                     Operator::Eq => {
@@ -144,14 +144,14 @@ impl TryFrom<BinaryExpr> for IntervalPhysicalExpr {
 
                         return Ok(Self::new(1, Some(pos), Arc::new(expr)));
                     }
-                    _ => {
-                        return Err(DataFusionError::External(InvalidRegionError.into()));
-                    }
+                    _ => return Err(DataFusionError::External("Invalid operator for pos".into())),
                 }
             }
         };
 
-        Err(DataFusionError::External(InvalidRegionError.into()))
+        Err(DataFusionError::External(
+            format!("invalid expression for pos: {}", expr).into(),
+        ))
     }
 }
 
@@ -162,7 +162,7 @@ impl TryFrom<Arc<dyn PhysicalExpr>> for IntervalPhysicalExpr {
         if let Some(binary_expr) = expr.as_any().downcast_ref::<BinaryExpr>() {
             Self::try_from(binary_expr.clone())
         } else {
-            Err(DataFusionError::External(InvalidRegionError.into()))
+            Err(DataFusionError::External(InvalidIntervalError.into()))
         }
     }
 }
