@@ -33,5 +33,7 @@ pub use self::file_format::VCFFormat;
 pub use self::file_opener::VCFOpener;
 pub use self::scanner::VCFScan;
 pub use self::schema_builder::VCFSchemaBuilder;
+pub use self::table_provider::ListingVCFTable;
 pub use self::table_provider::ListingVCFTableOptions;
+pub use self::table_provider::VCFListingTableConfig;
 pub use self::table_provider_factory::VCFTableProviderFactory;

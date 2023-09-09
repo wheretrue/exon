@@ -17,10 +17,13 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use datafusion::{
     common::FileCompressionType,
-    datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+    datasource::listing::ListingTableUrl,
     prelude::{col, lit, SessionContext},
 };
-use exon::{datasources::vcf::VCFFormat, new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
+use exon::{
+    datasources::vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
+    new_exon_config, ExonRuntimeEnvExt, ExonSessionExt,
+};
 use noodles::core::Region;
 
 #[derive(Subcommand)]
@@ -106,17 +109,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let session_state = ctx.state();
 
             let table_path = ListingTableUrl::parse(path).unwrap();
+            let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
 
-            let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
-            let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
+            let resolved_schema = vcf_table_options
+                .infer_schema(&session_state, &table_path)
+                .await
+                .unwrap();
 
-            let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+            let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
 
-            let config = ListingTableConfig::new(table_path)
-                .with_listing_options(lo)
-                .with_schema(resolved_schema);
-
-            let provider = Arc::new(ListingTable::try_new(config).unwrap());
+            let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
             ctx.register_table("vcf_file", provider).unwrap();
 
             let chrom = region.name();
