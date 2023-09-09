@@ -106,7 +106,8 @@ pub fn try_merge_region_with_interval(
 
     let chrom_expr = ChromPhysicalExpr::from_chrom(left.chrom_expr().unwrap().chrom(), &schema)?;
 
-    let region_expr = RegionPhysicalExpr::new(Arc::new(merged_interval), Arc::new(chrom_expr));
+    let region_expr =
+        RegionPhysicalExpr::new(Arc::new(chrom_expr), Some(Arc::new(merged_interval)));
 
     Ok(Some(region_expr))
 }

@@ -254,7 +254,8 @@ fn transform(e: Arc<dyn PhysicalExpr>) -> Result<Transformed<Arc<dyn PhysicalExp
                 if let Some(_right_interval) =
                     be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
                 {
-                    let new_expr = RegionPhysicalExpr::new(be.right().clone(), be.left().clone());
+                    let new_expr =
+                        RegionPhysicalExpr::new(be.left().clone(), Some(be.right().clone()));
 
                     return Ok(Transformed::Yes(Arc::new(new_expr)));
                 }

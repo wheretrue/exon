@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// A physical expression that represents a chromosome.
-pub mod chrom_physical_expr;
+/// Error for an invalid region.
+pub mod invalid_region;
 
-/// A physical expression that represents a genomic interval.
-pub mod interval_physical_expr;
+/// Error for an invalid interval.
+pub mod invalid_interval;
 
-/// A physical expression that represents a region, e.g. chr1:100-200.
-pub mod region_physical_expr;
-
-/// Utilities for working with object stores.
-pub mod object_store;
+/// Error for an invalid chromosome.
+pub mod invalid_chrom;

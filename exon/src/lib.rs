@@ -123,6 +123,9 @@ pub mod exome;
 #[cfg(feature = "exome")]
 pub use context::ExomeSessionExt;
 
+/// Error types for Exon.
+pub mod error;
+
 #[cfg(test)]
 mod tests {
     use std::{path::PathBuf, sync::Arc};
