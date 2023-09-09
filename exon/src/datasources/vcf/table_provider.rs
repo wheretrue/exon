@@ -229,7 +229,9 @@ fn transform(e: Arc<dyn PhysicalExpr>) -> Result<Transformed<Arc<dyn PhysicalExp
     {
         Some(be) => {
             if let Ok(chrom_expr) = ChromPhysicalExpr::try_from(be.clone()) {
-                return Ok(Transformed::Yes(Arc::new(chrom_expr)));
+                let region_expr = RegionPhysicalExpr::new(Arc::new(chrom_expr), None);
+
+                return Ok(Transformed::Yes(Arc::new(region_expr)));
             }
 
             if let Ok(interval_expr) = IntervalPhysicalExpr::try_from(be.clone()) {
