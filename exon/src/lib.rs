@@ -156,7 +156,6 @@ mod tests {
     pub fn test_path(data_type: &str, file_name: &str) -> PathBuf {
         // Get the current working directory
         let cwd = std::env::current_dir().unwrap().join("exon");
-        eprintln!("cwd: {:?}", cwd);
 
         let start_directory = std::env::var("CARGO_MANIFEST_DIR")
             .map(PathBuf::from)

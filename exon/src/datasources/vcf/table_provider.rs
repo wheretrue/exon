@@ -37,6 +37,7 @@ use crate::{
 use super::file_format::get_byte_range_for_file;
 
 #[derive(Debug, Clone)]
+/// Configuration for a VCF listing table
 pub struct VCFListingTableConfig {
     inner: ListingTableConfig,
 
@@ -44,6 +45,7 @@ pub struct VCFListingTableConfig {
 }
 
 impl VCFListingTableConfig {
+    /// Create a new VCF listing table configuration
     pub fn new(table_path: ListingTableUrl) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
@@ -51,6 +53,7 @@ impl VCFListingTableConfig {
         }
     }
 
+    /// Set the options for the VCF listing table
     pub fn with_options(self, options: ListingVCFTableOptions) -> Self {
         Self {
             options: Some(options),
@@ -123,6 +126,7 @@ impl ListingVCFTableOptions {
 }
 
 #[derive(Debug, Clone)]
+/// A VCF listing table
 pub struct ListingVCFTable {
     table_paths: Vec<ListingTableUrl>,
 
@@ -132,6 +136,7 @@ pub struct ListingVCFTable {
 }
 
 impl ListingVCFTable {
+    /// Create a new VCF listing table
     pub fn try_new(config: VCFListingTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
@@ -142,6 +147,7 @@ impl ListingVCFTable {
         })
     }
 
+    /// List the files that need to be read for a given set of regions
     pub async fn list_files_for_scan(
         &self,
         state: &SessionState,
