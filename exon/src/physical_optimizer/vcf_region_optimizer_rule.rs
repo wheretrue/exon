@@ -63,7 +63,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         Err(_) => return Ok(Transformed::No(plan)),
     };
 
-    let new_scan = vcf_scan.clone().with_filter(region_expr.region().clone());
+    let new_scan = vcf_scan.clone().with_filter(region_expr.region()?.clone());
     let new_filter = FilterExec::try_new(Arc::new(region_expr), Arc::new(new_scan))?;
 
     Ok(Transformed::Yes(Arc::new(new_filter)))

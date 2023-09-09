@@ -22,7 +22,7 @@ use datafusion::scalar::ScalarValue;
 
 use crate::udfs::vcf::{create_chrom_udf, create_interval_udf, create_region_udf};
 
-fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
+pub(crate) fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
     expr.transform(&|expr| {
         Ok(match expr {
             Expr::BinaryExpr(BinaryExpr { left, op, right }) => {

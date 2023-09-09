@@ -125,15 +125,45 @@ pub use context::ExomeSessionExt;
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{path::PathBuf, sync::Arc};
 
-    use datafusion::datasource::listing::ListingTableUrl;
+    use datafusion::{
+        datasource::listing::ListingTableUrl,
+        logical_expr::Operator,
+        physical_plan::{expressions::BinaryExpr, PhysicalExpr},
+    };
     use object_store::path::Path;
 
-    pub fn test_path(data_type: &str, file_name: &str) -> PathBuf {
-        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    pub(crate) fn eq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
+        BinaryExpr::new(left, Operator::Eq, right)
+    }
 
-        PathBuf::from(manifest_dir)
+    pub(crate) fn and(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
+        BinaryExpr::new(left, Operator::And, right)
+    }
+
+    pub(crate) fn lteq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
+        BinaryExpr::new(left, Operator::LtEq, right)
+    }
+
+    pub(crate) fn gteq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
+        BinaryExpr::new(left, Operator::GtEq, right)
+    }
+
+    pub fn test_path(data_type: &str, file_name: &str) -> PathBuf {
+        // Get the current working directory
+        let cwd = std::env::current_dir().unwrap().join("exon");
+        eprintln!("cwd: {:?}", cwd);
+
+        let start_directory = std::env::var("CARGO_MANIFEST_DIR")
+            .map(PathBuf::from)
+            .unwrap_or(cwd);
+
+        if !start_directory.exists() {
+            panic!("start directory does not exist: {:?}", start_directory);
+        }
+
+        start_directory
             .join("test-data")
             .join("datasources")
             .join(data_type)
