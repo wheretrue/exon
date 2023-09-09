@@ -264,7 +264,7 @@ mod tests {
         let sql_statements = vec![
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 200000;",
-            // "SELECT * FROM vcf_file WHERE chrom = '1'",
+            "SELECT * FROM vcf_file WHERE chrom = '1'",
         ];
 
         for sql_statement in sql_statements {

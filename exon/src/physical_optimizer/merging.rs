@@ -93,7 +93,32 @@ pub fn try_merge_region_with_interval(
     left: &RegionPhysicalExpr,
     right: &IntervalPhysicalExpr,
 ) -> Result<Option<RegionPhysicalExpr>> {
-    let merged_interval = match try_merge_interval_exprs(left.interval_expr().unwrap(), right)? {
+    let schema = Schema::new(vec![arrow::datatypes::Field::new(
+        "chrom",
+        arrow::datatypes::DataType::Utf8,
+        false,
+    )]);
+
+    let interval = match left.interval_expr() {
+        Some(interval_expr) => interval_expr,
+        None => {
+            let new_interval = right;
+            let new_interval = IntervalPhysicalExpr::new(
+                new_interval.start(),
+                new_interval.end(),
+                new_interval.inner().clone(),
+            );
+
+            let new_chrom = left.chrom_expr().unwrap().chrom();
+            let new_chrom = Arc::new(ChromPhysicalExpr::from_chrom(new_chrom, &schema)?);
+
+            let new_region = RegionPhysicalExpr::new(new_chrom, Some(Arc::new(new_interval)));
+
+            return Ok(Some(new_region));
+        }
+    };
+
+    let interval = match try_merge_interval_exprs(interval, right)? {
         Some(interval) => interval,
         None => return Ok(None),
     };
@@ -106,8 +131,7 @@ pub fn try_merge_region_with_interval(
 
     let chrom_expr = ChromPhysicalExpr::from_chrom(left.chrom_expr().unwrap().chrom(), &schema)?;
 
-    let region_expr =
-        RegionPhysicalExpr::new(Arc::new(chrom_expr), Some(Arc::new(merged_interval)));
+    let region_expr = RegionPhysicalExpr::new(Arc::new(chrom_expr), Some(Arc::new(interval)));
 
     Ok(Some(region_expr))
 }
