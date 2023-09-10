@@ -110,9 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
                 .await?;
 
-            let cnt = df.count().await?;
+            // let cnt = df.count().await?;
+            df.write_csv("vcf_query.csv").await?;
 
-            println!("Batch count: {:#?}", cnt);
+            // println!("Batch count: {:#?}", cnt);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();
