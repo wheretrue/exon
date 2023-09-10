@@ -27,11 +27,11 @@ pub struct FASTAArrayBuilder {
 }
 
 impl FASTAArrayBuilder {
-    pub fn create() -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            names: GenericStringBuilder::<i32>::new(),
-            descriptions: GenericStringBuilder::<i32>::new(),
-            sequences: GenericStringBuilder::<i32>::new(),
+            names: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
+            descriptions: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
+            sequences: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
         }
     }
 

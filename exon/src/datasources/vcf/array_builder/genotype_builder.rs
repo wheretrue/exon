@@ -46,21 +46,27 @@ impl GenotypeBuilder {
             match field.data_type() {
                 DataType::List(itype) => match itype.data_type() {
                     DataType::Int32 => {
-                        let builder =
-                            GenericListBuilder::<i32, Int32Builder>::new(Int32Builder::new());
+                        let builder = GenericListBuilder::<i32, Int32Builder>::with_capacity(
+                            Int32Builder::new(),
+                            capacity,
+                        );
 
                         builders.push(Box::new(builder));
                     }
                     DataType::Float32 => {
-                        let builder =
-                            GenericListBuilder::<i32, Float32Builder>::new(Float32Builder::new());
+                        let builder = GenericListBuilder::<i32, Float32Builder>::with_capacity(
+                            Float32Builder::new(),
+                            capacity,
+                        );
 
                         builders.push(Box::new(builder));
                     }
                     DataType::Utf8 => {
-                        let builder = GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(
-                            GenericStringBuilder::<i32>::new(),
-                        );
+                        let builder =
+                            GenericListBuilder::<i32, GenericStringBuilder<i32>>::with_capacity(
+                                GenericStringBuilder::<i32>::new(),
+                                capacity,
+                            );
 
                         builders.push(Box::new(builder));
                     }
