@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
-
 use clap::{Parser, Subcommand};
 use datafusion::{
     common::FileCompressionType,
-    datasource::listing::ListingTableUrl,
     prelude::{col, lit, SessionContext},
 };
-use exon::{
-    datasources::vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
-    new_exon_config, ExonRuntimeEnvExt, ExonSessionExt,
-};
+use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
 use noodles::core::Region;
 
 #[derive(Subcommand)]
@@ -106,20 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap();
 
-            let session_state = ctx.state();
-
-            let table_path = ListingTableUrl::parse(path).unwrap();
-            let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
-
-            let resolved_schema = vcf_table_options
-                .infer_schema(&session_state, &table_path)
-                .await
-                .unwrap();
-
-            let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
-
-            let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
-            ctx.register_table("vcf_file", provider).unwrap();
+            let _ = ctx.register_vcf_file("vcf_file", path).await;
 
             let chrom = region.name();
             let start = region.interval().start().unwrap();
@@ -129,9 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
                 .await?;
 
-            let cnt = df.count().await?;
+            // let cnt = df.count().await?;
+            df.write_csv("vcf_query.csv").await?;
 
-            println!("Batch count: {:#?}", cnt);
+            // println!("Batch count: {:#?}", cnt);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();

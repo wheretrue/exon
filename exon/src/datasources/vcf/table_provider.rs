@@ -310,7 +310,7 @@ impl TableProvider for ListingVCFTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Exact)
+            .map(|_f| TableProviderFilterPushDown::Inexact)
             .collect())
     }
 

@@ -15,7 +15,7 @@ run-benchmarks:
 	cargo build --profile profiling --package exon-benchmarks \
 
 	# Run vcf benchmarks.
-	hyperfine --runs 2 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
+	hyperfine --runs 5 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
 		-n bcftools \
 		'bcftools view -r chr1:1-1000000 exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz chr1:1-1000000 | wc -l' \
 		-n exon-vcf-query \

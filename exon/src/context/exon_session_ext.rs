@@ -17,7 +17,10 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
-    datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+    datasource::{
+        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        TableProvider,
+    },
     error::{DataFusionError, Result},
     execution::{context::SessionState, options::ReadOptions, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
@@ -28,7 +31,9 @@ use crate::{
     datasources::{
         bam::BAMFormat,
         bcf::BCFFormat,
-        vcf::{VCFFormat, VCFTableProviderFactory},
+        vcf::{
+            ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig, VCFTableProviderFactory,
+        },
         ExonFileType, ExonListingTableFactory, ExonReadOptions,
     },
     new_exon_config,
@@ -307,14 +312,12 @@ pub trait ExonSessionExt {
             .await;
     }
 
-    /// Query a VCF file.
-    ///
-    /// File must be indexed and index file must be in the same directory as the VCF file.
-    async fn query_vcf_file(
+    /// Register a VCF file.
+    async fn register_vcf_file(
         &self,
+        table_name: &str,
         table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError>;
+    ) -> Result<Option<Arc<dyn TableProvider>>, DataFusionError>;
 
     /// Query a BCF file.
     ///
@@ -441,32 +444,24 @@ impl ExonSessionExt for SessionContext {
         self.read_table(Arc::new(table))
     }
 
-    async fn query_vcf_file(
+    async fn register_vcf_file(
         &self,
+        table_name: &str,
         table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError> {
-        let session_state = self.state();
+    ) -> Result<Option<Arc<dyn TableProvider>>, DataFusionError> {
+        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
+
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let region: Region = query
-            .parse()
-            .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
+        let resolved_schema = vcf_table_options
+            .infer_schema(&self.state(), &table_path)
+            .await
+            .unwrap();
 
-        let file_format = VCFFormat::new(FileCompressionType::GZIP).with_region_filter(region);
-        let boxed_format = Arc::new(file_format);
+        let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
 
-        let lo = ListingOptions::new(boxed_format);
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let table = ListingTable::try_new(config)?;
-
-        self.read_table(Arc::new(table))
+        let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
+        self.register_table(table_name, provider)
     }
 
     async fn read_inferred_exon_table(
@@ -496,10 +491,7 @@ mod tests {
     use std::str::FromStr;
 
     use arrow::array::Float32Array;
-    use datafusion::{
-        error::DataFusionError,
-        prelude::{col, SessionContext},
-    };
+    use datafusion::{error::DataFusionError, prelude::SessionContext};
 
     use crate::{
         context::exon_session_ext::ExonSessionExt,
@@ -667,18 +659,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_query_vcf() -> Result<(), DataFusionError> {
+    async fn test_register_vcf() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new_exon();
 
         let path = test_path("vcf", "index.vcf.gz");
         let path = path.to_str().unwrap();
-        let query = "1";
+
+        ctx.register_vcf_file("vcf_file", path).await.unwrap();
 
         let df = ctx
-            .query_vcf_file(path, query)
+            .sql("SELECT * FROM vcf_file WHERE chrom = '1'")
             .await
-            .unwrap()
-            .select(vec![col("chrom")])?;
+            .unwrap();
 
         let batches = df.collect().await.unwrap();
 
