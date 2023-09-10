@@ -224,6 +224,7 @@ impl ListingVCFTable {
                             start: byte_range.start().compressed() as i64,
                             end: byte_range.end().compressed() as i64,
                         });
+                        eprintln!("file range from chunk: {:?}", byte_range);
 
                         new_partition_files.push(new_partition_file);
                     }

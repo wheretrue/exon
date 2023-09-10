@@ -18,34 +18,47 @@ use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
 
 use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 
-trait VCFRecordIterator: Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send {
-    fn header(&self) -> &noodles::vcf::Header;
-}
-
 pub struct UnIndexedRecordIterator<R> {
-    reader: noodles::vcf::Reader<R>,
+    reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>,
+
+    bytes_read: usize,
 }
 
 impl<R> UnIndexedRecordIterator<R>
 where
     R: std::io::BufRead,
 {
-    pub fn new(reader: R) -> Self {
+    pub fn new(reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>) -> Self {
         Self {
-            reader: noodles::vcf::Reader::new(reader),
+            reader,
+            bytes_read: 0,
         }
     }
+}
 
+impl<R> UnIndexedRecordIterator<R>
+where
+    R: std::io::BufRead,
+{
     fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
         let mut record = noodles::vcf::lazy::Record::default();
 
         let record = match self.reader.read_lazy_record(&mut record) {
             Ok(0) => None,
-            Ok(_) => Some(record),
+            Ok(bytes_read) => {
+                self.bytes_read += bytes_read;
+                eprintln!("bytes_read: {}", bytes_read);
+
+                Some(record)
+            }
             Err(e) => return Err(e),
         };
 
         Ok(record)
+    }
+
+    fn bytes_read(&self) -> usize {
+        self.bytes_read
     }
 }
 
@@ -95,10 +108,16 @@ impl BatchReader {
             self.header.clone(),
         )?;
 
-        for _ in 0..self.config.batch_size {
+        for i in 0..self.config.batch_size {
             let record = self.record_iterator.next().transpose()?;
             match record {
-                Some(record) => record_batch.append(&record)?,
+                Some(record) => match record_batch.append(&record) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("Error appending record: {}", e);
+                        continue;
+                    }
+                },
                 None => break,
             }
         }

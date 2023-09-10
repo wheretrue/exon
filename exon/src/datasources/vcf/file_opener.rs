@@ -23,7 +23,10 @@ use datafusion::{
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::{bgzf, core::Region};
+use noodles::{
+    bgzf::{self, VirtualPosition},
+    core::Region,
+};
 use tokio_util::io::StreamReader;
 
 use super::{
@@ -82,6 +85,8 @@ impl FileOpener for VCFOpener {
 
                 let vp = vcf_reader.virtual_position();
 
+                let r = file_meta.range.clone().unwrap();
+
                 // let byte_region = get_byte_region(&config.object_store, file_meta).await?;
                 let bgzf_reader = match file_meta.range {
                     Some(FileRange { start: _, end }) if end == 0 => {
@@ -111,10 +116,20 @@ impl FileOpener for VCFOpener {
                             )
                             .await?;
 
+                        eprintln!(
+                            "total bytes for file: {:?} {:?}",
+                            bytes.len(),
+                            file_meta.location()
+                        );
+                        eprintln!("range and size: {:?} {:?}", r, bytes.len());
+
                         let cursor = std::io::Cursor::new(bytes);
                         let mut bgzf_reader = bgzf::Reader::new(cursor);
 
-                        bgzf_reader.seek(vp)?;
+                        if start == 0 {
+                            eprintln!("seeking to vp to account for header");
+                            bgzf_reader.seek(vp)?;
+                        }
 
                         bgzf_reader
                     }
@@ -135,7 +150,15 @@ impl FileOpener for VCFOpener {
                     }
                 };
 
-                let record_iterator = UnIndexedRecordIterator::new(bgzf_reader);
+                let mut vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
+
+                let new_vp = VirtualPosition::try_from((0, 49775)).unwrap();
+                let new_pos = vcf_reader.seek(new_vp)?;
+                eprintln!("new pos: {:?}", new_pos);
+
+                // vcf_reader.virtual_position()
+                let record_iterator = UnIndexedRecordIterator::new(vcf_reader);
+
                 let boxed_iter = Box::new(record_iterator);
 
                 let batch_reader = BatchReader::new(boxed_iter, config, Arc::new(header));

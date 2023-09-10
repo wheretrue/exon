@@ -157,12 +157,15 @@ impl LazyVCFArrayBuilder {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let chromosome = Chromosome::from_str(record.chromosome()).map_err(|_| {
-                        ArrowError::ParseError(format!(
-                            "Could not parse chromosome: {}",
-                            record.chromosome()
-                        ))
-                    })?;
+                    let chromosome = match Chromosome::from_str(record.chromosome()) {
+                        Ok(chromosome) => chromosome,
+                        Err(_) => {
+                            return Err(ArrowError::ParseError(format!(
+                                "Could not parse chromosome: {}",
+                                record.chromosome()
+                            )))
+                        }
+                    };
 
                     self.chromosomes.append_value(chromosome.to_string());
                 }

@@ -189,18 +189,27 @@ pub async fn get_byte_range_for_file(
     let index_bytes = object_store.get(&tbi_path).await?.bytes().await?;
 
     let cursor = std::io::Cursor::new(index_bytes);
-    let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
+    let index = noodles::tabix::Reader::new(cursor).read_index()?;
 
-    let (id, _) = resolve_region(&index, region)?;
+    let id = resolve_region(&index, region)?;
     let chunks = index.query(id, region.interval())?;
+    chunks.iter().for_each(|c| {
+        eprintln!(
+            "chunk: {:?} {:?}",
+            c.start().compressed(),
+            c.end().compressed()
+        );
+        eprintln!(
+            "un comp chunk: {:?} {:?}",
+            c.start().uncompressed(),
+            c.end().uncompressed()
+        );
+    });
 
     Ok(chunks)
 }
 
-fn resolve_region(
-    index: &noodles::csi::Index,
-    region: &Region,
-) -> std::io::Result<(usize, String)> {
+fn resolve_region(index: &noodles::csi::Index, region: &Region) -> std::io::Result<usize> {
     let header = index.header().ok_or_else(|| {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")
     })?;
@@ -217,7 +226,7 @@ fn resolve_region(
             )
         })?;
 
-    Ok((i, region.name().into()))
+    Ok(i)
 }
 
 #[cfg(test)]
