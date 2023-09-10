@@ -74,7 +74,7 @@ where
     }
 
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
-        let mut record_batch = FASTAArrayBuilder::create();
+        let mut record_batch = FASTAArrayBuilder::with_capacity(self.config.batch_size);
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {

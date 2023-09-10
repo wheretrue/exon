@@ -70,8 +70,14 @@ impl LazyVCFArrayBuilder {
     ) -> Result<Self, ArrowError> {
         let info_field = schema.field_with_name("info")?;
 
+        let item_capacity = capacity;
+        let data_capacity = capacity * 8;
+
         let infos = match &info_field.data_type() {
-            DataType::Utf8 => InfosFormat::String(GenericStringBuilder::<i32>::new()),
+            DataType::Utf8 => InfosFormat::String(GenericStringBuilder::<i32>::with_capacity(
+                item_capacity,
+                data_capacity,
+            )),
             DataType::Struct(_) => {
                 InfosFormat::Struct(InfosBuilder::try_new(info_field, capacity)?)
             }
@@ -86,7 +92,10 @@ impl LazyVCFArrayBuilder {
         let format_field = schema.field_with_name("formats")?;
 
         let formats = match &format_field.data_type() {
-            DataType::Utf8 => FormatsFormat::String(GenericStringBuilder::<i32>::new()),
+            DataType::Utf8 => FormatsFormat::String(GenericStringBuilder::<i32>::with_capacity(
+                item_capacity,
+                data_capacity,
+            )),
             DataType::List(_) => {
                 FormatsFormat::List(GenotypeBuilder::try_new(format_field, capacity)?)
             }
@@ -107,18 +116,21 @@ impl LazyVCFArrayBuilder {
         };
 
         Ok(Self {
-            chromosomes: GenericStringBuilder::<i32>::new(),
-            positions: Int64Builder::new(),
-            ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
-                i32,
-            >::new()),
-            references: GenericStringBuilder::<i32>::new(),
-            alternates: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(
+            chromosomes: GenericStringBuilder::<i32>::with_capacity(item_capacity, data_capacity),
+            positions: Int64Builder::with_capacity(item_capacity),
+            ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::with_capacity(
                 GenericStringBuilder::<i32>::new(),
+                capacity,
             ),
-            qualities: Float32Builder::new(),
-            filters: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(
+            references: GenericStringBuilder::<i32>::with_capacity(item_capacity, data_capacity),
+            alternates: GenericListBuilder::<i32, GenericStringBuilder<i32>>::with_capacity(
                 GenericStringBuilder::<i32>::new(),
+                capacity,
+            ),
+            qualities: Float32Builder::with_capacity(capacity),
+            filters: GenericListBuilder::<i32, GenericStringBuilder<i32>>::with_capacity(
+                GenericStringBuilder::<i32>::new(),
+                capacity,
             ),
 
             infos,
