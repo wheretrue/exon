@@ -167,10 +167,14 @@ impl LazyVCFArrayBuilder {
                     self.chromosomes.append_value(chromosome.to_string());
                 }
                 1 => {
-                    let position = Position::from_str(record.position()).unwrap();
+                    let position = Position::from_str(record.position()).map_err(|_| {
+                        ArrowError::ParseError(format!(
+                            "Could not parse position: {}",
+                            record.position()
+                        ))
+                    })?;
 
                     let pos_usize: usize = position.into();
-
                     self.positions.append_value(pos_usize as i64);
                 }
                 2 => match record.ids() {

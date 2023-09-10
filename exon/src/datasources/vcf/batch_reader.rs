@@ -39,11 +39,13 @@ where
     fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
         let mut record = noodles::vcf::lazy::Record::default();
 
-        match self.reader.read_lazy_record(&mut record) {
-            Ok(0) => Ok(None),
-            Ok(_) => Ok(Some(record)),
-            Err(e) => Err(e),
-        }
+        let record = match self.reader.read_lazy_record(&mut record) {
+            Ok(0) => None,
+            Ok(_) => Some(record),
+            Err(e) => return Err(e),
+        };
+
+        Ok(record)
     }
 }
 

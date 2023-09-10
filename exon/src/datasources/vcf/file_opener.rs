@@ -33,6 +33,7 @@ use super::{
 };
 
 /// A file opener for VCF files.
+#[derive(Debug)]
 pub struct VCFOpener {
     /// The configuration for the opener.
     config: Arc<VCFConfig>,
