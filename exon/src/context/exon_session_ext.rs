@@ -455,12 +455,11 @@ impl ExonSessionExt for SessionContext {
 
         let resolved_schema = vcf_table_options
             .infer_schema(&self.state(), &table_path)
-            .await
-            .unwrap();
+            .await?;
 
         let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
 
-        let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
+        let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema)?);
         self.register_table(table_name, provider)
     }
 
@@ -668,13 +667,11 @@ mod tests {
         ctx.register_vcf_file("vcf_file", path).await.unwrap();
 
         let df = ctx
-            .sql("SELECT * FROM vcf_file WHERE chrom = '1'")
-            .await
-            .unwrap();
+            .sql("SELECT chrom, pos, array_to_string(id, ':') ids FROM vcf_file WHERE chrom = '1'")
+            .await?;
 
-        let batches = df.collect().await.unwrap();
-
-        assert!(!batches.is_empty());
+        let cnt = df.count().await?;
+        assert_eq!(cnt, 191);
 
         Ok(())
     }

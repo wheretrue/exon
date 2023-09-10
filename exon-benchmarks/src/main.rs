@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap();
 
-            let _ = ctx.register_vcf_file("vcf_file", path).await;
+            ctx.register_vcf_file("vcf_file", path).await?;
 
             let chrom = region.name();
             let start = region.interval().start().unwrap();
@@ -110,10 +110,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
                 .await?;
 
-            // let cnt = df.count().await?;
-            df.write_csv("vcf_query.csv").await?;
-
-            // println!("Batch count: {:#?}", cnt);
+            let cnt = df.count().await?;
+            eprintln!("Count: {}", cnt);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();
@@ -122,9 +120,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ctx = SessionContext::new_exon();
 
             let df = ctx.query_bam_file(path, region).await.unwrap();
-            let batch_count = df.count().await.unwrap();
+            let cnt = df.count().await?;
 
-            println!("Row count: {batch_count}");
+            eprintln!("Count: {}", cnt);
         }
         Some(Commands::FASTACodonScan { path, compression }) => {
             let path = path.as_str();

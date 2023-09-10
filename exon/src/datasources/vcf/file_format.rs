@@ -191,7 +191,7 @@ pub async fn get_byte_range_for_file(
     let cursor = std::io::Cursor::new(index_bytes);
     let index = noodles::tabix::Reader::new(cursor).read_index().unwrap();
 
-    let (id, _) = resolve_region(&index, region).unwrap();
+    let (id, _) = resolve_region(&index, region)?;
     let chunks = index.query(id, region.interval())?;
 
     Ok(chunks)

@@ -204,9 +204,18 @@ impl ListingVCFTable {
 
             for partition_file in partition_files {
                 for region in regions.iter() {
-                    let byte_ranges =
-                        get_byte_range_for_file(store.clone(), &partition_file.object_meta, region)
-                            .await?;
+                    let byte_ranges = match get_byte_range_for_file(
+                        store.clone(),
+                        &partition_file.object_meta,
+                        region,
+                    )
+                    .await
+                    {
+                        Ok(byte_ranges) => byte_ranges,
+                        Err(_) => {
+                            continue;
+                        }
+                    };
 
                     for byte_range in byte_ranges {
                         let mut new_partition_file = partition_file.clone();
