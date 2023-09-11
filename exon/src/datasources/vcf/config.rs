@@ -18,6 +18,7 @@ use arrow::datatypes::SchemaRef;
 use object_store::ObjectStore;
 
 /// Configuration for a VCF datasource.
+#[derive(Debug)]
 pub struct VCFConfig {
     /// The number of records to read at a time.
     pub batch_size: usize,

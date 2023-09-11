@@ -18,22 +18,16 @@ use arrow::{error::Result as ArrowResult, record_batch::RecordBatch};
 
 use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 
-trait VCFRecordIterator: Iterator<Item = std::io::Result<noodles::vcf::Record>> + Send {
-    fn header(&self) -> &noodles::vcf::Header;
-}
-
 pub struct UnIndexedRecordIterator<R> {
-    reader: noodles::vcf::Reader<R>,
+    reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>,
 }
 
 impl<R> UnIndexedRecordIterator<R>
 where
     R: std::io::BufRead,
 {
-    pub fn new(reader: R) -> Self {
-        Self {
-            reader: noodles::vcf::Reader::new(reader),
-        }
+    pub fn new(reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>) -> Self {
+        Self { reader }
     }
 
     fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {

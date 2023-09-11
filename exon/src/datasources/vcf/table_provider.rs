@@ -220,11 +220,13 @@ impl ListingVCFTable {
                     for byte_range in byte_ranges {
                         let mut new_partition_file = partition_file.clone();
 
-                        new_partition_file.range = Some(FileRange {
-                            start: byte_range.start().compressed() as i64,
-                            end: byte_range.end().compressed() as i64,
-                        });
+                        let start = u64::from(byte_range.start());
+                        let end = u64::from(byte_range.end());
 
+                        new_partition_file.range = Some(FileRange {
+                            start: start as i64,
+                            end: end as i64,
+                        });
                         new_partition_files.push(new_partition_file);
                     }
                 }

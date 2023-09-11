@@ -23,7 +23,10 @@ use datafusion::{
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::{bgzf, core::Region};
+use noodles::{
+    bgzf::{self, VirtualPosition},
+    core::Region,
+};
 use tokio_util::io::StreamReader;
 
 use super::{
@@ -33,6 +36,7 @@ use super::{
 };
 
 /// A file opener for VCF files.
+#[derive(Debug)]
 pub struct VCFOpener {
     /// The configuration for the opener.
     config: Arc<VCFConfig>,
@@ -81,41 +85,53 @@ impl FileOpener for VCFOpener {
 
                 let vp = vcf_reader.virtual_position();
 
-                // let byte_region = get_byte_region(&config.object_store, file_meta).await?;
                 let bgzf_reader = match file_meta.range {
-                    Some(FileRange { start: _, end }) if end == 0 => {
-                        let bytes = config
-                            .object_store
-                            .get(file_meta.location())
-                            .await?
-                            .bytes()
-                            .await?;
-
-                        let cursor = std::io::Cursor::new(bytes);
-                        let mut bgzf_reader = bgzf::Reader::new(cursor);
-
-                        bgzf_reader.seek(vp)?;
-
-                        bgzf_reader
-                    }
                     Some(FileRange { start, end }) => {
-                        let bytes = config
-                            .object_store
-                            .get_range(
-                                file_meta.location(),
-                                std::ops::Range {
-                                    start: start as usize,
-                                    end: end as usize,
-                                },
-                            )
-                            .await?;
+                        let vp_start = VirtualPosition::from(start as u64);
+                        let vp_end = VirtualPosition::from(end as u64);
 
-                        let cursor = std::io::Cursor::new(bytes);
-                        let mut bgzf_reader = bgzf::Reader::new(cursor);
+                        if vp_end.compressed() == 0 {
+                            let bytes = config
+                                .object_store
+                                .get(file_meta.location())
+                                .await?
+                                .bytes()
+                                .await?;
 
-                        bgzf_reader.seek(vp)?;
+                            let cursor = std::io::Cursor::new(bytes);
+                            let mut bgzf_reader = bgzf::Reader::new(cursor);
 
-                        bgzf_reader
+                            bgzf_reader.seek(vp)?;
+
+                            bgzf_reader
+                        } else {
+                            let bytes = config
+                                .object_store
+                                .get_range(
+                                    file_meta.location(),
+                                    std::ops::Range {
+                                        start: vp_start.compressed() as usize,
+                                        end: vp_end.compressed() as usize,
+                                    },
+                                )
+                                .await?;
+
+                            let cursor = std::io::Cursor::new(bytes);
+                            let mut bgzf_reader = bgzf::Reader::new(cursor);
+
+                            if vp_start.compressed() == 0 {
+                                bgzf_reader.seek(vp)?;
+                            }
+
+                            if vp_start.uncompressed() > 0 {
+                                let marginal_start_vp =
+                                    VirtualPosition::try_from((0, vp_start.uncompressed()))
+                                        .unwrap();
+                                bgzf_reader.seek(marginal_start_vp)?;
+                            }
+
+                            bgzf_reader
+                        }
                     }
                     None => {
                         let bytes = config
@@ -134,7 +150,10 @@ impl FileOpener for VCFOpener {
                     }
                 };
 
-                let record_iterator = UnIndexedRecordIterator::new(bgzf_reader);
+                let vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
+
+                let record_iterator = UnIndexedRecordIterator::new(vcf_reader);
+
                 let boxed_iter = Box::new(record_iterator);
 
                 let batch_reader = BatchReader::new(boxed_iter, config, Arc::new(header));
