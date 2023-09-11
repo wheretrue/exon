@@ -28,9 +28,7 @@ use noodles::{bgzf, core::Region, csi::index::reference_sequence::bin::Chunk, vc
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
-use crate::physical_plan::{
-    chrom_physical_expr::ChromPhysicalExpr, region_physical_expr::RegionPhysicalExpr,
-};
+use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
 
 use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
 
@@ -159,17 +157,6 @@ impl FileFormat for VCFFormat {
 
                 return Ok(Arc::new(scan));
             }
-
-            // Downcast the filters to a Chrom filter if possible.
-            if let Some(chrom_filter) = filters.as_any().downcast_ref::<ChromPhysicalExpr>() {
-                let chrom = chrom_filter.chrom();
-                let region = chrom.parse().map_err(|e| {
-                    DataFusionError::Execution(format!("Invalid chrom: {:?}: {}", chrom, e))
-                })?;
-                let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
-
-                return Ok(Arc::new(scan));
-            }
         }
 
         let scan = VCFScan::new(conf, self.file_compression_type)?;
@@ -223,7 +210,11 @@ fn resolve_region(index: &noodles::csi::Index, region: &Region) -> std::io::Resu
 mod tests {
     use std::sync::Arc;
 
-    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
+    use crate::{
+        datasources::vcf::{file_format::get_byte_range_for_file, VCFScan},
+        tests::{test_listing_table_dir, test_path},
+        ExonSessionExt,
+    };
 
     use super::VCFFormat;
     use arrow::datatypes::DataType;
@@ -232,6 +223,28 @@ mod tests {
         physical_plan::filter::FilterExec,
         prelude::SessionContext,
     };
+    use noodles::bgzf::VirtualPosition;
+    use object_store::{local::LocalFileSystem, ObjectStore};
+
+    #[tokio::test]
+    async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
+        let path = test_listing_table_dir("bigger-index", "test.vcf.gz");
+        let object_store = Arc::new(LocalFileSystem::new());
+
+        let object_meta = object_store.head(&path).await?;
+
+        let region = "chr1:1-3388930".parse()?;
+
+        let chunks = get_byte_range_for_file(object_store, &object_meta, &region).await?;
+
+        assert_eq!(chunks.len(), 1);
+
+        let chunk = chunks.first().unwrap();
+        assert_eq!(chunk.start(), VirtualPosition::from(621346816));
+        assert_eq!(chunk.end(), VirtualPosition::from(3014113427456));
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
