@@ -223,16 +223,10 @@ fn resolve_region(index: &noodles::csi::Index, region: &Region) -> std::io::Resu
 mod tests {
     use std::sync::Arc;
 
-    use crate::{
-        datasources::vcf::{
-            table_provider::{ListingVCFTable, VCFListingTableConfig},
-            ListingVCFTableOptions, VCFScan,
-        },
-        tests::test_path,
-        ExonSessionExt,
-    };
+    use crate::{datasources::vcf::VCFScan, tests::test_path, ExonSessionExt};
 
     use super::VCFFormat;
+    use arrow::datatypes::DataType;
     use datafusion::{
         common::FileCompressionType,
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
@@ -241,24 +235,12 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_region_pushdown() {
+    async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
-        let session_state = ctx.state();
         let table_path = test_path("vcf", "index.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
 
-        let table_path = ListingTableUrl::parse(table_path.to_str().unwrap()).unwrap();
-
-        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
-
-        let resolved_schema = vcf_table_options
-            .infer_schema(&session_state, &table_path)
-            .await
-            .unwrap();
-
-        let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
-
-        let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
-        ctx.register_table("vcf_file", provider).unwrap();
+        ctx.register_vcf_file("vcf_file", table_path).await?;
 
         let sql_statements = vec![
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
@@ -267,13 +249,9 @@ mod tests {
         ];
 
         for sql_statement in sql_statements {
-            let df = ctx.sql(sql_statement).await.unwrap();
+            let df = ctx.sql(sql_statement).await?;
 
-            let physical_plan = ctx
-                .state()
-                .create_physical_plan(df.logical_plan())
-                .await
-                .unwrap();
+            let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
                 // Check the input is a VCF scan...
@@ -288,6 +266,8 @@ mod tests {
                 }
             }
         }
+
+        Ok(())
     }
 
     #[tokio::test]
@@ -314,8 +294,8 @@ mod tests {
         // Check that the last two columns are strings.
         let schema = df.schema();
 
-        assert_eq!(schema.field(7).data_type().to_string(), "Utf8");
-        assert_eq!(schema.field(8).data_type().to_string(), "Utf8");
+        assert_eq!(schema.field(7).data_type(), &DataType::Utf8);
+        assert_eq!(schema.field(8).data_type(), &DataType::Utf8);
     }
 
     #[tokio::test]
