@@ -32,6 +32,9 @@ pub struct FASTAConfig {
 
     /// Any projections to apply to the resulting batches.
     pub projection: Option<Vec<usize>>,
+
+    /// How many bytes to pre-allocate for the sequence.
+    pub fasta_reader_sequence_capacity: usize,
 }
 
 impl FASTAConfig {
@@ -42,6 +45,7 @@ impl FASTAConfig {
             file_schema,
             batch_size: DEFAULT_BATCH_SIZE,
             projection: None,
+            fasta_reader_sequence_capacity: 384,
         }
     }
 
@@ -56,6 +60,15 @@ impl FASTAConfig {
         self.projection = Some(projection);
         self
     }
+
+    /// Create a new FASTA configuration with a given sequence capacity.
+    pub fn with_fasta_reader_sequence_capacity(
+        mut self,
+        fasta_reader_sequence_capacity: usize,
+    ) -> Self {
+        self.fasta_reader_sequence_capacity = fasta_reader_sequence_capacity;
+        self
+    }
 }
 
 impl Default for FASTAConfig {
@@ -65,6 +78,7 @@ impl Default for FASTAConfig {
             file_schema: Arc::new(schema()),
             batch_size: DEFAULT_BATCH_SIZE,
             projection: None,
+            fasta_reader_sequence_capacity: 384,
         }
     }
 }

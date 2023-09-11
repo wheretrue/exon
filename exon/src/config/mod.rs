@@ -43,11 +43,9 @@ pub fn new_exon_config() -> SessionConfig {
 extensions_options! {
     /// My own config options.
     pub struct ExonConfigExtension {
-        /// Should "foo" be replaced by "bar"?
         pub parse_vcf_info: bool, default = true
-
-        /// Should "foo" be replaced by "bar"?
         pub parse_vcf_format: bool, default = true
+        pub fasta_reader_sequence_capacity: usize, default = 384
     }
 }
 

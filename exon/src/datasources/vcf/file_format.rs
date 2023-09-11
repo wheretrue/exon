@@ -178,6 +178,7 @@ impl FileFormat for VCFFormat {
     }
 }
 
+/// For a given file, get the list of byte ranges that contain the data for the given region.
 pub async fn get_byte_range_for_file(
     object_store: Arc<dyn ObjectStore>,
     object_meta: &ObjectMeta,
@@ -197,6 +198,7 @@ pub async fn get_byte_range_for_file(
     Ok(chunks)
 }
 
+/// Given a region, use its name to resolve the reference sequence index.
 fn resolve_region(index: &noodles::csi::Index, region: &Region) -> std::io::Result<usize> {
     let header = index.header().ok_or_else(|| {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")

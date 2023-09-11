@@ -79,11 +79,25 @@ impl FileFormat for FASTAFormat {
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTAScan::new(conf.clone(), self.file_compression_type);
+        // Use the state to get the fasta_reader_sequence_capacity option
+        let exon_settings = state
+            .config()
+            .get_extension::<crate::config::ExonConfigExtension>();
+
+        let fasta_reader_sequence_capacity = exon_settings
+            .as_ref()
+            .map(|s| s.fasta_reader_sequence_capacity)
+            .unwrap_or(384);
+
+        let scan = FASTAScan::new(
+            conf.clone(),
+            self.file_compression_type,
+            fasta_reader_sequence_capacity,
+        );
 
         Ok(Arc::new(scan))
     }
