@@ -59,7 +59,7 @@ where
         })?;
 
         // Allow for options?
-        let mut sequence = Vec::with_capacity(self.config.fasta_reader_sequence_capacity);
+        let mut sequence = Vec::with_capacity(self.config.fasta_sequence_buffer_capacity);
         if self.reader.read_sequence(&mut sequence).await? == 0 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

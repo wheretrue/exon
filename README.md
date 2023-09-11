@@ -68,8 +68,8 @@ Exon using the following settings:
 
 | Setting | Default | Description |
 | ------- | ------- | ----------- |
-| `exon.parse_vcf_info` | `true` | Parse VCF INFO fields. If False, INFO fields will be returned as a single string. |
-| `exon.parse_vcf_format` | `true` | Parse VCF FORMAT fields. If False, FORMAT fields will be returned as a single string. |
+| `exon.vcf_parse_info` | `true` | Parse VCF INFO fields. If False, INFO fields will be returned as a single string. |
+| `exon.vcf_parse_format` | `true` | Parse VCF FORMAT fields. If False, FORMAT fields will be returned as a single string. |
 
 You can update the settings by running:
 
@@ -80,7 +80,7 @@ SET <setting> = <value>;
 For example, to disable parsing of VCF INFO fields:
 
 ```sql
-SET exon.parse_vcf_info = false;
+SET exon.vcf_parse_info = false;
 ```
 
 ## Benchmarks
