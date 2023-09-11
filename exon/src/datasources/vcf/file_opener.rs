@@ -85,53 +85,53 @@ impl FileOpener for VCFOpener {
 
                 let vp = vcf_reader.virtual_position();
 
-                let r = file_meta.range.clone().unwrap();
-
-                // let byte_region = get_byte_region(&config.object_store, file_meta).await?;
                 let bgzf_reader = match file_meta.range {
-                    Some(FileRange { start: _, end }) if end == 0 => {
-                        let bytes = config
-                            .object_store
-                            .get(file_meta.location())
-                            .await?
-                            .bytes()
-                            .await?;
-
-                        let cursor = std::io::Cursor::new(bytes);
-                        let mut bgzf_reader = bgzf::Reader::new(cursor);
-
-                        bgzf_reader.seek(vp)?;
-
-                        bgzf_reader
-                    }
                     Some(FileRange { start, end }) => {
-                        let bytes = config
-                            .object_store
-                            .get_range(
-                                file_meta.location(),
-                                std::ops::Range {
-                                    start: start as usize,
-                                    end: end as usize,
-                                },
-                            )
-                            .await?;
+                        let vp_start = VirtualPosition::from(start as u64);
+                        let vp_end = VirtualPosition::from(end as u64);
 
-                        eprintln!(
-                            "total bytes for file: {:?} {:?}",
-                            bytes.len(),
-                            file_meta.location()
-                        );
-                        eprintln!("range and size: {:?} {:?}", r, bytes.len());
+                        if vp_end.compressed() == 0 {
+                            let bytes = config
+                                .object_store
+                                .get(file_meta.location())
+                                .await?
+                                .bytes()
+                                .await?;
 
-                        let cursor = std::io::Cursor::new(bytes);
-                        let mut bgzf_reader = bgzf::Reader::new(cursor);
+                            let cursor = std::io::Cursor::new(bytes);
+                            let mut bgzf_reader = bgzf::Reader::new(cursor);
 
-                        if start == 0 {
-                            eprintln!("seeking to vp to account for header");
                             bgzf_reader.seek(vp)?;
-                        }
 
-                        bgzf_reader
+                            bgzf_reader
+                        } else {
+                            let bytes = config
+                                .object_store
+                                .get_range(
+                                    file_meta.location(),
+                                    std::ops::Range {
+                                        start: vp_start.compressed() as usize,
+                                        end: vp_end.compressed() as usize,
+                                    },
+                                )
+                                .await?;
+
+                            let cursor = std::io::Cursor::new(bytes);
+                            let mut bgzf_reader = bgzf::Reader::new(cursor);
+
+                            if vp_start.compressed() == 0 {
+                                bgzf_reader.seek(vp)?;
+                            }
+
+                            if vp_start.uncompressed() > 0 {
+                                let marginal_start_vp =
+                                    VirtualPosition::try_from((0, vp_start.uncompressed()))
+                                        .unwrap();
+                                bgzf_reader.seek(marginal_start_vp)?;
+                            }
+
+                            bgzf_reader
+                        }
                     }
                     None => {
                         let bytes = config
@@ -150,13 +150,8 @@ impl FileOpener for VCFOpener {
                     }
                 };
 
-                let mut vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
+                let vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
 
-                let new_vp = VirtualPosition::try_from((0, 49775)).unwrap();
-                let new_pos = vcf_reader.seek(new_vp)?;
-                eprintln!("new pos: {:?}", new_pos);
-
-                // vcf_reader.virtual_position()
                 let record_iterator = UnIndexedRecordIterator::new(vcf_reader);
 
                 let boxed_iter = Box::new(record_iterator);

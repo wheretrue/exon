@@ -20,8 +20,6 @@ use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 
 pub struct UnIndexedRecordIterator<R> {
     reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>,
-
-    bytes_read: usize,
 }
 
 impl<R> UnIndexedRecordIterator<R>
@@ -29,10 +27,7 @@ where
     R: std::io::BufRead,
 {
     pub fn new(reader: noodles::vcf::Reader<noodles::bgzf::Reader<R>>) -> Self {
-        Self {
-            reader,
-            bytes_read: 0,
-        }
+        Self { reader }
     }
 }
 
@@ -45,20 +40,11 @@ where
 
         let record = match self.reader.read_lazy_record(&mut record) {
             Ok(0) => None,
-            Ok(bytes_read) => {
-                self.bytes_read += bytes_read;
-                eprintln!("bytes_read: {}", bytes_read);
-
-                Some(record)
-            }
+            Ok(_) => Some(record),
             Err(e) => return Err(e),
         };
 
         Ok(record)
-    }
-
-    fn bytes_read(&self) -> usize {
-        self.bytes_read
     }
 }
 
@@ -108,16 +94,10 @@ impl BatchReader {
             self.header.clone(),
         )?;
 
-        for i in 0..self.config.batch_size {
+        for _ in 0..self.config.batch_size {
             let record = self.record_iterator.next().transpose()?;
             match record {
-                Some(record) => match record_batch.append(&record) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        eprintln!("Error appending record: {}", e);
-                        continue;
-                    }
-                },
+                Some(record) => record_batch.append(&record)?,
                 None => break,
             }
         }

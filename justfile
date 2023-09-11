@@ -12,19 +12,19 @@ GIT_SHA := `git describe --always --abbrev=7 --dirty`
 
 run-benchmarks:
 	# Build the benchmark crate.
-	cargo build --profile profiling --package exon-benchmarks \
+	cargo build --profile profiling --package exon-benchmark
 
 	# Run vcf benchmarks.
 	hyperfine --warmup 5 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
 		-n bcftools \
-		'bcftools view -r chr1:1-1000000 exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz chr1:1-1000000 | wc -l' \
+		"bcftools query -r chr1:1-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
 		-n exon-vcf-query \
-		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-1000000'
+		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-10000000'
 
 	# Run vcf s3 benchmarks.
-	hyperfine --warmup 5 --runs 5 --export-json exon-benchmarks/results/vcf-s3-query_{{GIT_SHA}}.json \
+	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/vcf-s3-query_{{GIT_SHA}}.json \
 		-n bcftools \
-		'bcftools view -r chr1:1-1000000 s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:1-10000 | wc -l' \
+		"bcftools query -r 17:1-1000000 -f '%CHROM\n' s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
 		-n exon-vcf-query \
 		'./target/profiling/exon-benchmarks vcf-query -p s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:1-1000000'
 
