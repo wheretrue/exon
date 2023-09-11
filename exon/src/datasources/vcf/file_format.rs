@@ -28,9 +28,7 @@ use noodles::{bgzf, core::Region, csi::index::reference_sequence::bin::Chunk, vc
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
-use crate::physical_plan::{
-    chrom_physical_expr::ChromPhysicalExpr, region_physical_expr::RegionPhysicalExpr,
-};
+use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
 
 use super::{scanner::VCFScan, schema_builder::VCFSchemaBuilder};
 
@@ -159,17 +157,6 @@ impl FileFormat for VCFFormat {
 
                 return Ok(Arc::new(scan));
             }
-
-            // Downcast the filters to a Chrom filter if possible.
-            if let Some(chrom_filter) = filters.as_any().downcast_ref::<ChromPhysicalExpr>() {
-                let chrom = chrom_filter.chrom();
-                let region = chrom.parse().map_err(|e| {
-                    DataFusionError::Execution(format!("Invalid chrom: {:?}: {}", chrom, e))
-                })?;
-                let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
-
-                return Ok(Arc::new(scan));
-            }
         }
 
         let scan = VCFScan::new(conf, self.file_compression_type)?;
@@ -224,56 +211,59 @@ mod tests {
     use std::sync::Arc;
 
     use crate::{
-        datasources::vcf::{
-            table_provider::{ListingVCFTable, VCFListingTableConfig},
-            ListingVCFTableOptions, VCFScan,
-        },
-        tests::test_path,
+        datasources::vcf::{file_format::get_byte_range_for_file, VCFScan},
+        tests::{test_listing_table_dir, test_path},
         ExonSessionExt,
     };
 
     use super::VCFFormat;
+    use arrow::datatypes::DataType;
     use datafusion::{
-        common::FileCompressionType,
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         physical_plan::filter::FilterExec,
         prelude::SessionContext,
     };
+    use noodles::bgzf::VirtualPosition;
+    use object_store::{local::LocalFileSystem, ObjectStore};
 
     #[tokio::test]
-    async fn test_region_pushdown() {
+    async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
+        let path = test_listing_table_dir("bigger-index", "test.vcf.gz");
+        let object_store = Arc::new(LocalFileSystem::new());
+
+        let object_meta = object_store.head(&path).await?;
+
+        let region = "chr1:1-3388930".parse()?;
+
+        let chunks = get_byte_range_for_file(object_store, &object_meta, &region).await?;
+
+        assert_eq!(chunks.len(), 1);
+
+        let chunk = chunks[0];
+        assert_eq!(chunk.start(), VirtualPosition::from(621346816));
+        assert_eq!(chunk.end(), VirtualPosition::from(3014113427456));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
-        let session_state = ctx.state();
         let table_path = test_path("vcf", "index.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
 
-        let table_path = ListingTableUrl::parse(table_path.to_str().unwrap()).unwrap();
-
-        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
-
-        let resolved_schema = vcf_table_options
-            .infer_schema(&session_state, &table_path)
-            .await
-            .unwrap();
-
-        let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
-
-        let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema).unwrap());
-        ctx.register_table("vcf_file", provider).unwrap();
+        ctx.register_vcf_file("vcf_file", table_path).await?;
 
         let sql_statements = vec![
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
-            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 200000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 2000000;",
             "SELECT * FROM vcf_file WHERE chrom = '1'",
         ];
 
         for sql_statement in sql_statements {
-            let df = ctx.sql(sql_statement).await.unwrap();
+            let df = ctx.sql(sql_statement).await?;
 
-            let physical_plan = ctx
-                .state()
-                .create_physical_plan(df.logical_plan())
-                .await
-                .unwrap();
+            let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
                 // Check the input is a VCF scan...
@@ -288,47 +278,51 @@ mod tests {
                 }
             }
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_vcf_parsing_string() {
+    async fn test_vcf_parsing_string() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
 
         let table_path = test_path("vcf", "index.vcf");
 
         let sql = "SET exon.vcf_parse_info = true;";
-        ctx.sql(sql).await.unwrap();
+        ctx.sql(sql).await?;
 
         let sql = "SET exon.vcf_parse_format = true;";
-        ctx.sql(sql).await.unwrap();
+        ctx.sql(sql).await?;
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
             table_path.to_str().unwrap(),
         );
-        ctx.sql(&sql).await.unwrap();
+        ctx.sql(&sql).await?;
 
         let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
-        let df = ctx.sql(sql).await.unwrap();
+        let df = ctx.sql(sql).await?;
 
         // Check that the last two columns are strings.
         let schema = df.schema();
 
-        assert_eq!(schema.field(7).data_type().to_string(), "Utf8");
-        assert_eq!(schema.field(8).data_type().to_string(), "Utf8");
+        assert_eq!(schema.field(7).data_type(), &DataType::Utf8);
+        assert_eq!(schema.field(8).data_type(), &DataType::Utf8);
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_uncompressed_read() {
+    async fn test_uncompressed_read() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
         let session_state = ctx.state();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
+        let table_path = ListingTableUrl::parse("test-data")?;
 
         let vcf_format = Arc::new(VCFFormat::default());
         let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf");
 
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
 
         assert_eq!(resolved_schema.fields().len(), 9);
         assert_eq!(resolved_schema.field(0).name(), "chrom");
@@ -337,7 +331,7 @@ mod tests {
             .with_listing_options(lo)
             .with_schema(resolved_schema);
 
-        let provider = Arc::new(ListingTable::try_new(config).unwrap());
+        let provider = Arc::new(ListingTable::try_new(config)?);
 
         ctx.register_table("vcf_file", provider).unwrap();
 
@@ -351,42 +345,36 @@ mod tests {
         for batch in bs {
             row_cnt += batch.num_rows();
         }
-        assert_eq!(row_cnt, 621)
+        assert_eq!(row_cnt, 621);
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_compressed_read_with_region() {
+    async fn test_compressed_read_with_region() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
-        let session_state = ctx.state();
+        let table_path = test_path("bigger-index", "test.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
-
-        let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
-        let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
-
-        assert_eq!(resolved_schema.fields().len(), 9);
-        assert_eq!(resolved_schema.field(0).name(), "chrom");
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        ctx.register_table("vcf_file", provider).unwrap();
+        ctx.register_vcf_file("vcf_file", table_path).await?;
 
         let df = ctx
-            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 1")
-            .await
-            .unwrap();
+            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 'chr1' AND pos BETWEEN 3388920 AND 3388930")
+            .await?;
 
         let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
+        let bs = df.collect().await?;
         for batch in bs {
             row_cnt += batch.num_rows();
+
+            assert_eq!(batch.schema().field(0).name(), "chrom");
+            assert_eq!(batch.schema().field(1).name(), "pos");
+
+            assert_eq!(batch.schema().fields().len(), 2);
         }
 
-        assert_eq!(row_cnt, 191)
+        assert_eq!(row_cnt, 1);
+
+        Ok(())
     }
 }

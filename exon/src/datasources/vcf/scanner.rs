@@ -27,9 +27,10 @@ use datafusion::{
 
 use noodles::core::Region;
 
-// file format moted to physcial plan
-
-use super::{config::VCFConfig, file_opener::VCFOpener};
+use super::{
+    config::VCFConfig,
+    file_opener::{indexed_file_opener::IndexedVCFOpener, VCFOpener},
+};
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for VCF files.
@@ -130,15 +131,20 @@ impl ExecutionPlan for VCFScan {
             config = config.with_projection(projections.clone());
         }
 
-        let mut opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
+        match &self.region_filter {
+            Some(_) => {
+                let opener = IndexedVCFOpener::new(Arc::new(config));
 
-        if let Some(x) = &self.region_filter {
-            opener = opener.with_region(x.clone());
+                let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
+                Ok(Box::pin(stream) as SendableRecordBatchStream)
+            }
+            _ => {
+                let opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
+                let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
+
+                Ok(Box::pin(stream) as SendableRecordBatchStream)
+            }
         }
-
-        let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
-
-        Ok(Box::pin(stream) as SendableRecordBatchStream)
     }
 
     fn statistics(&self) -> Statistics {
