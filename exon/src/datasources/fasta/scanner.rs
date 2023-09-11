@@ -42,11 +42,18 @@ pub struct FASTAScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The fasta reader capacity.
+    fasta_sequence_buffer_capacity: usize,
 }
 
 impl FASTAScan {
     /// Create a new FASTAScan.
-    pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
+    pub fn new(
+        base_config: FileScanConfig,
+        file_compression_type: FileCompressionType,
+        fasta_sequence_buffer_capacity: usize,
+    ) -> Self {
         let projected_schema = match &base_config.projection {
             Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
             None => base_config.file_schema.clone(),
@@ -57,6 +64,7 @@ impl FASTAScan {
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            fasta_sequence_buffer_capacity,
         }
     }
 
@@ -123,7 +131,8 @@ impl ExecutionPlan for FASTAScan {
         let batch_size = context.session_config().batch_size();
 
         let mut config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size);
+            .with_batch_size(batch_size)
+            .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity);
 
         match &self.base_config.projection {
             Some(p) => config = config.with_projection(p.clone()),

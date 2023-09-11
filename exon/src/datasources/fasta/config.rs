@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use object_store::ObjectStore;
 
-use crate::datasources::DEFAULT_BATCH_SIZE;
+use crate::{config::FASTA_READER_SEQUENCE_CAPACITY, datasources::DEFAULT_BATCH_SIZE};
 
 /// Configuration for a FASTA data source.
 pub struct FASTAConfig {
@@ -32,6 +32,9 @@ pub struct FASTAConfig {
 
     /// Any projections to apply to the resulting batches.
     pub projection: Option<Vec<usize>>,
+
+    /// How many bytes to pre-allocate for the sequence.
+    pub fasta_sequence_buffer_capacity: usize,
 }
 
 impl FASTAConfig {
@@ -42,6 +45,7 @@ impl FASTAConfig {
             file_schema,
             batch_size: DEFAULT_BATCH_SIZE,
             projection: None,
+            fasta_sequence_buffer_capacity: FASTA_READER_SEQUENCE_CAPACITY,
         }
     }
 
@@ -56,16 +60,23 @@ impl FASTAConfig {
         self.projection = Some(projection);
         self
     }
+
+    /// Create a new FASTA configuration with a given sequence capacity.
+    pub fn with_fasta_sequence_buffer_capacity(
+        mut self,
+        fasta_sequence_buffer_capacity: usize,
+    ) -> Self {
+        self.fasta_sequence_buffer_capacity = fasta_sequence_buffer_capacity;
+        self
+    }
 }
 
 impl Default for FASTAConfig {
     fn default() -> Self {
-        Self {
-            object_store: Arc::new(object_store::local::LocalFileSystem::new()),
-            file_schema: Arc::new(schema()),
-            batch_size: DEFAULT_BATCH_SIZE,
-            projection: None,
-        }
+        Self::new(
+            Arc::new(object_store::local::LocalFileSystem::new()),
+            Arc::new(schema()),
+        )
     }
 }
 

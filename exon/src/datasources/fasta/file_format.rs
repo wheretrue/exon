@@ -24,6 +24,8 @@ use datafusion::{
 };
 use object_store::{ObjectMeta, ObjectStore};
 
+use crate::config::FASTA_READER_SEQUENCE_CAPACITY;
+
 use super::{config::schema, scanner::FASTAScan};
 
 #[derive(Debug)]
@@ -79,11 +81,25 @@ impl FileFormat for FASTAFormat {
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
+        state: &SessionState,
         conf: FileScanConfig,
         _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTAScan::new(conf.clone(), self.file_compression_type);
+        // Use the state to get the fasta_sequence_buffer_capacity option
+        let exon_settings = state
+            .config()
+            .get_extension::<crate::config::ExonConfigExtension>();
+
+        let fasta_sequence_buffer_capacity = exon_settings
+            .as_ref()
+            .map(|s| s.fasta_sequence_buffer_capacity)
+            .unwrap_or(FASTA_READER_SEQUENCE_CAPACITY);
+
+        let scan = FASTAScan::new(
+            conf.clone(),
+            self.file_compression_type,
+            fasta_sequence_buffer_capacity,
+        );
 
         Ok(Arc::new(scan))
     }

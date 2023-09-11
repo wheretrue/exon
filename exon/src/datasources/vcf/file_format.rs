@@ -90,14 +90,14 @@ impl FileFormat for VCFFormat {
             .config()
             .get_extension::<crate::config::ExonConfigExtension>();
 
-        let parse_vcf_info = exon_settings
+        let vcf_parse_info = exon_settings
             .as_ref()
-            .map(|s| s.parse_vcf_info)
+            .map(|s| s.vcf_parse_info)
             .unwrap_or(false);
 
-        let parse_vcf_format = exon_settings
+        let vcf_parse_format = exon_settings
             .as_ref()
-            .map(|s| s.parse_vcf_format)
+            .map(|s| s.vcf_parse_format)
             .unwrap_or(false);
 
         let mut schema_builder = match self.file_compression_type {
@@ -109,8 +109,8 @@ impl FileFormat for VCFFormat {
 
                 VCFSchemaBuilder::default()
                     .with_header(header)
-                    .with_parse_info(parse_vcf_info)
-                    .with_parse_formats(parse_vcf_format)
+                    .with_parse_info(vcf_parse_info)
+                    .with_parse_formats(vcf_parse_format)
             }
             FileCompressionType::UNCOMPRESSED => {
                 let mut vcf_reader = vcf::AsyncReader::new(stream_reader);
@@ -119,8 +119,8 @@ impl FileFormat for VCFFormat {
 
                 VCFSchemaBuilder::default()
                     .with_header(header)
-                    .with_parse_info(parse_vcf_info)
-                    .with_parse_formats(parse_vcf_format)
+                    .with_parse_info(vcf_parse_info)
+                    .with_parse_formats(vcf_parse_format)
             }
             _ => {
                 return Err(DataFusionError::Execution(
@@ -178,6 +178,7 @@ impl FileFormat for VCFFormat {
     }
 }
 
+/// For a given file, get the list of byte ranges that contain the data for the given region.
 pub async fn get_byte_range_for_file(
     object_store: Arc<dyn ObjectStore>,
     object_meta: &ObjectMeta,
@@ -197,6 +198,7 @@ pub async fn get_byte_range_for_file(
     Ok(chunks)
 }
 
+/// Given a region, use its name to resolve the reference sequence index.
 fn resolve_region(index: &noodles::csi::Index, region: &Region) -> std::io::Result<usize> {
     let header = index.header().ok_or_else(|| {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")
@@ -294,10 +296,10 @@ mod tests {
 
         let table_path = test_path("vcf", "index.vcf");
 
-        let sql = "SET exon.parse_vcf_info = true;";
+        let sql = "SET exon.vcf_parse_info = true;";
         ctx.sql(sql).await.unwrap();
 
-        let sql = "SET exon.parse_vcf_format = true;";
+        let sql = "SET exon.vcf_parse_format = true;";
         ctx.sql(sql).await.unwrap();
 
         let sql = format!(

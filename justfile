@@ -17,9 +17,9 @@ run-benchmarks:
 	# Run vcf benchmarks.
 	hyperfine --warmup 5 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
 		-n bcftools \
-		"bcftools query -r chr1:1-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
+		"bcftools query -r chr1:10000-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
 		-n exon-vcf-query \
-		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:1-10000000'
+		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:10000-10000000'
 
 	# Run vcf s3 benchmarks.
 	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/vcf-s3-query_{{GIT_SHA}}.json \

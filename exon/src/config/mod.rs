@@ -19,6 +19,7 @@ use datafusion::{
 };
 
 pub const BATCH_SIZE: usize = 8 * 1024;
+pub const FASTA_READER_SEQUENCE_CAPACITY: usize = 384;
 
 /// Create a new [`SessionConfig`] for the exon.
 pub fn new_exon_config() -> SessionConfig {
@@ -43,14 +44,82 @@ pub fn new_exon_config() -> SessionConfig {
 extensions_options! {
     /// My own config options.
     pub struct ExonConfigExtension {
-        /// Should "foo" be replaced by "bar"?
-        pub parse_vcf_info: bool, default = true
-
-        /// Should "foo" be replaced by "bar"?
-        pub parse_vcf_format: bool, default = true
+        pub vcf_parse_info: bool, default = true
+        pub vcf_parse_format: bool, default = true
+        pub fasta_sequence_buffer_capacity: usize, default = FASTA_READER_SEQUENCE_CAPACITY
     }
 }
 
 impl ConfigExtension for ExonConfigExtension {
     const PREFIX: &'static str = "exon";
+}
+
+#[cfg(test)]
+mod tests {
+    use datafusion::prelude::SessionContext;
+
+    use crate::{config::ExonConfigExtension, new_exon_config, ExonSessionExt};
+
+    #[tokio::test]
+    async fn test_config_set_with_defaults() {
+        let config = new_exon_config();
+
+        let exon_config = config
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .unwrap();
+
+        assert!(exon_config.vcf_parse_info);
+        assert!(exon_config.vcf_parse_format);
+        assert_eq!(
+            exon_config.fasta_sequence_buffer_capacity,
+            super::FASTA_READER_SEQUENCE_CAPACITY
+        );
+    }
+
+    #[tokio::test]
+    async fn test_config_after_updates() {
+        let mut config = new_exon_config();
+
+        let options = config.options_mut();
+        options.set("exon.vcf_parse_info", "false").unwrap();
+        options.set("exon.vcf_parse_format", "false").unwrap();
+        options
+            .set("exon.fasta_sequence_buffer_capacity", "1024")
+            .unwrap();
+
+        let exon_config = config
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .unwrap();
+
+        assert!(!exon_config.vcf_parse_info);
+        assert!(!exon_config.vcf_parse_format);
+        assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
+    }
+
+    #[tokio::test]
+    async fn test_setting_config_through_sql() {
+        let ctx = SessionContext::new_exon();
+
+        ctx.sql("SET exon.vcf_parse_info = false").await.unwrap();
+        ctx.sql("SET exon.vcf_parse_format = false").await.unwrap();
+        ctx.sql("SET exon.fasta_sequence_buffer_capacity = 1024")
+            .await
+            .unwrap();
+
+        let state = ctx.state();
+        let exon_config = state
+            .config()
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .unwrap();
+
+        assert!(!exon_config.vcf_parse_info);
+        assert!(!exon_config.vcf_parse_format);
+        assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
+    }
 }
