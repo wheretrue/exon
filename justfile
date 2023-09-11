@@ -12,7 +12,7 @@ GIT_SHA := `git describe --always --abbrev=7 --dirty`
 
 run-benchmarks:
 	# Build the benchmark crate.
-	cargo build --profile profiling --package exon-benchmark
+	cargo build --profile profiling --package exon-benchmarks \
 
 	# Run vcf benchmarks.
 	hyperfine --warmup 5 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \

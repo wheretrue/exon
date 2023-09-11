@@ -193,18 +193,6 @@ pub async fn get_byte_range_for_file(
 
     let id = resolve_region(&index, region)?;
     let chunks = index.query(id, region.interval())?;
-    chunks.iter().for_each(|c| {
-        eprintln!(
-            "chunk: {:?} {:?}",
-            c.start().compressed(),
-            c.end().compressed()
-        );
-        eprintln!(
-            "un comp chunk: {:?} {:?}",
-            c.start().uncompressed(),
-            c.end().uncompressed()
-        );
-    });
 
     Ok(chunks)
 }
