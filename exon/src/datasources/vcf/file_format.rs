@@ -228,7 +228,6 @@ mod tests {
     use super::VCFFormat;
     use arrow::datatypes::DataType;
     use datafusion::{
-        common::FileCompressionType,
         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
         physical_plan::filter::FilterExec,
         prelude::SessionContext,
@@ -244,7 +243,7 @@ mod tests {
 
         let sql_statements = vec![
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
-            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 200000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 2000000;",
             "SELECT * FROM vcf_file WHERE chrom = '1'",
         ];
 
@@ -337,27 +336,13 @@ mod tests {
     #[tokio::test]
     async fn test_compressed_read_with_region() {
         let ctx = SessionContext::new_exon();
-        let session_state = ctx.state();
+        let table_path = test_path("bigger-index", "test.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
-
-        let vcf_format = Arc::new(VCFFormat::new(FileCompressionType::GZIP));
-        let lo = ListingOptions::new(vcf_format.clone()).with_file_extension("vcf.gz");
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
-
-        assert_eq!(resolved_schema.fields().len(), 9);
-        assert_eq!(resolved_schema.field(0).name(), "chrom");
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        ctx.register_table("vcf_file", provider).unwrap();
+        ctx.register_vcf_file("vcf_file", table_path).await.unwrap();
 
         let df = ctx
-            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 1")
+            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 'chr1' AND pos BETWEEN 3388920 AND 3388930")
             .await
             .unwrap();
 
@@ -365,8 +350,13 @@ mod tests {
         let bs = df.collect().await.unwrap();
         for batch in bs {
             row_cnt += batch.num_rows();
+
+            assert_eq!(batch.schema().field(0).name(), "chrom");
+            assert_eq!(batch.schema().field(1).name(), "pos");
+
+            assert_eq!(batch.schema().fields().len(), 2);
         }
 
-        assert_eq!(row_cnt, 191)
+        assert_eq!(row_cnt, 1)
     }
 }
