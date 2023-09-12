@@ -1,9 +1,12 @@
 [package]
+description = "Executable benchmarks for exon"
 edition = "2021"
+homepage = {workspace = true}
+keywords = ["exon", "bioinformatics", "rust"]
+license = {workspace = true}
 name = "exon-benchmarks"
-version = "0.1.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+readme = "README.md"
+version = "0.2.7-rc.1"
 
 [dependencies]
 clap = {version = "4.4.2", features = ["derive"]}
