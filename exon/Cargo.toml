@@ -6,7 +6,7 @@ keywords = ["biology", "science", "arrow"]
 license = {workspace = true}
 name = "exon"
 readme = {workspace = true}
-version = "0.2.7-rc.2"
+version = "0.2.7-rc.3"
 
 [dependencies]
 arrow = {workspace = true}
