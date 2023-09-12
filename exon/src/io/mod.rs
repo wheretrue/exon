@@ -16,8 +16,6 @@
 
 // Code is modified from arrow and lance projects that are Apache 2.0 licensed.
 
-pub mod exon_object_store;
-
 use std::time::SystemTime;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 

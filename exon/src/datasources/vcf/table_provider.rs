@@ -27,7 +27,6 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::ExonFileType,
-    io::exon_object_store,
     physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_region_with_interval},
     physical_plan::{
         chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr,
@@ -484,7 +483,7 @@ impl TableProvider for ListingVCFTable {
             let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
             let partitioned_file_lists = vec![
-                exon_object_store::list_files_for_scan(
+                crate::physical_plan::object_store::list_files_for_scan(
                     object_store,
                     self.table_paths.clone(),
                     &self.options.file_extension,

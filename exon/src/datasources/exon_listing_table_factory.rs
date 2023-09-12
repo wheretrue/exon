@@ -30,21 +30,27 @@ use super::{
     bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
     fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
-    genbank::table_provider::{
-        ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
-    },
     gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
     gtf::table_provider::{ListingGTFTable, ListingGTFTableConfig, ListingGTFTableOptions},
     hmmdomtab::table_provider::{
         ListingHMMDomTabTable, ListingHMMDomTabTableConfig, ListingHMMDomTabTableOptions,
     },
-    mzml::table_provider::{ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions},
     sam::table_provider::{ListingSAMTable, ListingSAMTableConfig, ListingSAMTableOptions},
     vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
 };
 
 #[cfg(feature = "fcs")]
 use super::fcs::table_provider::{ListingFCSTable, ListingFCSTableConfig, ListingFCSTableOptions};
+
+#[cfg(feature = "mzml")]
+use super::mzml::table_provider::{
+    ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions,
+};
+
+#[cfg(feature = "genbank")]
+use super::genbank::table_provider::{
+    ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
+};
 
 /// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
 #[derive(Debug, Clone, Default)]

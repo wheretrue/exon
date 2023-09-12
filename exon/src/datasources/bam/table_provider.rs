@@ -16,8 +16,6 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::io::exon_object_store;
-
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
 pub struct ListingBAMTableConfig {
@@ -154,7 +152,7 @@ impl TableProvider for ListingBAMTable {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let partitioned_file_lists = vec![
-            exon_object_store::list_files_for_scan(
+            crate::physical_plan::object_store::list_files_for_scan(
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,

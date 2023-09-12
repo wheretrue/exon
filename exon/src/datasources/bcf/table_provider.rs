@@ -20,10 +20,7 @@ use noodles::{bcf, core::Region};
 use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
-use crate::{
-    datasources::{vcf::VCFSchemaBuilder, ExonFileType},
-    io::exon_object_store,
-};
+use crate::datasources::{vcf::VCFSchemaBuilder, ExonFileType};
 
 use super::BCFScan;
 
@@ -196,7 +193,7 @@ impl TableProvider for ListingBCFTable {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let partitioned_file_lists = vec![
-            exon_object_store::list_files_for_scan(
+            crate::physical_plan::object_store::list_files_for_scan(
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,

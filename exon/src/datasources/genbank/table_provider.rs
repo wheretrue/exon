@@ -16,7 +16,7 @@ use datafusion::{
     prelude::Expr,
 };
 
-use crate::{datasources::ExonFileType, io::exon_object_store};
+use crate::datasources::ExonFileType;
 
 use super::GenbankScan;
 
@@ -187,7 +187,7 @@ impl TableProvider for ListingGenbankTable {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let partitioned_file_lists = vec![
-            exon_object_store::list_files_for_scan(
+            crate::physical_plan::object_store::list_files_for_scan(
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,
