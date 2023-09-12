@@ -1,6 +1,6 @@
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
@@ -18,7 +18,34 @@ use datafusion::{
 
 use crate::{datasources::ExonFileType, io::exon_object_store};
 
-use super::{file_format::schema, GTFScan};
+use super::GTFScan;
+
+pub fn schema() -> SchemaRef {
+    let attribute_key_field = Field::new("keys", DataType::Utf8, false);
+    let attribute_value_field = Field::new("values", DataType::Utf8, true);
+
+    let inner = Schema::new(vec![
+        // https://useast.ensembl.org/info/website/upload/gff.html
+        Field::new("seqname", DataType::Utf8, false),
+        Field::new("source", DataType::Utf8, true),
+        Field::new("type", DataType::Utf8, false),
+        Field::new("start", DataType::Int64, false),
+        Field::new("end", DataType::Int64, false),
+        Field::new("score", DataType::Float32, true),
+        Field::new("strand", DataType::Utf8, false),
+        Field::new("frame", DataType::Utf8, true),
+        Field::new_map(
+            "attributes",
+            "entries",
+            attribute_key_field,
+            attribute_value_field,
+            false,
+            true,
+        ),
+    ]);
+
+    inner.into()
+}
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table

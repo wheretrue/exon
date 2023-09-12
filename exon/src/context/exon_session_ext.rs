@@ -182,6 +182,12 @@ pub trait ExonSessionExt {
             .await;
     }
 
+    /// Infer the file type and compression, then read the file.
+    async fn read_inferred_exon_table(
+        &self,
+        table_path: &str,
+    ) -> Result<DataFrame, DataFusionError>;
+
     /// Read a SAM file.
     async fn read_sam(
         &self,
@@ -332,7 +338,7 @@ impl ExonSessionExt for SessionContext {
         let file_compression_type =
             file_compression_type.unwrap_or(FileCompressionType::UNCOMPRESSED);
 
-        let factory = ExonListingTableFactory {};
+        let factory = ExonListingTableFactory::default();
 
         let table = factory
             .create_from_file_type(
@@ -360,6 +366,27 @@ impl ExonSessionExt for SessionContext {
         self.sql(&sql_statement).await?;
 
         Ok(())
+    }
+
+    async fn read_inferred_exon_table(
+        &self,
+        table_path: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let session_state = self.state();
+
+        let (file_type, file_compress_type) =
+            crate::datasources::infer_file_type_and_compression(table_path)?;
+
+        let table = ExonListingTableFactory::default()
+            .create_from_file_type(
+                &session_state,
+                file_type,
+                file_compress_type,
+                table_path.to_string(),
+            )
+            .await?;
+
+        self.read_table(table)
     }
 
     async fn register_vcf_file(

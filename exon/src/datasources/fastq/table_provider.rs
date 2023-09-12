@@ -170,3 +170,43 @@ impl TableProvider for ListingFASTQTable {
         Ok(plan)
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use std::sync::Arc;
+
+//     use super::FASTQFormat;
+//     use datafusion::{
+//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+//         prelude::SessionContext,
+//     };
+
+//     #[tokio::test]
+//     async fn test_schema_inference() {
+//         let ctx = SessionContext::new();
+//         let session_state = ctx.state();
+
+//         let table_path = ListingTableUrl::parse("test-data").unwrap();
+
+//         let fasta_format = Arc::new(FASTQFormat::default());
+//         let lo = ListingOptions::new(fasta_format.clone()).with_file_extension("fastq");
+
+//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+//         assert_eq!(resolved_schema.fields().len(), 4);
+
+//         let config = ListingTableConfig::new(table_path)
+//             .with_listing_options(lo)
+//             .with_schema(resolved_schema);
+
+//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
+//         let df = ctx.read_table(provider.clone()).unwrap();
+
+//         let mut row_cnt = 0;
+//         let bs = df.collect().await.unwrap();
+//         for batch in bs {
+//             row_cnt += batch.num_rows();
+//         }
+//         assert_eq!(row_cnt, 2)
+//     }
+// }

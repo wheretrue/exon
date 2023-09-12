@@ -48,6 +48,11 @@ use super::{
 pub struct ExonListingTableFactory {}
 
 impl ExonListingTableFactory {
+    /// Create a new `ListingTableFactory`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Create a new table provider from a file type.
     pub async fn create_from_file_type(
         &self,

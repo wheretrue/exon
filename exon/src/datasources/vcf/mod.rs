@@ -20,7 +20,6 @@ mod array_builder;
 mod async_batch_reader;
 mod batch_reader;
 mod config;
-mod file_format;
 mod file_opener;
 mod scanner;
 mod schema_builder;

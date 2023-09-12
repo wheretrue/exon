@@ -20,7 +20,6 @@ mod array_builder;
 mod batch_reader;
 mod bed_record_builder;
 mod config;
-mod file_format;
 mod file_opener;
 mod scanner;
 

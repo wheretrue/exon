@@ -14,7 +14,7 @@
 
 use std::{fmt::Display, str::FromStr};
 
-use datafusion::common::FileCompressionType;
+use datafusion::{common::FileCompressionType, error::DataFusionError};
 
 /// The type of file.
 #[derive(Debug, Clone)]
@@ -111,27 +111,27 @@ impl ExonFileType {
 }
 
 /// Infer the file type from the file extension.
-// pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionError> {
-//     let mut exts = path.rsplit('.');
-//     let mut splitted = exts.next().unwrap_or("");
+pub fn infer_file_type_and_compression(
+    path: &str,
+) -> Result<(ExonFileType, FileCompressionType), DataFusionError> {
+    let mut exts = path.rsplit('.');
+    let mut splitted = exts.next().unwrap_or("");
 
-//     let file_compression_type =
-//         FileCompressionType::from_str(splitted).unwrap_or(FileCompressionType::UNCOMPRESSED);
+    let file_compression_type =
+        FileCompressionType::from_str(splitted).unwrap_or(FileCompressionType::UNCOMPRESSED);
 
-//     if file_compression_type.is_compressed() {
-//         splitted = exts.next().unwrap_or("");
-//     }
+    if file_compression_type.is_compressed() {
+        splitted = exts.next().unwrap_or("");
+    }
 
-//     let file_type = ExonFileType::from_str(splitted).map_err(|_| {
-//         DataFusionError::Execution(format!(
-//             "Unable to infer file type from file extension: {path}"
-//         ))
-//     })?;
+    let file_type = ExonFileType::from_str(splitted).map_err(|_| {
+        DataFusionError::Execution(format!(
+            "Unable to infer file type from file extension: {path}"
+        ))
+    })?;
 
-//     let file_format = file_type.get_file_format(file_compression_type);
-
-//     Ok(file_format)
-// }
+    Ok((file_type, file_compression_type))
+}
 
 #[cfg(test)]
 mod tests {

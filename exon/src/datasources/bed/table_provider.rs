@@ -169,3 +169,47 @@ impl TableProvider for ListingBEDTable {
         Ok(plan)
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use std::sync::Arc;
+
+//     use crate::tests::test_listing_table_url;
+
+//     use super::BEDFormat;
+//     use datafusion::{
+//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
+//         prelude::SessionContext,
+//     };
+
+//     #[tokio::test]
+//     async fn test_schema_inference() {
+//         let ctx = SessionContext::new();
+//         let session_state = ctx.state();
+
+//         let table_path = test_listing_table_url("bed");
+
+//         let fasta_format = Arc::new(BEDFormat::default());
+//         let lo = ListingOptions::new(fasta_format.clone()).with_file_extension("bed");
+
+//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+//         assert_eq!(resolved_schema.fields().len(), 12);
+
+//         let config = ListingTableConfig::new(table_path)
+//             .with_listing_options(lo)
+//             .with_schema(resolved_schema);
+
+//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
+//         let df = ctx.read_table(provider.clone()).unwrap();
+
+//         let mut row_cnt = 0;
+//         let bs = df.collect().await.unwrap();
+//         for batch in bs {
+//             row_cnt += batch.num_rows();
+
+//             assert_eq!(batch.num_columns(), 12);
+//         }
+//         assert_eq!(row_cnt, 10)
+//     }
+// }

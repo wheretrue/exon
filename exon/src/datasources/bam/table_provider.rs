@@ -170,3 +170,78 @@ impl TableProvider for ListingBAMTable {
         Ok(plan)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use datafusion::{
+        common::FileCompressionType,
+        datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+        prelude::SessionContext,
+    };
+    use noodles::core::Region;
+
+    use crate::{
+        datasources::{exon_listing_table_factory, ExonFileType, ExonListingTableFactory},
+        ExonSessionExt,
+    };
+
+    #[tokio::test]
+    async fn test_read_bam() {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
+
+        let table_path = ListingTableUrl::parse("test-data").unwrap();
+
+        let exon_listing_table_factory = ExonListingTableFactory::new();
+
+        let table = exon_listing_table_factory
+            .create_from_file_type(
+                &session_state,
+                ExonFileType::BAM,
+                FileCompressionType::UNCOMPRESSED,
+                table_path.to_string(),
+            )
+            .await
+            .unwrap();
+
+        let df = ctx.read_table(table).unwrap();
+
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 61)
+    }
+
+    // #[tokio::test]
+    // async fn test_read_with_index() {
+    //     let ctx = SessionContext::new();
+    //     let session_state = ctx.state();
+
+    //     let table_path = ListingTableUrl::parse("test-data").unwrap();
+
+    //     let region: Region = "chr1:1-12209153".parse().unwrap();
+    //     let fasta_format = Arc::new(BAMFormat::default().with_region_filter(region));
+
+    //     let lo = ListingOptions::new(fasta_format.clone()).with_file_extension("bam");
+
+    //     let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+
+    //     let config = ListingTableConfig::new(table_path)
+    //         .with_listing_options(lo)
+    //         .with_schema(resolved_schema);
+
+    //     let provider = Arc::new(ListingTable::try_new(config).unwrap());
+    //     let df = ctx.read_table(provider.clone()).unwrap();
+
+    //     let mut row_cnt = 0;
+    //     let bs = df.collect().await.unwrap();
+    //     for batch in bs {
+    //         row_cnt += batch.num_rows();
+    //     }
+    //     assert_eq!(row_cnt, 55)
+    // }
+}
