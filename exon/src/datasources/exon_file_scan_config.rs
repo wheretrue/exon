@@ -19,11 +19,11 @@ use crate::physical_optimizer::file_repartitioner::regroup_files_by_size;
 /// Extension trait for [`FileScanConfig`] that adds whole file repartitioning.
 pub trait ExonFileScanConfig {
     /// Repartition the file groups into whole partitions.
-    fn regroup_whole_files(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>>;
+    fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>>;
 }
 
 impl ExonFileScanConfig for FileScanConfig {
-    fn regroup_whole_files(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>> {
+    fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>> {
         Some(regroup_files_by_size(&self.file_groups, target_partitions))
     }
 }

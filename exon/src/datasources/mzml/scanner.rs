@@ -67,7 +67,7 @@ impl MzMLScan {
             return self.clone();
         }
 
-        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
         let mut new_plan = self.clone();
         if let Some(repartitioned_file_groups) = file_groups {
