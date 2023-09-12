@@ -8,7 +8,6 @@ use datafusion::{
         FileCompressionType, ToDFSchema,
     },
     datasource::{
-        file_format::FileFormat,
         listing::{FileRange, ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
@@ -22,8 +21,9 @@ use datafusion::{
     prelude::Expr,
 };
 use futures::TryStreamExt;
-use noodles::core::Region;
-use object_store::ObjectMeta;
+use noodles::{bgzf, core::Region, vcf};
+use object_store::{ObjectMeta, ObjectStore};
+use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::ExonFileType,
@@ -34,7 +34,7 @@ use crate::{
     },
 };
 
-use super::file_format::get_byte_range_for_file;
+use super::{file_format::get_byte_range_for_file, VCFScan, VCFSchemaBuilder};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -65,23 +65,82 @@ impl VCFListingTableConfig {
 #[derive(Debug, Clone)]
 /// Options specific to the VCF file format
 pub struct ListingVCFTableOptions {
-    /// The file format
-    format: Arc<dyn FileFormat>,
-
     /// The extension of the files to read
     file_extension: String,
+
+    /// The file compression type
+    file_compression_type: FileCompressionType,
 }
 
 impl ListingVCFTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
-        let format = ExonFileType::VCF.get_file_format(file_compression_type);
+        let file_compression_type = file_compression_type;
         let file_extension = ExonFileType::VCF.get_file_extension(file_compression_type);
 
         Self {
-            format,
             file_extension,
+            file_compression_type,
         }
+    }
+
+    async fn infer_schema_from_object_meta(
+        &self,
+        state: &SessionState,
+        store: &Arc<dyn ObjectStore>,
+        objects: &[ObjectMeta],
+    ) -> datafusion::error::Result<SchemaRef> {
+        let get_result = store.get(&objects[0].location).await?;
+
+        let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+        let stream_reader = StreamReader::new(stream_reader);
+
+        let exon_settings = state
+            .config()
+            .get_extension::<crate::config::ExonConfigExtension>();
+
+        let vcf_parse_info = exon_settings
+            .as_ref()
+            .map(|s| s.vcf_parse_info)
+            .unwrap_or(false);
+
+        let vcf_parse_format = exon_settings
+            .as_ref()
+            .map(|s| s.vcf_parse_format)
+            .unwrap_or(false);
+
+        let mut schema_builder = match self.file_compression_type {
+            FileCompressionType::GZIP => {
+                let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+                let mut vcf_reader = vcf::AsyncReader::new(bgzf_reader);
+
+                let header = vcf_reader.read_header().await?;
+
+                VCFSchemaBuilder::default()
+                    .with_header(header)
+                    .with_parse_info(vcf_parse_info)
+                    .with_parse_formats(vcf_parse_format)
+            }
+            FileCompressionType::UNCOMPRESSED => {
+                let mut vcf_reader = vcf::AsyncReader::new(stream_reader);
+
+                let header = vcf_reader.read_header().await?;
+
+                VCFSchemaBuilder::default()
+                    .with_header(header)
+                    .with_parse_info(vcf_parse_info)
+                    .with_parse_formats(vcf_parse_format)
+            }
+            _ => {
+                return Err(DataFusionError::Execution(
+                    "Unsupported file compression type".to_string(),
+                ))
+            }
+        };
+
+        let schema = schema_builder.build()?;
+
+        Ok(Arc::new(schema))
     }
 
     /// Infer the schema of the files in the table
@@ -108,7 +167,8 @@ impl ListingVCFTableOptions {
                 })
                 .await?;
 
-            self.format.infer_schema(state, &store, &files).await
+            self.infer_schema_from_object_meta(state, &store, &files)
+                .await
         } else {
             let store_head = match store.head(table_path.prefix()).await {
                 Ok(object_meta) => object_meta,
@@ -120,8 +180,30 @@ impl ListingVCFTableOptions {
                 }
             };
 
-            self.format.infer_schema(state, &store, &[store_head]).await
+            self.infer_schema_from_object_meta(state, &store, &[store_head])
+                .await
         }
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+        filters: Option<&Arc<dyn PhysicalExpr>>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        // if we got filters, we need to check if they are region filters
+        if let Some(filters) = filters {
+            // Downcast the filters to a Region filter if possible.
+            if let Some(region_filter) = filters.as_any().downcast_ref::<RegionPhysicalExpr>() {
+                let region = region_filter.region()?;
+                let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
+
+                return Ok(Arc::new(scan));
+            }
+        }
+
+        let scan = VCFScan::new(conf, self.file_compression_type)?;
+
+        Ok(Arc::new(scan))
     }
 }
 
@@ -378,25 +460,24 @@ impl TableProvider for ListingVCFTable {
 
             let f = filters.unwrap().clone();
 
-            return self
+            let file_scan_config = FileScanConfig {
+                object_store_url,
+                file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                file_groups: partitioned_file_lists,
+                statistics: Statistics::default(),
+                projection: projection.cloned(),
+                limit,
+                output_ordering: Vec::new(),
+                table_partition_cols: Vec::new(),
+                infinite_source: false,
+            };
+
+            let table = self
                 .options
-                .format
-                .create_physical_plan(
-                    state,
-                    FileScanConfig {
-                        object_store_url,
-                        file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-                        file_groups: partitioned_file_lists,
-                        statistics: Statistics::default(),
-                        projection: projection.cloned(),
-                        limit,
-                        output_ordering: Vec::new(),
-                        table_partition_cols: Vec::new(),
-                        infinite_source: false,
-                    },
-                    Some(&f),
-                )
-                .await;
+                .create_physical_plan(file_scan_config, Some(&f))
+                .await?;
+
+            return Ok(table);
         }
 
         todo!("Implement non-region filter case for VCF scan");

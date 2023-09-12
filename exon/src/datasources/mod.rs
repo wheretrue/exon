@@ -45,7 +45,7 @@ pub mod hmmdomtab;
 #[cfg(feature = "mzml")]
 pub mod mzml;
 
-/// SAM module.
+// SAM module.
 pub mod sam;
 
 /// VCF module.
@@ -64,16 +64,12 @@ pub const DEFAULT_BATCH_SIZE: usize = 8192;
 /// File types.
 mod exon_file_type;
 
-pub use self::exon_file_type::infer_exon_format;
+// pub use self::exon_file_type::infer_exon_format;
 pub use self::exon_file_type::ExonFileType;
 
 /// ListingTableFactory
 mod exon_listing_table_factory;
 pub use self::exon_listing_table_factory::ExonListingTableFactory;
-
-/// Options that control reading files exon files.
-mod options;
-pub use self::options::ExonReadOptions;
 
 mod exon_file_scan_config;
 pub use self::exon_file_scan_config::ExonFileScanConfig;

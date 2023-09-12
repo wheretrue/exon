@@ -22,7 +22,9 @@ mod file_format;
 mod file_opener;
 mod scanner;
 
+/// Table provider for BCF files.
+pub mod table_provider;
+
 pub use self::config::BCFConfig;
-pub use self::file_format::BCFFormat;
 pub use self::file_opener::BCFOpener;
 pub use self::scanner::BCFScan;

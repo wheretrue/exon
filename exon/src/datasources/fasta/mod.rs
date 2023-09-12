@@ -19,8 +19,10 @@ mod file_format;
 mod file_opener;
 mod scanner;
 
+/// Table provider for FASTA files.
+pub mod table_provider;
+
 pub use self::batch_reader::BatchReader;
 pub use self::config::FASTAConfig;
-pub use self::file_format::FASTAFormat;
 pub use self::file_opener::FASTAOpener;
 pub use self::scanner::FASTAScan;

@@ -23,7 +23,9 @@ mod file_format;
 mod file_opener;
 mod scanner;
 
+/// Table provider for GFF files.
+pub mod table_provider;
+
 pub use self::config::GFFConfig;
-pub use self::file_format::GFFFormat;
 pub use self::file_opener::GFFOpener;
 pub use self::scanner::GFFScan;

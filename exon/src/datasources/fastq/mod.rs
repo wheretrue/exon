@@ -23,7 +23,9 @@ mod file_format;
 mod file_opener;
 mod scanner;
 
+/// Table provider for FASTQ files.
+pub mod table_provider;
+
 pub use self::config::FASTQConfig;
-pub use self::file_format::FASTQFormat;
 pub use self::file_opener::FASTQOpener;
 pub use self::scanner::FASTQScan;

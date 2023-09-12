@@ -23,15 +23,19 @@ use datafusion::{
 };
 
 use crate::datasources::{
-    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, gff::GFFScan, gtf::GTFScan,
-    hmmdomtab::HMMDomTabScan,
+    bed::BEDScan,
+    fasta::FASTAScan,
+    fastq::FASTQScan,
+    gff::GFFScan,
+    gtf::GTFScan,
+    // hmmdomtab::HMMDomTabScan,
 };
 
 #[cfg(feature = "genbank")]
 use crate::datasources::genbank::GenbankScan;
 
-#[cfg(feature = "mzml")]
-use crate::datasources::mzml::MzMLScan;
+// #[cfg(feature = "mzml")]
+// use crate::datasources::mzml::MzMLScan;
 
 type FilePartitions = Vec<Vec<PartitionedFile>>;
 
@@ -131,18 +135,18 @@ fn optimize_file_partitions(
         return Ok(Transformed::Yes(Arc::new(new_scan)));
     }
 
-    if let Some(hmm_scan) = new_plan.as_any().downcast_ref::<HMMDomTabScan>() {
-        let new_scan = hmm_scan.get_repartitioned(target_partitions);
+    // if let Some(hmm_scan) = new_plan.as_any().downcast_ref::<HMMDomTabScan>() {
+    //     let new_scan = hmm_scan.get_repartitioned(target_partitions);
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
-    }
+    //     return Ok(Transformed::Yes(Arc::new(new_scan)));
+    // }
 
-    #[cfg(feature = "mzml")]
-    if let Some(mzml_scan) = new_plan.as_any().downcast_ref::<MzMLScan>() {
-        let new_scan = mzml_scan.get_repartitioned(target_partitions);
+    // #[cfg(feature = "mzml")]
+    // if let Some(mzml_scan) = new_plan.as_any().downcast_ref::<MzMLScan>() {
+    //     let new_scan = mzml_scan.get_repartitioned(target_partitions);
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
-    }
+    //     return Ok(Transformed::Yes(Arc::new(new_scan)));
+    // }
 
     Ok(Transformed::No(new_plan))
 }
@@ -186,30 +190,20 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use datafusion::{physical_plan::joins::HashJoinExec, prelude::SessionContext};
 
-    use crate::{
-        datasources::{fasta::FASTAScan, ExonFileType, ExonReadOptions},
-        tests::test_path,
-        ExonSessionExt,
-    };
+    use crate::{datasources::fasta::FASTAScan, tests::test_path, ExonSessionExt};
 
     #[tokio::test]
     async fn test_regroup_file_partitions() {
         let ctx = SessionContext::new_exon();
-
-        let file_file = ExonFileType::from_str("fasta").unwrap();
-
-        let options = ExonReadOptions::new(file_file);
 
         let test_path = test_path("repartition-test", "test.fasta")
             .parent()
             .unwrap()
             .to_owned();
 
-        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), options)
+        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), "fasta")
             .await
             .unwrap();
 

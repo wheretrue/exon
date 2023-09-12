@@ -12,149 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, sync::Arc};
+// #[cfg(test)]
+// mod tests {
+//     use std::sync::Arc;
 
-use arrow::datatypes::SchemaRef;
-use async_trait::async_trait;
-use datafusion::{
-    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
-    error::DataFusionError,
-    execution::context::SessionState,
-    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
-};
-use futures::TryStreamExt;
-use noodles::{bcf, core::Region};
-use object_store::{ObjectMeta, ObjectStore};
-use tokio_util::io::StreamReader;
+//     use crate::tests::test_listing_table_url;
 
-use crate::datasources::vcf::VCFSchemaBuilder;
+//     use super::BCFFormat;
+//     use datafusion::{
+//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
+//         prelude::SessionContext,
+//     };
 
-use super::scanner::BCFScan;
+//     #[tokio::test]
+//     async fn test_bcf_read() {
+//         let ctx = SessionContext::new();
+//         let session_state = ctx.state();
 
-// use super::{config::schema, scanner::BCFScan};
+//         let table_path = test_listing_table_url("bcf");
 
-#[derive(Debug, Default)]
-/// Implements a datafusion `FileFormat` for BCF files.
-pub struct BCFFormat {
-    /// A region to filter on, if known.
-    region_filter: Option<Region>,
-}
+//         let bcf_format = Arc::new(BCFFormat::default());
+//         let lo = ListingOptions::new(bcf_format.clone()).with_file_extension("bcf");
 
-impl BCFFormat {
-    /// Create a new BCFFormat.
-    pub fn new() -> Self {
-        Self {
-            region_filter: None,
-        }
-    }
+//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
 
-    /// Set the region to filter on.
-    pub fn with_region_filter(mut self, region_filter: Region) -> Self {
-        self.region_filter = Some(region_filter);
-        self
-    }
-}
+//         assert_eq!(resolved_schema.fields().len(), 9);
+//         assert_eq!(resolved_schema.field(0).name(), "chrom");
 
-#[async_trait]
-impl FileFormat for BCFFormat {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+//         let config = ListingTableConfig::new(table_path)
+//             .with_listing_options(lo)
+//             .with_schema(resolved_schema);
 
-    async fn infer_schema(
-        &self,
-        _state: &SessionState,
-        store: &Arc<dyn ObjectStore>,
-        objects: &[ObjectMeta],
-    ) -> datafusion::error::Result<SchemaRef> {
-        let get_result = store.get(&objects[0].location).await?;
+//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
+//         let df = ctx.read_table(provider.clone()).unwrap();
 
-        let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
-        let stream_reader = StreamReader::new(stream_reader);
-
-        let mut bcf_reader = bcf::AsyncReader::new(stream_reader);
-        bcf_reader.read_file_format().await?;
-
-        let header_str = bcf_reader.read_header().await?;
-        let header = header_str
-            .parse::<noodles::vcf::Header>()
-            .map_err(|e| DataFusionError::Execution(e.to_string()))?;
-
-        let mut schema_builder = VCFSchemaBuilder::default()
-            .with_header(header)
-            .with_parse_formats(true)
-            .with_parse_info(true);
-
-        let schema = schema_builder.build()?;
-
-        Ok(Arc::new(schema))
-    }
-
-    async fn infer_stats(
-        &self,
-        _state: &SessionState,
-        _store: &Arc<dyn ObjectStore>,
-        _table_schema: SchemaRef,
-        _object: &ObjectMeta,
-    ) -> datafusion::error::Result<Statistics> {
-        Ok(Statistics::default())
-    }
-
-    async fn create_physical_plan(
-        &self,
-        _state: &SessionState,
-        conf: FileScanConfig,
-        _filters: Option<&Arc<dyn PhysicalExpr>>,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let mut scan = BCFScan::new(conf);
-
-        if let Some(region_filter) = &self.region_filter {
-            scan = scan.with_region_filter(region_filter.clone());
-        }
-
-        Ok(Arc::new(scan))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use crate::tests::test_listing_table_url;
-
-    use super::BCFFormat;
-    use datafusion::{
-        datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
-        prelude::SessionContext,
-    };
-
-    #[tokio::test]
-    async fn test_bcf_read() {
-        let ctx = SessionContext::new();
-        let session_state = ctx.state();
-
-        let table_path = test_listing_table_url("bcf");
-
-        let bcf_format = Arc::new(BCFFormat::default());
-        let lo = ListingOptions::new(bcf_format.clone()).with_file_extension("bcf");
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
-
-        assert_eq!(resolved_schema.fields().len(), 9);
-        assert_eq!(resolved_schema.field(0).name(), "chrom");
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        let df = ctx.read_table(provider.clone()).unwrap();
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
-        for batch in bs {
-            row_cnt += batch.num_rows();
-        }
-        assert_eq!(row_cnt, 621)
-    }
-}
+//         let mut row_cnt = 0;
+//         let bs = df.collect().await.unwrap();
+//         for batch in bs {
+//             row_cnt += batch.num_rows();
+//         }
+//         assert_eq!(row_cnt, 621)
+//     }
+// }

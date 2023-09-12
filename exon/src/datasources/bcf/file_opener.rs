@@ -20,7 +20,7 @@ use datafusion::{
 };
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bcf, core::Region, csi};
-use object_store::GetResult;
+use object_store::GetResultPayload;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
 
@@ -60,8 +60,10 @@ impl FileOpener for BCFOpener {
         let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            match config.object_store.get(file_meta.location()).await? {
-                GetResult::File(file, path) => match region {
+            let get_result = config.object_store.get(file_meta.location()).await?;
+
+            match get_result.payload {
+                GetResultPayload::File(file, path) => match region {
                     Some(region) => {
                         let mut reader = bcf::Reader::new(file);
                         let header = reader.read_header()?;
@@ -92,7 +94,7 @@ impl FileOpener for BCFOpener {
                         Ok(batch_stream.boxed())
                     }
                 },
-                GetResult::Stream(s) => {
+                GetResultPayload::Stream(s) => {
                     if region.is_some() {
                         return Err(DataFusionError::NotImplemented(
                             "region filtering is not yet implemented for object stores".to_string(),

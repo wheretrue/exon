@@ -24,7 +24,9 @@ mod file_format;
 mod file_opener;
 mod scanner;
 
+/// Table provider for BED files.
+pub mod table_provider;
+
 pub use self::config::BEDConfig;
-pub use self::file_format::BEDFormat;
 pub use self::file_opener::BEDOpener;
 pub use self::scanner::BEDScan;

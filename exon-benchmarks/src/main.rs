@@ -33,15 +33,15 @@ enum Commands {
         region: String,
     },
     /// Run a BAM query on a file with a region.
-    BAMQuery {
-        /// which path to use for the BAM file
-        #[arg(short, long)]
-        path: String,
+    // BAMQuery {
+    //     /// which path to use for the BAM file
+    //     #[arg(short, long)]
+    //     path: String,
 
-        /// which region to use
-        #[arg(short, long)]
-        region: String,
-    },
+    //     /// which region to use
+    //     #[arg(short, long)]
+    //     region: String,
+    // },
     /// Scan a FASTA file and count the number of non-methionine start codons
     FASTACodonScan {
         /// which path to use
@@ -113,17 +113,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let cnt = df.count().await?;
             eprintln!("Count: {}", cnt);
         }
-        Some(Commands::BAMQuery { path, region }) => {
-            let path = path.as_str();
-            let region = region.as_str();
+        // Some(Commands::BAMQuery { path, region }) => {
+        //     let path = path.as_str();
+        //     let region = region.as_str();
 
-            let ctx = SessionContext::new_exon();
+        //     let ctx = SessionContext::new_exon();
 
-            let df = ctx.query_bam_file(path, region).await.unwrap();
-            let cnt = df.count().await?;
+        //     let df = ctx.query_bam_file(path, region).await.unwrap();
+        //     let cnt = df.count().await?;
 
-            eprintln!("Count: {}", cnt);
-        }
+        //     eprintln!("Count: {}", cnt);
+        // }
         Some(Commands::FASTACodonScan { path, compression }) => {
             let path = path.as_str();
             let compression = compression.to_owned();

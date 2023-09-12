@@ -24,7 +24,9 @@ mod file_opener;
 mod mzml_reader;
 mod scanner;
 
+/// Table provider for mzML files.
+pub mod table_provider;
+
 pub use config::MzMLConfig;
-pub use file_format::MzMLFormat;
 pub use file_opener::MzMLOpener;
 pub use scanner::MzMLScan;

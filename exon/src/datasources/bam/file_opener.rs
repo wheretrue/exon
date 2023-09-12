@@ -20,7 +20,7 @@ use datafusion::{
 };
 use futures::{StreamExt, TryStreamExt};
 use noodles::core::Region;
-use object_store::GetResult;
+use object_store::GetResultPayload;
 use tokio_util::io::StreamReader;
 
 use super::{
@@ -60,8 +60,10 @@ impl FileOpener for BAMOpener {
         let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            match config.object_store.get(file_meta.location()).await? {
-                GetResult::File(file, path) => match region {
+            let get_request = config.object_store.get(file_meta.location()).await?;
+
+            match get_request.payload {
+                GetResultPayload::File(file, path) => match region {
                     Some(region) => {
                         let mut reader = noodles::bam::indexed_reader::Builder::default()
                             .build_from_path(path)?;
@@ -98,7 +100,7 @@ impl FileOpener for BAMOpener {
                         Ok(batch_stream.boxed())
                     }
                 },
-                GetResult::Stream(s) => {
+                GetResultPayload::Stream(s) => {
                     let stream_reader = Box::pin(s.map_err(DataFusionError::from));
 
                     let stream_reader = StreamReader::new(stream_reader);

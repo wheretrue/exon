@@ -12,22 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt::Display, str::FromStr, sync::Arc};
+use std::{fmt::Display, str::FromStr};
 
-use datafusion::{
-    common::FileCompressionType, datasource::file_format::FileFormat, error::DataFusionError,
-};
-
-use super::{
-    bam::BAMFormat, bcf::BCFFormat, bed::BEDFormat, fasta::FASTAFormat, fastq::FASTQFormat,
-    gff::GFFFormat, gtf::GTFFormat, hmmdomtab::HMMDomTabFormat, sam::SAMFormat, vcf::VCFFormat,
-};
-
-#[cfg(feature = "genbank")]
-use super::genbank::GenbankFormat;
-
-#[cfg(feature = "mzml")]
-use super::mzml::MzMLFormat;
+use datafusion::common::FileCompressionType;
 
 /// The type of file.
 #[derive(Debug, Clone)]
@@ -110,29 +97,6 @@ impl Display for ExonFileType {
 }
 
 impl ExonFileType {
-    /// Get the file format for the given file type.
-    pub fn get_file_format(
-        self,
-        file_compression_type: FileCompressionType,
-    ) -> Arc<dyn FileFormat> {
-        match self {
-            Self::BAM => Arc::new(BAMFormat::default()),
-            Self::BCF => Arc::new(BCFFormat::default()),
-            Self::BED => Arc::new(BEDFormat::new(file_compression_type)),
-            Self::FASTA => Arc::new(FASTAFormat::new(file_compression_type)),
-            Self::FASTQ => Arc::new(FASTQFormat::new(file_compression_type)),
-            #[cfg(feature = "genbank")]
-            Self::GENBANK => Arc::new(GenbankFormat::new(file_compression_type)),
-            Self::GFF => Arc::new(GFFFormat::new(file_compression_type)),
-            Self::HMMER => Arc::new(HMMDomTabFormat::new(file_compression_type)),
-            Self::SAM => Arc::new(SAMFormat::default()),
-            Self::VCF => Arc::new(VCFFormat::new(file_compression_type)),
-            Self::GTF => Arc::new(GTFFormat::new(file_compression_type)),
-            #[cfg(feature = "mzml")]
-            Self::MZML => Arc::new(MzMLFormat::new(file_compression_type)),
-        }
-    }
-
     /// Get the file extension for the given file type with the given compression.
     pub fn get_file_extension(&self, file_compression_type: FileCompressionType) -> String {
         match (self, file_compression_type) {
@@ -147,27 +111,27 @@ impl ExonFileType {
 }
 
 /// Infer the file type from the file extension.
-pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionError> {
-    let mut exts = path.rsplit('.');
-    let mut splitted = exts.next().unwrap_or("");
+// pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionError> {
+//     let mut exts = path.rsplit('.');
+//     let mut splitted = exts.next().unwrap_or("");
 
-    let file_compression_type =
-        FileCompressionType::from_str(splitted).unwrap_or(FileCompressionType::UNCOMPRESSED);
+//     let file_compression_type =
+//         FileCompressionType::from_str(splitted).unwrap_or(FileCompressionType::UNCOMPRESSED);
 
-    if file_compression_type.is_compressed() {
-        splitted = exts.next().unwrap_or("");
-    }
+//     if file_compression_type.is_compressed() {
+//         splitted = exts.next().unwrap_or("");
+//     }
 
-    let file_type = ExonFileType::from_str(splitted).map_err(|_| {
-        DataFusionError::Execution(format!(
-            "Unable to infer file type from file extension: {path}"
-        ))
-    })?;
+//     let file_type = ExonFileType::from_str(splitted).map_err(|_| {
+//         DataFusionError::Execution(format!(
+//             "Unable to infer file type from file extension: {path}"
+//         ))
+//     })?;
 
-    let file_format = file_type.get_file_format(file_compression_type);
+//     let file_format = file_type.get_file_format(file_compression_type);
 
-    Ok(file_format)
-}
+//     Ok(file_format)
+// }
 
 #[cfg(test)]
 mod tests {

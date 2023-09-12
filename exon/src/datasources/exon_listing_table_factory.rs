@@ -16,20 +16,160 @@ use std::{str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{
-        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        provider::TableProviderFactory,
-        TableProvider,
-    },
+    common::FileCompressionType,
+    datasource::{listing::ListingTableUrl, provider::TableProviderFactory, TableProvider},
     execution::context::SessionState,
     logical_expr::CreateExternalTable,
 };
 
 use crate::datasources::ExonFileType;
 
+use super::{
+    bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
+    bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
+    bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
+    fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
+    fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
+    genbank::table_provider::{
+        ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
+    },
+    gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
+    gtf::table_provider::{ListingGTFTable, ListingGTFTableConfig, ListingGTFTableOptions},
+    hmmdomtab::table_provider::{
+        ListingHMMDomTabTable, ListingHMMDomTabTableConfig, ListingHMMDomTabTableOptions,
+    },
+    mzml::table_provider::{ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions},
+    sam::table_provider::{ListingSAMTable, ListingSAMTableConfig, ListingSAMTableOptions},
+    vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
+};
+
 /// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
 #[derive(Debug, Clone, Default)]
 pub struct ExonListingTableFactory {}
+
+impl ExonListingTableFactory {
+    /// Create a new table provider from a file type.
+    pub async fn create_from_file_type(
+        &self,
+        state: &SessionState,
+        file_type: ExonFileType,
+        file_compression_type: FileCompressionType,
+        location: String,
+    ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
+        let table_path = ListingTableUrl::parse(&location)?;
+
+        match file_type {
+            ExonFileType::SAM => {
+                let options = ListingSAMTableOptions::new();
+                let schema = options.infer_schema().await?;
+
+                let config = ListingSAMTableConfig::new(table_path).with_options(options);
+                let table = ListingSAMTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::MZML => {
+                let options = ListingMzMLTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingMzMLTableConfig::new(table_path).with_options(options);
+                let table = ListingMzMLTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::HMMER => {
+                let options = ListingHMMDomTabTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
+                let table = ListingHMMDomTabTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::BAM => {
+                let options = ListingBAMTableOptions::new();
+                let schema = options.infer_schema().await?;
+
+                let config = ListingBAMTableConfig::new(table_path).with_options(options);
+                let table = ListingBAMTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::BED => {
+                let options = ListingBEDTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingBEDTableConfig::new(table_path).with_options(options);
+                let table = ListingBEDTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::GTF => {
+                let options = ListingGTFTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingGTFTableConfig::new(table_path).with_options(options);
+                let table = ListingGTFTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::GENBANK => {
+                let options = ListingGenbankTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingGenbankTableConfig::new(table_path).with_options(options);
+                let table = ListingGenbankTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::BCF => {
+                let options = ListingBCFTableOptions::new();
+                let schema = options.infer_schema(state, &table_path).await?;
+
+                let config = ListingBCFTableConfig::new(table_path).with_options(options);
+                let table = ListingBCFTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::VCF => {
+                let vcf_options = ListingVCFTableOptions::new(file_compression_type);
+                let schema = vcf_options.infer_schema(state, &table_path).await?;
+
+                let config = VCFListingTableConfig::new(table_path).with_options(vcf_options);
+
+                let table = ListingVCFTable::try_new(config, schema)?;
+                Ok(Arc::new(table))
+            }
+            ExonFileType::FASTA => {
+                let options = ListingFASTATableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingFASTATableConfig::new(table_path).with_options(options);
+                let table = ListingFASTATable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::FASTQ => {
+                let options = ListingFASTQTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingFASTQTableConfig::new(table_path).with_options(options);
+                let table = ListingFASTQTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::GFF => {
+                let options = ListingGFFTableOptions::new(file_compression_type);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingGFFTableConfig::new(table_path).with_options(options);
+                let table = ListingGFFTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+        }
+    }
+}
 
 #[async_trait]
 impl TableProviderFactory for ExonListingTableFactory {
@@ -38,7 +178,7 @@ impl TableProviderFactory for ExonListingTableFactory {
         state: &SessionState,
         cmd: &CreateExternalTable,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
-        let file_compression_type = cmd.file_compression_type.into();
+        let file_compression_type: FileCompressionType = cmd.file_compression_type.into();
 
         let file_type = ExonFileType::from_str(&cmd.file_type).map_err(|_| {
             datafusion::error::DataFusionError::Execution(format!(
@@ -47,19 +187,13 @@ impl TableProviderFactory for ExonListingTableFactory {
             ))
         })?;
 
-        let file_format = file_type.get_file_format(file_compression_type);
-
-        let options = ListingOptions::new(file_format);
-
-        let table_path = ListingTableUrl::parse(&cmd.location)?;
-        let resolved_schema = options.infer_schema(state, &table_path).await?;
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(options)
-            .with_schema(resolved_schema);
-
-        let table = ListingTable::try_new(config)?;
-        Ok(Arc::new(table))
+        self.create_from_file_type(
+            state,
+            file_type,
+            file_compression_type,
+            cmd.location.clone(),
+        )
+        .await
     }
 }
 

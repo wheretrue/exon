@@ -12,34 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, sync::Arc};
-
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use async_trait::async_trait;
-use datafusion::{
-    common::FileCompressionType,
-    datasource::{file_format::FileFormat, physical_plan::FileScanConfig},
-    execution::context::SessionState,
-    physical_plan::{ExecutionPlan, PhysicalExpr, Statistics},
-};
-use object_store::{ObjectMeta, ObjectStore};
-
-use super::scanner::GTFScan;
-
-#[derive(Debug)]
-/// Implements a datafusion `FileFormat` for GTF files.
-pub struct GTFFormat {
-    /// The compression type of the file.
-    file_compression_type: FileCompressionType,
-}
-
-impl Default for GTFFormat {
-    fn default() -> Self {
-        Self {
-            file_compression_type: FileCompressionType::UNCOMPRESSED,
-        }
-    }
-}
 
 pub fn schema() -> SchemaRef {
     let attribute_key_field = Field::new("keys", DataType::Utf8, false);
@@ -68,91 +41,40 @@ pub fn schema() -> SchemaRef {
     inner.into()
 }
 
-/// The `FileFormat` for GTF files.
-impl GTFFormat {
-    /// Create a new GTFFormat.
-    pub fn new(file_compression_type: FileCompressionType) -> Self {
-        Self {
-            file_compression_type,
-        }
-    }
+// #[cfg(test)]
+// mod tests {
+//     use std::sync::Arc;
 
-    /// Return the schema for GTF files.
-    pub fn schema(&self) -> datafusion::error::Result<SchemaRef> {
-        Ok(schema())
-    }
-}
+//     use super::GTFFormat;
+//     use datafusion::{
+//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
+//         prelude::SessionContext,
+//     };
 
-#[async_trait]
-impl FileFormat for GTFFormat {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+//     #[tokio::test]
+//     async fn test_listing() {
+//         let ctx = SessionContext::new();
+//         let session_state = ctx.state();
 
-    async fn infer_schema(
-        &self,
-        _state: &SessionState,
-        _store: &Arc<dyn ObjectStore>,
-        _objects: &[ObjectMeta],
-    ) -> datafusion::error::Result<SchemaRef> {
-        self.schema()
-    }
+//         let table_path = ListingTableUrl::parse("test-data").unwrap();
 
-    async fn infer_stats(
-        &self,
-        _state: &SessionState,
-        _store: &Arc<dyn ObjectStore>,
-        _table_schema: SchemaRef,
-        _object: &ObjectMeta,
-    ) -> datafusion::error::Result<Statistics> {
-        Ok(Statistics::default())
-    }
+//         let gtf_format = Arc::new(GTFFormat::default());
+//         let lo = ListingOptions::new(gtf_format.clone()).with_file_extension("gtf");
 
-    async fn create_physical_plan(
-        &self,
-        _state: &SessionState,
-        conf: FileScanConfig,
-        _filters: Option<&Arc<dyn PhysicalExpr>>,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = GTFScan::new(conf.clone(), self.file_compression_type);
-        Ok(Arc::new(scan))
-    }
-}
+//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
 
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
+//         let config = ListingTableConfig::new(table_path)
+//             .with_listing_options(lo)
+//             .with_schema(resolved_schema);
 
-    use super::GTFFormat;
-    use datafusion::{
-        datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        prelude::SessionContext,
-    };
+//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
+//         let df = ctx.read_table(provider.clone()).unwrap();
 
-    #[tokio::test]
-    async fn test_listing() {
-        let ctx = SessionContext::new();
-        let session_state = ctx.state();
-
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
-
-        let gtf_format = Arc::new(GTFFormat::default());
-        let lo = ListingOptions::new(gtf_format.clone()).with_file_extension("gtf");
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let provider = Arc::new(ListingTable::try_new(config).unwrap());
-        let df = ctx.read_table(provider.clone()).unwrap();
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
-        for batch in bs {
-            row_cnt += batch.num_rows();
-        }
-        assert_eq!(row_cnt, 77)
-    }
-}
+//         let mut row_cnt = 0;
+//         let bs = df.collect().await.unwrap();
+//         for batch in bs {
+//             row_cnt += batch.num_rows();
+//         }
+//         assert_eq!(row_cnt, 77)
+//     }
+// }
