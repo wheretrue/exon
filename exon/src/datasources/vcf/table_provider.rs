@@ -562,7 +562,7 @@ mod tests {
             vcf::{table_provider::get_byte_range_for_file, VCFScan},
             ExonListingTableFactory,
         },
-        tests::{test_listing_table_dir, test_path},
+        tests::{test_listing_table_dir, test_listing_table_url, test_path},
         ExonSessionExt,
     };
 
@@ -685,6 +685,35 @@ mod tests {
             row_cnt += batch.num_rows();
         }
         assert_eq!(row_cnt, 621);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_multiple_files() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let url = test_listing_table_url("two-vcf");
+
+        ctx.register_vcf_file("vcf_file", url.to_string().as_str())
+            .await?;
+
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1'";
+        let df = ctx.sql(sql).await?;
+
+        let plan = df.create_physical_plan().await?;
+
+        // Check we can downcast to a FilterExec with a VCFScan input.
+        if let Some(scan) = plan.as_any().downcast_ref::<FilterExec>() {
+            if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
+                // We should have two file groups with one file not one with two files.
+                assert_eq!(scan.base_config().file_groups.len(), 2);
+            } else {
+                panic!("expected VCFScan for {}", sql);
+            }
+        } else {
+            panic!("expected FilterExec for {}", sql);
+        }
 
         Ok(())
     }
