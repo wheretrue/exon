@@ -15,7 +15,6 @@
 // limitations under the License.
 
 mod hmm_dom_tab_config;
-mod hmm_dom_tab_file_format;
 mod hmm_dom_tab_opener;
 mod hmm_dom_tab_scanner;
 

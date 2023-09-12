@@ -57,7 +57,7 @@ pub struct ListingHMMDomTabTableOptions {
 impl ListingHMMDomTabTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
-        let file_extension = ExonFileType::HMMER.get_file_extension(file_compression_type);
+        let file_extension = ExonFileType::HMMDOMTAB.get_file_extension(file_compression_type);
 
         Self {
             file_extension,
@@ -169,42 +169,39 @@ impl TableProvider for ListingHMMDomTabTable {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::sync::Arc;
+#[cfg(test)]
+mod tests {
+    use crate::{
+        datasources::{ExonFileType, ExonListingTableFactory},
+        tests::test_listing_table_url,
+    };
 
-//     use crate::tests::test_listing_table_url;
+    use datafusion::{common::FileCompressionType, prelude::SessionContext};
 
-//     use super::HMMDomTabFormat;
-//     use datafusion::{
-//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
-//         prelude::SessionContext,
-//     };
+    #[tokio::test]
+    async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
 
-//     #[tokio::test]
-//     async fn test_listing() {
-//         let ctx = SessionContext::new();
-//         let session_state = ctx.state();
+        let table_path = test_listing_table_url("hmmdomtab");
+        let table = ExonListingTableFactory::new()
+            .create_from_file_type(
+                &session_state,
+                ExonFileType::HMMDOMTAB,
+                FileCompressionType::UNCOMPRESSED,
+                table_path.to_string(),
+            )
+            .await?;
 
-//         let table_path = test_listing_table_url("hmmdomtab");
+        let df = ctx.read_table(table).unwrap();
 
-//         let hmm_format = Arc::new(HMMDomTabFormat::default());
-//         let lo = ListingOptions::new(hmm_format.clone()).with_file_extension(".hmmdomtab");
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 100);
 
-//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
-
-//         let config = ListingTableConfig::new(table_path)
-//             .with_listing_options(lo)
-//             .with_schema(resolved_schema);
-
-//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-//         let df = ctx.read_table(provider.clone()).unwrap();
-
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await.unwrap();
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
-//         }
-//         assert_eq!(row_cnt, 100)
-//     }
-// }
+        Ok(())
+    }
+}

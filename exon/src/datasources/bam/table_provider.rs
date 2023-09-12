@@ -173,19 +173,12 @@ impl TableProvider for ListingBAMTable {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
 
     use datafusion::{
-        common::FileCompressionType,
-        datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        prelude::SessionContext,
+        common::FileCompressionType, datasource::listing::ListingTableUrl, prelude::SessionContext,
     };
-    use noodles::core::Region;
 
-    use crate::{
-        datasources::{exon_listing_table_factory, ExonFileType, ExonListingTableFactory},
-        ExonSessionExt,
-    };
+    use crate::datasources::{ExonFileType, ExonListingTableFactory};
 
     #[tokio::test]
     async fn test_read_bam() {

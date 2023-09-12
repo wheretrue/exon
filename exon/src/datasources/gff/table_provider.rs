@@ -57,7 +57,7 @@ pub struct ListingGFFTableOptions {
 impl ListingGFFTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
-        let file_extension = ExonFileType::FASTA.get_file_extension(file_compression_type);
+        let file_extension = ExonFileType::GFF.get_file_extension(file_compression_type);
 
         Self {
             file_extension,
@@ -201,39 +201,40 @@ pub fn schema() -> SchemaRef {
     inner.into()
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::sync::Arc;
+#[cfg(test)]
+mod tests {
+    use datafusion::{common::FileCompressionType, prelude::SessionContext};
 
-//     use datafusion::{
-//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-//         prelude::SessionContext,
-//     };
+    use crate::{
+        datasources::{ExonFileType, ExonListingTableFactory},
+        tests::test_listing_table_url,
+    };
 
-//     #[tokio::test]
-//     async fn test_listing() {
-//         let ctx = SessionContext::new();
-//         let session_state = ctx.state();
+    #[tokio::test]
+    async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
 
-//         let table_path = ListingTableUrl::parse("test-data/datasources/gff").unwrap();
+        let table_path = test_listing_table_url("gff");
+        let table = ExonListingTableFactory::new()
+            .create_from_file_type(
+                &session_state,
+                ExonFileType::GFF,
+                FileCompressionType::UNCOMPRESSED,
+                table_path.to_string(),
+            )
+            .await?;
 
-//         let gff_format = Arc::new(GFFFormat::default());
-//         let lo = ListingOptions::new(gff_format.clone()).with_file_extension("gff");
+        let df = ctx.read_table(table).unwrap();
 
-//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
 
-//         let config = ListingTableConfig::new(table_path)
-//             .with_listing_options(lo)
-//             .with_schema(resolved_schema);
+        assert_eq!(row_cnt, 5000);
 
-//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-//         let df = ctx.read_table(provider.clone()).unwrap();
-
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await.unwrap();
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
-//         }
-//         assert_eq!(row_cnt, 5000)
-//     }
-// }
+        Ok(())
+    }
+}

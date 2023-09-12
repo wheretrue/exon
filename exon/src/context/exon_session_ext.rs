@@ -283,7 +283,7 @@ pub trait ExonSessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_exon_table(table_path, ExonFileType::HMMER, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::HMMDOMTAB, file_compression_type)
             .await;
     }
 

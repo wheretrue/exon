@@ -34,7 +34,7 @@ pub enum ExonFileType {
     /// SAM file format.
     SAM,
     /// HMMER file format.
-    HMMER,
+    HMMDOMTAB,
     /// BED file format.
     BED,
     /// GTF file format.
@@ -67,7 +67,7 @@ impl FromStr for ExonFileType {
             "MZML" => Ok(Self::MZML),
             #[cfg(feature = "genbank")]
             "GENBANK" | "GBK" | "GB" => Ok(Self::GENBANK),
-            "HMMDOMTAB" => Ok(Self::HMMER),
+            "HMMDOMTAB" => Ok(Self::HMMDOMTAB),
             "BED" => Ok(Self::BED),
             "GTF" => Ok(Self::GTF),
             _ => Err(()),
@@ -89,7 +89,7 @@ impl Display for ExonFileType {
             Self::MZML => write!(f, "MZML"),
             #[cfg(feature = "genbank")]
             Self::GENBANK => write!(f, "GENBANK"),
-            Self::HMMER => write!(f, "HMMER"),
+            Self::HMMDOMTAB => write!(f, "HMMDOMTAB"),
             Self::BED => write!(f, "BED"),
             Self::GTF => write!(f, "GTF"),
         }
@@ -150,7 +150,7 @@ mod tests {
         assert_eq!(ExonFileType::SAM.to_string(), "SAM");
         #[cfg(feature = "genbank")]
         assert_eq!(ExonFileType::GENBANK.to_string(), "GENBANK");
-        assert_eq!(ExonFileType::HMMER.to_string(), "HMMER");
+        assert_eq!(ExonFileType::HMMDOMTAB.to_string(), "HMMDOMTAB");
         assert_eq!(ExonFileType::BED.to_string(), "BED");
         #[cfg(feature = "mzml")]
         assert_eq!(ExonFileType::MZML.to_string(), "MZML");

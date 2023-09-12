@@ -82,7 +82,7 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
-            ExonFileType::HMMER => {
+            ExonFileType::HMMDOMTAB => {
                 let options = ListingHMMDomTabTableOptions::new(file_compression_type);
                 let schema = options.infer_schema().await?;
 
