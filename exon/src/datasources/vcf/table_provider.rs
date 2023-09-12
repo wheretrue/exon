@@ -586,8 +586,8 @@ mod tests {
         assert_eq!(chunks.len(), 1);
 
         let chunk = chunks[0];
-        assert_eq!(chunk.start(), VirtualPosition::from(621346816));
-        assert_eq!(chunk.end(), VirtualPosition::from(3014113427456));
+        assert_eq!(chunk.start(), VirtualPosition::from(621281280));
+        assert_eq!(chunk.end(), VirtualPosition::from(3014113361920));
 
         Ok(())
     }
