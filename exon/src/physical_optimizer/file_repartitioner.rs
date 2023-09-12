@@ -23,8 +23,13 @@ use datafusion::{
 };
 
 use crate::datasources::{
-    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, gff::GFFScan, gtf::GTFScan,
+    bed::BEDScan,
+    fasta::FASTAScan,
+    fastq::FASTQScan,
+    gff::GFFScan,
+    gtf::GTFScan,
     hmmdomtab::HMMDomTabScan,
+    // hmmdomtab::HMMDomTabScan,
 };
 
 #[cfg(feature = "genbank")]
@@ -186,30 +191,20 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use datafusion::{physical_plan::joins::HashJoinExec, prelude::SessionContext};
 
-    use crate::{
-        datasources::{fasta::FASTAScan, ExonFileType, ExonReadOptions},
-        tests::test_path,
-        ExonSessionExt,
-    };
+    use crate::{datasources::fasta::FASTAScan, tests::test_path, ExonSessionExt};
 
     #[tokio::test]
     async fn test_regroup_file_partitions() {
         let ctx = SessionContext::new_exon();
-
-        let file_file = ExonFileType::from_str("fasta").unwrap();
-
-        let options = ExonReadOptions::new(file_file);
 
         let test_path = test_path("repartition-test", "test.fasta")
             .parent()
             .unwrap()
             .to_owned();
 
-        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), options)
+        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), "fasta")
             .await
             .unwrap();
 

@@ -17,24 +17,18 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
-    datasource::{
-        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        TableProvider,
-    },
+    datasource::{listing::ListingTableUrl, TableProvider},
     error::{DataFusionError, Result},
-    execution::{context::SessionState, options::ReadOptions, runtime_env::RuntimeEnv},
+    execution::{context::SessionState, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
-use noodles::core::Region;
 
 use crate::{
     datasources::{
-        bam::BAMFormat,
-        bcf::BCFFormat,
-        vcf::{
-            ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig, VCFTableProviderFactory,
-        },
-        ExonFileType, ExonListingTableFactory, ExonReadOptions,
+        bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
+        bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
+        vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
+        ExonFileType, ExonListingTableFactory,
     },
     new_exon_config,
     physical_optimizer::{
@@ -85,12 +79,6 @@ pub trait ExonSessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError>;
 
-    /// Reads a Exon table from a given path and infers the type of the table and compression type.
-    async fn read_inferred_exon_table(
-        &self,
-        table_path: &str,
-    ) -> Result<DataFrame, DataFusionError>;
-
     /// Create a new Exon based [`SessionContext`].
     fn new_exon() -> SessionContext {
         let exon_config = new_exon_config();
@@ -131,7 +119,7 @@ pub trait ExonSessionExt {
         &self,
         name: &str,
         table_path: &str,
-        options: ExonReadOptions<'_>,
+        file_type: &str,
     ) -> Result<(), DataFusionError>;
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
@@ -148,7 +136,6 @@ pub trait ExonSessionExt {
                 Arc::new(vcf_region_optimizer),
                 Arc::new(interval_region_optimizer),
             ]);
-        // .with_optimizer_rules(vec![Arc::new(PositionBetweenRewriter {})]);
 
         let sources = vec![
             "BAM",
@@ -160,7 +147,7 @@ pub trait ExonSessionExt {
             "GFF",
             "GTF",
             "HMMDOMTAB",
-            // "VCF",
+            "VCF",
             "SAM",
             #[cfg(feature = "mzml")]
             "MZML",
@@ -171,10 +158,6 @@ pub trait ExonSessionExt {
                 .table_factories_mut()
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
-
-        state
-            .table_factories_mut()
-            .insert("VCF".into(), Arc::new(VCFTableProviderFactory::default()));
 
         SessionContext::with_state(state)
     }
@@ -200,6 +183,12 @@ pub trait ExonSessionExt {
             .read_exon_table(table_path, ExonFileType::BAM, file_compression_type)
             .await;
     }
+
+    /// Infer the file type and compression, then read the file.
+    async fn read_inferred_exon_table(
+        &self,
+        table_path: &str,
+    ) -> Result<DataFrame, DataFusionError>;
 
     /// Read a SAM file.
     async fn read_sam(
@@ -296,7 +285,7 @@ pub trait ExonSessionExt {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         return self
-            .read_exon_table(table_path, ExonFileType::HMMER, file_compression_type)
+            .read_exon_table(table_path, ExonFileType::HMMDOMTAB, file_compression_type)
             .await;
     }
 
@@ -347,101 +336,59 @@ impl ExonSessionExt for SessionContext {
         file_compression_type: Option<FileCompressionType>,
     ) -> Result<DataFrame, DataFusionError> {
         let session_state = self.state();
-        let table_path = ListingTableUrl::parse(table_path)?;
 
         let file_compression_type =
             file_compression_type.unwrap_or(FileCompressionType::UNCOMPRESSED);
 
-        let file_format = file_type.get_file_format(file_compression_type);
-        let lo = ListingOptions::new(file_format);
+        let factory = ExonListingTableFactory::default();
 
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
+        let table = factory
+            .create_from_file_type(
+                &session_state,
+                file_type,
+                file_compression_type,
+                table_path.to_string(),
+            )
+            .await?;
 
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let table = ListingTable::try_new(config)?;
-
-        self.read_table(Arc::new(table))
+        self.read_table(table)
     }
 
     async fn register_exon_table(
         &self,
         name: &str,
         table_path: &str,
-        options: ExonReadOptions<'_>,
+        file_type: &str,
     ) -> Result<(), DataFusionError> {
-        let table_path = ListingTableUrl::parse(table_path)?;
+        let sql_statement = format!(
+            "CREATE EXTERNAL TABLE {} STORED AS {} LOCATION '{}'",
+            name, file_type, table_path
+        );
 
-        let listing_options = options.to_listing_options(&self.copied_config());
-
-        self.register_listing_table(
-            name,
-            table_path,
-            listing_options,
-            options.schema.map(|s| Arc::new(s.to_owned())),
-            None,
-        )
-        .await?;
+        self.sql(&sql_statement).await?;
 
         Ok(())
     }
 
-    async fn query_bam_file(
+    async fn read_inferred_exon_table(
         &self,
         table_path: &str,
-        query: &str,
     ) -> Result<DataFrame, DataFusionError> {
         let session_state = self.state();
-        let table_path = ListingTableUrl::parse(table_path)?;
 
-        let region: Region = query
-            .parse()
-            .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
+        let (file_type, file_compress_type) =
+            crate::datasources::infer_file_type_and_compression(table_path)?;
 
-        let file_format = BAMFormat::default().with_region_filter(region);
-        let boxed_format = Arc::new(file_format);
+        let table = ExonListingTableFactory::default()
+            .create_from_file_type(
+                &session_state,
+                file_type,
+                file_compress_type,
+                table_path.to_string(),
+            )
+            .await?;
 
-        let lo = ListingOptions::new(boxed_format);
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let table = ListingTable::try_new(config)?;
-
-        self.read_table(Arc::new(table))
-    }
-
-    async fn query_bcf_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError> {
-        let session_state = self.state();
-        let table_path = ListingTableUrl::parse(table_path)?;
-
-        let region: Region = query
-            .parse()
-            .map_err(|_| DataFusionError::Execution("Failed to parse query string".to_string()))?;
-
-        let file_format = BCFFormat::default().with_region_filter(region);
-        let boxed_format = Arc::new(file_format);
-
-        let lo = ListingOptions::new(boxed_format);
-
-        let resolved_schema = lo.infer_schema(&session_state, &table_path).await?;
-
-        let config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let table = ListingTable::try_new(config)?;
-
-        self.read_table(Arc::new(table))
+        self.read_table(table)
     }
 
     async fn register_vcf_file(
@@ -463,52 +410,75 @@ impl ExonSessionExt for SessionContext {
         self.register_table(table_name, provider)
     }
 
-    async fn read_inferred_exon_table(
+    async fn query_bcf_file(
         &self,
         table_path: &str,
+        query: &str,
     ) -> Result<DataFrame, DataFusionError> {
-        let session_state = self.state();
+        let region = query.parse().map_err(|e| {
+            DataFusionError::Execution(format!(
+                "Failed to parse query '{}' as region: {}",
+                query, e
+            ))
+        })?;
 
-        let table_url = ListingTableUrl::parse(table_path)?;
-        let file_format = crate::datasources::infer_exon_format(table_path)?;
-        let lo = ListingOptions::new(file_format);
+        let listing_url = ListingTableUrl::parse(table_path)?;
 
-        let resolved_schema = lo.infer_schema(&session_state, &table_url).await?;
+        let state = self.state();
 
-        let config = ListingTableConfig::new(table_url)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
+        let options = ListingBCFTableOptions::default().with_region(region);
 
-        let table = ListingTable::try_new(config)?;
+        let schema = options.infer_schema(&state, &listing_url).await?;
+        let config = ListingBCFTableConfig::new(listing_url).with_options(options);
 
-        self.read_table(Arc::new(table))
+        let table = ListingBCFTable::try_new(config, schema)?;
+
+        let df = self.read_table(Arc::new(table))?;
+
+        Ok(df)
+    }
+
+    async fn query_bam_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let region = query.parse().map_err(|e| {
+            DataFusionError::Execution(format!(
+                "Failed to parse query '{}' as region: {}",
+                query, e
+            ))
+        })?;
+
+        let options = ListingBAMTableOptions::default().with_region(region);
+
+        let schema = options.infer_schema().await?;
+
+        let listing_url = ListingTableUrl::parse(table_path)?;
+        let config = ListingBAMTableConfig::new(listing_url).with_options(options);
+
+        let table = ListingBAMTable::try_new(config, schema)?;
+
+        let df = self.read_table(Arc::new(table))?;
+
+        Ok(df)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use arrow::array::Float32Array;
     use datafusion::{error::DataFusionError, prelude::SessionContext};
 
-    use crate::{
-        context::exon_session_ext::ExonSessionExt,
-        datasources::{ExonFileType, ExonReadOptions},
-        tests::test_path,
-    };
+    use crate::{context::exon_session_ext::ExonSessionExt, tests::test_path};
 
     #[tokio::test]
     async fn test_register() -> Result<(), DataFusionError> {
-        let file_file = ExonFileType::from_str("fasta").unwrap();
-
-        let options = ExonReadOptions::new(file_file);
-
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
 
         let test_path = test_path("fasta", "test.fasta");
 
-        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), options)
+        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), "fasta")
             .await
             .unwrap();
 
@@ -519,68 +489,6 @@ mod tests {
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].num_columns(), 3);
         assert_eq!(batches[0].num_rows(), 2);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_infer() -> Result<(), DataFusionError> {
-        let ctx = SessionContext::new_exon();
-        let test_table = vec![
-            ("bam", "test.bam"),
-            ("sam", "test.sam"),
-            ("bed", "test.bed.zst"),
-            ("bed", "test.bed.gz"),
-            ("bed", "test.bed"),
-            ("fasta", "test.fasta.zst"),
-            ("fasta", "test.fasta.gz"),
-            ("fasta", "test.fasta"),
-            ("fasta", "test.fa"),
-            ("fasta", "test.fna"),
-            ("fastq", "test.fastq.zst"),
-            ("fastq", "test.fastq.gz"),
-            ("fastq", "test.fastq"),
-            ("fastq", "test.fq"),
-            #[cfg(feature = "genbank")]
-            ("genbank", "test.gb"),
-            #[cfg(feature = "genbank")]
-            ("genbank", "test.gb.gz"),
-            #[cfg(feature = "genbank")]
-            ("genbank", "test.gb.zst"),
-            #[cfg(feature = "genbank")]
-            ("genbank", "test.genbank"),
-            #[cfg(feature = "genbank")]
-            ("genbank", "test.gbk"),
-            ("gff", "test.gff.zst"),
-            ("gff", "test.gff.gz"),
-            ("gff", "test.gff"),
-            ("gtf", "test.gtf"),
-            ("vcf", "index.vcf"),
-            ("bcf", "index.bcf"),
-            ("vcf", "index.vcf.gz"),
-            ("hmmdomtab", "test.hmmdomtab.zst"),
-            ("hmmdomtab", "test.hmmdomtab.gz"),
-            ("hmmdomtab", "test.hmmdomtab"),
-            #[cfg(feature = "mzml")]
-            ("mzml", "test.mzML.zst"),
-            #[cfg(feature = "mzml")]
-            ("mzml", "test.mzML.gz"),
-            #[cfg(feature = "mzml")]
-            ("mzml", "test.mzML"),
-        ];
-
-        for (cat, fname) in test_table.iter() {
-            let test_path = test_path(cat, fname);
-
-            let df = ctx
-                .read_inferred_exon_table(test_path.to_str().unwrap())
-                .await
-                .unwrap();
-            let batches = df.collect().await.unwrap();
-            let len_sum = batches.iter().fold(0, |acc, b| acc + b.num_rows());
-
-            assert!(len_sum > 0);
-        }
 
         Ok(())
     }
@@ -794,7 +702,6 @@ mod tests {
     async fn test_read_bcf() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
 
-        // let path = test_listing_table_dir("bcf", "index.bcf");
         let path = test_path("bcf", "index.bcf");
 
         let df = ctx

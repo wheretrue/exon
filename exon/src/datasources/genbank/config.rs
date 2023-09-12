@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::datatypes::SchemaRef;
 use object_store::ObjectStore;
 
-use super::file_format::schema;
+use super::table_provider::schema;
 
 /// Configuration for a Genbank data source.
 pub struct GenbankConfig {

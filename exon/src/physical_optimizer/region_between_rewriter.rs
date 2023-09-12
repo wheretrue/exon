@@ -172,7 +172,7 @@ mod tests {
     async fn test_region_between_rule() {
         let schema = Arc::new(arrow::datatypes::Schema::new(vec![
             arrow::datatypes::Field::new("chrom", arrow::datatypes::DataType::Utf8, false),
-            arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int32, false),
+            arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
         ]));
 
         let chrom_expr = col("chrom", &schema).unwrap();

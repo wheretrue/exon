@@ -2,16 +2,15 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::{
-    catalog::schema::SchemaProvider,
-    common::FileCompressionType,
-    datasource::{
-        listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl},
-        TableProvider,
-    },
+    catalog::schema::SchemaProvider, common::FileCompressionType, datasource::TableProvider,
     prelude::SessionContext,
 };
 
-use crate::{datasources::ExonFileType, exome::proto, ExonRuntimeEnvExt};
+use crate::{
+    datasources::{ExonFileType, ExonListingTableFactory},
+    exome::proto,
+    ExonRuntimeEnvExt,
+};
 
 use super::ExomeCatalogClient;
 
@@ -83,25 +82,22 @@ impl SchemaProvider for Schema {
             .await
             .unwrap();
 
-        let table_path = ListingTableUrl::parse(proto_table.location.as_str()).unwrap();
         let file_compression_type = FileCompressionType::UNCOMPRESSED;
 
         let file_type = ExonFileType::from_str(&proto_table.file_format).unwrap();
-        let file_format = file_type.get_file_format(file_compression_type);
 
-        let lo = ListingOptions::new(file_format);
-        let resolved_schema = lo
-            .infer_schema(&self.session_context.state(), &table_path)
+        let table_provider_factory = ExonListingTableFactory {};
+        let table_provider = table_provider_factory
+            .create_from_file_type(
+                &self.session_context.state(),
+                file_type,
+                file_compression_type,
+                proto_table.location.clone(),
+            )
             .await
             .unwrap();
 
-        let listing_table_config = ListingTableConfig::new(table_path)
-            .with_listing_options(lo)
-            .with_schema(resolved_schema);
-
-        let table = ListingTable::try_new(listing_table_config).unwrap();
-
-        Some(Arc::new(table))
+        Some(table_provider)
     }
 
     fn table_exist(&self, name: &str) -> bool {

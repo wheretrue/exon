@@ -179,9 +179,12 @@ mod tests {
     }
 
     pub fn test_listing_table_url(data_type: &str) -> ListingTableUrl {
-        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let cwd = std::env::current_dir().unwrap().join("exon");
+        let start_directory = std::env::var("CARGO_MANIFEST_DIR")
+            .map(PathBuf::from)
+            .unwrap_or(cwd);
 
-        let abs_file_path = PathBuf::from(manifest_dir)
+        let abs_file_path = start_directory
             .join("test-data")
             .join("datasources")
             .join(data_type);

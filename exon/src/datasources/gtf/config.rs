@@ -19,7 +19,7 @@ use object_store::ObjectStore;
 
 use crate::datasources::DEFAULT_BATCH_SIZE;
 
-use super::file_format::schema;
+use super::table_provider::schema;
 
 /// Configuration for a GTF data source.
 pub struct GTFConfig {

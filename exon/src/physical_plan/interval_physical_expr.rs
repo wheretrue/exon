@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_evaluate() {
+    async fn test_evaluate() -> Result<(), Box<dyn std::error::Error>> {
         let batch = RecordBatch::try_new(
             Arc::new(arrow::datatypes::Schema::new(vec![
                 arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
@@ -295,12 +295,12 @@ mod tests {
         )
         .unwrap();
 
-        let binary_expr = eq(col("pos", &batch.schema()).unwrap(), lit(1));
+        let binary_expr = eq(col("pos", &batch.schema()).unwrap(), lit(1i64));
 
         let expr =
             interval_physical_expr::IntervalPhysicalExpr::new(1, Some(1), Arc::new(binary_expr));
 
-        let result = match expr.evaluate(&batch).unwrap() {
+        let result = match expr.evaluate(&batch)? {
             datafusion::physical_plan::ColumnarValue::Array(array) => array,
             _ => panic!("Expected array"),
         };
@@ -319,6 +319,8 @@ mod tests {
             .for_each(|(result, expected)| {
                 assert_eq!(result, expected);
             });
+
+        Ok(())
     }
 
     #[test]

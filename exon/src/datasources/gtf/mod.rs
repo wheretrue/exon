@@ -19,11 +19,12 @@
 mod array_builder;
 mod batch_reader;
 mod config;
-mod file_format;
 mod file_opener;
 mod scanner;
 
+/// Table provider for GTF files.
+pub mod table_provider;
+
 pub use self::config::GTFConfig;
-pub use self::file_format::GTFFormat;
 pub use self::file_opener::GTFOpener;
 pub use self::scanner::GTFScan;

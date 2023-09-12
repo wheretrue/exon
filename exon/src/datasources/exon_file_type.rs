@@ -12,22 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt::Display, str::FromStr, sync::Arc};
+use std::{fmt::Display, str::FromStr};
 
-use datafusion::{
-    common::FileCompressionType, datasource::file_format::FileFormat, error::DataFusionError,
-};
-
-use super::{
-    bam::BAMFormat, bcf::BCFFormat, bed::BEDFormat, fasta::FASTAFormat, fastq::FASTQFormat,
-    gff::GFFFormat, gtf::GTFFormat, hmmdomtab::HMMDomTabFormat, sam::SAMFormat, vcf::VCFFormat,
-};
-
-#[cfg(feature = "genbank")]
-use super::genbank::GenbankFormat;
-
-#[cfg(feature = "mzml")]
-use super::mzml::MzMLFormat;
+use datafusion::{common::FileCompressionType, error::DataFusionError};
 
 /// The type of file.
 #[derive(Debug, Clone)]
@@ -47,7 +34,7 @@ pub enum ExonFileType {
     /// SAM file format.
     SAM,
     /// HMMER file format.
-    HMMER,
+    HMMDOMTAB,
     /// BED file format.
     BED,
     /// GTF file format.
@@ -60,6 +47,10 @@ pub enum ExonFileType {
     /// mzML file format.
     #[cfg(feature = "mzml")]
     MZML,
+
+    /// FCS file format.
+    #[cfg(feature = "fcs")]
+    FCS,
 }
 
 impl FromStr for ExonFileType {
@@ -80,9 +71,11 @@ impl FromStr for ExonFileType {
             "MZML" => Ok(Self::MZML),
             #[cfg(feature = "genbank")]
             "GENBANK" | "GBK" | "GB" => Ok(Self::GENBANK),
-            "HMMDOMTAB" => Ok(Self::HMMER),
+            "HMMDOMTAB" => Ok(Self::HMMDOMTAB),
             "BED" => Ok(Self::BED),
             "GTF" => Ok(Self::GTF),
+            #[cfg(feature = "fcs")]
+            "FCS" => Ok(Self::FCS),
             _ => Err(()),
         }
     }
@@ -102,37 +95,16 @@ impl Display for ExonFileType {
             Self::MZML => write!(f, "MZML"),
             #[cfg(feature = "genbank")]
             Self::GENBANK => write!(f, "GENBANK"),
-            Self::HMMER => write!(f, "HMMER"),
+            Self::HMMDOMTAB => write!(f, "HMMDOMTAB"),
             Self::BED => write!(f, "BED"),
             Self::GTF => write!(f, "GTF"),
+            #[cfg(feature = "fcs")]
+            Self::FCS => write!(f, "FCS"),
         }
     }
 }
 
 impl ExonFileType {
-    /// Get the file format for the given file type.
-    pub fn get_file_format(
-        self,
-        file_compression_type: FileCompressionType,
-    ) -> Arc<dyn FileFormat> {
-        match self {
-            Self::BAM => Arc::new(BAMFormat::default()),
-            Self::BCF => Arc::new(BCFFormat::default()),
-            Self::BED => Arc::new(BEDFormat::new(file_compression_type)),
-            Self::FASTA => Arc::new(FASTAFormat::new(file_compression_type)),
-            Self::FASTQ => Arc::new(FASTQFormat::new(file_compression_type)),
-            #[cfg(feature = "genbank")]
-            Self::GENBANK => Arc::new(GenbankFormat::new(file_compression_type)),
-            Self::GFF => Arc::new(GFFFormat::new(file_compression_type)),
-            Self::HMMER => Arc::new(HMMDomTabFormat::new(file_compression_type)),
-            Self::SAM => Arc::new(SAMFormat::default()),
-            Self::VCF => Arc::new(VCFFormat::new(file_compression_type)),
-            Self::GTF => Arc::new(GTFFormat::new(file_compression_type)),
-            #[cfg(feature = "mzml")]
-            Self::MZML => Arc::new(MzMLFormat::new(file_compression_type)),
-        }
-    }
-
     /// Get the file extension for the given file type with the given compression.
     pub fn get_file_extension(&self, file_compression_type: FileCompressionType) -> String {
         match (self, file_compression_type) {
@@ -147,7 +119,9 @@ impl ExonFileType {
 }
 
 /// Infer the file type from the file extension.
-pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionError> {
+pub fn infer_file_type_and_compression(
+    path: &str,
+) -> Result<(ExonFileType, FileCompressionType), DataFusionError> {
     let mut exts = path.rsplit('.');
     let mut splitted = exts.next().unwrap_or("");
 
@@ -164,9 +138,7 @@ pub fn infer_exon_format(path: &str) -> Result<Arc<dyn FileFormat>, DataFusionEr
         ))
     })?;
 
-    let file_format = file_type.get_file_format(file_compression_type);
-
-    Ok(file_format)
+    Ok((file_type, file_compression_type))
 }
 
 #[cfg(test)]
@@ -186,7 +158,7 @@ mod tests {
         assert_eq!(ExonFileType::SAM.to_string(), "SAM");
         #[cfg(feature = "genbank")]
         assert_eq!(ExonFileType::GENBANK.to_string(), "GENBANK");
-        assert_eq!(ExonFileType::HMMER.to_string(), "HMMER");
+        assert_eq!(ExonFileType::HMMDOMTAB.to_string(), "HMMDOMTAB");
         assert_eq!(ExonFileType::BED.to_string(), "BED");
         #[cfg(feature = "mzml")]
         assert_eq!(ExonFileType::MZML.to_string(), "MZML");
