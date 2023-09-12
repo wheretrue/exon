@@ -1,6 +1,9 @@
 [package]
 description = "A platform for scientific data processing and analysis."
 edition = "2021"
+exclude = [
+  "test-data/*",
+]
 homepage = {workspace = true}
 keywords = ["biology", "science", "arrow"]
 license = {workspace = true}
