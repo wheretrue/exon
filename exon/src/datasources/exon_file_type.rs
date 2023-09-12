@@ -47,6 +47,10 @@ pub enum ExonFileType {
     /// mzML file format.
     #[cfg(feature = "mzml")]
     MZML,
+
+    /// FCS file format.
+    #[cfg(feature = "fcs")]
+    FCS,
 }
 
 impl FromStr for ExonFileType {
@@ -70,6 +74,8 @@ impl FromStr for ExonFileType {
             "HMMDOMTAB" => Ok(Self::HMMDOMTAB),
             "BED" => Ok(Self::BED),
             "GTF" => Ok(Self::GTF),
+            #[cfg(feature = "fcs")]
+            "FCS" => Ok(Self::FCS),
             _ => Err(()),
         }
     }
@@ -92,6 +98,8 @@ impl Display for ExonFileType {
             Self::HMMDOMTAB => write!(f, "HMMDOMTAB"),
             Self::BED => write!(f, "BED"),
             Self::GTF => write!(f, "GTF"),
+            #[cfg(feature = "fcs")]
+            Self::FCS => write!(f, "FCS"),
         }
     }
 }

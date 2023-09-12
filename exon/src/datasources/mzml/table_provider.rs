@@ -184,11 +184,11 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = test_listing_table_url("mzml/test.mzML");
+        let table_path = test_listing_table_url("mzml");
         let table = ExonListingTableFactory::new()
             .create_from_file_type(
                 &session_state,
-                ExonFileType::BED,
+                ExonFileType::MZML,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
             )

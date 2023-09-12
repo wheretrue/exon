@@ -20,6 +20,7 @@ use crate::{datasources::ExonFileType, io::exon_object_store};
 
 use super::GTFScan;
 
+/// The schema for a GTF file
 pub fn schema() -> SchemaRef {
     let attribute_key_field = Field::new("keys", DataType::Utf8, false);
     let attribute_value_field = Field::new("values", DataType::Utf8, true);

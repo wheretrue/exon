@@ -27,6 +27,7 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::ExonFileType,
+    io::exon_object_store,
     physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_region_with_interval},
     physical_plan::{
         chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr,
@@ -480,7 +481,35 @@ impl TableProvider for ListingVCFTable {
         };
 
         if filters.clone().is_none() {
-            todo!("Implement no filter case for VCF scan");
+            let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+
+            let partitioned_file_lists = vec![
+                exon_object_store::list_files_for_scan(
+                    object_store,
+                    self.table_paths.clone(),
+                    &self.options.file_extension,
+                )
+                .await?,
+            ];
+
+            let file_scan_config = FileScanConfig {
+                object_store_url,
+                file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                file_groups: partitioned_file_lists,
+                statistics: Statistics::default(),
+                projection: projection.cloned(),
+                limit,
+                output_ordering: Vec::new(),
+                table_partition_cols: Vec::new(),
+                infinite_source: false,
+            };
+
+            let table = self
+                .options
+                .create_physical_plan(file_scan_config, None)
+                .await?;
+
+            return Ok(table);
         }
 
         let region_exprr = filters.clone().unwrap();
@@ -525,155 +554,167 @@ impl TableProvider for ListingVCFTable {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::sync::Arc;
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
 
-//     use crate::{
-//         datasources::vcf::VCFScan,
-//         tests::{test_listing_table_dir, test_path},
-//         ExonSessionExt,
-//     };
+    use crate::{
+        datasources::{
+            vcf::{table_provider::get_byte_range_for_file, VCFScan},
+            ExonListingTableFactory,
+        },
+        tests::{test_listing_table_dir, test_path},
+        ExonSessionExt,
+    };
 
-//     use arrow::datatypes::DataType;
-//     use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
-//     use noodles::bgzf::VirtualPosition;
-//     use object_store::{local::LocalFileSystem, ObjectStore};
+    use arrow::datatypes::DataType;
+    use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
+    use noodles::bgzf::VirtualPosition;
+    use object_store::{local::LocalFileSystem, ObjectStore};
 
-//     #[tokio::test]
-//     async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
-//         let path = test_listing_table_dir("bigger-index", "test.vcf.gz");
-//         let object_store = Arc::new(LocalFileSystem::new());
+    #[tokio::test]
+    async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
+        let path = test_listing_table_dir("bigger-index", "test.vcf.gz");
+        let object_store = Arc::new(LocalFileSystem::new());
 
-//         let object_meta = object_store.head(&path).await?;
+        let object_meta = object_store.head(&path).await?;
 
-//         let region = "chr1:1-3388930".parse()?;
+        let region = "chr1:1-3388930".parse()?;
 
-//         let chunks = get_byte_range_for_file(object_store, &object_meta, &region).await?;
+        let chunks = get_byte_range_for_file(object_store, &object_meta, &region).await?;
 
-//         assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks.len(), 1);
 
-//         let chunk = chunks[0];
-//         assert_eq!(chunk.start(), VirtualPosition::from(621346816));
-//         assert_eq!(chunk.end(), VirtualPosition::from(3014113427456));
+        let chunk = chunks[0];
+        assert_eq!(chunk.start(), VirtualPosition::from(621346816));
+        assert_eq!(chunk.end(), VirtualPosition::from(3014113427456));
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[tokio::test]
-//     async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
-//         let ctx = SessionContext::new_exon();
-//         let table_path = test_path("vcf", "index.vcf.gz");
-//         let table_path = table_path.to_str().unwrap();
+    #[tokio::test]
+    async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+        let table_path = test_path("vcf", "index.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
 
-//         ctx.register_vcf_file("vcf_file", table_path).await?;
+        ctx.register_vcf_file("vcf_file", table_path).await?;
 
-//         let sql_statements = vec![
-//             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
-//             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 2000000;",
-//             "SELECT * FROM vcf_file WHERE chrom = '1'",
-//         ];
+        let sql_statements = vec![
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 2000000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1'",
+        ];
 
-//         for sql_statement in sql_statements {
-//             let df = ctx.sql(sql_statement).await?;
+        for sql_statement in sql_statements {
+            let df = ctx.sql(sql_statement).await?;
 
-//             let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
+            let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
 
-//             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-//                 // Check the input is a VCF scan...
-//                 if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
-//                     // ... and that it has a region filter.
-//                     assert!(scan.region_filter().is_some());
-//                 } else {
-//                     panic!(
-//                         "expected VCFScan for {} in {:#?}",
-//                         sql_statement, physical_plan
-//                     );
-//                 }
-//             }
-//         }
+            if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+                // Check the input is a VCF scan...
+                if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
+                    // ... and that it has a region filter.
+                    assert!(scan.region_filter().is_some());
+                } else {
+                    panic!(
+                        "expected VCFScan for {} in {:#?}",
+                        sql_statement, physical_plan
+                    );
+                }
+            }
+        }
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[tokio::test]
-//     async fn test_vcf_parsing_string() -> Result<(), Box<dyn std::error::Error>> {
-//         let ctx = SessionContext::new_exon();
+    #[tokio::test]
+    async fn test_vcf_parsing_string() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
 
-//         let table_path = test_path("vcf", "index.vcf");
+        let table_path = test_path("vcf", "index.vcf");
 
-//         let sql = "SET exon.vcf_parse_info = true;";
-//         ctx.sql(sql).await?;
+        let sql = "SET exon.vcf_parse_info = true;";
+        ctx.sql(sql).await?;
 
-//         let sql = "SET exon.vcf_parse_format = true;";
-//         ctx.sql(sql).await?;
+        let sql = "SET exon.vcf_parse_format = true;";
+        ctx.sql(sql).await?;
 
-//         let sql = format!(
-//             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
-//             table_path.to_str().unwrap(),
-//         );
-//         ctx.sql(&sql).await?;
+        let sql = format!(
+            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
+            table_path.to_str().unwrap(),
+        );
+        ctx.sql(&sql).await?;
 
-//         let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
-//         let df = ctx.sql(sql).await?;
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
+        let df = ctx.sql(sql).await?;
 
-//         // Check that the last two columns are strings.
-//         let schema = df.schema();
+        // Check that the last two columns are strings.
+        let schema = df.schema();
 
-//         assert_eq!(schema.field(7).data_type(), &DataType::Utf8);
-//         assert_eq!(schema.field(8).data_type(), &DataType::Utf8);
+        assert_eq!(schema.field(7).data_type(), &DataType::Utf8);
+        assert_eq!(schema.field(8).data_type(), &DataType::Utf8);
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[tokio::test]
-//     async fn test_uncompressed_read() -> Result<(), Box<dyn std::error::Error>> {
-//         let ctx = SessionContext::new_exon();
-//         let table_path = test_path("vcf", "index.vcf");
-//         let table_path = table_path.to_str().unwrap();
+    #[tokio::test]
+    async fn test_uncompressed_read() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+        let table_path = test_path("vcf", "index.vcf");
+        let table_path = table_path.to_str().unwrap();
 
-//         ctx.register_vcf_file("vcf_file", table_path).await?;
+        let table = ExonListingTableFactory::new()
+            .create_from_file_type(
+                &ctx.state(),
+                crate::datasources::ExonFileType::VCF,
+                datafusion::common::FileCompressionType::UNCOMPRESSED,
+                table_path.to_string(),
+            )
+            .await?;
 
-//         let df = ctx
-//             .sql("SELECT chrom, pos, id FROM vcf_file")
-//             .await
-//             .unwrap();
+        ctx.register_table("vcf_file", table)?;
 
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await.unwrap();
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
-//         }
-//         assert_eq!(row_cnt, 621);
+        let df = ctx
+            .sql("SELECT chrom, pos, id FROM vcf_file")
+            .await
+            .unwrap();
 
-//         Ok(())
-//     }
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 621);
 
-//     #[tokio::test]
-//     async fn test_compressed_read_with_region() -> Result<(), Box<dyn std::error::Error>> {
-//         let ctx = SessionContext::new_exon();
-//         let table_path = test_path("bigger-index", "test.vcf.gz");
-//         let table_path = table_path.to_str().unwrap();
+        Ok(())
+    }
 
-//         ctx.register_vcf_file("vcf_file", table_path).await?;
+    #[tokio::test]
+    async fn test_compressed_read_with_region() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+        let table_path = test_path("bigger-index", "test.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
 
-//         let df = ctx
-//             .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 'chr1' AND pos BETWEEN 3388920 AND 3388930")
-//             .await?;
+        ctx.register_vcf_file("vcf_file", table_path).await?;
 
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await?;
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
+        let df = ctx
+            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 'chr1' AND pos BETWEEN 3388920 AND 3388930")
+            .await?;
 
-//             assert_eq!(batch.schema().field(0).name(), "chrom");
-//             assert_eq!(batch.schema().field(1).name(), "pos");
+        let mut row_cnt = 0;
+        let bs = df.collect().await?;
+        for batch in bs {
+            row_cnt += batch.num_rows();
 
-//             assert_eq!(batch.schema().fields().len(), 2);
-//         }
+            assert_eq!(batch.schema().field(0).name(), "chrom");
+            assert_eq!(batch.schema().field(1).name(), "pos");
 
-//         assert_eq!(row_cnt, 1);
+            assert_eq!(batch.schema().fields().len(), 2);
+        }
 
-//         Ok(())
-//     }
-// }
+        assert_eq!(row_cnt, 1);
+
+        Ok(())
+    }
+}

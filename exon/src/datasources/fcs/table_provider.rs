@@ -16,7 +16,7 @@ use datafusion::{
     prelude::Expr,
 };
 use futures::TryStreamExt;
-use object_store::{ObjectMeta, ObjectStore};
+use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
 use crate::{datasources::ExonFileType, io::exon_object_store};
@@ -71,11 +71,12 @@ impl ListingFCSTableOptions {
     /// Infer the schema for the table
     pub async fn infer_schema(
         &self,
-        _state: &SessionState,
-        store: &Arc<dyn ObjectStore>,
-        objects: &[ObjectMeta],
+        state: &SessionState,
+        table_path: &ListingTableUrl,
     ) -> datafusion::error::Result<SchemaRef> {
-        let get_result = store.get(&objects[0].location).await?;
+        let store = state.runtime_env().object_store(table_path)?;
+
+        let get_result = store.get(table_path.prefix()).await?;
 
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
         let stream_reader = StreamReader::new(stream_reader);

@@ -3,7 +3,6 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
     datasource::{
         listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
@@ -15,8 +14,9 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
+use noodles::core::Region;
 
-use crate::{datasources::ExonFileType, io::exon_object_store};
+use crate::io::exon_object_store;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -50,15 +50,24 @@ use super::{array_builder::schema, BAMScan};
 /// Listing options for a BAM table
 pub struct ListingBAMTableOptions {
     file_extension: String,
+
+    region: Option<Region>,
+}
+
+impl Default for ListingBAMTableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: String::from("bam"),
+            region: None,
+        }
+    }
 }
 
 impl ListingBAMTableOptions {
-    /// Create a new set of options
-    pub fn new() -> Self {
-        let file_extension =
-            ExonFileType::BAM.get_file_extension(FileCompressionType::UNCOMPRESSED);
-
-        Self { file_extension }
+    /// Set the region for the table options. This is used to filter the records
+    pub fn with_region(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 
     /// Infer the schema for the table
@@ -72,11 +81,11 @@ impl ListingBAMTableOptions {
         &self,
         conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BAMScan::new(conf);
+        let mut scan = BAMScan::new(conf);
 
-        // if let Some(region_filter) = &self.region_filter {
-        //     scan = scan.with_region_filter(region_filter.clone());
-        // }
+        if let Some(region_filter) = &self.region {
+            scan = scan.with_region_filter(region_filter.clone());
+        }
 
         Ok(Arc::new(scan))
     }
@@ -154,7 +163,7 @@ impl TableProvider for ListingBAMTable {
         ];
 
         let file_scan_config = FileScanConfig {
-            object_store_url: object_store_url,
+            object_store_url,
             file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
             file_groups: partitioned_file_lists,
             statistics: Statistics::default(),
@@ -174,18 +183,25 @@ impl TableProvider for ListingBAMTable {
 #[cfg(test)]
 mod tests {
 
-    use datafusion::{
-        common::FileCompressionType, datasource::listing::ListingTableUrl, prelude::SessionContext,
-    };
+    use std::sync::Arc;
 
-    use crate::datasources::{ExonFileType, ExonListingTableFactory};
+    use datafusion::{common::FileCompressionType, prelude::SessionContext};
+    use noodles::core::Region;
+
+    use crate::{
+        datasources::{
+            bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
+            ExonFileType, ExonListingTableFactory,
+        },
+        tests::test_listing_table_url,
+    };
 
     #[tokio::test]
     async fn test_read_bam() {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = ListingTableUrl::parse("test-data").unwrap();
+        let table_path = test_listing_table_url("bam");
 
         let exon_listing_table_factory = ExonListingTableFactory::new();
 
@@ -209,32 +225,30 @@ mod tests {
         assert_eq!(row_cnt, 61)
     }
 
-    // #[tokio::test]
-    // async fn test_read_with_index() {
-    //     let ctx = SessionContext::new();
-    //     let session_state = ctx.state();
+    #[tokio::test]
+    async fn test_read_with_index() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new();
 
-    //     let table_path = ListingTableUrl::parse("test-data").unwrap();
+        let table_path = test_listing_table_url("bam");
 
-    //     let region: Region = "chr1:1-12209153".parse().unwrap();
-    //     let fasta_format = Arc::new(BAMFormat::default().with_region_filter(region));
+        let region: Region = "chr1:1-12209153".parse()?;
 
-    //     let lo = ListingOptions::new(fasta_format.clone()).with_file_extension("bam");
+        let lo = ListingBAMTableOptions::default().with_region(region.clone());
+        let table_schema = lo.infer_schema().await.unwrap();
 
-    //     let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+        let config = ListingBAMTableConfig::new(table_path).with_options(lo);
 
-    //     let config = ListingTableConfig::new(table_path)
-    //         .with_listing_options(lo)
-    //         .with_schema(resolved_schema);
+        let bam_table = ListingBAMTable::try_new(config, table_schema)?;
 
-    //     let provider = Arc::new(ListingTable::try_new(config).unwrap());
-    //     let df = ctx.read_table(provider.clone()).unwrap();
+        let df = ctx.read_table(Arc::new(bam_table))?;
 
-    //     let mut row_cnt = 0;
-    //     let bs = df.collect().await.unwrap();
-    //     for batch in bs {
-    //         row_cnt += batch.num_rows();
-    //     }
-    //     assert_eq!(row_cnt, 55)
-    // }
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 55);
+
+        Ok(())
+    }
 }

@@ -52,12 +52,14 @@ pub struct CVParam {
 /// The data type of the CVParam.
 impl CVParam {
     /// Get the data type of the CVParam.
+    #[allow(dead_code)]
     pub fn get_data_type(&self) -> Result<DataType, MissingDataTypeError> {
         let dt = DataType::try_from(self)?;
         Ok(dt)
     }
 
     /// Create a new CVParam.
+    #[allow(dead_code)]
     pub fn new(
         cv_ref: String,
         accession: String,
@@ -146,6 +148,7 @@ pub struct Binary {
 }
 
 impl Binary {
+    #[allow(dead_code)]
     pub fn new(content: Option<String>) -> Binary {
         Binary { content }
     }
@@ -161,6 +164,7 @@ pub struct BinaryDataArray {
 }
 
 impl BinaryDataArray {
+    #[allow(dead_code)]
     pub fn binary_array_to_vector(&self) -> Result<Vec<f64>, std::io::Error> {
         let data_type = DataType::try_from(&self.cv_param).unwrap();
         let compression_type = CompressionType::try_from(&self.cv_param).unwrap();
@@ -304,7 +308,10 @@ pub struct BinaryDataArrayList {
     pub count: String,
 }
 
+#[allow(dead_code)]
 type DecodeArrayError = &'static str;
+
+#[allow(dead_code)]
 type DecodedArrayResult<T> = Result<T, DecodeArrayError>;
 
 pub trait DecodedArray {

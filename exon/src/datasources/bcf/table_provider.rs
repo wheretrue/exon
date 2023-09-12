@@ -16,7 +16,7 @@ use datafusion::{
     prelude::Expr,
 };
 use futures::TryStreamExt;
-use noodles::bcf;
+use noodles::{bcf, core::Region};
 use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
@@ -57,15 +57,24 @@ impl ListingBCFTableConfig {
 /// Listing options for a BCF table
 pub struct ListingBCFTableOptions {
     file_extension: String,
+
+    region: Option<Region>,
+}
+
+impl Default for ListingBCFTableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: ExonFileType::BCF.get_file_extension(FileCompressionType::UNCOMPRESSED),
+            region: None,
+        }
+    }
 }
 
 impl ListingBCFTableOptions {
-    /// Create a new set of options
-    pub fn new() -> Self {
-        let file_extension =
-            ExonFileType::BCF.get_file_extension(FileCompressionType::UNCOMPRESSED);
-
-        Self { file_extension }
+    /// Set the region for the table options. This is used to filter the records
+    pub fn with_region(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 
     /// Infer the schema for the table
@@ -76,22 +85,16 @@ impl ListingBCFTableOptions {
     ) -> datafusion::error::Result<SchemaRef> {
         let store = state.runtime_env().object_store(table_path)?;
 
-        let get_result = if table_path.to_string().ends_with("/") {
+        let get_result = if table_path.to_string().ends_with('/') {
             let list = store.list(Some(table_path.prefix())).await?;
             let collected_list = list.try_collect::<Vec<_>>().await?;
             let first = collected_list
                 .first()
                 .ok_or_else(|| DataFusionError::Execution("No files found".to_string()))?;
 
-            let get_result = store.get(&first.location).await?;
-
-            get_result
+            store.get(&first.location).await?
         } else {
-            let head = store.head(table_path.prefix()).await?;
-
-            let get_result = store.get(&head.location).await?;
-
-            get_result
+            store.get(table_path.prefix()).await?
         };
 
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
@@ -120,7 +123,11 @@ impl ListingBCFTableOptions {
         _state: &SessionState,
         conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BCFScan::new(conf.clone());
+        let mut scan = BCFScan::new(conf.clone());
+
+        if let Some(region_filter) = &self.region {
+            scan = scan.with_region_filter(region_filter.clone());
+        }
 
         Ok(Arc::new(scan))
     }
@@ -218,45 +225,43 @@ impl TableProvider for ListingBCFTable {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::sync::Arc;
+#[cfg(test)]
+mod tests {
+    use crate::{
+        datasources::{ExonFileType, ExonListingTableFactory},
+        tests::test_listing_table_url,
+    };
 
-//     use crate::tests::test_listing_table_url;
+    use datafusion::{common::FileCompressionType, prelude::SessionContext};
 
-//     use super::BCFFormat;
-//     use datafusion::{
-//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
-//         prelude::SessionContext,
-//     };
+    #[tokio::test]
+    async fn test_bcf_read() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
 
-//     #[tokio::test]
-//     async fn test_bcf_read() {
-//         let ctx = SessionContext::new();
-//         let session_state = ctx.state();
+        let table_path = test_listing_table_url("bcf");
 
-//         let table_path = test_listing_table_url("bcf");
+        let table = ExonListingTableFactory::default()
+            .create_from_file_type(
+                &session_state,
+                ExonFileType::BCF,
+                FileCompressionType::UNCOMPRESSED,
+                table_path.to_string(),
+            )
+            .await?;
 
-//         let bcf_format = Arc::new(BCFFormat::default());
-//         let lo = ListingOptions::new(bcf_format.clone()).with_file_extension("bcf");
+        let df = ctx.read_table(table)?;
 
-//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
 
-//         assert_eq!(resolved_schema.fields().len(), 9);
-//         assert_eq!(resolved_schema.field(0).name(), "chrom");
+            assert_eq!(batch.schema().fields().len(), 9);
+            assert_eq!(batch.schema().field(0).name(), "chrom");
+        }
+        assert_eq!(row_cnt, 621);
 
-//         let config = ListingTableConfig::new(table_path)
-//             .with_listing_options(lo)
-//             .with_schema(resolved_schema);
-
-//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-//         let df = ctx.read_table(provider.clone()).unwrap();
-
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await.unwrap();
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
-//         }
-//         assert_eq!(row_cnt, 621)
-//     }
-// }
+        Ok(())
+    }
+}

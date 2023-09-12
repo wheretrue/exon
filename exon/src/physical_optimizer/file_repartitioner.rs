@@ -28,14 +28,15 @@ use crate::datasources::{
     fastq::FASTQScan,
     gff::GFFScan,
     gtf::GTFScan,
+    hmmdomtab::HMMDomTabScan,
     // hmmdomtab::HMMDomTabScan,
 };
 
 #[cfg(feature = "genbank")]
 use crate::datasources::genbank::GenbankScan;
 
-// #[cfg(feature = "mzml")]
-// use crate::datasources::mzml::MzMLScan;
+#[cfg(feature = "mzml")]
+use crate::datasources::mzml::MzMLScan;
 
 type FilePartitions = Vec<Vec<PartitionedFile>>;
 
@@ -135,18 +136,18 @@ fn optimize_file_partitions(
         return Ok(Transformed::Yes(Arc::new(new_scan)));
     }
 
-    // if let Some(hmm_scan) = new_plan.as_any().downcast_ref::<HMMDomTabScan>() {
-    //     let new_scan = hmm_scan.get_repartitioned(target_partitions);
+    if let Some(hmm_scan) = new_plan.as_any().downcast_ref::<HMMDomTabScan>() {
+        let new_scan = hmm_scan.get_repartitioned(target_partitions);
 
-    //     return Ok(Transformed::Yes(Arc::new(new_scan)));
-    // }
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
 
-    // #[cfg(feature = "mzml")]
-    // if let Some(mzml_scan) = new_plan.as_any().downcast_ref::<MzMLScan>() {
-    //     let new_scan = mzml_scan.get_repartitioned(target_partitions);
+    #[cfg(feature = "mzml")]
+    if let Some(mzml_scan) = new_plan.as_any().downcast_ref::<MzMLScan>() {
+        let new_scan = mzml_scan.get_repartitioned(target_partitions);
 
-    //     return Ok(Transformed::Yes(Arc::new(new_scan)));
-    // }
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
 
     Ok(Transformed::No(new_plan))
 }

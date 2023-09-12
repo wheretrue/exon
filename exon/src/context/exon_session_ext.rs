@@ -25,6 +25,8 @@ use datafusion::{
 
 use crate::{
     datasources::{
+        bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
+        bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
     },
@@ -306,23 +308,23 @@ pub trait ExonSessionExt {
         table_path: &str,
     ) -> Result<Option<Arc<dyn TableProvider>>, DataFusionError>;
 
-    // Query a BCF file.
-    //
-    // File must be indexed and index file must be in the same directory as the BCF file.
-    // async fn query_bcf_file(
-    //     &self,
-    //     table_path: &str,
-    //     query: &str,
-    // ) -> Result<DataFrame, DataFusionError>;
+    /// Query a BCF file.
+    ///
+    /// File must be indexed and index file must be in the same directory as the BCF file.
+    async fn query_bcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError>;
 
-    // Query a BAM file.
-    //
-    // File must be indexed and index file must be in the same directory as the BAM file.
-    // async fn query_bam_file(
-    //     &self,
-    //     table_path: &str,
-    //     query: &str,
-    // ) -> Result<DataFrame, DataFusionError>;
+    /// Query a BAM file.
+    ///
+    /// File must be indexed and index file must be in the same directory as the BAM file.
+    async fn query_bam_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError>;
 }
 
 #[async_trait]
@@ -406,6 +408,60 @@ impl ExonSessionExt for SessionContext {
 
         let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema)?);
         self.register_table(table_name, provider)
+    }
+
+    async fn query_bcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let region = query.parse().map_err(|e| {
+            DataFusionError::Execution(format!(
+                "Failed to parse query '{}' as region: {}",
+                query, e
+            ))
+        })?;
+
+        let listing_url = ListingTableUrl::parse(table_path)?;
+
+        let state = self.state();
+
+        let options = ListingBCFTableOptions::default().with_region(region);
+
+        let schema = options.infer_schema(&state, &listing_url).await?;
+        let config = ListingBCFTableConfig::new(listing_url).with_options(options);
+
+        let table = ListingBCFTable::try_new(config, schema)?;
+
+        let df = self.read_table(Arc::new(table))?;
+
+        Ok(df)
+    }
+
+    async fn query_bam_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let region = query.parse().map_err(|e| {
+            DataFusionError::Execution(format!(
+                "Failed to parse query '{}' as region: {}",
+                query, e
+            ))
+        })?;
+
+        let options = ListingBAMTableOptions::default().with_region(region);
+
+        let schema = options.infer_schema().await?;
+
+        let listing_url = ListingTableUrl::parse(table_path)?;
+        let config = ListingBAMTableConfig::new(listing_url).with_options(options);
+
+        let table = ListingBAMTable::try_new(config, schema)?;
+
+        let df = self.read_table(Arc::new(table))?;
+
+        Ok(df)
     }
 }
 
@@ -528,43 +584,43 @@ mod tests {
         Ok(())
     }
 
-    // #[tokio::test]
-    // async fn test_query_bcf() -> Result<(), DataFusionError> {
-    //     let ctx = SessionContext::new();
+    #[tokio::test]
+    async fn test_query_bcf() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
 
-    //     let path = test_path("bcf", "index.bcf");
-    //     let query = "1";
+        let path = test_path("bcf", "index.bcf");
+        let query = "1";
 
-    //     let df = ctx
-    //         .query_bcf_file(path.to_str().unwrap(), query)
-    //         .await
-    //         .unwrap();
+        let df = ctx
+            .query_bcf_file(path.to_str().unwrap(), query)
+            .await
+            .unwrap();
 
-    //     let batches = df.collect().await.unwrap();
+        let batches = df.collect().await.unwrap();
 
-    //     assert!(!batches.is_empty());
+        assert!(!batches.is_empty());
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // #[tokio::test]
-    // async fn test_query_bam() -> Result<(), DataFusionError> {
-    //     let ctx = SessionContext::new();
+    #[tokio::test]
+    async fn test_query_bam() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
 
-    //     let path = test_path("bam", "test.bam");
-    //     let query = "chr1:1-12209153";
+        let path = test_path("bam", "test.bam");
+        let query = "chr1:1-12209153";
 
-    //     let df = ctx
-    //         .query_bam_file(path.to_str().unwrap(), query)
-    //         .await
-    //         .unwrap();
+        let df = ctx
+            .query_bam_file(path.to_str().unwrap(), query)
+            .await
+            .unwrap();
 
-    //     let batches = df.collect().await.unwrap();
+        let batches = df.collect().await.unwrap();
 
-    //     assert!(!batches.is_empty());
+        assert!(!batches.is_empty());
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_read_bam() -> Result<(), DataFusionError> {
@@ -646,7 +702,6 @@ mod tests {
     async fn test_read_bcf() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
 
-        // let path = test_listing_table_dir("bcf", "index.bcf");
         let path = test_path("bcf", "index.bcf");
 
         let df = ctx

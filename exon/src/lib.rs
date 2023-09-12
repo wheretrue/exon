@@ -184,7 +184,7 @@ mod tests {
             .map(PathBuf::from)
             .unwrap_or(cwd);
 
-        let abs_file_path = PathBuf::from(start_directory)
+        let abs_file_path = start_directory
             .join("test-data")
             .join("datasources")
             .join(data_type);

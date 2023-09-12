@@ -117,12 +117,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let path = path.as_str();
             let region = region.as_str();
 
-            let _ = SessionContext::new_exon();
+            let ctx = SessionContext::new_exon();
 
-            // let df = ctx.query_bam_file(path, region).await.unwrap();
-            // let cnt = df.count().await?;
+            let df = ctx.query_bam_file(path, region).await.unwrap();
+            let cnt = df.count().await?;
 
-            // eprintln!("Count: {}", cnt);
+            eprintln!("Count: {}", cnt);
         }
         Some(Commands::FASTACodonScan { path, compression }) => {
             let path = path.as_str();

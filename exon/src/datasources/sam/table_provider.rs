@@ -3,7 +3,6 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
     datasource::{
         listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
@@ -16,7 +15,7 @@ use datafusion::{
     prelude::Expr,
 };
 
-use crate::{datasources::ExonFileType, io::exon_object_store};
+use crate::io::exon_object_store;
 
 use super::{array_builder::schema, scanner::SAMScan};
 
@@ -46,21 +45,13 @@ impl ListingSAMTableConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 /// Listing options for a SAM table
 pub struct ListingSAMTableOptions {
     file_extension: String,
 }
 
 impl ListingSAMTableOptions {
-    /// Create a new set of options
-    pub fn new() -> Self {
-        let file_extension =
-            ExonFileType::SAM.get_file_extension(FileCompressionType::UNCOMPRESSED);
-
-        Self { file_extension }
-    }
-
     /// Infer the schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
         let schema = schema();
@@ -150,7 +141,7 @@ impl TableProvider for ListingSAMTable {
         ];
 
         let file_scan_config = FileScanConfig {
-            object_store_url: object_store_url,
+            object_store_url,
             file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
             file_groups: partitioned_file_lists,
             statistics: Statistics::default(),

@@ -144,43 +144,37 @@ impl ExecutionPlan for FCSScan {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::sync::Arc;
+#[cfg(test)]
+mod tests {
+    use crate::{datasources::ExonListingTableFactory, tests::test_listing_table_url};
 
-//     use crate::{datasources::fcs::file_format::FCSFormat, tests::test_listing_table_url};
+    use datafusion::{common::FileCompressionType, prelude::SessionContext};
 
-//     use datafusion::{
-//         datasource::listing::{ListingOptions, ListingTable, ListingTableConfig},
-//         prelude::SessionContext,
-//     };
+    #[tokio::test]
+    async fn test_fcs_read() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new();
+        let session_state = ctx.state();
 
-//     #[tokio::test]
-//     async fn test_fcs_read() {
-//         let ctx = SessionContext::new();
-//         let session_state = ctx.state();
+        let table_path = test_listing_table_url("fcs");
 
-//         let table_path = test_listing_table_url("fcs");
+        let table = ExonListingTableFactory::default()
+            .create_from_file_type(
+                &session_state,
+                crate::datasources::ExonFileType::FCS,
+                FileCompressionType::UNCOMPRESSED,
+                table_path.to_string(),
+            )
+            .await?;
 
-//         let bcf_format = Arc::new(FCSFormat::default());
-//         let lo = ListingOptions::new(bcf_format.clone()).with_file_extension("fcs");
+        let df = ctx.read_table(table)?;
 
-//         let resolved_schema = lo.infer_schema(&session_state, &table_path).await.unwrap();
+        let mut row_cnt = 0;
+        let bs = df.collect().await.unwrap();
+        for batch in bs {
+            row_cnt += batch.num_rows();
+        }
+        assert_eq!(row_cnt, 108);
 
-//         assert_eq!(resolved_schema.fields().len(), 10);
-
-//         let config = ListingTableConfig::new(table_path)
-//             .with_listing_options(lo)
-//             .with_schema(resolved_schema);
-
-//         let provider = Arc::new(ListingTable::try_new(config).unwrap());
-//         let df = ctx.read_table(provider.clone()).unwrap();
-
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await.unwrap();
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
-//         }
-//         assert_eq!(row_cnt, 108)
-//     }
-// }
+        Ok(())
+    }
+}

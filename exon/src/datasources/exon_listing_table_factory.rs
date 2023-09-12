@@ -43,6 +43,9 @@ use super::{
     vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
 };
 
+#[cfg(feature = "fcs")]
+use super::fcs::table_provider::{ListingFCSTable, ListingFCSTableConfig, ListingFCSTableOptions};
+
 /// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
 #[derive(Debug, Clone, Default)]
 pub struct ExonListingTableFactory {}
@@ -65,7 +68,7 @@ impl ExonListingTableFactory {
 
         match file_type {
             ExonFileType::SAM => {
-                let options = ListingSAMTableOptions::new();
+                let options = ListingSAMTableOptions::default();
                 let schema = options.infer_schema().await?;
 
                 let config = ListingSAMTableConfig::new(table_path).with_options(options);
@@ -73,6 +76,7 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
+            #[cfg(feature = "mzml")]
             ExonFileType::MZML => {
                 let options = ListingMzMLTableOptions::new(file_compression_type);
                 let schema = options.infer_schema().await?;
@@ -92,7 +96,7 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::BAM => {
-                let options = ListingBAMTableOptions::new();
+                let options = ListingBAMTableOptions::default();
                 let schema = options.infer_schema().await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(options);
@@ -118,6 +122,7 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
+            #[cfg(feature = "genbank")]
             ExonFileType::GENBANK => {
                 let options = ListingGenbankTableOptions::new(file_compression_type);
                 let schema = options.infer_schema().await?;
@@ -128,7 +133,7 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::BCF => {
-                let options = ListingBCFTableOptions::new();
+                let options = ListingBCFTableOptions::default();
                 let schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBCFTableConfig::new(table_path).with_options(options);
@@ -169,6 +174,16 @@ impl ExonListingTableFactory {
 
                 let config = ListingGFFTableConfig::new(table_path).with_options(options);
                 let table = ListingGFFTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            #[cfg(feature = "fcs")]
+            ExonFileType::FCS => {
+                let options = ListingFCSTableOptions::new(file_compression_type);
+                let schema = options.infer_schema(state, &table_path).await?;
+
+                let config = ListingFCSTableConfig::new(table_path).with_options(options);
+                let table = ListingFCSTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
             }
