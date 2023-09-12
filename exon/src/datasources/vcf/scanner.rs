@@ -27,6 +27,8 @@ use datafusion::{
 
 use noodles::core::Region;
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{
     config::VCFConfig,
     file_opener::{indexed_file_opener::IndexedVCFOpener, VCFOpener},
@@ -67,6 +69,11 @@ impl VCFScan {
         })
     }
 
+    /// Return the base configuration for the scan.
+    pub fn base_config(&self) -> &FileScanConfig {
+        &self.base_config
+    }
+
     /// Create a new VCF scan with a region filter.
     pub fn with_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
@@ -76,6 +83,24 @@ impl VCFScan {
     /// Return the region filter.
     pub fn region_filter(&self) -> Option<&Region> {
         self.region_filter.as_ref()
+    }
+
+    /// Get a new scan with the specified number of partitions.
+    ///
+    /// Sort the file groups by size, then repartition in a round-robin fashion.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_whole_files(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 

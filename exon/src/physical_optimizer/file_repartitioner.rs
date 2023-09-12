@@ -22,14 +22,11 @@ use datafusion::{
     physical_plan::{with_new_children_if_necessary, ExecutionPlan},
 };
 
+use itertools::Itertools;
+
 use crate::datasources::{
-    bed::BEDScan,
-    fasta::FASTAScan,
-    fastq::FASTQScan,
-    gff::GFFScan,
-    gtf::GTFScan,
-    hmmdomtab::HMMDomTabScan,
-    // hmmdomtab::HMMDomTabScan,
+    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, gff::GFFScan, gtf::GTFScan,
+    hmmdomtab::HMMDomTabScan, vcf::VCFScan,
 };
 
 #[cfg(feature = "genbank")]
@@ -41,7 +38,7 @@ use crate::datasources::mzml::MzMLScan;
 type FilePartitions = Vec<Vec<PartitionedFile>>;
 
 /// Regroup the file partition into a new set of file partitions of the target size.
-pub(crate) fn regroup_file_partitions(
+pub(crate) fn regroup_files_by_size(
     file_partitions: &FilePartitions,
     target_group_size: usize,
 ) -> FilePartitions {
@@ -49,6 +46,9 @@ pub(crate) fn regroup_file_partitions(
         .iter()
         .flatten()
         .cloned()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .sorted_by_key(|f| f.object_meta.size)
         .collect::<Vec<_>>();
 
     let target_partitions = std::cmp::min(target_group_size, flattened_files.len());
@@ -72,6 +72,10 @@ fn optimize_file_partitions(
     plan: Arc<dyn ExecutionPlan>,
     target_partitions: usize,
 ) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
+    if target_partitions == 1 {
+        return Ok(Transformed::No(plan));
+    }
+
     let new_plan = if plan.children().is_empty() {
         Transformed::No(plan) // no children, i.e. leaf
     } else {
@@ -105,6 +109,12 @@ fn optimize_file_partitions(
 
     if let Some(fastq_scan) = new_plan.as_any().downcast_ref::<FASTQScan>() {
         let new_scan = fastq_scan.get_repartitioned(target_partitions);
+
+        return Ok(Transformed::Yes(Arc::new(new_scan)));
+    }
+
+    if let Some(vcf_scan) = new_plan.as_any().downcast_ref::<VCFScan>() {
+        let new_scan = vcf_scan.get_repartitioned(target_partitions);
 
         return Ok(Transformed::Yes(Arc::new(new_scan)));
     }
