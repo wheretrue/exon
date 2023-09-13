@@ -109,6 +109,9 @@ pub struct ListingVCFTableOptions {
     /// The extension of the files to read
     file_extension: String,
 
+    /// The region to filter on
+    region: Option<Region>,
+
     /// The file compression type
     file_compression_type: FileCompressionType,
 }
@@ -122,7 +125,14 @@ impl ListingVCFTableOptions {
         Self {
             file_extension,
             file_compression_type,
+            region: None,
         }
+    }
+
+    /// Set the region for the table options. This is used to filter the records
+    pub fn with_region(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 
     async fn infer_schema_from_object_meta(
@@ -241,6 +251,12 @@ impl ListingVCFTableOptions {
 
                 return Ok(Arc::new(scan));
             }
+        }
+
+        if let Some(region) = &self.region {
+            let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region.clone());
+
+            return Ok(Arc::new(scan));
         }
 
         let scan = VCFScan::new(conf, self.file_compression_type)?;
