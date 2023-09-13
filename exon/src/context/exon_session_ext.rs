@@ -22,6 +22,7 @@ use datafusion::{
     execution::{context::SessionState, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
+use noodles::core::Region;
 
 use crate::{
     datasources::{
@@ -424,27 +425,41 @@ impl ExonSessionExt for SessionContext {
         table_path: &str,
         query: &str,
     ) -> Result<DataFrame, DataFusionError> {
-        let region = query.parse().map_err(|e| {
+        let region: Region = query.parse().map_err(|e| {
             DataFusionError::Execution(format!(
                 "Failed to parse query '{}' as region: {}",
                 query, e
             ))
         })?;
 
-        let listing_url = ListingTableUrl::parse(table_path)?;
+        self.register_vcf_file("vcf_file", table_path).await?;
 
-        let state = self.state();
+        let name = region.name();
+        let interval = region.interval();
+        let lower_bound = interval.start();
+        let upper_bound = interval.end();
 
-        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP).with_region(region);
+        let sql = match (lower_bound, upper_bound) {
+            (Some(lb), Some(ub)) => format!(
+                "SELECT * FROM vcf_file WHERE chrom = '{}' AND pos BETWEEN {} AND {}",
+                name, lb, ub
+            ),
+            (Some(lb), None) => {
+                format!(
+                    "SELECT * FROM vcf_file WHERE chrom = '{}' AND pos >= {}",
+                    name, lb
+                )
+            }
+            (None, Some(ub)) => {
+                format!(
+                    "SELECT * FROM vcf_file WHERE chrom = '{}' AND pos <= {}",
+                    name, ub
+                )
+            }
+            (None, None) => format!("SELECT * FROM vcf_file WHERE chrom = '{}'", name),
+        };
 
-        let schema = options.infer_schema(&state, &listing_url).await?;
-        let config = VCFListingTableConfig::new(listing_url).with_options(options);
-
-        let table = ListingVCFTable::try_new(config, schema)?;
-
-        let df = self.read_table(Arc::new(table))?;
-
-        Ok(df)
+        return self.sql(&sql).await;
     }
 
     async fn query_bcf_file(
@@ -641,17 +656,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_vcf_query() -> Result<(), DataFusionError> {
+    async fn test_query_vcf() -> Result<(), DataFusionError> {
         let ctx = SessionContext::new();
 
         let path = test_path("vcf", "index.vcf.gz");
-        let query = "1:10000-20000";
+        let query = "1";
 
         let df = ctx.query_vcf_file(path.to_str().unwrap(), query).await?;
 
-        let batches = df.collect().await?;
+        let cnt = df.count().await?;
 
-        assert!(!batches.is_empty());
+        assert_eq!(cnt, 191);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_with_no_results() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
+
+        let path = test_path("vcf", "index.vcf.gz");
+        let query = "1000";
+
+        let df = ctx.query_vcf_file(path.to_str().unwrap(), query).await?;
+
+        let cnt = df.count().await?;
+        assert_eq!(cnt, 0);
 
         Ok(())
     }

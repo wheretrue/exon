@@ -253,12 +253,6 @@ impl ListingVCFTableOptions {
             }
         }
 
-        if let Some(region) = &self.region {
-            let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region.clone());
-
-            return Ok(Arc::new(scan));
-        }
-
         let scan = VCFScan::new(conf, self.file_compression_type)?;
 
         Ok(Arc::new(scan))
@@ -539,7 +533,9 @@ impl TableProvider for ListingVCFTable {
             let partitioned_file_lists = self.list_files_for_scan(state, regions).await?;
 
             // if no files need to be read, return an `EmptyExec`
-            if partitioned_file_lists.is_empty() {
+            if (partitioned_file_lists.is_empty())
+                || (partitioned_file_lists.len() == 1 && partitioned_file_lists[0].is_empty())
+            {
                 let schema = self.schema();
                 let projected_schema = project_schema(&schema, projection)?;
                 return Ok(Arc::new(EmptyExec::new(false, projected_schema)));
@@ -621,8 +617,8 @@ mod tests {
         ctx.register_vcf_file("vcf_file", table_path).await?;
 
         let sql_statements = vec![
-            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;",
-            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 100000 AND 2000000;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 9999921;",
+            "SELECT * FROM vcf_file WHERE chrom = '1' AND pos BETWEEN 9999920 AND 10099920;",
             "SELECT * FROM vcf_file WHERE chrom = '1'",
         ];
 
@@ -632,7 +628,6 @@ mod tests {
             let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
-                // The file scan is wrapped in a CoalescePartitionsExec
                 let scan = scan
                     .input()
                     .as_any()
@@ -765,12 +760,64 @@ mod tests {
         let df = ctx.sql(sql).await?;
 
         let batches = df.collect().await?;
+        let mut cnt = 0;
         for batch in batches {
             assert!(batch.num_rows() > 0);
 
             // Check the schema is of the correct size.
             assert_eq!(batch.schema().fields().len(), 9);
+
+            cnt += batch.num_rows();
         }
+
+        assert_eq!(cnt, 15);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_with_biobear_empty_query() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
+
+        ctx.register_vcf_file("vcf_file", table_path).await?;
+
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1000'";
+        let df = ctx.sql(sql).await?;
+
+        let cnt = df.count().await?;
+
+        assert_eq!(cnt, 0);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_with_biobear_chrom_1() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
+
+        ctx.register_vcf_file("vcf_file", table_path).await?;
+
+        let sql = "SELECT * FROM vcf_file WHERE chrom = '1'";
+        let df = ctx.sql(sql).await?;
+
+        let batches = df.collect().await?;
+        let mut cnt = 0;
+        for batch in batches {
+            assert!(batch.num_rows() > 0);
+
+            // Check the schema is of the correct size.
+            assert_eq!(batch.schema().fields().len(), 9);
+
+            cnt += batch.num_rows();
+        }
+
+        assert_eq!(cnt, 11);
 
         Ok(())
     }
