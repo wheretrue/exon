@@ -46,6 +46,8 @@ impl IndexedVCFOpener {
 
 impl FileOpener for IndexedVCFOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
+        tracing::debug!("Opening file: {:?}", file_meta.location());
+
         let config = self.config.clone();
 
         Ok(Box::pin(async move {
@@ -92,6 +94,13 @@ impl FileOpener for IndexedVCFOpener {
                         bgzf_reader
                     } else {
                         // Otherwise, we read the compressed range from the object store.
+                        tracing::debug!(
+                            "Reading compressed range: {}..{} of {}",
+                            vp_start.compressed(),
+                            vp_end.compressed(),
+                            file_meta.location()
+                        );
+
                         let bytes = config
                             .object_store
                             .get_range(
@@ -108,6 +117,7 @@ impl FileOpener for IndexedVCFOpener {
 
                         // If we're at the start of the file, we need to seek to the header offset.
                         if vp_start.compressed() == 0 && vp_start.uncompressed() == 0 {
+                            tracing::debug!("Seeking to header offset: {:?}", header_offset);
                             bgzf_reader.seek(header_offset)?;
                         }
 

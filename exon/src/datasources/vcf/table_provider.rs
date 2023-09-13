@@ -236,6 +236,7 @@ impl ListingVCFTableOptions {
             // Downcast the filters to a Region filter if possible.
             if let Some(region_filter) = filters.as_any().downcast_ref::<RegionPhysicalExpr>() {
                 let region = region_filter.region()?;
+
                 let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
 
                 return Ok(Arc::new(scan));
@@ -465,13 +466,14 @@ impl TableProvider for ListingVCFTable {
                 state.execution_props(),
             )?;
 
-            // TODO: transform the filters to push down partition filters
             let new_filters = filters.transform(&transform)?;
 
             Some(new_filters)
         } else {
             None
         };
+
+        tracing::debug!("Filters for VCF scan: {:?}", filters);
 
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
             url.object_store()
@@ -567,7 +569,10 @@ mod tests {
     };
 
     use arrow::datatypes::DataType;
-    use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
+    use datafusion::{
+        physical_plan::{coalesce_partitions::CoalescePartitionsExec, filter::FilterExec},
+        prelude::SessionContext,
+    };
     use noodles::bgzf::VirtualPosition;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
@@ -611,6 +616,13 @@ mod tests {
             let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
+                // The file scan is wrapped in a CoalescePartitionsExec
+                let scan = scan
+                    .input()
+                    .as_any()
+                    .downcast_ref::<CoalescePartitionsExec>()
+                    .unwrap();
+
                 // Check the input is a VCF scan...
                 if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
                     // ... and that it has a region filter.
@@ -705,6 +717,12 @@ mod tests {
 
         // Check we can downcast to a FilterExec with a VCFScan input.
         if let Some(scan) = plan.as_any().downcast_ref::<FilterExec>() {
+            let scan = scan
+                .input()
+                .as_any()
+                .downcast_ref::<CoalescePartitionsExec>()
+                .unwrap();
+
             if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
                 // We should have two file groups with one file not one with two files.
                 assert_eq!(scan.base_config().file_groups.len(), 2);

@@ -206,7 +206,7 @@ impl PhysicalExpr for RegionPhysicalExpr {
         &self,
         batch: &arrow::record_batch::RecordBatch,
     ) -> datafusion::error::Result<datafusion::physical_plan::ColumnarValue> {
-        match self.interval_expr {
+        let eval = match self.interval_expr {
             Some(ref interval_expr) => {
                 let binary_expr = BinaryExpr::new(
                     self.chrom_expr.clone(),
@@ -217,7 +217,11 @@ impl PhysicalExpr for RegionPhysicalExpr {
                 binary_expr.evaluate(batch)
             }
             None => self.chrom_expr.evaluate(batch),
-        }
+        };
+
+        tracing::info!("Got eval: {:?}", eval);
+
+        eval
     }
 
     fn children(&self) -> Vec<std::sync::Arc<dyn PhysicalExpr>> {

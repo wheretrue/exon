@@ -97,6 +97,11 @@ impl VCFScan {
 
         let mut new_plan = self.clone();
         if let Some(repartitioned_file_groups) = file_groups {
+            tracing::info!(
+                "Repartitioned {} file groups into {}",
+                self.base_config.file_groups.len(),
+                repartitioned_file_groups.len()
+            );
             new_plan.base_config.file_groups = repartitioned_file_groups;
         }
 
@@ -146,6 +151,8 @@ impl ExecutionPlan for VCFScan {
         let object_store = context
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
+
+        tracing::debug!("Opening VCF file with partition {}", partition);
 
         let batch_size = context.session_config().batch_size();
 

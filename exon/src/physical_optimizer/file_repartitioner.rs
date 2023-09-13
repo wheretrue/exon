@@ -19,7 +19,9 @@ use datafusion::{
     datasource::listing::PartitionedFile,
     error::Result,
     physical_optimizer::PhysicalOptimizerRule,
-    physical_plan::{with_new_children_if_necessary, ExecutionPlan},
+    physical_plan::{
+        coalesce_partitions::CoalescePartitionsExec, with_new_children_if_necessary, ExecutionPlan,
+    },
 };
 
 use itertools::Itertools;
@@ -97,26 +99,30 @@ fn optimize_file_partitions(
 
     if let Some(bed_scan) = new_plan.as_any().downcast_ref::<BEDScan>() {
         let new_scan = bed_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     if let Some(fasta_scan) = new_plan.as_any().downcast_ref::<FASTAScan>() {
         let new_scan = fasta_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     if let Some(fastq_scan) = new_plan.as_any().downcast_ref::<FASTQScan>() {
         let new_scan = fastq_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     if let Some(vcf_scan) = new_plan.as_any().downcast_ref::<VCFScan>() {
         let new_scan = vcf_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     // TODO: Add FCS support
@@ -130,33 +136,38 @@ fn optimize_file_partitions(
     #[cfg(feature = "genbank")]
     if let Some(genbank_scan) = new_plan.as_any().downcast_ref::<GenbankScan>() {
         let new_scan = genbank_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     if let Some(gff_scan) = new_plan.as_any().downcast_ref::<GFFScan>() {
         let new_scan = gff_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     if let Some(gtf_scan) = new_plan.as_any().downcast_ref::<GTFScan>() {
         let new_scan = gtf_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     if let Some(hmm_scan) = new_plan.as_any().downcast_ref::<HMMDomTabScan>() {
         let new_scan = hmm_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     #[cfg(feature = "mzml")]
     if let Some(mzml_scan) = new_plan.as_any().downcast_ref::<MzMLScan>() {
         let new_scan = mzml_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-        return Ok(Transformed::Yes(Arc::new(new_scan)));
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
     Ok(Transformed::No(new_plan))
@@ -201,7 +212,10 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
 
 #[cfg(test)]
 mod tests {
-    use datafusion::{physical_plan::joins::HashJoinExec, prelude::SessionContext};
+    use datafusion::{
+        physical_plan::{coalesce_partitions::CoalescePartitionsExec, joins::HashJoinExec},
+        prelude::SessionContext,
+    };
 
     use crate::{datasources::fasta::FASTAScan, tests::test_path, ExonSessionExt};
 
@@ -224,7 +238,14 @@ mod tests {
 
         let plan = ctx.state().create_physical_plan(plan).await.unwrap();
 
-        let scan = plan.as_any().downcast_ref::<FASTAScan>().unwrap();
+        let scan = plan
+            .as_any()
+            .downcast_ref::<CoalescePartitionsExec>()
+            .unwrap()
+            .input()
+            .as_any()
+            .downcast_ref::<FASTAScan>()
+            .unwrap();
 
         // Assert we have two file groups vs the default one
         assert_eq!(scan.base_config.file_groups.len(), 2);
@@ -243,12 +264,21 @@ mod tests {
         let left_fasta = hash_join_exec
             .left()
             .as_any()
+            .downcast_ref::<CoalescePartitionsExec>()
+            .unwrap()
+            .input()
+            .as_any()
             .downcast_ref::<FASTAScan>()
             .unwrap();
+
         assert_eq!(left_fasta.base_config.file_groups.len(), 2);
 
         let right_fasta = hash_join_exec
             .right()
+            .as_any()
+            .downcast_ref::<CoalescePartitionsExec>()
+            .unwrap()
+            .input()
             .as_any()
             .downcast_ref::<FASTAScan>()
             .unwrap();
