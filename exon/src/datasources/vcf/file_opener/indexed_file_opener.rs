@@ -101,16 +101,29 @@ impl FileOpener for IndexedVCFOpener {
                             file_meta.location()
                         );
 
+                        let end = if vp_start.compressed() == vp_end.compressed() {
+                            file_meta.object_meta.size
+                        } else {
+                            vp_end.compressed() as usize
+                        };
+
                         let bytes = config
                             .object_store
                             .get_range(
                                 file_meta.location(),
                                 std::ops::Range {
                                     start: vp_start.compressed() as usize,
-                                    end: vp_end.compressed() as usize,
+                                    end,
                                 },
                             )
                             .await?;
+
+                        if bytes.is_empty() {
+                            // Should never happen.
+                            return Err(DataFusionError::Execution(
+                                "Empty range read from object store".to_string(),
+                            ));
+                        }
 
                         let cursor = std::io::Cursor::new(bytes);
                         let mut bgzf_reader = bgzf::Reader::new(cursor);

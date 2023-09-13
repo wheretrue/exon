@@ -116,7 +116,7 @@ mod tests {
 
         // Check between
         let sql = format!(
-            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos BETWEEN 2 and 3",
+            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos BETWEEN 9999921 and 10099920",
             query
         );
 
@@ -150,7 +150,7 @@ mod tests {
 
         // Check eq
         let sql = format!(
-            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos = 2",
+            "SELECT chrom, pos FROM test_vcf WHERE chrom = '{}' and pos = 9999921",
             query
         );
 
