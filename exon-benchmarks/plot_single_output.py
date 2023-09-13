@@ -17,12 +17,17 @@ if __name__ == "__main__":
     # Add an argument for the path to the results file
     parser.add_argument("results_file", type=str)
 
+    # Add an optional argument for the chart title.
+    parser.add_argument("--title", type=str, default=None)
+
     # Parse the command line arguments
     args = parser.parse_args()
     bench_group, git_hash = args.results_file[:-5].split("_")
 
     path = pathlib.Path(args.results_file)
     data = json.loads(path.read_text())
+
+    chart_title = args.title or f"Results from {path.name}"
 
     rows = []
 
@@ -52,7 +57,7 @@ if __name__ == "__main__":
         .properties(
             width=200,
             height=200,
-            title="Results from " + path.name,
+            title=chart_title,
         )
         .configure_axisY(title=None)
         .transform_calculate(
