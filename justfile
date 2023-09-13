@@ -32,11 +32,11 @@ run-benchmarks:
 	# Run multiple file.
 
 	# Run vcf s3 benchmarks.
-	# hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/vcf-s3-query_{{GIT_SHA}}.json \
-	# 	-n bcftools \
-	# 	"bcftools query -r 17:1-1000000 -f '%CHROM\n' s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
-	# 	-n exon-vcf-query \
-	# 	'./target/profiling/exon-benchmarks vcf-query -p s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:1-1000000'
+	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/vcf-s3-query_{{GIT_SHA}}.json \
+		-n bcftools \
+		"bcftools query -r 17:1-1000000 -f '%CHROM\n' s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
+		-n exon-vcf-query \
+		'./target/profiling/exon-benchmarks vcf-query -p s3://1000genomes/phase1/analysis_results/integrated_call_sets/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:1-1000000'
 
 	# Run bam benchmarks.
 	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{GIT_SHA}}.json \
