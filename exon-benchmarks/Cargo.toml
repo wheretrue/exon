@@ -6,12 +6,12 @@ keywords = ["exon", "bioinformatics", "rust"]
 license = {workspace = true}
 name = "exon-benchmarks"
 readme = "README.md"
-version = "0.2.7-rc.3"
+version = "0.3.0-rc.1"
 
 [dependencies]
 clap = {version = "4.4.2", features = ["derive"]}
 datafusion = {workspace = true}
-exon = {path = "../exon", features = ["all"], version = "0.2.7-rc.5" }
+exon = {path = "../exon", features = ["all"], version = "0.3.0-rc.1" }
 noodles = {version = "0.50", features = ["core", "vcf", "bgzf"]}
 tokio = {version = "1", features = ["full"]}
 tracing = "0.1.37"
