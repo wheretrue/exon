@@ -325,6 +325,15 @@ pub trait ExonSessionExt {
         table_path: &str,
         query: &str,
     ) -> Result<DataFrame, DataFusionError>;
+
+    /// Query a gzipped indexed VCF file.
+    ///
+    /// File must be indexed and index file must be in the same directory as the VCF file.
+    async fn query_vcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError>;
 }
 
 #[async_trait]
@@ -408,6 +417,34 @@ impl ExonSessionExt for SessionContext {
 
         let provider = Arc::new(ListingVCFTable::try_new(config, resolved_schema)?);
         self.register_table(table_name, provider)
+    }
+
+    async fn query_vcf_file(
+        &self,
+        table_path: &str,
+        query: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let region = query.parse().map_err(|e| {
+            DataFusionError::Execution(format!(
+                "Failed to parse query '{}' as region: {}",
+                query, e
+            ))
+        })?;
+
+        let listing_url = ListingTableUrl::parse(table_path)?;
+
+        let state = self.state();
+
+        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP).with_region(region);
+
+        let schema = options.infer_schema(&state, &listing_url).await?;
+        let config = VCFListingTableConfig::new(listing_url).with_options(options);
+
+        let table = ListingVCFTable::try_new(config, schema)?;
+
+        let df = self.read_table(Arc::new(table))?;
+
+        Ok(df)
     }
 
     async fn query_bcf_file(
@@ -597,6 +634,22 @@ mod tests {
             .unwrap();
 
         let batches = df.collect().await.unwrap();
+
+        assert!(!batches.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_vcf_query() -> Result<(), DataFusionError> {
+        let ctx = SessionContext::new();
+
+        let path = test_path("vcf", "index.vcf.gz");
+        let query = "1:10000-20000";
+
+        let df = ctx.query_vcf_file(path.to_str().unwrap(), query).await?;
+
+        let batches = df.collect().await?;
 
         assert!(!batches.is_empty());
 

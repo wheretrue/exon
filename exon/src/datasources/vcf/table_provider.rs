@@ -109,6 +109,9 @@ pub struct ListingVCFTableOptions {
     /// The extension of the files to read
     file_extension: String,
 
+    /// The region to filter on
+    region: Option<Region>,
+
     /// The file compression type
     file_compression_type: FileCompressionType,
 }
@@ -122,7 +125,14 @@ impl ListingVCFTableOptions {
         Self {
             file_extension,
             file_compression_type,
+            region: None,
         }
+    }
+
+    /// Set the region for the table options. This is used to filter the records
+    pub fn with_region(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 
     async fn infer_schema_from_object_meta(
@@ -241,6 +251,12 @@ impl ListingVCFTableOptions {
 
                 return Ok(Arc::new(scan));
             }
+        }
+
+        if let Some(region) = &self.region {
+            let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region.clone());
+
+            return Ok(Arc::new(scan));
         }
 
         let scan = VCFScan::new(conf, self.file_compression_type)?;
@@ -731,6 +747,29 @@ mod tests {
             }
         } else {
             panic!("expected FilterExec for {}", sql);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_with_biobear_file() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
+
+        ctx.register_vcf_file("vcf_file", table_path).await?;
+
+        let sql = "SELECT * FROM vcf_file";
+        let df = ctx.sql(sql).await?;
+
+        let batches = df.collect().await?;
+        for batch in batches {
+            assert!(batch.num_rows() > 0);
+
+            // Check the schema is of the correct size.
+            assert_eq!(batch.schema().fields().len(), 9);
         }
 
         Ok(())

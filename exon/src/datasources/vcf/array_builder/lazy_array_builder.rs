@@ -198,18 +198,24 @@ impl LazyVCFArrayBuilder {
 
                     self.references.append_value(reference_bases.to_string());
                 }
-                4 => {
-                    let alternate_bases = AlternateBases::from_str(record.alternate_bases())
-                        .map_err(|_| {
-                            ArrowError::ParseError("Invalid alternate bases".to_string())
-                        })?;
+                4 => match record.alternate_bases() {
+                    "." => self.alternates.append_null(),
+                    _ => {
+                        let alternate_bases = AlternateBases::from_str(record.alternate_bases())
+                            .map_err(|_| {
+                                ArrowError::ParseError(format!(
+                                    "Invalid alternate bases: {}",
+                                    record.alternate_bases()
+                                ))
+                            })?;
 
-                    for alt in alternate_bases.iter() {
-                        self.alternates.values().append_value(alt.to_string());
+                        for alt in alternate_bases.iter() {
+                            self.alternates.values().append_value(alt.to_string());
+                        }
+
+                        self.alternates.append(true);
                     }
-
-                    self.alternates.append(true);
-                }
+                },
                 5 => match QualityScore::from_str(record.quality_score()) {
                     Ok(quality_score) => self.qualities.append_value(f32::from(quality_score)),
                     Err(_) => {
