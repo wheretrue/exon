@@ -87,20 +87,30 @@ impl BatchReader {
             self.header.clone(),
         )?;
 
-        for _ in 0..self.config.batch_size {
+        for i in 0..self.config.batch_size {
             let record = self.record_iterator.next().transpose()?;
             match record {
-                Some(record) => record_batch.append(&record)?,
-                None => break,
+                Some(record) => {
+                    // tracing::debug!("Read record {:?}", record);
+
+                    record_batch.append(&record)?;
+                }
+                None => {
+                    tracing::debug!("Reached end of batch on record {}", i);
+                    break;
+                }
             }
         }
 
         if record_batch.is_empty() {
+            tracing::debug!("Empty Batch");
             return Ok(None);
         }
 
         let schema = self.config.projected_schema();
         let batch = RecordBatch::try_new(schema, record_batch.finish())?;
+
+        tracing::debug!("Finished batch with {} records", batch.num_rows());
 
         match &self.config.projection {
             Some(projection) => {

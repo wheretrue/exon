@@ -38,6 +38,7 @@ pub fn new_exon_config() -> SessionConfig {
         .with_repartition_aggregations(true)
         .with_repartition_joins(true)
         .with_repartition_windows(true)
+        .with_repartition_file_scans(true)
         .with_target_partitions(num_cpus::get())
 }
 

@@ -19,6 +19,8 @@ use datafusion::{
 };
 use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
 use noodles::core::Region;
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 
 #[derive(Subcommand)]
 enum Commands {
@@ -89,6 +91,12 @@ struct Cli {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::DEBUG)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     match &cli.command {
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
@@ -139,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap();
 
-            println!("Count: {count}");
+            eprintln!("Count: {count}");
         }
         Some(Commands::FASTAScanParallel { path, workers }) => {
             let exon_config = new_exon_config().with_target_partitions(*workers);
@@ -154,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap();
 
-            println!("Count: {count}");
+            eprintln!("Count: {count}");
         }
         Some(Commands::MzMLScan { path, compression }) => {
             let path = path.as_str();
@@ -166,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let count = df.count().await.unwrap();
 
-            println!("Count: {count}");
+            eprintln!("Count: {count}");
         }
         None => {}
     }
