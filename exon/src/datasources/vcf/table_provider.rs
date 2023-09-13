@@ -753,6 +753,29 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_with_biobear_file() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
+        let table_path = table_path.to_str().unwrap();
+
+        ctx.register_vcf_file("vcf_file", table_path).await?;
+
+        let sql = "SELECT * FROM vcf_file";
+        let df = ctx.sql(sql).await?;
+
+        let batches = df.collect().await?;
+        for batch in batches {
+            assert!(batch.num_rows() > 0);
+
+            // Check the schema is of the correct size.
+            assert_eq!(batch.schema().fields().len(), 9);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_compressed_read_with_region() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
         let table_path = test_path("bigger-index", "test.vcf.gz");
