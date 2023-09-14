@@ -442,7 +442,7 @@ mod tests {
 
     use crate::{
         datasources::{
-            vcf::{table_provider::get_byte_range_for_file, IndexedVCFScanner, VCFScan},
+            vcf::{table_provider::get_byte_range_for_file, IndexedVCFScanner},
             ExonListingTableFactory,
         },
         tests::{test_listing_table_dir, test_listing_table_url, test_path},
