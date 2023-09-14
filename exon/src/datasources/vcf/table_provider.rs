@@ -3,10 +3,7 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::{
-        tree_node::{Transformed, TreeNode},
-        FileCompressionType, ToDFSchema,
-    },
+    common::{tree_node::TreeNode, FileCompressionType, ToDFSchema},
     datasource::{
         listing::{FileRange, ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
@@ -21,61 +18,17 @@ use datafusion::{
     prelude::Expr,
 };
 use futures::TryStreamExt;
-use noodles::{bgzf, core::Region, csi::index::reference_sequence::bin::Chunk, vcf};
-use object_store::{path::Path, ObjectMeta, ObjectStore};
+use noodles::{bgzf, core::Region, vcf};
+use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::ExonFileType,
-    physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_region_with_interval},
-    physical_plan::{
-        chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr,
-        region_physical_expr::RegionPhysicalExpr,
-    },
+    physical_optimizer::region_filter_rewriter::transform_region_expressions,
+    physical_plan::region_physical_expr::RegionPhysicalExpr,
 };
 
-use super::{VCFScan, VCFSchemaBuilder};
-
-/// For a given file, get the list of byte ranges that contain the data for the given region.
-pub async fn get_byte_range_for_file(
-    object_store: Arc<dyn ObjectStore>,
-    object_meta: &ObjectMeta,
-    region: &Region,
-) -> std::io::Result<Vec<Chunk>> {
-    let tbi_path = object_meta.location.clone().to_string() + ".tbi";
-    let tbi_path = Path::from(tbi_path);
-
-    let index_bytes = object_store.get(&tbi_path).await?.bytes().await?;
-
-    let cursor = std::io::Cursor::new(index_bytes);
-    let index = noodles::tabix::Reader::new(cursor).read_index()?;
-
-    let id = resolve_region(&index, region)?;
-    let chunks = index.query(id, region.interval())?;
-
-    Ok(chunks)
-}
-
-/// Given a region, use its name to resolve the reference sequence index.
-fn resolve_region(index: &noodles::csi::Index, region: &Region) -> std::io::Result<usize> {
-    let header = index.header().ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")
-    })?;
-
-    let i = header
-        .reference_sequence_names()
-        .get_index_of(region.name())
-        .ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!(
-                    "region reference sequence does not exist in reference sequences: {region:?}"
-                ),
-            )
-        })?;
-
-    Ok(i)
-}
+use super::{indexed_file_utils::get_byte_range_for_file, VCFScan, VCFSchemaBuilder};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -160,27 +113,20 @@ impl ListingVCFTableOptions {
             .map(|s| s.vcf_parse_format)
             .unwrap_or(false);
 
-        let mut schema_builder = match self.file_compression_type {
+        let mut builder = VCFSchemaBuilder::default()
+            .with_parse_info(vcf_parse_info)
+            .with_parse_formats(vcf_parse_format);
+
+        let header = match self.file_compression_type {
             FileCompressionType::GZIP => {
                 let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
                 let mut vcf_reader = vcf::AsyncReader::new(bgzf_reader);
 
-                let header = vcf_reader.read_header().await?;
-
-                VCFSchemaBuilder::default()
-                    .with_header(header)
-                    .with_parse_info(vcf_parse_info)
-                    .with_parse_formats(vcf_parse_format)
+                vcf_reader.read_header().await?
             }
             FileCompressionType::UNCOMPRESSED => {
                 let mut vcf_reader = vcf::AsyncReader::new(stream_reader);
-
-                let header = vcf_reader.read_header().await?;
-
-                VCFSchemaBuilder::default()
-                    .with_header(header)
-                    .with_parse_info(vcf_parse_info)
-                    .with_parse_formats(vcf_parse_format)
+                vcf_reader.read_header().await?
             }
             _ => {
                 return Err(DataFusionError::Execution(
@@ -189,7 +135,9 @@ impl ListingVCFTableOptions {
             }
         };
 
-        let schema = schema_builder.build()?;
+        builder = builder.with_header(header);
+
+        let schema = builder.build()?;
 
         Ok(Arc::new(schema))
     }
@@ -373,68 +321,6 @@ impl ListingVCFTable {
     }
 }
 
-fn transform(e: Arc<dyn PhysicalExpr>) -> Result<Transformed<Arc<dyn PhysicalExpr>>> {
-    match e
-        .as_any()
-        .downcast_ref::<datafusion::physical_plan::expressions::BinaryExpr>()
-    {
-        Some(be) => {
-            if let Ok(chrom_expr) = ChromPhysicalExpr::try_from(be.clone()) {
-                let region_expr = RegionPhysicalExpr::new(Arc::new(chrom_expr), None);
-
-                return Ok(Transformed::Yes(Arc::new(region_expr)));
-            }
-
-            if let Ok(interval_expr) = IntervalPhysicalExpr::try_from(be.clone()) {
-                return Ok(Transformed::Yes(Arc::new(interval_expr)));
-            }
-
-            // Now we need to check if the left and right side can be merged in a single expression.
-
-            // Case 1: left and right are both chrom expressions, and need to be downcast to chrom expressions
-            if let Some(left_chrom) = be.left().as_any().downcast_ref::<ChromPhysicalExpr>() {
-                if let Some(right_chrom) = be.right().as_any().downcast_ref::<ChromPhysicalExpr>() {
-                    match try_merge_chrom_exprs(left_chrom, right_chrom) {
-                        Ok(Some(new_expr)) => return Ok(Transformed::Yes(Arc::new(new_expr))),
-                        Ok(None) => return Ok(Transformed::No(e)),
-                        Err(e) => return Err(e),
-                    }
-                }
-            }
-
-            // Case 2: left is a chrom expression and right is an interval expression
-            if let Some(_left_chrom) = be.left().as_any().downcast_ref::<ChromPhysicalExpr>() {
-                if let Some(_right_interval) =
-                    be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
-                {
-                    let new_expr =
-                        RegionPhysicalExpr::new(be.left().clone(), Some(be.right().clone()));
-
-                    return Ok(Transformed::Yes(Arc::new(new_expr)));
-                }
-            }
-
-            // Case 3: left is a region expression and the right is an interval expression
-            if let Some(left_region) = be.left().as_any().downcast_ref::<RegionPhysicalExpr>() {
-                if let Some(right_interval) =
-                    be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
-                {
-                    let new_region = try_merge_region_with_interval(left_region, right_interval)?;
-
-                    if let Some(new_region) = new_region {
-                        return Ok(Transformed::Yes(Arc::new(new_region)));
-                    }
-                }
-            }
-
-            Ok(Transformed::No(e))
-        }
-        None => Ok(Transformed::No(e)),
-    }
-}
-
-// F: Fn(Self) -> Result<Transformed<Self>>,
-
 #[async_trait]
 impl TableProvider for ListingVCFTable {
     fn as_any(&self) -> &dyn Any {
@@ -466,6 +352,12 @@ impl TableProvider for ListingVCFTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
+        let object_store_url = if let Some(url) = self.table_paths.get(0) {
+            url.object_store()
+        } else {
+            return Ok(Arc::new(EmptyExec::new(false, Arc::new(Schema::empty()))));
+        };
+
         let filters = if let Some(expr) = conjunction(filters.to_vec()) {
             // NOTE: Use the table schema (NOT file schema) here because `expr` may contain references to partition columns.
             let table_df_schema = self.table_schema.as_ref().clone().to_dfschema()?;
@@ -476,19 +368,11 @@ impl TableProvider for ListingVCFTable {
                 state.execution_props(),
             )?;
 
-            let new_filters = filters.transform(&transform)?;
+            let new_filters = filters.transform(&transform_region_expressions)?;
 
             Some(new_filters)
         } else {
             None
-        };
-
-        tracing::debug!("Filters for VCF scan: {:?}", filters);
-
-        let object_store_url = if let Some(url) = self.table_paths.get(0) {
-            url.object_store()
-        } else {
-            return Ok(Arc::new(EmptyExec::new(false, Arc::new(Schema::empty()))));
         };
 
         if filters.clone().is_none() {

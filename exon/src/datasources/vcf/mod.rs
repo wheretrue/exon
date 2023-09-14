@@ -21,6 +21,8 @@ mod async_batch_reader;
 mod batch_reader;
 mod config;
 mod file_opener;
+mod indexed_file_utils;
+mod indexed_scanner;
 mod scanner;
 mod schema_builder;
 mod table_provider;
