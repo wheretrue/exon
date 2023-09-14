@@ -17,12 +17,13 @@ async-trait = "0.1.73"
 aws-config = {version = "0.56.1", optional = true}
 aws-credential-types = {version = "0.56.0", optional = true}
 base64 = {version = "0.21", optional = true}
-byteorder = {version = "1.4.3", optional = true}
+byteorder = { version = "1.4.3", optional = true }
 bytes = "1.5.0"
 datafusion = {workspace = true}
 flate2 = {version = "1.0.27", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1", optional = true}
+hex = "0.4.3"
 itertools = "0.11.0"
 noodles = {version = "0.50", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi", "gtf"]}
 num_cpus = "1.16.0"
