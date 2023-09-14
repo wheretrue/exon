@@ -154,7 +154,26 @@ impl FileOpener for IndexedVCFOpener {
                     }
                 }
                 None => {
-                    todo!()
+                    let get_stream = config
+                        .object_store
+                        .get(file_meta.location())
+                        .await?
+                        .into_stream()
+                        .map_err(DataFusionError::from);
+
+                    let stream_reader = StreamReader::new(Box::pin(get_stream));
+
+                    let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
+
+                    // If we're at the start of the file, we need to seek to the header offset.
+                    if vcf_reader.virtual_position().compressed() == 0
+                        && vcf_reader.virtual_position().uncompressed() == 0
+                    {
+                        tracing::debug!("Seeking to header offset: {:?}", header_offset);
+                        async_reader.scan_to_virtual_position(header_offset).await?;
+                    }
+
+                    async_reader
                 }
             };
 
