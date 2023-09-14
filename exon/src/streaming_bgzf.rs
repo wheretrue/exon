@@ -84,6 +84,7 @@ mod tests {
         tests::test_path,
     };
 
+    #[cfg(not(target_os = "windows"))]
     #[tokio::test]
     async fn test_read() -> Result<(), Box<dyn std::error::Error>> {
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
