@@ -1,6 +1,8 @@
 use std::{any::Any, sync::Arc};
 
-use crate::datasources::ExonFileType;
+use crate::{
+    datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+};
 use arrow::datatypes::{Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
@@ -13,7 +15,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 
@@ -152,17 +154,14 @@ impl TableProvider for ListingBEDTable {
             .await?,
         ];
 
-        let file_scan_config = FileScanConfig {
-            object_store_url,
-            file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-            file_groups: partitioned_file_lists,
-            statistics: Statistics::default(),
-            projection: projection.cloned(),
-            limit,
-            output_ordering: Vec::new(),
-            table_partition_cols: Vec::new(),
-            infinite_source: false,
-        };
+        let file_scan_config = FileScanConfigBuilder::new(
+            object_store_url.clone(),
+            Arc::clone(&self.table_schema),
+            partitioned_file_lists,
+        )
+        .projection_option(projection.cloned())
+        .limit_option(limit)
+        .build();
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 

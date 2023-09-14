@@ -23,3 +23,6 @@ pub mod region_physical_expr;
 
 /// Utilities for working with object stores.
 pub mod object_store;
+
+/// Builder for a file scan configuration.
+pub mod file_scan_config_builder;

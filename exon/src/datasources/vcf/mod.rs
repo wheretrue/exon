@@ -30,6 +30,7 @@ mod table_provider;
 pub use self::array_builder::VCFArrayBuilder;
 pub use self::config::VCFConfig;
 pub use self::file_opener::VCFOpener;
+pub use self::indexed_scanner::IndexedVCFScanner;
 pub use self::scanner::VCFScan;
 pub use self::schema_builder::VCFSchemaBuilder;
 pub use self::table_provider::ListingVCFTable;

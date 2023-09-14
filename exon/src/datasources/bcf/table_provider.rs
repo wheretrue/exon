@@ -12,7 +12,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use futures::TryStreamExt;
@@ -20,7 +20,10 @@ use noodles::{bcf, core::Region};
 use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
-use crate::datasources::{vcf::VCFSchemaBuilder, ExonFileType};
+use crate::{
+    datasources::{vcf::VCFSchemaBuilder, ExonFileType},
+    physical_plan::file_scan_config_builder,
+};
 
 use super::BCFScan;
 
@@ -201,17 +204,14 @@ impl TableProvider for ListingBCFTable {
             .await?,
         ];
 
-        let file_scan_config = FileScanConfig {
-            object_store_url,
-            file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-            file_groups: partitioned_file_lists,
-            statistics: Statistics::default(),
-            projection: projection.cloned(),
-            limit,
-            output_ordering: Vec::new(),
-            table_partition_cols: Vec::new(),
-            infinite_source: false,
-        };
+        let file_scan_config = file_scan_config_builder::FileScanConfigBuilder::new(
+            object_store_url.clone(),
+            Arc::clone(&self.table_schema),
+            partitioned_file_lists,
+        )
+        .projection_option(projection.cloned())
+        .limit_option(limit)
+        .build();
 
         let plan = self
             .options

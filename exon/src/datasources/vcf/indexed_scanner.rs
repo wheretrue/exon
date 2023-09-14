@@ -16,7 +16,6 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    common::FileCompressionType,
     datasource::physical_plan::{FileScanConfig, FileStream},
     error::Result,
     physical_plan::{
@@ -24,8 +23,6 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
-
-use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
@@ -38,21 +35,13 @@ pub struct IndexedVCFScanner {
     base_config: FileScanConfig,
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
-    /// The compression type of the file.
-    file_compression_type: FileCompressionType,
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
-    /// An optional region filter for the scan.
-    region_filter: Region,
 }
 
 impl IndexedVCFScanner {
     /// Create a new VCF scan.
-    pub fn new(
-        base_config: FileScanConfig,
-        file_compression_type: FileCompressionType,
-        region_filter: Region,
-    ) -> Result<Self> {
+    pub fn new(base_config: FileScanConfig) -> Result<Self> {
         let projected_schema = match &base_config.projection {
             Some(p) => Arc::new(base_config.file_schema.project(p)?),
             None => base_config.file_schema.clone(),
@@ -61,9 +50,7 @@ impl IndexedVCFScanner {
         Ok(Self {
             base_config,
             projected_schema,
-            file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
-            region_filter,
         })
     }
 
@@ -72,6 +59,7 @@ impl IndexedVCFScanner {
         &self.base_config
     }
 
+    /// Return the reparitioned scan.
     pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
         if target_partitions == 1 {
             return self.clone();

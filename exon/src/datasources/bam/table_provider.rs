@@ -11,7 +11,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use noodles::core::Region;
@@ -41,6 +41,8 @@ impl ListingBAMTableConfig {
         }
     }
 }
+
+use crate::physical_plan::file_scan_config_builder::FileScanConfigBuilder;
 
 use super::{array_builder::schema, BAMScan};
 
@@ -160,17 +162,14 @@ impl TableProvider for ListingBAMTable {
             .await?,
         ];
 
-        let file_scan_config = FileScanConfig {
-            object_store_url,
-            file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-            file_groups: partitioned_file_lists,
-            statistics: Statistics::default(),
-            projection: projection.cloned(),
-            limit,
-            output_ordering: Vec::new(),
-            table_partition_cols: Vec::new(),
-            infinite_source: false,
-        };
+        let file_scan_config = FileScanConfigBuilder::new(
+            object_store_url.clone(),
+            Arc::clone(&self.table_schema),
+            partitioned_file_lists,
+        )
+        .projection_option(projection.cloned())
+        .limit_option(limit)
+        .build();
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 

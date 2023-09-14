@@ -14,7 +14,7 @@ use datafusion::{
     logical_expr::{TableProviderFilterPushDown, TableType},
     optimizer::utils::conjunction,
     physical_expr::create_physical_expr,
-    physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan, PhysicalExpr, Statistics},
+    physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan, Statistics},
     prelude::Expr,
 };
 use futures::TryStreamExt;
@@ -25,10 +25,15 @@ use tokio_util::io::StreamReader;
 use crate::{
     datasources::ExonFileType,
     physical_optimizer::region_filter_rewriter::transform_region_expressions,
-    physical_plan::region_physical_expr::RegionPhysicalExpr,
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, region_physical_expr::RegionPhysicalExpr,
+    },
 };
 
-use super::{indexed_file_utils::get_byte_range_for_file, VCFScan, VCFSchemaBuilder};
+use super::{
+    indexed_file_utils::get_byte_range_for_file, indexed_scanner::IndexedVCFScanner, VCFScan,
+    VCFSchemaBuilder,
+};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -184,23 +189,19 @@ impl ListingVCFTableOptions {
         }
     }
 
+    async fn create_physical_plan_with_region(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = IndexedVCFScanner::new(conf)?;
+
+        return Ok(Arc::new(scan));
+    }
+
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
-        filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        // if we got filters, we need to check if they are region filters
-        if let Some(filters) = filters {
-            // Downcast the filters to a Region filter if possible.
-            if let Some(region_filter) = filters.as_any().downcast_ref::<RegionPhysicalExpr>() {
-                let region = region_filter.region()?;
-
-                let scan = VCFScan::new(conf, self.file_compression_type)?.with_filter(region);
-
-                return Ok(Arc::new(scan));
-            }
-        }
-
         let scan = VCFScan::new(conf, self.file_compression_type)?;
 
         Ok(Arc::new(scan))
@@ -358,6 +359,8 @@ impl TableProvider for ListingVCFTable {
             return Ok(Arc::new(EmptyExec::new(false, Arc::new(Schema::empty()))));
         };
 
+        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+
         let filters = if let Some(expr) = conjunction(filters.to_vec()) {
             // NOTE: Use the table schema (NOT file schema) here because `expr` may contain references to partition columns.
             let table_df_schema = self.table_schema.as_ref().clone().to_dfschema()?;
@@ -368,16 +371,8 @@ impl TableProvider for ListingVCFTable {
                 state.execution_props(),
             )?;
 
-            let new_filters = filters.transform(&transform_region_expressions)?;
-
-            Some(new_filters)
+            filters.transform(&transform_region_expressions)?
         } else {
-            None
-        };
-
-        if filters.clone().is_none() {
-            let object_store = state.runtime_env().object_store(object_store_url.clone())?;
-
             let partitioned_file_lists = vec![
                 crate::physical_plan::object_store::list_files_for_scan(
                     object_store,
@@ -387,28 +382,20 @@ impl TableProvider for ListingVCFTable {
                 .await?,
             ];
 
-            let file_scan_config = FileScanConfig {
-                object_store_url,
-                file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-                file_groups: partitioned_file_lists,
-                statistics: Statistics::default(),
-                projection: projection.cloned(),
-                limit,
-                output_ordering: Vec::new(),
-                table_partition_cols: Vec::new(),
-                infinite_source: false,
-            };
+            let file_scan_config_builder = FileScanConfigBuilder::new(
+                object_store_url.clone(),
+                Arc::clone(&self.table_schema),
+                partitioned_file_lists,
+            );
 
-            let table = self
-                .options
-                .create_physical_plan(file_scan_config, None)
-                .await?;
+            let file_scan_config = file_scan_config_builder.build();
+
+            let table = self.options.create_physical_plan(file_scan_config).await?;
 
             return Ok(table);
-        }
+        };
 
-        let region_exprr = filters.clone().unwrap();
-        let new_region_expr = region_exprr.as_any().downcast_ref::<RegionPhysicalExpr>();
+        let new_region_expr = filters.as_any().downcast_ref::<RegionPhysicalExpr>();
 
         // if we got a filter check if it is a RegionFilter
         if let Some(region_expr) = new_region_expr {
@@ -425,8 +412,6 @@ impl TableProvider for ListingVCFTable {
                 return Ok(Arc::new(EmptyExec::new(false, projected_schema)));
             }
 
-            let f = filters.unwrap().clone();
-
             let file_scan_config = FileScanConfig {
                 object_store_url,
                 file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
@@ -441,7 +426,7 @@ impl TableProvider for ListingVCFTable {
 
             let table = self
                 .options
-                .create_physical_plan(file_scan_config, Some(&f))
+                .create_physical_plan_with_region(file_scan_config)
                 .await?;
 
             return Ok(table);
