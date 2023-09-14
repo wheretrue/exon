@@ -100,7 +100,7 @@ mod tests {
         prelude::SessionContext,
     };
 
-    use crate::{tests::test_path, ExonSessionExt};
+    use crate::{datasources::vcf::IndexedVCFScanner, tests::test_path, ExonSessionExt};
 
     #[tokio::test]
     async fn test_region_physical_expr() -> Result<(), Box<dyn std::error::Error>> {
@@ -143,7 +143,7 @@ mod tests {
         let is_vcf_scan = coal_part
             .input()
             .as_any()
-            .downcast_ref::<crate::datasources::vcf::VCFScan>()
+            .downcast_ref::<IndexedVCFScanner>()
             .is_some();
 
         assert!(is_vcf_scan);
@@ -173,7 +173,7 @@ mod tests {
             .unwrap()
             .input()
             .as_any()
-            .downcast_ref::<crate::datasources::vcf::VCFScan>()
+            .downcast_ref::<IndexedVCFScanner>()
             .is_some());
 
         Ok(())

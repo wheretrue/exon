@@ -27,8 +27,13 @@ use datafusion::{
 use itertools::Itertools;
 
 use crate::datasources::{
-    bed::BEDScan, fasta::FASTAScan, fastq::FASTQScan, gff::GFFScan, gtf::GTFScan,
-    hmmdomtab::HMMDomTabScan, vcf::VCFScan,
+    bed::BEDScan,
+    fasta::FASTAScan,
+    fastq::FASTQScan,
+    gff::GFFScan,
+    gtf::GTFScan,
+    hmmdomtab::HMMDomTabScan,
+    vcf::{IndexedVCFScanner, VCFScan},
 };
 
 #[cfg(feature = "genbank")]
@@ -120,6 +125,13 @@ fn optimize_file_partitions(
 
     if let Some(vcf_scan) = new_plan.as_any().downcast_ref::<VCFScan>() {
         let new_scan = vcf_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
+
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
+    }
+
+    if let Some(indexed_vcf_scan) = new_plan.as_any().downcast_ref::<IndexedVCFScanner>() {
+        let new_scan = indexed_vcf_scan.get_repartitioned(target_partitions);
         let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
         return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
