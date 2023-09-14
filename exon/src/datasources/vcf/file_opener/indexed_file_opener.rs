@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
 
 use datafusion::{
     datasource::{
@@ -23,11 +23,12 @@ use datafusion::{
 };
 use futures::{StreamExt, TryStreamExt};
 use noodles::bgzf::{self, VirtualPosition};
+use object_store::GetOptions;
 use tokio_util::io::StreamReader;
 
-use crate::datasources::vcf::{
-    batch_reader::{BatchReader, UnIndexedRecordIterator},
-    VCFConfig,
+use crate::{
+    datasources::vcf::{indexed_async_record_stream::AsyncBatchStream, VCFConfig},
+    streaming_bgzf::AsyncBGZFReader,
 };
 
 /// A file opener for VCF files.
@@ -79,19 +80,19 @@ impl FileOpener for IndexedVCFOpener {
                         // If the compressed end is 0, we want to read the entire file.
                         // Moreover, we need to seek to the header offset as the start is also 0.
 
-                        let bytes = config
+                        let stream = config
                             .object_store
                             .get(file_meta.location())
                             .await?
-                            .bytes()
-                            .await?;
+                            .into_stream()
+                            .map_err(DataFusionError::from);
 
-                        let cursor = std::io::Cursor::new(bytes);
-                        let mut bgzf_reader = bgzf::Reader::new(cursor);
+                        let stream_reader = StreamReader::new(Box::pin(stream));
 
-                        bgzf_reader.seek(header_offset)?;
+                        let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
+                        async_reader.scan_to_virtual_position(header_offset).await?;
 
-                        bgzf_reader
+                        async_reader
                     } else {
                         // Otherwise, we read the compressed range from the object store.
                         tracing::debug!(
@@ -107,31 +108,27 @@ impl FileOpener for IndexedVCFOpener {
                             vp_end.compressed() as usize
                         };
 
-                        let bytes = config
+                        let start = vp_start.compressed() as usize;
+
+                        let get_options = GetOptions {
+                            range: Some(Range { start, end }),
+                            ..Default::default()
+                        };
+
+                        let get_response = config
                             .object_store
-                            .get_range(
-                                file_meta.location(),
-                                std::ops::Range {
-                                    start: vp_start.compressed() as usize,
-                                    end,
-                                },
-                            )
+                            .get_opts(file_meta.location(), get_options)
                             .await?;
 
-                        if bytes.is_empty() {
-                            // Should never happen.
-                            return Err(DataFusionError::Execution(
-                                "Empty range read from object store".to_string(),
-                            ));
-                        }
+                        let stream = get_response.into_stream().map_err(DataFusionError::from);
+                        let stream_reader = StreamReader::new(Box::pin(stream));
 
-                        let cursor = std::io::Cursor::new(bytes);
-                        let mut bgzf_reader = bgzf::Reader::new(cursor);
+                        let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
 
                         // If we're at the start of the file, we need to seek to the header offset.
                         if vp_start.compressed() == 0 && vp_start.uncompressed() == 0 {
                             tracing::debug!("Seeking to header offset: {:?}", header_offset);
-                            bgzf_reader.seek(header_offset)?;
+                            async_reader.scan_to_virtual_position(header_offset).await?;
                         }
 
                         // If we're not at the start of the file, we need to seek to the uncompressed
@@ -139,38 +136,54 @@ impl FileOpener for IndexedVCFOpener {
                         // reading from a block boundary.
                         if vp_start.uncompressed() > 0 {
                             let marginal_start_vp =
-                                VirtualPosition::try_from((0, vp_start.uncompressed())).unwrap();
-                            bgzf_reader.seek(marginal_start_vp)?;
+                                VirtualPosition::try_from((0, vp_start.uncompressed())).map_err(
+                                    |e| {
+                                        std::io::Error::new(
+                                            std::io::ErrorKind::InvalidData,
+                                            format!("invalid virtual position: {e}"),
+                                        )
+                                    },
+                                )?;
+
+                            async_reader
+                                .scan_to_virtual_position(marginal_start_vp)
+                                .await?;
                         }
 
-                        bgzf_reader
+                        async_reader
                     }
                 }
                 None => {
-                    let bytes = config
+                    let get_stream = config
                         .object_store
                         .get(file_meta.location())
                         .await?
-                        .bytes()
-                        .await?;
+                        .into_stream()
+                        .map_err(DataFusionError::from);
 
-                    let cursor = std::io::Cursor::new(bytes);
-                    let mut bgzf_reader = bgzf::Reader::new(cursor);
+                    let stream_reader = StreamReader::new(Box::pin(get_stream));
 
-                    bgzf_reader.seek(header_offset)?;
+                    let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
 
-                    bgzf_reader
+                    // If we're at the start of the file, we need to seek to the header offset.
+                    if vcf_reader.virtual_position().compressed() == 0
+                        && vcf_reader.virtual_position().uncompressed() == 0
+                    {
+                        tracing::debug!("Seeking to header offset: {:?}", header_offset);
+                        async_reader.scan_to_virtual_position(header_offset).await?;
+                    }
+
+                    async_reader
                 }
             };
 
-            let vcf_reader = noodles::vcf::Reader::new(bgzf_reader);
+            let bgzf_reader = bgzf_reader.into_inner();
 
-            let record_iterator = UnIndexedRecordIterator::new(vcf_reader);
+            let vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
 
-            let boxed_iter = Box::new(record_iterator);
+            let batch_stream = AsyncBatchStream::new(vcf_reader, config, Arc::new(header));
 
-            let batch_reader = BatchReader::new(boxed_iter, config, Arc::new(header));
-            let batch_stream = futures::stream::iter(batch_reader);
+            let batch_stream = batch_stream.into_stream();
 
             Ok(batch_stream.boxed())
         }))

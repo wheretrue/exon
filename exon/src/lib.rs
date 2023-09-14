@@ -126,6 +126,9 @@ pub use context::ExomeSessionExt;
 /// Error types for Exon.
 pub mod error;
 
+/// Utilities for working with stream bgzf files.
+pub mod streaming_bgzf;
+
 #[cfg(test)]
 mod tests {
     use std::{path::PathBuf, sync::Arc};
@@ -135,7 +138,7 @@ mod tests {
         logical_expr::Operator,
         physical_plan::{expressions::BinaryExpr, PhysicalExpr},
     };
-    use object_store::path::Path;
+    use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
 
     pub(crate) fn eq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
         BinaryExpr::new(left, Operator::Eq, right)
@@ -151,6 +154,12 @@ mod tests {
 
     pub(crate) fn gteq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
         BinaryExpr::new(left, Operator::GtEq, right)
+    }
+
+    pub fn make_object_store() -> Arc<dyn ObjectStore> {
+        let local_file_system = LocalFileSystem::new();
+
+        Arc::new(local_file_system)
     }
 
     pub fn test_path(data_type: &str, file_name: &str) -> PathBuf {
