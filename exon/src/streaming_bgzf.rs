@@ -52,25 +52,30 @@ where
     }
 
     /// Scan to a virtual position.
-    pub async fn scan_to_virtual_position(&mut self, vp: VirtualPosition) {
+    pub async fn scan_to_virtual_position(&mut self, vp: VirtualPosition) -> std::io::Result<()> {
         let mut buf = [0; 1];
 
         while self.inner.virtual_position() < vp {
-            self.inner.read_exact(&mut buf).await.unwrap();
+            self.inner.read_exact(&mut buf).await?;
         }
+
+        Ok(())
     }
 
     /// Read to a virtual position.
-    pub async fn read_to_virtual_position(&mut self, vp: VirtualPosition) -> Vec<u8> {
+    pub async fn read_to_virtual_position(
+        &mut self,
+        vp: VirtualPosition,
+    ) -> std::io::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         while self.inner.virtual_position() < vp {
             let mut b = [0; 1];
-            self.inner.read_exact(&mut b).await.unwrap();
+            self.inner.read_exact(&mut b).await?;
             buf.push(b[0]);
         }
 
-        buf
+        Ok(buf)
     }
 }
 
@@ -102,7 +107,7 @@ mod tests {
         let chunks = get_byte_range_for_file(object_store.clone(), &object_meta, &region).await?;
         let first_chunk = chunks.first().unwrap();
 
-        reader.scan_to_virtual_position(first_chunk.start()).await;
+        reader.scan_to_virtual_position(first_chunk.start()).await?;
 
         assert_eq!(reader.virtual_position(), first_chunk.start());
 

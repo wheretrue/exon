@@ -90,7 +90,7 @@ impl FileOpener for IndexedVCFOpener {
                         let stream_reader = StreamReader::new(Box::pin(stream));
 
                         let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
-                        async_reader.scan_to_virtual_position(header_offset).await;
+                        async_reader.scan_to_virtual_position(header_offset).await?;
 
                         async_reader
                     } else {
@@ -128,7 +128,7 @@ impl FileOpener for IndexedVCFOpener {
                         // If we're at the start of the file, we need to seek to the header offset.
                         if vp_start.compressed() == 0 && vp_start.uncompressed() == 0 {
                             tracing::debug!("Seeking to header offset: {:?}", header_offset);
-                            async_reader.scan_to_virtual_position(header_offset).await
+                            async_reader.scan_to_virtual_position(header_offset).await?;
                         }
 
                         // If we're not at the start of the file, we need to seek to the uncompressed
@@ -147,7 +147,7 @@ impl FileOpener for IndexedVCFOpener {
 
                             async_reader
                                 .scan_to_virtual_position(marginal_start_vp)
-                                .await;
+                                .await?;
                         }
 
                         async_reader
