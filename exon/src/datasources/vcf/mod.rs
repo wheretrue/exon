@@ -18,7 +18,6 @@
 
 mod array_builder;
 mod async_batch_reader;
-mod batch_reader;
 mod config;
 mod file_opener;
 mod indexed_file_utils;
@@ -27,7 +26,7 @@ mod scanner;
 mod schema_builder;
 mod table_provider;
 
-pub mod indexed_async_record_stream;
+mod indexed_async_record_stream;
 
 pub use self::array_builder::VCFArrayBuilder;
 pub use self::config::VCFConfig;

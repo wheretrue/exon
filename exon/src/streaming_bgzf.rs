@@ -17,6 +17,7 @@
 use noodles::bgzf::{self, VirtualPosition};
 use tokio::io::AsyncReadExt;
 
+/// A streaming bgzf reader.
 pub struct AsyncBGZFReader<R>
 where
     R: tokio::io::AsyncRead + Unpin + tokio::io::AsyncBufRead,
@@ -28,27 +29,30 @@ impl<R> AsyncBGZFReader<R>
 where
     R: tokio::io::AsyncRead + Unpin + tokio::io::AsyncBufRead,
 {
+    /// Create a new streaming bgzf reader.
     pub fn new(reader: bgzf::AsyncReader<R>) -> Self {
         Self { inner: reader }
     }
 
+    /// Create a new streaming bgzf reader from a reader.
     pub fn from_reader(reader: R) -> Self {
         let reader = bgzf::AsyncReader::new(reader);
 
         Self::new(reader)
     }
 
+    /// Convert the reader into the inner reader.
     pub fn into_inner(self) -> bgzf::AsyncReader<R> {
         self.inner
     }
 
+    /// Get the virtual position of the reader.
     pub fn virtual_position(&self) -> VirtualPosition {
         self.inner.virtual_position()
     }
 
+    /// Scan to a virtual position.
     pub async fn scan_to_virtual_position(&mut self, vp: VirtualPosition) {
-        let (cpos, upos) = vp.into();
-
         let mut buf = [0; 1];
 
         while self.inner.virtual_position() < vp {
@@ -56,6 +60,7 @@ where
         }
     }
 
+    /// Read to a virtual position.
     pub async fn read_to_virtual_position(&mut self, vp: VirtualPosition) -> Vec<u8> {
         let mut buf = Vec::new();
 

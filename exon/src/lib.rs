@@ -126,6 +126,7 @@ pub use context::ExomeSessionExt;
 /// Error types for Exon.
 pub mod error;
 
+/// Utilities for working with stream bgzf files.
 pub mod streaming_bgzf;
 
 #[cfg(test)]

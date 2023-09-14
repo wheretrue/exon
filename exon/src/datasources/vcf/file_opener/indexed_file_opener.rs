@@ -21,7 +21,7 @@ use datafusion::{
     },
     error::DataFusionError,
 };
-use futures::{FutureExt, StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt};
 use noodles::bgzf::{self, VirtualPosition};
 use object_store::GetOptions;
 use tokio_util::io::StreamReader;
@@ -110,8 +110,10 @@ impl FileOpener for IndexedVCFOpener {
 
                         let start = vp_start.compressed() as usize;
 
-                        let mut get_options = GetOptions::default();
-                        get_options.range = Some(Range { start, end });
+                        let get_options = GetOptions {
+                            range: Some(Range { start, end }),
+                            ..Default::default()
+                        };
 
                         let get_response = config
                             .object_store

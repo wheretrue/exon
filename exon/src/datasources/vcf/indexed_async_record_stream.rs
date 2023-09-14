@@ -42,6 +42,7 @@ impl<R> AsyncBatchStream<R>
 where
     R: AsyncRead + Unpin,
 {
+    /// Create a new VCF record batch reader.
     pub fn new(
         reader: noodles::vcf::AsyncReader<noodles::bgzf::AsyncReader<R>>,
         config: Arc<VCFConfig>,
@@ -64,6 +65,7 @@ where
         }
     }
 
+    /// Stream the record batches from the VCF file.
     pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
