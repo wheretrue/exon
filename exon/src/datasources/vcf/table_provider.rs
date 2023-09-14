@@ -195,7 +195,7 @@ impl ListingVCFTableOptions {
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
         let scan = IndexedVCFScanner::new(conf)?;
 
-        return Ok(Arc::new(scan));
+        Ok(Arc::new(scan))
     }
 
     async fn create_physical_plan(
@@ -442,7 +442,7 @@ mod tests {
 
     use crate::{
         datasources::{
-            vcf::{table_provider::get_byte_range_for_file, VCFScan},
+            vcf::{table_provider::get_byte_range_for_file, IndexedVCFScanner, VCFScan},
             ExonListingTableFactory,
         },
         tests::{test_listing_table_dir, test_listing_table_url, test_path},
@@ -503,16 +503,8 @@ mod tests {
                     .downcast_ref::<CoalescePartitionsExec>()
                     .unwrap();
 
-                // Check the input is a VCF scan...
-                if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
-                    // ... and that it has a region filter.
-                    assert!(scan.region_filter().is_some());
-                } else {
-                    panic!(
-                        "expected VCFScan for {} in {:#?}",
-                        sql_statement, physical_plan
-                    );
-                }
+                let scan = scan.input().as_any().downcast_ref::<IndexedVCFScanner>();
+                assert!(scan.is_some());
             }
         }
 
@@ -603,7 +595,7 @@ mod tests {
                 .downcast_ref::<CoalescePartitionsExec>()
                 .unwrap();
 
-            if let Some(scan) = scan.input().as_any().downcast_ref::<VCFScan>() {
+            if let Some(scan) = scan.input().as_any().downcast_ref::<IndexedVCFScanner>() {
                 // We should have two file groups with one file not one with two files.
                 assert_eq!(scan.base_config().file_groups.len(), 2);
             } else {

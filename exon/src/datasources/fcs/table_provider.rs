@@ -12,7 +12,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use futures::TryStreamExt;
@@ -20,6 +20,8 @@ use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
 use crate::datasources::ExonFileType;
+
+use crate::physical_plan::file_scan_config_builder::FileScanConfigBuilder;
 
 use super::{reader::FcsReader, scanner::FCSScan};
 
@@ -185,6 +187,8 @@ impl TableProvider for ListingFCSTable {
             Arc::clone(&self.table_schema),
             partitioned_file_lists,
         )
+        .projection_option(projection.cloned())
+        .limit_option(limit)
         .build();
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
