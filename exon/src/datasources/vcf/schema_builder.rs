@@ -92,7 +92,7 @@ impl Default for VCFSchemaBuilder {
                         arrow::datatypes::DataType::Utf8,
                         true,
                     ))),
-                    false,
+                    true,
                 ),
                 Field::new("info", arrow::datatypes::DataType::Utf8, true),
                 Field::new("formats", arrow::datatypes::DataType::Utf8, true),

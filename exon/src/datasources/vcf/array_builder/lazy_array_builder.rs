@@ -23,10 +23,7 @@ use arrow::{
     error::ArrowError,
 };
 use noodles::vcf::{
-    record::{
-        AlternateBases, Chromosome, Filters, Genotypes, Ids, Info, Position, QualityScore,
-        ReferenceBases,
-    },
+    record::{AlternateBases, Chromosome, Genotypes, Info, Position, ReferenceBases},
     Header,
 };
 
@@ -177,19 +174,17 @@ impl LazyVCFArrayBuilder {
                     let pos_usize: usize = position.into();
                     self.positions.append_value(pos_usize as i64);
                 }
-                2 => match record.ids() {
-                    "." => self.ids.append_null(),
-                    _ => {
-                        let ids = Ids::from_str(record.ids())
-                            .map_err(|_| ArrowError::ParseError("Invalid ids".to_string()))?;
-
-                        for id in ids.iter() {
-                            self.ids.values().append_value(id.to_string());
+                2 => {
+                    if record.ids().is_empty() {
+                        self.ids.append_null();
+                    } else {
+                        for id in record.ids().iter() {
+                            self.ids.values().append_value(id);
                         }
 
                         self.ids.append(true);
                     }
-                },
+                }
                 3 => {
                     let reference_bases = ReferenceBases::from_str(record.reference_bases())
                         .map_err(|_| {
@@ -216,29 +211,23 @@ impl LazyVCFArrayBuilder {
                         self.alternates.append(true);
                     }
                 },
-                5 => match QualityScore::from_str(record.quality_score()) {
-                    Ok(quality_score) => self.qualities.append_value(f32::from(quality_score)),
-                    Err(_) => {
-                        self.qualities.append_null();
+                5 => match record.quality_score() {
+                    Some(qs) => self.qualities.append_value(qs.parse().map_err(|_| {
+                        ArrowError::ParseError(format!("Could not parse quality score: {qs}"))
+                    })?),
+                    None => self.qualities.append_null(),
+                },
+                6 => match record.filters() {
+                    Some(f) => {
+                        for filter in f.iter() {
+                            self.filters.values().append_value(filter);
+                        }
+                        self.filters.append(true);
+                    }
+                    None => {
+                        self.filters.append_null();
                     }
                 },
-                6 => {
-                    let filters = Filters::from_str(record.filters())
-                        .map_err(|_| ArrowError::ParseError("Invalid filters".to_string()))?;
-
-                    match filters {
-                        Filters::Pass => {
-                            self.filters.values().append_value("PASS");
-                        }
-                        Filters::Fail(ids) => {
-                            for id in ids.iter() {
-                                self.filters.values().append_value(id);
-                            }
-                        }
-                    }
-
-                    self.filters.append(true);
-                }
                 7 => match self.infos {
                     InfosFormat::String(ref mut builder) => {
                         builder.append_value(record.info().as_ref());
