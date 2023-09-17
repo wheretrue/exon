@@ -483,7 +483,11 @@ mod tests {
         let table_path = test_path("vcf", "index.vcf.gz");
         let table_path = table_path.to_str().unwrap();
 
-        ctx.register_vcf_file("vcf_file", table_path).await?;
+        let sql = format!(
+            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+            table_path
+        );
+        ctx.sql(&sql).await?;
 
         let sql_statements = vec![
             "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 9999921;",
