@@ -11,6 +11,7 @@ members = [
   "exon-benchmarks",
   "exon-examples",
   "exon-cli",
+  "exon-py",
 ]
 
 [workspace.dependencies]
