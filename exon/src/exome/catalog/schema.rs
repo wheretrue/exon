@@ -82,7 +82,8 @@ impl SchemaProvider for Schema {
             .await
             .unwrap();
 
-        let file_compression_type = FileCompressionType::UNCOMPRESSED;
+        let file_compression_type =
+            FileCompressionType::from_str(&proto_table.compression_type_id).unwrap();
 
         let file_type = ExonFileType::from_str(&proto_table.file_format).unwrap();
 
