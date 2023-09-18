@@ -17,9 +17,9 @@
 import os
 from contextlib import contextmanager
 from adbc_driver_flightsql import DatabaseOptions
+import adbc_driver_flightsql.dbapi as flight_sql
 import boto3
 import botocore
-import flightsql
 
 
 class ExomeError(Exception):
@@ -33,22 +33,28 @@ class ExomeError(Exception):
 class ExomeConnection:
     """A connection to an Exome server."""
 
-    def __init__(self, conn):
+    def __init__(self, conn: flight_sql.Connection):
         """Create a new connection to an Exome server."""
         self.conn = conn
 
-    def sql(self, query: str):
-        """Execute a SQL query on the Exome server.
+    @contextmanager
+    def cursor(self):
+        """Return a cursor for the connection."""
+        cursor = self.conn.cursor()
 
-        Args:
-            query: The SQL query to execute.
+        try:
+            yield cursor
 
-        Returns:
-            The result of the query.
+        # pylint: disable=invalid-name
+        except ExomeError as e:
+            raise e
 
-        Raises:
-            ExomeError: If the query fails.
-        """
+        finally:
+            cursor.close()
+
+    def close(self):
+        """Close the connection."""
+        self.conn.close()
 
     def __repr__(self):
         """Return a string representation of the connection."""
@@ -78,17 +84,13 @@ def _authenticate(username: str, password: str):
         raise ExomeError("Authentication failed") from e
 
 
-# Connect should be able to be a context manager
-@contextmanager
-def connect(url: str, username: str, password: str):
+def _flight_sql_connect(uri: str, skip_verify: bool, token: str):
     """Connect to an Exome server."""
-    token = _authenticate(username, password)
-
     try:
-        flight_connection = flightsql.connect(
-            url,
+        flight_connection = flight_sql.connect(
+            uri=uri,
             db_kwargs={
-                DatabaseOptions.TLS_SKIP_VERIFY.value: "true",
+                DatabaseOptions.TLS_SKIP_VERIFY.value: skip_verify,
                 DatabaseOptions.AUTHORIZATION_HEADER.value: token,
             },
         )
@@ -97,14 +99,28 @@ def connect(url: str, username: str, password: str):
     except Exception as e:
         raise ExomeError("Connection failed") from e
 
-    conn = ExomeConnection(flight_connection)
+    return flight_connection
+
+
+# Connect should be able to be a context manager
+@contextmanager
+def connect(username: str, password: str, **kwargs):
+    """Connect to an Exome server."""
+    token = _authenticate(username, password)
+
+    uri = kwargs.get("uri", "grpc://localhost:50051")
+    skip_verify = kwargs.get("skip_verify", True)
+
+    flight_connection = _flight_sql_connect(uri, skip_verify, token)
+
+    exome_conn = ExomeConnection(flight_connection)
 
     try:
-        yield conn
+        yield exome_conn
 
     # pylint: disable=invalid-name
     except ExomeError as e:
         raise e
 
     finally:
-        pass
+        exome_conn.close()
