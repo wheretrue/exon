@@ -1,5 +1,21 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RunQueryRequest {
+    #[prost(string, tag = "1")]
+    pub query: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub organization_id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RunQueryResponse {
+    #[prost(bytes = "vec", tag = "1")]
+    pub ipc_response: ::prost::alloc::vec::Vec<u8>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Organization {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -10,12 +26,24 @@ pub struct Organization {
     #[prost(string, tag = "4")]
     pub updated_at: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetOrganizationRequest {
+    #[prost(string, tag = "1")]
+    pub organization_id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetOrganizationResponse {
+    #[prost(message, optional, tag = "1")]
+    pub organization: ::core::option::Option<Organization>,
+}
 /// User Organizations
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserOrganizationsRequest {
     #[prost(string, tag = "1")]
-    pub user_id: ::prost::alloc::string::String,
+    pub email: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -28,18 +56,14 @@ pub struct GetUserOrganizationsResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct User {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
     pub email: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub first_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub last_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
-    pub phone: ::prost::alloc::string::String,
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "4")]
     pub created_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "5")]
     pub updated_at: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -51,20 +75,31 @@ pub struct CreateUserRequest {
     pub first_name: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
     pub last_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
-    pub phone: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUserResponse {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub email: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateUserAuthProviderRequest {
+    #[prost(string, tag = "1")]
+    pub auth_service: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub auth_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub user_email: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateUserAuthProviderResponse {}
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserRequest {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub email: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -147,7 +182,10 @@ pub struct CreateLibraryResponse {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListLibrariesRequest {}
+pub struct ListLibrariesRequest {
+    #[prost(string, tag = "1")]
+    pub organization_id: ::prost::alloc::string::String,
+}
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListLibrariesResponse {
@@ -352,6 +390,8 @@ pub struct Table {
     pub created_at: ::prost::alloc::string::String,
     #[prost(string, tag = "9")]
     pub updated_at: ::prost::alloc::string::String,
+    #[prost(string, tag = "10")]
+    pub compression_type_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -412,6 +452,41 @@ pub struct GetTableByNameRequest {
 pub struct GetTableByNameResponse {
     #[prost(message, optional, tag = "1")]
     pub table: ::core::option::Option<Table>,
+}
+/// Audit Log
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserAuditLog {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub email: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub organization_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub role: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub action: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub target_entity_type: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub target_entity_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub created_at: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub updated_at: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserAuditLogRequest {
+    #[prost(string, tag = "1")]
+    pub organization_id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserAuditLogResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub logs: ::prost::alloc::vec::Vec<UserAuditLog>,
 }
 /// Generated client implementations.
 pub mod catalog_service_client {
@@ -980,6 +1055,33 @@ pub mod catalog_service_client {
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateUser"));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn create_user_auth_provider(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateUserAuthProviderRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CreateUserAuthProviderResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/CreateUserAuthProvider",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("exome.v1.CatalogService", "CreateUserAuthProvider"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn get_user(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserRequest>,
@@ -1055,6 +1157,81 @@ pub mod catalog_service_client {
                 .insert(
                     GrpcMethod::new("exome.v1.CatalogService", "GetUserOrganizations"),
                 );
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn get_organization(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetOrganizationRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetOrganizationResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetOrganization",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetOrganization"));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn get_user_audit_log(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetUserAuditLogRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetUserAuditLogResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetUserAuditLog",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetUserAuditLog"));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn run_query(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RunQueryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RunQueryResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/RunQuery",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "RunQuery"));
             self.inner.unary(req, path, codec).await
         }
     }
