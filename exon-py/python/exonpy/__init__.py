@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from contextlib import contextmanager
 from adbc_driver_flightsql import DatabaseOptions
 import boto3
@@ -51,14 +52,14 @@ class ExomeConnection:
 
     def __repr__(self):
         """Return a string representation of the connection."""
-        return f"ExomeConnection(url={self.url})"
+        return "ExomeConnection()"
 
 
 def _authenticate(username: str, password: str):
     """Authenticate the user."""
 
     client = boto3.client("cognito-idp", region_name="us-west-2")
-    client_id = "72tftpp5kqd21pct22bp1pqd11"
+    client_id = os.environ["EXOME_AUTH_CLIENT_ID"]
 
     try:
         auth_result = client.initiate_auth(
