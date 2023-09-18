@@ -57,7 +57,6 @@ class ExomeConnection:
 
 def _authenticate(username: str, password: str):
     """Authenticate the user."""
-
     client = boto3.client("cognito-idp", region_name="us-west-2")
     client_id = os.environ["EXOME_AUTH_CLIENT_ID"]
 
@@ -82,6 +81,7 @@ def _authenticate(username: str, password: str):
 # Connect should be able to be a context manager
 @contextmanager
 def connect(url: str, username: str, password: str):
+    """Connect to an Exome server."""
     token = _authenticate(username, password)
 
     try:
@@ -93,6 +93,7 @@ def connect(url: str, username: str, password: str):
             },
         )
 
+    # pylint: disable=invalid-name
     except Exception as e:
         raise ExomeError("Connection failed") from e
 
@@ -101,6 +102,7 @@ def connect(url: str, username: str, password: str):
     try:
         yield conn
 
+    # pylint: disable=invalid-name
     except ExomeError as e:
         raise e
 
