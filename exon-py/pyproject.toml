@@ -1,0 +1,23 @@
+[build-system]
+build-backend = "maturin"
+requires = ["maturin>=1.1.0"]
+
+[project]
+authors = [
+  {name = "WHERE TRUE devs", email = "thauck+exonpy@wheretrue.com"},
+]
+classifiers = [
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = ["pyarrow>=12"]
+
+license = {file = "LICENSE"}
+name = "exonpy"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "python"
