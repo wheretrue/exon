@@ -14,7 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
 
-def test_connect():
-    """Test the connect function."""
-    assert True
+import exonpy
+
+
+def test_connect(monkeypatch):
+    # Create a connection to the Exome server.
+    # We'll mock the _authenticate method so we don't need to worry about
+    # credentials using pytest
+
+    auth_mock = mock.Mock()
+    auth_mock.return_value = "token"
+
+    flight_connect_mock = mock.Mock()
+
+    monkeypatch.setattr(exonpy, "_authenticate", auth_mock)
+    monkeypatch.setattr(exonpy, "_flight_sql_connect", flight_connect_mock)
+
+    with exonpy.connect("username", "password") as conn:
+        assert isinstance(conn, exonpy.ExomeConnection)
+        assert flight_connect_mock.call_count == 1
