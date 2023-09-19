@@ -1,3 +1,18 @@
+/// Auth
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTokenRequest {
+    #[prost(string, tag = "1")]
+    pub email: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub password: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTokenResponse {
+    #[prost(string, tag = "1")]
+    pub token: ::prost::alloc::string::String,
+}
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RunQueryRequest {
@@ -1080,6 +1095,31 @@ pub mod catalog_service_client {
                 .insert(
                     GrpcMethod::new("exome.v1.CatalogService", "CreateUserAuthProvider"),
                 );
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn get_token(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetTokenRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetTokenResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetToken",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetToken"));
             self.inner.unary(req, path, codec).await
         }
         pub async fn get_user(
