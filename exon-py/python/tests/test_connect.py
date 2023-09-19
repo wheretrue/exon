@@ -24,14 +24,23 @@ def test_connect(monkeypatch):
     # We'll mock the _authenticate method so we don't need to worry about
     # credentials using pytest
 
-    auth_mock = mock.Mock()
-    auth_mock.return_value = "token"
+    connect_to_exome_request_mock = mock.Mock()
+    connect_to_exome_request_mock.return_value = "token"
 
     flight_connect_mock = mock.Mock()
 
-    monkeypatch.setattr(exonpy, "_authenticate", auth_mock)
+    monkeypatch.setattr(
+        exonpy, "_connect_to_exome_request", connect_to_exome_request_mock
+    )
     monkeypatch.setattr(exonpy, "_flight_sql_connect", flight_connect_mock)
+
+    expected_request = exonpy.proto.exome.v1.catalog_pb2.GetTokenRequest(
+        email="username", password="password"
+    )
 
     with exonpy.connect("username", "password") as conn:
         assert isinstance(conn, exonpy.ExomeConnection)
         assert flight_connect_mock.call_count == 1
+
+        assert connect_to_exome_request_mock.call_count == 1
+        assert connect_to_exome_request_mock.call_args[0][1] == expected_request
