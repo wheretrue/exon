@@ -14,15 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from contextlib import contextmanager
-from adbc_driver_flightsql import DatabaseOptions
+
 import adbc_driver_flightsql.dbapi as flight_sql
-
 import grpc
-
-import boto3
-import botocore
+from adbc_driver_flightsql import DatabaseOptions
 
 import exonpy.proto.exome.v1.catalog_pb2
 import exonpy.proto.exome.v1.catalog_pb2_grpc
@@ -91,29 +87,6 @@ class ExomeConnection:
         return "ExomeConnection()"
 
 
-def _authenticate(username: str, password: str):
-    """Authenticate the user."""
-    client = boto3.client("cognito-idp", region_name="us-west-2")
-    client_id = os.environ["EXOME_AUTH_CLIENT_ID"]
-
-    try:
-        auth_result = client.initiate_auth(
-            AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={
-                "USERNAME": username,
-                "PASSWORD": password,
-            },
-            ClientId=client_id,
-        )
-
-        id_token = auth_result["AuthenticationResult"]["IdToken"]
-        return id_token
-
-    # pylint: disable=invalid-name
-    except botocore.exceptions.ClientError as e:
-        raise ExomeError("Authentication failed") from e
-
-
 def _flight_sql_connect(uri: str, skip_verify: bool, token: str):
     """Connect to an Exome server."""
     try:
@@ -132,26 +105,55 @@ def _flight_sql_connect(uri: str, skip_verify: bool, token: str):
     return flight_connection
 
 
+def _connect_to_exome_request(
+    stub: exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub,
+    get_token_request: exonpy.proto.exome.v1.catalog_pb2.GetTokenRequest,
+) -> str:
+    """Make the actual request to get the token."""
+
+    try:
+        token_response = stub.GetToken(get_token_request)
+
+    # pylint: disable=invalid-name
+    except grpc.RpcError as e:
+        raise ExomeError("Authentication failed") from e
+
+    # pylint: disable=invalid-name
+    except Exception as e:
+        raise ExomeError("Connection failed") from e
+
+    token = token_response.token
+
+    return token
+
+
+def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnection:
+    channel = grpc.insecure_channel(uri)
+    stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
+
+    token_request = exonpy.proto.exome.v1.catalog_pb2.GetTokenRequest(
+        email=username, password=password
+    )
+
+    token = _connect_to_exome_request(stub, token_request)
+    exome_grpc_connection = ExomeGrpcConnection(stub, token)
+
+    return exome_grpc_connection
+
+
 # Connect should be able to be a context manager
 @contextmanager
 def connect(username: str, password: str, organization_name: str = "Public", **kwargs):
     """Connect to an Exome server."""
-    token = _authenticate(username, password)
-
     uri = kwargs.get("uri", "localhost:50051")
 
-    channel = grpc.insecure_channel(uri)
-    stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
-
-    exome_grpc_connection = ExomeGrpcConnection(stub, token)
+    exome_connection = connect_to_exome(uri, username, password)
 
     skip_verify = kwargs.get("skip_verify", True)
 
-    flight_connection = _flight_sql_connect(uri, skip_verify, token)
+    flight_connection = _flight_sql_connect(uri, skip_verify, exome_connection.token)
 
-    exome_conn = ExomeConnection(
-        flight_connection, exome_grpc_connection, organization_name
-    )
+    exome_conn = ExomeConnection(flight_connection, exome_connection, organization_name)
 
     try:
         yield exome_conn
