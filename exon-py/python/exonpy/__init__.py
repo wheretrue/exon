@@ -18,8 +18,14 @@ import os
 from contextlib import contextmanager
 from adbc_driver_flightsql import DatabaseOptions
 import adbc_driver_flightsql.dbapi as flight_sql
+
+import grpc
+
 import boto3
 import botocore
+
+import exonpy.proto.exome.v1.catalog_pb2
+import exonpy.proto.exome.v1.catalog_pb2_grpc
 
 
 class ExomeError(Exception):
@@ -30,12 +36,36 @@ class ExomeError(Exception):
         super().__init__(*args)
 
 
+class ExomeGrpcConnection:
+    """A connection to an Exome server."""
+
+    def __init__(
+        self,
+        stub: exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub,
+        token: str,
+    ):
+        """Create a new connection to an Exome server."""
+        self.stub = stub
+        self.token = token
+
+
 class ExomeConnection:
     """A connection to an Exome server."""
 
-    def __init__(self, conn: flight_sql.Connection):
+    def __init__(
+        self,
+        conn: flight_sql.Connection,
+        exome_grpc_connection: ExomeGrpcConnection,
+        organization_name: str = "Public",
+    ):
         """Create a new connection to an Exome server."""
         self.conn = conn
+        self.exome_grpc_connection = exome_grpc_connection
+        self.organization_name = organization_name
+
+    def set_library_id(self, library_id: str):
+        """Set the library ID."""
+        # Make api call to associated the library_id with the connection
 
     @contextmanager
     def cursor(self):
@@ -90,7 +120,7 @@ def _flight_sql_connect(uri: str, skip_verify: bool, token: str):
         flight_connection = flight_sql.connect(
             uri=uri,
             db_kwargs={
-                DatabaseOptions.TLS_SKIP_VERIFY.value: skip_verify,
+                DatabaseOptions.TLS_SKIP_VERIFY.value: str(skip_verify).lower(),
                 DatabaseOptions.AUTHORIZATION_HEADER.value: token,
             },
         )
@@ -104,16 +134,24 @@ def _flight_sql_connect(uri: str, skip_verify: bool, token: str):
 
 # Connect should be able to be a context manager
 @contextmanager
-def connect(username: str, password: str, **kwargs):
+def connect(username: str, password: str, organization_name: str = "Public", **kwargs):
     """Connect to an Exome server."""
     token = _authenticate(username, password)
 
-    uri = kwargs.get("uri", "grpc://localhost:50051")
+    uri = kwargs.get("uri", "localhost:50051")
+
+    channel = grpc.insecure_channel(uri)
+    stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
+
+    exome_grpc_connection = ExomeGrpcConnection(stub, token)
+
     skip_verify = kwargs.get("skip_verify", True)
 
     flight_connection = _flight_sql_connect(uri, skip_verify, token)
 
-    exome_conn = ExomeConnection(flight_connection)
+    exome_conn = ExomeConnection(
+        flight_connection, exome_grpc_connection, organization_name
+    )
 
     try:
         yield exome_conn
