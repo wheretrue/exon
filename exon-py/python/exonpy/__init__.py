@@ -87,11 +87,13 @@ class ExomeConnection:
         return "ExomeConnection()"
 
 
-def _flight_sql_connect(uri: str, skip_verify: bool, token: str):
+def _flight_sql_connect(
+    uri: str, skip_verify: bool, token: str, protocol: str = "grpc"
+):
     """Connect to an Exome server."""
     try:
         flight_connection = flight_sql.connect(
-            uri=uri,
+            uri=f"{protocol}://{uri}",
             db_kwargs={
                 DatabaseOptions.TLS_SKIP_VERIFY.value: str(skip_verify).lower(),
                 DatabaseOptions.AUTHORIZATION_HEADER.value: token,
