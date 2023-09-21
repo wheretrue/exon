@@ -8,6 +8,9 @@ download-bam-file:
 	aws s3 cp s3://1000genomes/phase3/data/HG00096/alignment/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam
 	samtools index exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam
 
+download-fixtures:
+	aws s3 cp --recursive s3://wtt-01-dist-prd/chr17/ exon/test-data/fixtures/
+
 GIT_SHA := `git describe --always --abbrev=7 --dirty`
 
 run-benchmarks:

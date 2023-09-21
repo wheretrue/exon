@@ -121,6 +121,7 @@ impl ExecutionPlan for VCFScan {
     }
 
     fn schema(&self) -> SchemaRef {
+        tracing::debug!("VCF schema: {:#?}", self.projected_schema);
         self.projected_schema.clone()
     }
 
@@ -152,8 +153,6 @@ impl ExecutionPlan for VCFScan {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        tracing::debug!("Opening VCF file with partition {}", partition);
-
         let batch_size = context.session_config().batch_size();
 
         let mut config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
@@ -162,6 +161,7 @@ impl ExecutionPlan for VCFScan {
         if let Some(projections) = &self.base_config.projection {
             config = config.with_projection(projections.clone());
         }
+        tracing::debug!("VCF starting scan with config: {:#?}", config);
 
         match &self.region_filter {
             Some(_) => {

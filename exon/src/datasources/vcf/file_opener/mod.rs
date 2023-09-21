@@ -25,7 +25,10 @@ use futures::{StreamExt, TryStreamExt};
 use noodles::bgzf::{self};
 use tokio_util::io::StreamReader;
 
-use super::{async_batch_reader::AsyncBatchReader, config::VCFConfig};
+use super::{
+    async_batch_reader::AsyncBatchReader, config::VCFConfig,
+    indexed_async_record_stream::AsyncBatchStream,
+};
 
 /// A file opener for VCF files.
 #[derive(Debug)]
@@ -59,9 +62,13 @@ impl FileOpener for VCFOpener {
                 let stream_reader = StreamReader::new(stream_reader);
 
                 let bgzf_reader = bgzf::AsyncReader::new(stream_reader);
+                let mut vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
 
-                let batch_reader = AsyncBatchReader::new(bgzf_reader, config).await?;
-                Ok(batch_reader.into_stream().boxed())
+                let header = vcf_reader.read_header().await?;
+                let batch_stream = AsyncBatchStream::new(vcf_reader, config, Arc::new(header));
+
+                // let batch_reader = AsyncBatchReader::new(bgzf_reader, config).await?;
+                Ok(batch_stream.into_stream().boxed())
             })),
             FileCompressionType::UNCOMPRESSED => Ok(Box::pin(async move {
                 let s = config.object_store.get(file_meta.location()).await?;

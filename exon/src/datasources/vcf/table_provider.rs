@@ -382,13 +382,17 @@ impl TableProvider for ListingVCFTable {
                 .await?,
             ];
 
-            let file_scan_config_builder = FileScanConfigBuilder::new(
-                object_store_url.clone(),
-                Arc::clone(&self.table_schema),
-                partitioned_file_lists,
-            );
-
-            let file_scan_config = file_scan_config_builder.build();
+            let file_scan_config = FileScanConfig {
+                object_store_url,
+                file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                file_groups: partitioned_file_lists,
+                statistics: Statistics::default(),
+                projection: projection.cloned(),
+                limit,
+                output_ordering: Vec::new(),
+                table_partition_cols: Vec::new(),
+                infinite_source: false,
+            };
 
             let table = self.options.create_physical_plan(file_scan_config).await?;
 
@@ -445,7 +449,7 @@ mod tests {
             vcf::{table_provider::get_byte_range_for_file, IndexedVCFScanner},
             ExonListingTableFactory,
         },
-        tests::{test_listing_table_dir, test_listing_table_url, test_path},
+        tests::{setup_tracing, test_listing_table_dir, test_listing_table_url, test_path},
         ExonSessionExt,
     };
 
@@ -456,6 +460,35 @@ mod tests {
     };
     use noodles::bgzf::VirtualPosition;
     use object_store::{local::LocalFileSystem, ObjectStore};
+
+    // #[cfg(feature = "fixtures")]
+    #[tokio::test]
+    async fn test_chr17_queries() -> Result<(), Box<dyn std::error::Error>> {
+        use crate::tests::{setup_tracing, test_fixture_table_url};
+
+        setup_tracing();
+
+        let path = test_fixture_table_url("chr17/")?;
+
+        let ctx = SessionContext::new_exon();
+        let registration_result = ctx
+            .register_vcf_file("vcf_file", path.to_string().as_str())
+            .await;
+
+        assert!(registration_result.is_ok());
+
+        let sql = "SELECT chrom, pos FROM vcf_file LIMIT 5;";
+        let df = ctx.sql(sql).await?;
+
+        // Get the first batch
+        let mut batches = df.collect().await?;
+        let batch = batches.remove(0);
+
+        assert_eq!(batch.num_rows(), 5);
+        assert_eq!(batch.num_columns(), 2);
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
@@ -547,6 +580,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_uncompressed_read() -> Result<(), Box<dyn std::error::Error>> {
+        setup_tracing();
+
         let ctx = SessionContext::new_exon();
         let table_path = test_path("vcf", "index.vcf");
         let table_path = table_path.to_str().unwrap();
@@ -562,13 +597,10 @@ mod tests {
 
         ctx.register_table("vcf_file", table)?;
 
-        let df = ctx
-            .sql("SELECT chrom, pos, id FROM vcf_file")
-            .await
-            .unwrap();
+        let df = ctx.sql("SELECT chrom, pos FROM vcf_file").await?;
 
         let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
+        let bs = df.collect().await?;
         for batch in bs {
             row_cnt += batch.num_rows();
         }
