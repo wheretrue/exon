@@ -1,5 +1,3 @@
-//! Data source for mzML files.
-
 // Copyright 2023 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//! Data source for mzML files.
 
 mod array_builder;
 mod batch_reader;

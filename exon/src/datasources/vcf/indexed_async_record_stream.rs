@@ -19,17 +19,17 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use futures::Stream;
-use tokio::io::AsyncRead;
+use tokio::io::AsyncBufRead;
 
 use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 
 /// A VCF record batch reader.
 pub struct AsyncBatchStream<R>
 where
-    R: AsyncRead + Unpin,
+    R: AsyncBufRead + Unpin,
 {
     /// The underlying record stream.
-    reader: noodles::vcf::AsyncReader<noodles::bgzf::AsyncReader<R>>,
+    reader: noodles::vcf::AsyncReader<R>,
 
     /// The VCF configuration.
     config: Arc<VCFConfig>,
@@ -40,11 +40,11 @@ where
 
 impl<R> AsyncBatchStream<R>
 where
-    R: AsyncRead + Unpin,
+    R: AsyncBufRead + Unpin,
 {
     /// Create a new VCF record batch reader.
     pub fn new(
-        reader: noodles::vcf::AsyncReader<noodles::bgzf::AsyncReader<R>>,
+        reader: noodles::vcf::AsyncReader<R>,
         config: Arc<VCFConfig>,
         header: Arc<noodles::vcf::Header>,
     ) -> Self {
