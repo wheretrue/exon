@@ -202,36 +202,82 @@ impl TableProvider for ListingFASTATable {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        datasources::{ExonFileType, ExonListingTableFactory},
-        tests::test_listing_table_url,
-    };
+    use crate::{tests::test_listing_table_url, ExonSessionExt};
 
-    use datafusion::{common::FileCompressionType, prelude::SessionContext};
+    use datafusion::prelude::SessionContext;
+
+    #[tokio::test]
+    async fn test_query_gzip_compression() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_listing_table_url("fasta/test.fasta.gz");
+        let sql = format!(
+            "CREATE EXTERNAL TABLE test STORED AS FASTA COMPRESSION TYPE GZIP LOCATION '{}'",
+            table_path
+        );
+
+        ctx.sql(&sql).await?;
+
+        let df = ctx.sql("SELECT * FROM test").await?;
+        let cnt = df.count().await?;
+
+        assert_eq!(cnt, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_zstd_compression() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let table_path = test_listing_table_url("fasta/test.fasta.zst");
+        let sql = format!(
+            "CREATE EXTERNAL TABLE test STORED AS FASTA COMPRESSION TYPE ZSTD LOCATION '{}'",
+            table_path
+        );
+
+        ctx.sql(&sql).await?;
+
+        let df = ctx.sql("SELECT * FROM test").await?;
+        let cnt = df.count().await?;
+
+        assert_eq!(cnt, 2);
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
-        let session_state = ctx.state();
+        let ctx = SessionContext::new_exon();
 
         let table_path = test_listing_table_url("fasta/test.fasta");
-        let table = ExonListingTableFactory::new()
-            .create_from_file_type(
-                &session_state,
-                ExonFileType::FASTA,
-                FileCompressionType::UNCOMPRESSED,
-                table_path.to_string(),
-            )
-            .await?;
+        let sql = format!(
+            "CREATE EXTERNAL TABLE test STORED AS FASTA LOCATION '{}'",
+            table_path
+        );
 
-        let df = ctx.read_table(table).unwrap();
+        ctx.sql(&sql).await?;
 
-        let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
-        for batch in bs {
-            row_cnt += batch.num_rows();
+        let queries = vec![
+            ("SELECT * FROM test", 3),
+            ("SELECT id, description, sequence FROM test", 3),
+            ("SELECT id, description FROM test", 2),
+            ("SELECT id FROM test", 1),
+        ];
+
+        for (query, n_columns) in queries {
+            let df = ctx.sql(query).await?;
+
+            let mut row_cnt = 0;
+            let bs = df.collect().await.unwrap();
+
+            for batch in bs {
+                row_cnt += batch.num_rows();
+                assert_eq!(batch.num_columns(), n_columns);
+            }
+
+            assert_eq!(row_cnt, 2);
         }
-        assert_eq!(row_cnt, 2);
 
         Ok(())
     }
