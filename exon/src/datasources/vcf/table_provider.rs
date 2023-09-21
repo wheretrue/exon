@@ -488,6 +488,43 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "fixtures")]
+    #[tokio::test]
+    async fn test_chr17_positions() -> Result<(), Box<dyn std::error::Error>> {
+        use crate::tests::test_fixture_table_url;
+
+        // setup_tracing();
+
+        let path = test_fixture_table_url("chr17/")?;
+
+        let ctx = SessionContext::new_exon();
+        let registration_result = ctx
+            .register_vcf_file("vcf_file", path.to_string().as_str())
+            .await;
+
+        assert!(registration_result.is_ok());
+
+        let sql_commands = vec![
+            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1 AND 1000;",
+            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000;",
+            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1234 AND 1424000;",
+            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000000 AND 1424000;",
+        ];
+
+        for sql in sql_commands {
+            let df = ctx.sql(sql).await?;
+
+            // Get the first batch
+            let mut batches = df.collect().await?;
+            let batch = batches.remove(0);
+
+            assert!(batch.num_rows() > 0);
+            assert_eq!(batch.num_columns(), 2);
+        }
+
+        Ok(())
+    }
+
     #[tokio::test]
     async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
         let path = test_listing_table_dir("bigger-index", "test.vcf.gz");
