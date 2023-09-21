@@ -203,6 +203,7 @@ mod tests {
         ltu
     }
 
+    #[cfg(feature = "fixtures")]
     pub fn test_fixture_table_url(
         relative_path: &str,
     ) -> Result<ListingTableUrl, datafusion::error::DataFusionError> {

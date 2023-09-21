@@ -27,10 +27,8 @@ use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
 pub struct AsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
-    // R: AsyncRead + Unpin,
 {
     /// The underlying record stream.
-    // reader: noodles::vcf::AsyncReader<noodles::bgzf::AsyncReader<R>>,
     reader: noodles::vcf::AsyncReader<R>,
 
     /// The VCF configuration.
@@ -43,7 +41,6 @@ where
 impl<R> AsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
-    // R: AsyncRead + Unpin,
 {
     /// Create a new VCF record batch reader.
     pub fn new(
