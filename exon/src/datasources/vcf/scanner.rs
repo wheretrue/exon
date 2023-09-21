@@ -121,7 +121,7 @@ impl ExecutionPlan for VCFScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        tracing::debug!("VCF schema: {:#?}", self.projected_schema);
+        tracing::trace!("VCF schema: {:#?}", self.projected_schema);
         self.projected_schema.clone()
     }
 

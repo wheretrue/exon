@@ -88,7 +88,7 @@ where
         }
 
         let schema = self.config.projected_schema();
-        tracing::debug!("VCF schema from batch read: {}", schema);
+        tracing::trace!("VCF schema from batch read: {}", schema);
         let batch = RecordBatch::try_new(schema, record_batch.finish())?;
 
         match &self.config.projection {

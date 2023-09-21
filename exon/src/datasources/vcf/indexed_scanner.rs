@@ -94,7 +94,7 @@ impl ExecutionPlan for IndexedVCFScanner {
 
     fn schema(&self) -> SchemaRef {
         let schema = self.projected_schema.clone();
-        tracing::debug!("VCF schema: {}", schema);
+        tracing::trace!("VCF schema: {}", schema);
         schema
     }
 
