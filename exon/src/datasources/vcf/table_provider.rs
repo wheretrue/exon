@@ -25,9 +25,7 @@ use tokio_util::io::StreamReader;
 use crate::{
     datasources::ExonFileType,
     physical_optimizer::region_filter_rewriter::transform_region_expressions,
-    physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, region_physical_expr::RegionPhysicalExpr,
-    },
+    physical_plan::region_physical_expr::RegionPhysicalExpr,
 };
 
 use super::{
