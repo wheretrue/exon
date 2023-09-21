@@ -48,6 +48,7 @@ aws = ["object_store/aws", "dep:aws-config", "dep:aws-credential-types", "dep:ur
 exome = ["dep:prost", "dep:tonic", "dep:url"]
 fcs = ["dep:byteorder"]
 ffi = ["arrow/ffi", "dep:pin-project"]
+fixtures = []
 gcp = ["object_store/gcp", "dep:url"]
 genbank = ["dep:gb-io"]
 mzml = ["dep:base64", "dep:flate2", "dep:quick-xml", "dep:serde", "dep:byteorder"]

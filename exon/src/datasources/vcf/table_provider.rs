@@ -459,7 +459,7 @@ mod tests {
     use noodles::bgzf::VirtualPosition;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
-    // #[cfg(feature = "fixtures")]
+    #[cfg(feature = "fixtures")]
     #[tokio::test]
     async fn test_chr17_queries() -> Result<(), Box<dyn std::error::Error>> {
         use crate::tests::{setup_tracing, test_fixture_table_url};
