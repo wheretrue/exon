@@ -1,5 +1,3 @@
-//! A datafusion compatible datasource for HMMER3 domain tabular output files.
-
 // Copyright 2023 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//! A datafusion compatible datasource for HMMER3 domain tabular output files.
 
 mod hmm_dom_tab_config;
 mod hmm_dom_tab_opener;
