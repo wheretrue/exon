@@ -72,7 +72,7 @@ where
         let mut record_batch = LazyVCFArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
-            None,
+            self.config.projection.clone(),
             self.header.clone(),
         )?;
 
@@ -87,7 +87,9 @@ where
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+        let schema = self.config.projected_schema();
+        tracing::debug!("VCF schema from batch read: {}", schema);
+        let batch = RecordBatch::try_new(schema, record_batch.finish())?;
 
         match &self.config.projection {
             Some(projection) => {

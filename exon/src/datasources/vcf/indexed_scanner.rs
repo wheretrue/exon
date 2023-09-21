@@ -93,7 +93,9 @@ impl ExecutionPlan for IndexedVCFScanner {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        let schema = self.projected_schema.clone();
+        tracing::debug!("VCF schema: {}", schema);
+        schema
     }
 
     fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {

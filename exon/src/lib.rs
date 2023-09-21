@@ -202,4 +202,34 @@ mod tests {
 
         ltu
     }
+
+    pub fn test_fixture_table_url(
+        relative_path: &str,
+    ) -> Result<ListingTableUrl, datafusion::error::DataFusionError> {
+        let cwd = std::env::current_dir().unwrap().join("exon");
+
+        let start_directory = std::env::var("CARGO_MANIFEST_DIR")
+            .map(PathBuf::from)
+            .unwrap_or(cwd);
+
+        let abs_file_path = start_directory
+            .join("test-data")
+            .join("fixtures")
+            .join(relative_path);
+
+        ListingTableUrl::parse(abs_file_path.to_str().unwrap())
+    }
+
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+
+    pub fn setup_tracing() {
+        INIT.call_once(|| {
+            let subscriber = tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::DEBUG)
+                .finish();
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("setting default subscriber failed");
+        });
+    }
 }
