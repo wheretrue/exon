@@ -140,6 +140,10 @@ mod tests {
     };
     use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
 
+    use std::sync::Once;
+
+    static INIT: Once = Once::new();
+
     pub(crate) fn eq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
         BinaryExpr::new(left, Operator::Eq, right)
     }
@@ -220,9 +224,6 @@ mod tests {
 
         ListingTableUrl::parse(abs_file_path.to_str().unwrap())
     }
-
-    use std::sync::Once;
-    static INIT: Once = Once::new();
 
     pub fn setup_tracing() {
         INIT.call_once(|| {

@@ -26,6 +26,7 @@ use super::merging::{try_merge_chrom_exprs, try_merge_region_with_interval};
 pub fn transform_region_expressions(
     e: Arc<dyn PhysicalExpr>,
 ) -> Result<Transformed<Arc<dyn PhysicalExpr>>> {
+    eprintln!("transform_region_expressions: {:#?}", e);
     match e
         .as_any()
         .downcast_ref::<datafusion::physical_plan::expressions::BinaryExpr>()
