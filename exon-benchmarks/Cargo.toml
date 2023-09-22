@@ -12,7 +12,7 @@ version = "0.3.2"
 clap = {version = "4.4.4", features = ["derive"]}
 datafusion = {workspace = true}
 exon = {path = "../exon", features = ["all"], version = "0.3.2" }
-noodles = {version = "0.51", features = ["core", "vcf", "bgzf"]}
+noodles = {version = "0.52", features = ["core", "vcf", "bgzf"]}
 tokio = {version = "1", features = ["full"]}
 tracing = "0.1.37"
 tracing-subscriber = "0.3.17"
