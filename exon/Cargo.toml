@@ -24,7 +24,7 @@ flate2 = {version = "1.0.27", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1", optional = true}
 itertools = "0.11.0"
-noodles = {version = "0.51", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi", "gtf"]}
+noodles = {version = "0.52", features = ["bed", "tabix", "core", "async", "fasta", "bam", "sam", "fastq", "gff", "bcf", "vcf", "bgzf", "csi", "gtf"]}
 num_cpus = "1.16.0"
 object_store = {workspace = true}
 parking_lot = "0.12.1"
