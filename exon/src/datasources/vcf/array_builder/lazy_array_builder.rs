@@ -53,7 +53,6 @@ pub struct LazyVCFArrayBuilder {
     formats: FormatsFormat,
     projection: Vec<usize>,
 
-    // Allow dead code
     header: Arc<Header>,
 }
 
@@ -211,12 +210,26 @@ impl LazyVCFArrayBuilder {
                         self.alternates.append(true);
                     }
                 },
-                5 => match record.quality_score() {
-                    Some(qs) => self.qualities.append_value(qs.parse().map_err(|_| {
-                        ArrowError::ParseError(format!("Could not parse quality score: {qs}"))
-                    })?),
-                    None => self.qualities.append_null(),
-                },
+                5 => {
+                    let qs = record.quality_score();
+
+                    match qs {
+                        Some(qs) => match qs {
+                            "." => self.qualities.append_null(),
+                            _ => {
+                                let parsed_qs = qs.parse::<f32>().map_err(|_| {
+                                    ArrowError::ParseError(format!(
+                                        "Could not parse quality score: {qs}",
+                                        qs = qs
+                                    ))
+                                })?;
+
+                                self.qualities.append_value(parsed_qs);
+                            }
+                        },
+                        None => self.qualities.append_null(),
+                    }
+                }
                 6 => match record.filters() {
                     Some(f) => {
                         for filter in f.iter() {
