@@ -554,8 +554,6 @@ mod tests {
     #[cfg(feature = "fixtures")]
     #[tokio::test]
     async fn test_chr17_positions() -> Result<(), Box<dyn std::error::Error>> {
-        // setup_tracing();
-
         use crate::tests::test_fixture_table_url;
 
         let path = test_fixture_table_url("chr17/")?;
@@ -592,6 +590,7 @@ mod tests {
     #[tokio::test]
     async fn test_region_query_with_additional_predicates() -> Result<(), Box<dyn std::error::Error>>
     {
+        setup_tracing();
         let path = crate::tests::test_fixture_table_url("chr17/")?;
 
         let ctx = SessionContext::new_exon();
@@ -601,13 +600,14 @@ mod tests {
 
         assert!(registration_result.is_ok());
 
-        let sql = "SELECT * FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000 AND qual != 100;";
+        let sql = "SELECT chrom FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000 AND qual != 100;";
         let df = ctx.sql(sql).await?;
 
         let cnt_where_qual_neq_100 = df.count().await?;
+        assert!(cnt_where_qual_neq_100 > 0);
 
         let cnt_total = ctx
-            .sql("SELECT * FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000;")
+            .sql("SELECT chrom FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000;")
             .await?
             .count()
             .await?;
