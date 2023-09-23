@@ -110,13 +110,6 @@ where
 
         tracing::debug!("Finished batch with {} records", batch.num_rows());
 
-        match &self.config.projection {
-            Some(projection) => {
-                let projected_batch = batch.project(projection)?;
-
-                Ok(Some(projected_batch))
-            }
-            None => Ok(Some(batch)),
-        }
+        Ok(Some(batch))
     }
 }

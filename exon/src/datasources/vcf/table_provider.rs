@@ -334,6 +334,58 @@ impl ListingVCFTable {
     }
 }
 
+fn extract_region_filters(
+    expr: Arc<dyn datafusion::physical_plan::PhysicalExpr>,
+) -> Option<Region> {
+    // Check if the physical expression is a region expression
+    if let Some(region_expr) = expr.as_any().downcast_ref::<RegionPhysicalExpr>() {
+        return Some(region_expr.region().unwrap());
+    }
+
+    // If the expression is a binary expression, check if the left or right side is a region expression
+    // if it's not return None
+    let be = expr
+        .as_any()
+        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()?;
+
+    let mut queue = vec![be.clone()];
+
+    while let Some(expr) = queue.pop() {
+        // If the current expression is a region expression, return the region
+        if let Ok(region_expr) = RegionPhysicalExpr::try_from(expr.clone()) {
+            return Some(region_expr.region().unwrap());
+        }
+
+        // If the left or right side of the expression is a region expression, return the region
+        if let Some(left_region) = expr.left().as_any().downcast_ref::<RegionPhysicalExpr>() {
+            return Some(left_region.region().unwrap());
+        }
+
+        if let Some(right_region) = expr.right().as_any().downcast_ref::<RegionPhysicalExpr>() {
+            return Some(right_region.region().unwrap());
+        }
+
+        // If we haven't gotten a region expression, go deeper.
+        if let Some(left) = expr
+            .left()
+            .as_any()
+            .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        {
+            queue.push(left.clone());
+        }
+
+        if let Some(right) = expr
+            .right()
+            .as_any()
+            .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()
+        {
+            queue.push(right.clone());
+        }
+    }
+
+    None
+}
+
 #[async_trait]
 impl TableProvider for ListingVCFTable {
     fn as_any(&self) -> &dyn Any {
@@ -411,11 +463,8 @@ impl TableProvider for ListingVCFTable {
             return Ok(table);
         };
 
-        let new_region_expr = filters.as_any().downcast_ref::<RegionPhysicalExpr>();
-
-        // if we got a filter check if it is a RegionFilter
-        if let Some(region_expr) = new_region_expr {
-            let regions = vec![region_expr.region()?];
+        if let Some(region) = extract_region_filters(filters) {
+            let regions = vec![region];
 
             let partitioned_file_lists = self.list_files_for_scan(state, regions).await?;
 
@@ -507,8 +556,6 @@ mod tests {
     async fn test_chr17_positions() -> Result<(), Box<dyn std::error::Error>> {
         use crate::tests::test_fixture_table_url;
 
-        // setup_tracing();
-
         let path = test_fixture_table_url("chr17/")?;
 
         let ctx = SessionContext::new_exon();
@@ -535,6 +582,37 @@ mod tests {
             assert!(batch.num_rows() > 0);
             assert_eq!(batch.num_columns(), 2);
         }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "fixtures")]
+    #[tokio::test]
+    async fn test_region_query_with_additional_predicates() -> Result<(), Box<dyn std::error::Error>>
+    {
+        setup_tracing();
+        let path = crate::tests::test_fixture_table_url("chr17/")?;
+
+        let ctx = SessionContext::new_exon();
+        let registration_result = ctx
+            .register_vcf_file("vcf_file", path.to_string().as_str())
+            .await;
+
+        assert!(registration_result.is_ok());
+
+        let sql = "SELECT chrom FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000 AND qual != 100;";
+        let df = ctx.sql(sql).await?;
+
+        let cnt_where_qual_neq_100 = df.count().await?;
+        assert!(cnt_where_qual_neq_100 > 0);
+
+        let cnt_total = ctx
+            .sql("SELECT chrom FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000;")
+            .await?
+            .count()
+            .await?;
+
+        assert!(cnt_where_qual_neq_100 < cnt_total);
 
         Ok(())
     }
