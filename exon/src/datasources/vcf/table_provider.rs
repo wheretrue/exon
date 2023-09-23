@@ -335,8 +335,19 @@ impl ListingVCFTable {
 }
 
 fn extract_region_filters(
-    be: &datafusion::physical_expr::expressions::BinaryExpr,
+    expr: Arc<dyn datafusion::physical_plan::PhysicalExpr>,
 ) -> Option<Region> {
+    // Check if the physical expression is a region expression
+    if let Some(region_expr) = expr.as_any().downcast_ref::<RegionPhysicalExpr>() {
+        return Some(region_expr.region().unwrap());
+    }
+
+    // If the expression is a binary expression, check if the left or right side is a region expression
+    // if it's not return None
+    let be = expr
+        .as_any()
+        .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>()?;
+
     let mut queue = vec![be.clone()];
 
     while let Some(expr) = queue.pop() {
@@ -452,18 +463,7 @@ impl TableProvider for ListingVCFTable {
             return Ok(table);
         };
 
-        // Extract the region expression from the filters
-
-        let region = if let Some(be) = filters
-            .as_any()
-            .downcast_ref::<datafusion::physical_expr::expressions::BinaryExpr>(
-        ) {
-            extract_region_filters(be)
-        } else {
-            None
-        };
-
-        if let Some(region) = region {
+        if let Some(region) = extract_region_filters(filters) {
             let regions = vec![region];
 
             let partitioned_file_lists = self.list_files_for_scan(state, regions).await?;
