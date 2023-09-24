@@ -129,6 +129,7 @@ def _connect_to_exome_request(
 
     # pylint: disable=invalid-name
     except grpc.RpcError as e:
+        logger.error("Error connecting to Exome server: %s", e)
         raise ExomeError.from_grpc_error(e)
 
     # pylint: disable=invalid-name
@@ -183,11 +184,16 @@ def connect(username: str, password: str, organization_name: str = "Public", **k
 
 def health_check(uri: str):
     """No-op if the server is healthy, otherwise throws an error."""
+    creds = grpc.ssl_channel_credentials(
+        root_certificates=None, private_key=None, certificate_chain=None
+    )
 
-    channel = grpc.insecure_channel(uri)
-    stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
+    channel = grpc.secure_channel(uri, creds)
 
-    try:
-        stub.HealthCheck(exonpy.proto.exome.v1.catalog_pb2.HealthCheckRequest())
-    except grpc.RpcError as e:
-        raise ExomeError.from_grpc_error(e)
+    from exonpy.proto.exome.v1 import health_check_pb2
+    from exonpy.proto.exome.v1 import health_check_pb2_grpc
+
+    stub = health_check_pb2_grpc.HealthStub(channel)
+
+    response = stub.Check(health_check_pb2.HealthCheckRequest(service="exome"))
+    print(response)
