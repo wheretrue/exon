@@ -23,6 +23,12 @@ from adbc_driver_flightsql import DatabaseOptions
 import exonpy.proto.exome.v1.catalog_pb2
 import exonpy.proto.exome.v1.catalog_pb2_grpc
 
+# Setup logging for the exonpy library
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 class ExomeError(Exception):
     """An error raised by Exome."""
@@ -30,6 +36,11 @@ class ExomeError(Exception):
     def __init__(self, *args: object) -> None:
         """Initialize the error."""
         super().__init__(*args)
+
+    @classmethod
+    def from_grpc_error(cls, grpc_error: grpc.RpcError):
+        """Create an ExomeError from a gRPC error."""
+        return cls(grpc_error.details())
 
 
 class ExomeGrpcConnection:
@@ -118,11 +129,11 @@ def _connect_to_exome_request(
 
     # pylint: disable=invalid-name
     except grpc.RpcError as e:
-        raise ExomeError("Authentication failed") from e
+        raise ExomeError.from_grpc_error(e)
 
     # pylint: disable=invalid-name
     except Exception as e:
-        raise ExomeError("Connection failed") from e
+        raise ExomeError(str(e))
 
     token = token_response.token
 
@@ -139,6 +150,8 @@ def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnect
 
     token = _connect_to_exome_request(stub, token_request)
     exome_grpc_connection = ExomeGrpcConnection(stub, token)
+
+    logger.info("Connected to Exome server at %s", uri)
 
     return exome_grpc_connection
 
@@ -166,3 +179,15 @@ def connect(username: str, password: str, organization_name: str = "Public", **k
 
     finally:
         exome_conn.close()
+
+
+def health_check(uri: str):
+    """No-op if the server is healthy, otherwise throws an error."""
+
+    channel = grpc.insecure_channel(uri)
+    stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
+
+    try:
+        stub.HealthCheck(exonpy.proto.exome.v1.catalog_pb2.HealthCheckRequest())
+    except grpc.RpcError as e:
+        raise ExomeError.from_grpc_error(e)

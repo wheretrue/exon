@@ -1,7 +1,7 @@
-# VCF Expression Rewriting
+# VCF
 
-Documents the VCF expression rewriting process and rules.
-
+- [File Detection](#file-detection)
+- [VCF Expression Rewriting](#vcf-expression-rewriting)
 - [Rules](#rules)
   - [(A) Binary Expression with Chrom Column and Literal](#a-binary-expression-with-chrom-column-and-literal)
   - [(B) Binary Expression with Pos Column and Literal (Equals)](#b-binary-expression-with-pos-column-and-literal-equals)
@@ -16,6 +16,25 @@ Documents the VCF expression rewriting process and rules.
   - [Chrom](#chrom)
   - [Interval](#interval)
   - [Region](#region)
+
+## File Detection
+
+```mermaid
+flowchart TB
+    A[VCF File Type] --> B[VCF Table Provider]
+    B --> C(Detect Region Filter)
+    C -- Contains Region --> D[IndexedVCFScanner]
+    D --> F[IndexedVCFOpener]
+    F --> G[IndexedAsyncBatchStream]
+
+    C -- Missing Filter --> E[VCFScan]
+    E --> H[VCFOpener]
+    H --> I[AsyncBatchStream]
+```
+
+## VCF Expression Rewriting
+
+Documents the VCF expression rewriting process and rules.
 
 ## Rules
 

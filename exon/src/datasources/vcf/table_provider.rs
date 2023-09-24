@@ -204,8 +204,9 @@ impl ListingVCFTableOptions {
     async fn create_physical_plan_with_region(
         &self,
         conf: FileScanConfig,
+        region: Arc<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedVCFScanner::new(conf)?;
+        let scan = IndexedVCFScanner::new(conf, region)?;
 
         Ok(Arc::new(scan))
     }
@@ -246,7 +247,7 @@ impl ListingVCFTable {
     pub async fn list_files_for_scan(
         &self,
         state: &SessionState,
-        regions: Vec<Region>,
+        regions: &[Region],
     ) -> Result<Vec<Vec<PartitionedFile>>> {
         let store = if let Some(url) = self.table_paths.get(0) {
             state.runtime_env().object_store(url)?
@@ -404,6 +405,7 @@ impl TableProvider for ListingVCFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
+        // TODO: benchmark putting the filter check here which could make this `Exact` instead of `Inexact`
         Ok(filters
             .iter()
             .map(|_f| TableProviderFilterPushDown::Inexact)
@@ -464,9 +466,11 @@ impl TableProvider for ListingVCFTable {
         };
 
         if let Some(region) = extract_region_filters(filters) {
+            let filtering_region = Arc::new(region.clone());
+
             let regions = vec![region];
 
-            let partitioned_file_lists = self.list_files_for_scan(state, regions).await?;
+            let partitioned_file_lists = self.list_files_for_scan(state, &regions).await?;
 
             // if no files need to be read, return an `EmptyExec`
             if (partitioned_file_lists.is_empty())
@@ -491,7 +495,7 @@ impl TableProvider for ListingVCFTable {
 
             let table = self
                 .options
-                .create_physical_plan_with_region(file_scan_config)
+                .create_physical_plan_with_region(file_scan_config, filtering_region)
                 .await?;
 
             return Ok(table);

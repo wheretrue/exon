@@ -23,6 +23,7 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
@@ -37,11 +38,13 @@ pub struct IndexedVCFScanner {
     projected_schema: SchemaRef,
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+    /// The region to use for filtering.
+    region: Arc<Region>,
 }
 
 impl IndexedVCFScanner {
     /// Create a new VCF scan.
-    pub fn new(base_config: FileScanConfig) -> Result<Self> {
+    pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Result<Self> {
         let projected_schema = match &base_config.projection {
             Some(p) => Arc::new(base_config.file_schema.project(p)?),
             None => base_config.file_schema.clone(),
@@ -51,6 +54,7 @@ impl IndexedVCFScanner {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
+            region: region.clone(),
         })
     }
 
@@ -135,7 +139,7 @@ impl ExecutionPlan for IndexedVCFScanner {
             config = config.with_projection(projections.clone());
         }
 
-        let opener = IndexedVCFOpener::new(Arc::new(config));
+        let opener = IndexedVCFOpener::new(Arc::new(config), self.region.clone());
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
         Ok(Box::pin(stream) as SendableRecordBatchStream)

@@ -42,8 +42,6 @@ pub struct VCFScan {
     file_compression_type: FileCompressionType,
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
-    /// An optional region filter for the scan.
-    region_filter: Option<Region>,
 }
 
 impl VCFScan {
@@ -62,24 +60,12 @@ impl VCFScan {
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
-            region_filter: None,
         })
     }
 
     /// Return the base configuration for the scan.
     pub fn base_config(&self) -> &FileScanConfig {
         &self.base_config
-    }
-
-    /// Create a new VCF scan with a region filter.
-    pub fn with_filter(mut self, region_filter: Region) -> Self {
-        self.region_filter = Some(region_filter);
-        self
-    }
-
-    /// Return the region filter.
-    pub fn region_filter(&self) -> Option<&Region> {
-        self.region_filter.as_ref()
     }
 
     /// Get a new scan with the specified number of partitions.
@@ -160,20 +146,10 @@ impl ExecutionPlan for VCFScan {
         }
         tracing::debug!("VCF starting scan with config: {:#?}", config);
 
-        match &self.region_filter {
-            Some(_) => {
-                let opener = IndexedVCFOpener::new(Arc::new(config));
+        let opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
+        let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
-                let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
-                Ok(Box::pin(stream) as SendableRecordBatchStream)
-            }
-            _ => {
-                let opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
-                let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
-
-                Ok(Box::pin(stream) as SendableRecordBatchStream)
-            }
-        }
+        Ok(Box::pin(stream) as SendableRecordBatchStream)
     }
 
     fn statistics(&self) -> Statistics {

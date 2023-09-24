@@ -32,12 +32,9 @@ use crate::{
         ExonFileType, ExonListingTableFactory,
     },
     new_exon_config,
+    physical_optimizer::region_between_rewriter::RegionBetweenRule,
     physical_optimizer::{
         file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,
-    },
-    physical_optimizer::{
-        region_between_rewriter::RegionBetweenRule,
-        vcf_region_optimizer_rule::ExonVCFRegionOptimizer,
     },
 };
 
@@ -126,7 +123,6 @@ pub trait ExonSessionExt {
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let round_robin_optimizer = ExonRoundRobin::default();
-        let vcf_region_optimizer = ExonVCFRegionOptimizer::default();
         let region_between_optimizer = RegionBetweenRule::default();
         let interval_region_optimizer = ExonIntervalOptimizer::default();
 
@@ -134,7 +130,6 @@ pub trait ExonSessionExt {
             .with_physical_optimizer_rules(vec![
                 Arc::new(round_robin_optimizer),
                 Arc::new(region_between_optimizer),
-                Arc::new(vcf_region_optimizer),
                 Arc::new(interval_region_optimizer),
             ]);
 

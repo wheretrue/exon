@@ -25,7 +25,8 @@ mod scanner;
 mod schema_builder;
 mod table_provider;
 
-mod indexed_async_record_stream;
+mod async_batch_stream;
+mod indexed_async_batch_stream;
 
 pub use self::array_builder::VCFArrayBuilder;
 pub use self::config::VCFConfig;
