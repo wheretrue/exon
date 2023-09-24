@@ -25,11 +25,9 @@ use datafusion::{
     },
 };
 
-use noodles::core::Region;
-
 use crate::datasources::{vcf::VCFOpener, ExonFileScanConfig};
 
-use super::{config::VCFConfig, file_opener::indexed_file_opener::IndexedVCFOpener};
+use super::config::VCFConfig;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for VCF files.

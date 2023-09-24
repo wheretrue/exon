@@ -536,11 +536,14 @@ mod tests {
         let path = test_fixture_table_url("chr17/")?;
 
         let ctx = SessionContext::new_exon();
-        let registration_result = ctx
-            .register_vcf_file("vcf_file", path.to_string().as_str())
-            .await;
-
-        assert!(registration_result.is_ok());
+        ctx.sql(
+            format!(
+                "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
+                path.to_string().as_str()
+            )
+            .as_str(),
+        )
+        .await?;
 
         let sql = "SELECT chrom, pos FROM vcf_file LIMIT 5;";
         let df = ctx.sql(sql).await?;

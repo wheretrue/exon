@@ -100,8 +100,6 @@ mod tests {
         )
         .await?;
 
-        client.health_check().await?;
-
         let mut session = SessionContext::new_exon();
 
         let catalog_name = "test_catalog";
