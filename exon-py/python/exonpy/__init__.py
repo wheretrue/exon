@@ -99,7 +99,7 @@ class ExomeConnection:
 
 
 def _flight_sql_connect(
-    uri: str, skip_verify: bool, token: str, protocol: str = "grpc"
+    uri: str, skip_verify: bool, token: str, protocol: str = "grpc+tls"
 ):
     """Connect to an Exome server."""
     try:
@@ -142,7 +142,11 @@ def _connect_to_exome_request(
 
 
 def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnection:
-    channel = grpc.insecure_channel(uri)
+    creds = grpc.ssl_channel_credentials(
+        root_certificates=None, private_key=None, certificate_chain=None
+    )
+
+    channel = grpc.secure_channel(uri, creds)
     stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
 
     token_request = exonpy.proto.exome.v1.catalog_pb2.GetTokenRequest(
