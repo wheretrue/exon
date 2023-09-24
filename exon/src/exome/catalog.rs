@@ -202,20 +202,6 @@ impl ExomeCatalogClient {
         Ok(client)
     }
 
-    /// Performs a health check on the Exome Catalog service to ensure it is responsive.
-    ///
-    /// # Returns
-    ///
-    /// An empty result on success, or a boxed error on failure.
-    #[allow(dead_code)]
-    pub async fn health_check(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let request = tonic::Request::new(proto::HealthCheckRequest {});
-
-        let _ = self.catalog_service_client.health_check(request).await?;
-
-        Ok(())
-    }
-
     /// Lists the tables associated with a specific schema.
     pub async fn get_tables(
         &self,

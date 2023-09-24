@@ -17,4 +17,3 @@ pub(crate) mod interval_optimizer_rule;
 pub(crate) mod merging;
 pub(crate) mod region_between_rewriter;
 pub(crate) mod region_filter_rewriter;
-pub(crate) mod vcf_region_optimizer_rule;

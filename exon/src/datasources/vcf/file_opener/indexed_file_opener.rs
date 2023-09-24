@@ -22,12 +22,15 @@ use datafusion::{
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::bgzf::{self, VirtualPosition};
+use noodles::{
+    bgzf::{self, VirtualPosition},
+    core::Region,
+};
 use object_store::GetOptions;
 use tokio_util::io::StreamReader;
 
 use crate::{
-    datasources::vcf::{indexed_async_record_stream::AsyncBatchStream, VCFConfig},
+    datasources::vcf::{indexed_async_batch_stream::IndexedAsyncBatchStream, VCFConfig},
     streaming_bgzf::AsyncBGZFReader,
 };
 
@@ -36,12 +39,15 @@ use crate::{
 pub struct IndexedVCFOpener {
     /// The configuration for the opener.
     config: Arc<VCFConfig>,
+
+    /// The region to use for opening the file.
+    region: Arc<Region>,
 }
 
 impl IndexedVCFOpener {
     /// Create a new VCF file opener.
-    pub fn new(config: Arc<VCFConfig>) -> Self {
-        Self { config }
+    pub fn new(config: Arc<VCFConfig>, region: Arc<Region>) -> Self {
+        Self { config, region }
     }
 }
 
@@ -50,6 +56,7 @@ impl FileOpener for IndexedVCFOpener {
         tracing::debug!("Opening file: {:?}", file_meta.location());
 
         let config = self.config.clone();
+        let region = self.region.clone();
 
         Ok(Box::pin(async move {
             let s = config
@@ -181,7 +188,8 @@ impl FileOpener for IndexedVCFOpener {
 
             let vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
 
-            let batch_stream = AsyncBatchStream::new(vcf_reader, config, Arc::new(header));
+            let batch_stream =
+                IndexedAsyncBatchStream::new(vcf_reader, config, Arc::new(header), region);
 
             let batch_stream = batch_stream.into_stream();
 

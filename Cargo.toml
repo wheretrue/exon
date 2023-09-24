@@ -22,3 +22,4 @@ object_store = {version = "0.7.0"}
 [profile.profiling]
 debug = true
 inherits = "release"
+lto = true
