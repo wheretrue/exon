@@ -46,7 +46,7 @@ extensions_options! {
     /// My own config options.
     pub struct ExonConfigExtension {
         pub vcf_parse_info: bool, default = true
-        pub vcf_parse_format: bool, default = true
+        pub vcf_parse_formats: bool, default = true
         pub fasta_sequence_buffer_capacity: usize, default = FASTA_READER_SEQUENCE_CAPACITY
     }
 }
@@ -72,7 +72,7 @@ mod tests {
             .unwrap();
 
         assert!(exon_config.vcf_parse_info);
-        assert!(exon_config.vcf_parse_format);
+        assert!(exon_config.vcf_parse_formats);
         assert_eq!(
             exon_config.fasta_sequence_buffer_capacity,
             super::FASTA_READER_SEQUENCE_CAPACITY
@@ -85,7 +85,7 @@ mod tests {
 
         let options = config.options_mut();
         options.set("exon.vcf_parse_info", "false").unwrap();
-        options.set("exon.vcf_parse_format", "false").unwrap();
+        options.set("exon.vcf_parse_formats", "false").unwrap();
         options
             .set("exon.fasta_sequence_buffer_capacity", "1024")
             .unwrap();
@@ -97,7 +97,7 @@ mod tests {
             .unwrap();
 
         assert!(!exon_config.vcf_parse_info);
-        assert!(!exon_config.vcf_parse_format);
+        assert!(!exon_config.vcf_parse_formats);
         assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
     }
 
@@ -106,7 +106,7 @@ mod tests {
         let ctx = SessionContext::new_exon();
 
         ctx.sql("SET exon.vcf_parse_info = false").await.unwrap();
-        ctx.sql("SET exon.vcf_parse_format = false").await.unwrap();
+        ctx.sql("SET exon.vcf_parse_formats = false").await.unwrap();
         ctx.sql("SET exon.fasta_sequence_buffer_capacity = 1024")
             .await
             .unwrap();
@@ -120,7 +120,7 @@ mod tests {
             .unwrap();
 
         assert!(!exon_config.vcf_parse_info);
-        assert!(!exon_config.vcf_parse_format);
+        assert!(!exon_config.vcf_parse_formats);
         assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
     }
 }

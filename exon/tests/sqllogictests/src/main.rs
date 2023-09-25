@@ -15,10 +15,10 @@
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use datafusion::{error::DataFusionError, prelude::SessionContext};
+use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::ScalarValue};
 use exon::ExonSessionExt;
 
-use sqllogictest::{ColumnType, DBOutput, TestError};
+use sqllogictest::{ColumnType, DBOutput, DefaultColumnType, TestError};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DFColumnType {
@@ -57,7 +57,7 @@ impl ColumnType for DFColumnType {
     }
 }
 
-pub type DFOutput = DBOutput<DFColumnType>;
+pub type DFOutput = DBOutput<DefaultColumnType>;
 
 struct TestOptions {
     /// The path to the directory containing the test files.
@@ -83,14 +83,42 @@ impl ExonTextRunner {
 }
 
 async fn run_query(ctx: &SessionContext, sql: impl Into<String>) -> Result<DFOutput, TestError> {
-    let _ = ctx.sql(sql.into().as_str()).await.unwrap();
-    Ok(DBOutput::StatementComplete(0))
+    let q = sql.into();
+
+    let df = ctx.sql(q.as_str()).await.unwrap();
+
+    let mut output = Vec::new();
+
+    let batches = df.collect().await.unwrap();
+    let mut num_columns = 0;
+
+    for batch in batches.iter() {
+        num_columns = batch.num_columns();
+
+        for row_idx in 0..batch.num_rows() {
+            let mut row_output = Vec::with_capacity(num_columns);
+
+            for col in batch.columns() {
+                let scalar = ScalarValue::try_from_array(col, row_idx).unwrap();
+                let scalar_string = scalar.to_string();
+
+                row_output.push(scalar_string);
+            }
+
+            output.push(row_output);
+        }
+    }
+
+    Ok(DBOutput::Rows {
+        types: vec![DefaultColumnType::Text; num_columns],
+        rows: output,
+    })
 }
 
 #[async_trait]
 impl sqllogictest::AsyncDB for ExonTextRunner {
     type Error = TestError;
-    type ColumnType = DFColumnType;
+    type ColumnType = DefaultColumnType;
 
     async fn run(&mut self, sql: &str) -> Result<DFOutput, TestError> {
         run_query(&self.context, sql).await
