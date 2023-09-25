@@ -1,0 +1,47 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
+
+query T
+SELECT id, description, sequence FROM fasta_table;
+----
+a description ATCG
+b description2 ATCG
+
+
+query T
+SELECT * FROM fasta_table WHERE id = 'a';
+----
+a description ATCG
+
+statement ok
+DROP TABLE fasta_table;
+
+# Now do gzipped FASTA
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table STORED AS FASTA COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta.gz';
+
+query T
+SELECT id, description, sequence FROM fasta_table;
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE fasta_table;
+
+# Now to ZSTD compressed FASTA
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table STORED AS FASTA COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta.zst';
+
+query T
+SELECT id, description, sequence FROM fasta_table;
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE fasta_table;

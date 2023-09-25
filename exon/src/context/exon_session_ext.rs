@@ -898,40 +898,6 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_create_external_table() -> Result<(), DataFusionError> {
-        //! Test that with the ExonSessionExt we can create an external table
-
-        let path = test_path("fasta", "test.fasta");
-
-        let ctx = SessionContext::new_exon();
-        let sql = format!(
-            "CREATE EXTERNAL TABLE uniprot STORED AS FASTA LOCATION '{}';",
-            path.to_str().unwrap()
-        );
-
-        ctx.sql(&sql).await.unwrap();
-
-        let sql = "SELECT id, sequence FROM uniprot LIMIT 5;";
-        let plan = ctx.state().create_logical_plan(sql).await?;
-
-        let v = ctx.execute_logical_plan(plan).await?;
-
-        assert_eq!(v.schema().field(0).name(), "id");
-        assert_eq!(v.schema().field(1).name(), "sequence");
-
-        assert_eq!(v.schema().fields().len(), 2);
-
-        let batches = v.collect().await.unwrap();
-
-        assert_eq!(batches.len(), 1);
-
-        assert_eq!(batches[0].schema().fields().len(), 2);
-        assert_eq!(batches[0].num_rows(), 2);
-
-        Ok(())
-    }
-
     #[cfg(all(feature = "aws", not(target_os = "windows")))]
     #[tokio::test]
     async fn test_read_s3() -> Result<(), DataFusionError> {

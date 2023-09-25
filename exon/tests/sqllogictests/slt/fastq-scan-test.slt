@@ -1,0 +1,37 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq';
+
+query T
+SELECT name, description, quality_scores, sequence FROM fastq_table LIMIT 2;
+----
+SEQ_ID This is a description !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTGGGGTExonAAGCAGTATCGAExonAATAGTAAATCCATTTGTExonACExonCAGTTT
+SEQ_ID2 NULL !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTGGGGTExonAAGCAGTATCGAExonAATAGTAAATCCATTTGTExonACExonCAGTTT
+
+statement ok
+DROP TABLE fastq_table;
+
+statement ok
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.gz';
+
+query T
+SELECT name, description, quality_scores, sequence FROM fastq_table LIMIT 2;
+----
+SEQ_ID This is a description !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTGGGGTExonAAGCAGTATCGAExonAATAGTAAATCCATTTGTExonACExonCAGTTT
+SEQ_ID2 NULL !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTGGGGTExonAAGCAGTATCGAExonAATAGTAAATCCATTTGTExonACExonCAGTTT
+
+statement ok
+DROP TABLE fastq_table;
+
+statement ok
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.zst';
+
+query T
+SELECT name, description, quality_scores, sequence FROM fastq_table LIMIT 2;
+----
+SEQ_ID This is a description !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTGGGGTExonAAGCAGTATCGAExonAATAGTAAATCCATTTGTExonACExonCAGTTT
+SEQ_ID2 NULL !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTGGGGTExonAAGCAGTATCGAExonAATAGTAAATCCATTTGTExonACExonCAGTTT
+
+statement ok
+DROP TABLE fastq_table;
