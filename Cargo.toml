@@ -19,7 +19,10 @@ arrow = {version = "46"}
 datafusion = {version = "31", features = ["default"]}
 object_store = {version = "0.7.0"}
 
+[profile.release]
+codegen-units = 1
+lto = true
+
 [profile.profiling]
 debug = true
 inherits = "release"
-lto = true
