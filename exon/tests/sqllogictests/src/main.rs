@@ -83,7 +83,9 @@ impl ExonTextRunner {
 }
 
 async fn run_query(ctx: &SessionContext, sql: impl Into<String>) -> Result<DFOutput, TestError> {
-    let df = ctx.sql(sql.into().as_str()).await.unwrap();
+    let q = sql.into();
+
+    let df = ctx.sql(q.as_str()).await.unwrap();
 
     let mut output = Vec::new();
 

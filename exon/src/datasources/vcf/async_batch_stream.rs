@@ -89,8 +89,6 @@ where
 
             match record {
                 Some(record) => {
-                    // tracing::debug!("Read record {:?}", record);
-
                     record_batch.append(&record)?;
                 }
                 None => {

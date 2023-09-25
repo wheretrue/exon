@@ -15,10 +15,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use arrow::{
-    array::{
-        ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
-        Int64Builder,
-    },
+    array::{ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder, Int64Builder},
     datatypes::{DataType, SchemaRef},
     error::ArrowError,
 };
@@ -54,6 +51,8 @@ pub struct LazyVCFArrayBuilder {
     projection: Vec<usize>,
 
     header: Arc<Header>,
+
+    batch_size: usize,
 }
 
 impl LazyVCFArrayBuilder {
@@ -135,12 +134,14 @@ impl LazyVCFArrayBuilder {
             projection,
 
             header,
+
+            batch_size: 0,
         })
     }
 
     /// Returns the number of records in the builder.
     pub fn len(&self) -> usize {
-        self.chromosomes.len()
+        self.batch_size
     }
 
     /// Returns whether the builder is empty.
@@ -282,6 +283,9 @@ impl LazyVCFArrayBuilder {
                 }
             }
         }
+
+        self.batch_size += 1;
+
         Ok(())
     }
 
