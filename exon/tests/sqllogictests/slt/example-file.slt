@@ -1,8 +1,0 @@
-statement ok
-CREATE TABLE dna_sequences(sequence TEXT) AS VALUES
-    ('ATCG'),
-    ('AAA')
-;
-
-statement ok
-SELECT reverse_complement(sequence) FROM dna_sequences;
