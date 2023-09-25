@@ -18,7 +18,7 @@ use async_trait::async_trait;
 use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::ScalarValue};
 use exon::ExonSessionExt;
 
-use sqllogictest::{ColumnType, DBOutput, DefaultColumnType, TestError};
+use sqllogictest::{ColumnType, DBOutput, DefaultColumnType};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DFColumnType {
@@ -82,14 +82,17 @@ impl ExonTextRunner {
     }
 }
 
-async fn run_query(ctx: &SessionContext, sql: impl Into<String>) -> Result<DFOutput, TestError> {
+async fn run_query(
+    ctx: &SessionContext,
+    sql: impl Into<String>,
+) -> Result<DFOutput, DataFusionError> {
     let q = sql.into();
 
-    let df = ctx.sql(q.as_str()).await.unwrap();
+    let df = ctx.sql(q.as_str()).await?;
 
     let mut output = Vec::new();
 
-    let batches = df.collect().await.unwrap();
+    let batches = df.collect().await?;
     let mut num_columns = 0;
 
     for batch in batches.iter() {
@@ -99,7 +102,7 @@ async fn run_query(ctx: &SessionContext, sql: impl Into<String>) -> Result<DFOut
             let mut row_output = Vec::with_capacity(num_columns);
 
             for col in batch.columns() {
-                let scalar = ScalarValue::try_from_array(col, row_idx).unwrap();
+                let scalar = ScalarValue::try_from_array(col, row_idx)?;
                 let scalar_string = scalar.to_string();
 
                 row_output.push(scalar_string);
@@ -117,10 +120,10 @@ async fn run_query(ctx: &SessionContext, sql: impl Into<String>) -> Result<DFOut
 
 #[async_trait]
 impl sqllogictest::AsyncDB for ExonTextRunner {
-    type Error = TestError;
+    type Error = DataFusionError;
     type ColumnType = DefaultColumnType;
 
-    async fn run(&mut self, sql: &str) -> Result<DFOutput, TestError> {
+    async fn run(&mut self, sql: &str) -> Result<DFOutput, DataFusionError> {
         run_query(&self.context, sql).await
     }
 
@@ -143,21 +146,28 @@ async fn run_tests() -> Result<(), DataFusionError> {
     let test_options = TestOptions::default();
 
     // Iterate through the test files and run the tests.
-    let test_files = std::fs::read_dir(&test_options.test_dir).unwrap();
+    let test_files = std::fs::read_dir(&test_options.test_dir)?;
 
     let exon_context = Arc::new(SessionContext::new_exon());
 
     for test_file in test_files {
-        let test_file = test_file.unwrap();
+        let test_file = test_file?;
 
         // if the file doesn't end with an slt extension skip it
-        if test_file.path().extension().unwrap() != "slt" {
+        if test_file
+            .path()
+            .extension()
+            .expect("expected file extension")
+            != "slt"
+        {
             continue;
         }
 
         let mut runner =
             sqllogictest::Runner::new(|| async { Ok(ExonTextRunner::new(exon_context.clone())) });
-        runner.run_file_async(test_file.path()).await.unwrap();
+        runner.run_file_async(test_file.path()).await.map_err(|e| {
+            DataFusionError::Execution(format!("Error running sqllogictest file: {:?}", e))
+        })?;
     }
 
     Ok(())

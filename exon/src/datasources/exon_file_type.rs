@@ -21,22 +21,35 @@ use datafusion::{common::FileCompressionType, error::DataFusionError};
 pub enum ExonFileType {
     /// FASTA file format.
     FASTA,
+
     /// FASTQ file format.
     FASTQ,
+
+    /// Indexed VCF file format.
+    /// This is a special case of VCF file format that must be indexed.
+    IndexedVCF,
+
     /// VCF file format.
     VCF,
+
     /// BCF file format.
     BCF,
+
     /// GFF file format.
     GFF,
+
     /// BAM file format.
     BAM,
+
     /// SAM file format.
     SAM,
+
     /// HMMER file format.
     HMMDOMTAB,
+
     /// BED file format.
     BED,
+
     /// GTF file format.
     GTF,
 
@@ -63,6 +76,7 @@ impl FromStr for ExonFileType {
             "FASTA" | "FA" | "FNA" => Ok(Self::FASTA),
             "FASTQ" | "FQ" => Ok(Self::FASTQ),
             "VCF" => Ok(Self::VCF),
+            "INDEXED_VCF" => Ok(Self::IndexedVCF),
             "BCF" => Ok(Self::BCF),
             "GFF" => Ok(Self::GFF),
             "BAM" => Ok(Self::BAM),
@@ -87,6 +101,7 @@ impl Display for ExonFileType {
             Self::FASTA => write!(f, "FASTA"),
             Self::FASTQ => write!(f, "FASTQ"),
             Self::VCF => write!(f, "VCF"),
+            Self::IndexedVCF => write!(f, "INDEXED_VCF"),
             Self::BCF => write!(f, "BCF"),
             Self::GFF => write!(f, "GFF"),
             Self::BAM => write!(f, "BAM"),
@@ -152,6 +167,7 @@ mod tests {
         assert_eq!(ExonFileType::FASTA.to_string(), "FASTA");
         assert_eq!(ExonFileType::FASTQ.to_string(), "FASTQ");
         assert_eq!(ExonFileType::VCF.to_string(), "VCF");
+        assert_eq!(ExonFileType::IndexedVCF.to_string(), "INDEXED_VCF");
         assert_eq!(ExonFileType::BCF.to_string(), "BCF");
         assert_eq!(ExonFileType::GFF.to_string(), "GFF");
         assert_eq!(ExonFileType::BAM.to_string(), "BAM");

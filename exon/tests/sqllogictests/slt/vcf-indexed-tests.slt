@@ -1,0 +1,16 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE indexed_vcf_table STORED AS INDEXED_VCF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf';
+
+# If we try to select from a statement w/o a region filter we should get an error.
+statement error
+SELECT * FROM indexed_vcf_table WHERE filter = NULL LIMIT 1;
+
+# If we try to select from a statement w/ a region filter we should not get an error.
+statement ok
+SELECT * FROM indexed_vcf_table WHERE chrom = 'a' LIMIT 1;
+
+# Clean up after the test
+statement ok
+DROP TABLE indexed_vcf_table;
