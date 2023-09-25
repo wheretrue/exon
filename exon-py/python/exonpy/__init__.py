@@ -20,8 +20,11 @@ import adbc_driver_flightsql.dbapi as flight_sql
 import grpc
 from adbc_driver_flightsql import DatabaseOptions
 
-import exonpy.proto.exome.v1.catalog_pb2
-import exonpy.proto.exome.v1.catalog_pb2_grpc
+from exonpy.proto.exome.v1 import health_check_pb2
+from exonpy.proto.exome.v1 import health_check_pb2_grpc
+
+from exonpy.proto.exome.v1 import catalog_pb2
+from exonpy.proto.exome.v1 import catalog_pb2_grpc
 
 # Setup logging for the exonpy library
 import logging
@@ -48,7 +51,7 @@ class ExomeGrpcConnection:
 
     def __init__(
         self,
-        stub: exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub,
+        stub: catalog_pb2_grpc.CatalogServiceStub,
         token: str,
     ):
         """Create a new connection to an Exome server."""
@@ -119,11 +122,10 @@ def _flight_sql_connect(
 
 
 def _connect_to_exome_request(
-    stub: exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub,
-    get_token_request: exonpy.proto.exome.v1.catalog_pb2.GetTokenRequest,
+    stub: catalog_pb2_grpc.CatalogServiceStub,
+    get_token_request: catalog_pb2.GetTokenRequest,
 ) -> str:
     """Make the actual request to get the token."""
-
     try:
         token_response = stub.GetToken(get_token_request)
 
@@ -147,11 +149,9 @@ def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnect
     )
 
     channel = grpc.secure_channel(uri, creds)
-    stub = exonpy.proto.exome.v1.catalog_pb2_grpc.CatalogServiceStub(channel)
+    stub = catalog_pb2_grpc.CatalogServiceStub(channel)
 
-    token_request = exonpy.proto.exome.v1.catalog_pb2.GetTokenRequest(
-        email=username, password=password
-    )
+    token_request = catalog_pb2.GetTokenRequest(email=username, password=password)
 
     token = _connect_to_exome_request(stub, token_request)
     exome_grpc_connection = ExomeGrpcConnection(stub, token)
@@ -186,18 +186,14 @@ def connect(username: str, password: str, organization_name: str = "Public", **k
         exome_conn.close()
 
 
-def health_check(uri: str):
-    """No-op if the server is healthy, otherwise throws an error."""
+def health_check(uri: str) -> health_check_pb2.HealthCheckResponse:
+    """Return the health of the Exome server."""
     creds = grpc.ssl_channel_credentials(
         root_certificates=None, private_key=None, certificate_chain=None
     )
 
     channel = grpc.secure_channel(uri, creds)
 
-    from exonpy.proto.exome.v1 import health_check_pb2
-    from exonpy.proto.exome.v1 import health_check_pb2_grpc
-
     stub = health_check_pb2_grpc.HealthStub(channel)
 
-    response = stub.Check(health_check_pb2.HealthCheckRequest(service="exome"))
-    print(response)
+    return stub.Check(health_check_pb2.HealthCheckRequest(service="exome"))
