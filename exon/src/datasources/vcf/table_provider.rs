@@ -125,14 +125,14 @@ impl ListingVCFTableOptions {
             .map(|s| s.vcf_parse_info)
             .unwrap_or(false);
 
-        let vcf_parse_format = exon_settings
+        let vcf_parse_formats = exon_settings
             .as_ref()
-            .map(|s| s.vcf_parse_format)
+            .map(|s| s.vcf_parse_formats)
             .unwrap_or(false);
 
         let mut builder = VCFSchemaBuilder::default()
             .with_parse_info(vcf_parse_info)
-            .with_parse_formats(vcf_parse_format);
+            .with_parse_formats(vcf_parse_formats);
 
         let header = match self.file_compression_type {
             FileCompressionType::GZIP => {
@@ -691,7 +691,7 @@ mod tests {
         let sql = "SET exon.vcf_parse_info = true;";
         ctx.sql(sql).await?;
 
-        let sql = "SET exon.vcf_parse_format = true;";
+        let sql = "SET exon.vcf_parse_formats = true;";
         ctx.sql(sql).await?;
 
         let sql = format!(

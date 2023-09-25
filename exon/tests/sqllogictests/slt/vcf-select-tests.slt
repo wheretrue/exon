@@ -7,7 +7,7 @@ statement ok
 SET exon.vcf_parse_info = true
 
 statement ok
-SET exon.vcf_parse_format = true
+SET exon.vcf_parse_formats = true
 
 query T
 SELECT length(info) FROM vcf_table LIMIT 5;
