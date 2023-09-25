@@ -79,8 +79,8 @@ pub struct ListingVCFTableOptions {
     /// The extension of the files to read
     file_extension: String,
 
-    /// The region to filter on
-    region: Option<Region>,
+    /// True if the file must be indexed
+    indexed: bool,
 
     /// The file compression type
     file_compression_type: FileCompressionType,
@@ -88,21 +88,15 @@ pub struct ListingVCFTableOptions {
 
 impl ListingVCFTableOptions {
     /// Create a new set of options
-    pub fn new(file_compression_type: FileCompressionType) -> Self {
+    pub fn new(file_compression_type: FileCompressionType, indexed: bool) -> Self {
         let file_compression_type = file_compression_type;
         let file_extension = ExonFileType::VCF.get_file_extension(file_compression_type);
 
         Self {
             file_extension,
             file_compression_type,
-            region: None,
+            indexed,
         }
-    }
-
-    /// Set the region for the table options. This is used to filter the records
-    pub fn with_region(mut self, region: Region) -> Self {
-        self.region = Some(region);
-        self
     }
 
     async fn infer_schema_from_object_meta(
@@ -501,7 +495,36 @@ impl TableProvider for ListingVCFTable {
             return Ok(table);
         }
 
-        todo!("Implement non-region filter case for VCF scan");
+        if self.options.indexed {
+            return Err(DataFusionError::NotImplemented(
+                "`options.indexed` is true but no region filter was found".to_string(),
+            ));
+        }
+
+        let partitioned_file_lists = vec![
+            crate::physical_plan::object_store::list_files_for_scan(
+                object_store,
+                self.table_paths.clone(),
+                &self.options.file_extension,
+            )
+            .await?,
+        ];
+
+        let file_scan_config = FileScanConfig {
+            object_store_url,
+            file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+            file_groups: partitioned_file_lists,
+            statistics: Statistics::default(),
+            projection: projection.cloned(),
+            limit,
+            output_ordering: Vec::new(),
+            table_partition_cols: Vec::new(),
+            infinite_source: false,
+        };
+
+        let table = self.options.create_physical_plan(file_scan_config).await?;
+
+        return Ok(table);
     }
 }
 

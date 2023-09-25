@@ -144,6 +144,7 @@ pub trait ExonSessionExt {
             "GTF",
             "HMMDOMTAB",
             "VCF",
+            "INDEXED_VCF",
             "SAM",
             #[cfg(feature = "mzml")]
             "MZML",
@@ -401,7 +402,7 @@ impl ExonSessionExt for SessionContext {
         table_name: &str,
         table_path: &str,
     ) -> Result<Option<Arc<dyn TableProvider>>, DataFusionError> {
-        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP);
+        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
 
         let table_path = ListingTableUrl::parse(table_path)?;
 

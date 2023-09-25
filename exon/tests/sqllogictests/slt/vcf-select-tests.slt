@@ -26,3 +26,6 @@ PL  0,3,34
 PL  0,3,33
 PL  0,3,34
 PL  0,3,35
+
+statement ok
+DROP TABLE vcf_table;

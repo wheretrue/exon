@@ -148,7 +148,16 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::VCF => {
-                let vcf_options = ListingVCFTableOptions::new(file_compression_type);
+                let vcf_options = ListingVCFTableOptions::new(file_compression_type, false);
+                let schema = vcf_options.infer_schema(state, &table_path).await?;
+
+                let config = VCFListingTableConfig::new(table_path).with_options(vcf_options);
+
+                let table = ListingVCFTable::try_new(config, schema)?;
+                Ok(Arc::new(table))
+            }
+            ExonFileType::IndexedVCF => {
+                let vcf_options = ListingVCFTableOptions::new(file_compression_type, true);
                 let schema = vcf_options.infer_schema(state, &table_path).await?;
 
                 let config = VCFListingTableConfig::new(table_path).with_options(vcf_options);
