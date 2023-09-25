@@ -159,16 +159,6 @@ class FileFormat(_message.Message):
     updated_at: str
     def __init__(self, name: _Optional[str] = ..., created_at: _Optional[str] = ..., updated_at: _Optional[str] = ...) -> None: ...
 
-class HealthCheckRequest(_message.Message):
-    __slots__ = []
-    def __init__(self) -> None: ...
-
-class HealthCheckResponse(_message.Message):
-    __slots__ = ["message"]
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    message: str
-    def __init__(self, message: _Optional[str] = ...) -> None: ...
-
 class Library(_message.Message):
     __slots__ = ["id", "name", "description", "created_at", "updated_at"]
     ID_FIELD_NUMBER: _ClassVar[int]

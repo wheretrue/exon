@@ -14,11 +14,6 @@ class CatalogServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.HealthCheck = channel.unary_unary(
-            "/exome.v1.CatalogService/HealthCheck",
-            request_serializer=exome_dot_v1_dot_catalog__pb2.HealthCheckRequest.SerializeToString,
-            response_deserializer=exome_dot_v1_dot_catalog__pb2.HealthCheckResponse.FromString,
-        )
         self.CreateLibrary = channel.unary_unary(
             "/exome.v1.CatalogService/CreateLibrary",
             request_serializer=exome_dot_v1_dot_catalog__pb2.CreateLibraryRequest.SerializeToString,
@@ -153,12 +148,6 @@ class CatalogServiceStub(object):
 
 class CatalogServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
-
-    def HealthCheck(self, request, context):
-        """HealthCheck"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
 
     def CreateLibrary(self, request, context):
         """Library"""
@@ -319,11 +308,6 @@ class CatalogServiceServicer(object):
 
 def add_CatalogServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "HealthCheck": grpc.unary_unary_rpc_method_handler(
-            servicer.HealthCheck,
-            request_deserializer=exome_dot_v1_dot_catalog__pb2.HealthCheckRequest.FromString,
-            response_serializer=exome_dot_v1_dot_catalog__pb2.HealthCheckResponse.SerializeToString,
-        ),
         "CreateLibrary": grpc.unary_unary_rpc_method_handler(
             servicer.CreateLibrary,
             request_deserializer=exome_dot_v1_dot_catalog__pb2.CreateLibraryRequest.FromString,
@@ -464,35 +448,6 @@ def add_CatalogServiceServicer_to_server(servicer, server):
 # This class is part of an EXPERIMENTAL API.
 class CatalogService(object):
     """Missing associated documentation comment in .proto file."""
-
-    @staticmethod
-    def HealthCheck(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            "/exome.v1.CatalogService/HealthCheck",
-            exome_dot_v1_dot_catalog__pb2.HealthCheckRequest.SerializeToString,
-            exome_dot_v1_dot_catalog__pb2.HealthCheckResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
 
     @staticmethod
     def CreateLibrary(
