@@ -1,0 +1,9 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE gtf_table STORED AS GTF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gtf/test.gtf';
+
+query T
+SELECT seqname, source, type, start, "end", score, strand, frame FROM gtf_table LIMIT 1;
+----
+chr1 processed_transcript exon 11869 12227 NULL + NULL
