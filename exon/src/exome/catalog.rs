@@ -64,8 +64,7 @@ impl ExomeCatalogClient {
             service: "exome".to_string(),
         };
 
-        let health_check_response = health_check_client.check(health_check_request).await?;
-        eprintln!("Health check response: {:#?}", health_check_response);
+        let _ = health_check_client.check(health_check_request).await?;
 
         let s = Self {
             organization_id,
