@@ -17,8 +17,8 @@ use std::sync::Arc;
 use datafusion::error::Result;
 use datafusion::{common::tree_node::Transformed, physical_plan::PhysicalExpr};
 
-use crate::physical_plan::chrom_physical_expr::ChromPhysicalExpr;
 use crate::physical_plan::interval_physical_expr::IntervalPhysicalExpr;
+use crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr;
 use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
 
 use super::merging::{try_merge_chrom_exprs, try_merge_region_with_interval};
@@ -31,7 +31,7 @@ pub fn transform_region_expressions(
         .downcast_ref::<datafusion::physical_plan::expressions::BinaryExpr>()
     {
         Some(be) => {
-            if let Ok(chrom_expr) = ChromPhysicalExpr::try_from(be.clone()) {
+            if let Ok(chrom_expr) = RegionNamePhysicalExpr::try_from(be.clone()) {
                 let region_expr = RegionPhysicalExpr::new(Arc::new(chrom_expr), None);
 
                 return Ok(Transformed::Yes(Arc::new(region_expr)));
@@ -44,8 +44,10 @@ pub fn transform_region_expressions(
             // Now we need to check if the left and right side can be merged in a single expression.
 
             // Case 1: left and right are both chrom expressions, and need to be downcast to chrom expressions
-            if let Some(left_chrom) = be.left().as_any().downcast_ref::<ChromPhysicalExpr>() {
-                if let Some(right_chrom) = be.right().as_any().downcast_ref::<ChromPhysicalExpr>() {
+            if let Some(left_chrom) = be.left().as_any().downcast_ref::<RegionNamePhysicalExpr>() {
+                if let Some(right_chrom) =
+                    be.right().as_any().downcast_ref::<RegionNamePhysicalExpr>()
+                {
                     match try_merge_chrom_exprs(left_chrom, right_chrom) {
                         Ok(Some(new_expr)) => return Ok(Transformed::Yes(Arc::new(new_expr))),
                         Ok(None) => return Ok(Transformed::No(e)),
@@ -55,7 +57,7 @@ pub fn transform_region_expressions(
             }
 
             // Case 2: left is a chrom expression and right is an interval expression
-            if let Some(_left_chrom) = be.left().as_any().downcast_ref::<ChromPhysicalExpr>() {
+            if let Some(_left_chrom) = be.left().as_any().downcast_ref::<RegionNamePhysicalExpr>() {
                 if let Some(_right_interval) =
                     be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
                 {

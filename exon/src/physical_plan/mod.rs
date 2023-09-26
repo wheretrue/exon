@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// A physical expression that represents a chromosome.
-pub mod chrom_physical_expr;
+/// A physical expression that represents the name of a region.
+pub mod region_name_physical_expr;
 
 /// A physical expression that represents a genomic interval.
 pub mod interval_physical_expr;

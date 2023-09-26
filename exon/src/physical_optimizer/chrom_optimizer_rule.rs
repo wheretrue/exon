@@ -21,7 +21,7 @@ use datafusion::physical_plan::expressions::BinaryExpr;
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
-use crate::physical_plan::chrom_physical_expr::ChromPhysicalExpr;
+use crate::physical_plan::chrom_physical_expr::RegionNamePhysicalExpr;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
     let plan = if plan.children().is_empty() {
@@ -53,7 +53,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         None => return Ok(Transformed::No(plan)),
     };
 
-    let interval_expr = match ChromPhysicalExpr::try_from(pred.clone()) {
+    let interval_expr = match RegionNamePhysicalExpr::try_from(pred.clone()) {
         Ok(expr) => expr,
         Err(_) => return Ok(Transformed::No(plan)),
     };

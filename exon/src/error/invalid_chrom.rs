@@ -18,24 +18,24 @@ use datafusion::error::DataFusionError;
 
 #[derive(Debug, Default)]
 /// An error that occurs when an interval is invalid.
-pub struct InvalidChromError;
+pub struct InvalidRegionNameError;
 
-impl std::error::Error for InvalidChromError {}
+impl std::error::Error for InvalidRegionNameError {}
 
-impl Display for InvalidChromError {
+impl Display for InvalidRegionNameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "the supplied interval is invalid")
     }
 }
 
-impl From<InvalidChromError> for DataFusionError {
-    fn from(e: InvalidChromError) -> Self {
+impl From<InvalidRegionNameError> for DataFusionError {
+    fn from(e: InvalidRegionNameError) -> Self {
         DataFusionError::Execution(e.to_string())
     }
 }
 
-impl From<InvalidChromError> for std::fmt::Error {
-    fn from(_: InvalidChromError) -> Self {
+impl From<InvalidRegionNameError> for std::fmt::Error {
+    fn from(_: InvalidRegionNameError) -> Self {
         std::fmt::Error
     }
 }
