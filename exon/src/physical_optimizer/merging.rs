@@ -14,13 +14,12 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::Schema;
 use datafusion::error::{DataFusionError, Result};
 use noodles::core::Region;
 
 use crate::physical_plan::{
-    chrom_physical_expr::ChromPhysicalExpr,
     interval_physical_expr::{pos_schema, IntervalPhysicalExpr},
+    region_name_physical_expr::RegionNamePhysicalExpr,
     region_physical_expr::RegionPhysicalExpr,
 };
 
@@ -49,15 +48,16 @@ fn intersect_ranges(
     Some((lower_bound, upper_bound))
 }
 
-/// Merge two `ChromPhysicalExpr`s.
+/// Merge two `RegionNamePhysicalExpr`s.
 pub(crate) fn try_merge_chrom_exprs(
-    left: &crate::physical_plan::chrom_physical_expr::ChromPhysicalExpr,
-    right: &crate::physical_plan::chrom_physical_expr::ChromPhysicalExpr,
-) -> Result<Option<crate::physical_plan::chrom_physical_expr::ChromPhysicalExpr>> {
-    if left.chrom() == right.chrom() {
+    left: &crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr,
+    right: &crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr,
+) -> Result<Option<crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr>> {
+    if left.field_value() == right.field_value() && left.field_name() == right.field_name() {
         Ok(Some(
-            crate::physical_plan::chrom_physical_expr::ChromPhysicalExpr::new(
-                left.chrom().to_string(),
+            crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr::new(
+                left.field_name().to_string(),
+                left.field_value().to_string(),
                 left.inner().clone(),
             ),
         ))
@@ -93,12 +93,6 @@ pub fn try_merge_region_with_interval(
     left: &RegionPhysicalExpr,
     right: &IntervalPhysicalExpr,
 ) -> Result<Option<RegionPhysicalExpr>> {
-    let schema = Schema::new(vec![arrow::datatypes::Field::new(
-        "chrom",
-        arrow::datatypes::DataType::Utf8,
-        false,
-    )]);
-
     let interval = match left.interval_expr() {
         Some(interval_expr) => interval_expr,
         None => {
@@ -109,10 +103,30 @@ pub fn try_merge_region_with_interval(
                 new_interval.inner().clone(),
             );
 
-            let new_chrom = left.chrom_expr().unwrap().chrom();
-            let new_chrom = Arc::new(ChromPhysicalExpr::from_chrom(new_chrom, &schema)?);
+            let field_name = left
+                .region_name_expr()
+                .ok_or(DataFusionError::Execution(
+                    "Could not downcast left chrom expression to RegionNamePhysicalExpr"
+                        .to_string(),
+                ))?
+                .field_name()
+                .to_string();
 
-            let new_region = RegionPhysicalExpr::new(new_chrom, Some(Arc::new(new_interval)));
+            let field_value = left
+                .region_name_expr()
+                .ok_or(DataFusionError::Execution(
+                    "Could not downcast left chrom expression to RegionNamePhysicalExpr"
+                        .to_string(),
+                ))?
+                .field_value()
+                .to_string();
+
+            let new_expr = Arc::new(RegionNamePhysicalExpr::from_name_and_value(
+                field_name,
+                field_value,
+            )?);
+
+            let new_region = RegionPhysicalExpr::new(new_expr, Some(Arc::new(new_interval)));
 
             return Ok(Some(new_region));
         }
@@ -123,15 +137,16 @@ pub fn try_merge_region_with_interval(
         None => return Ok(None),
     };
 
-    let schema = Schema::new(vec![arrow::datatypes::Field::new(
-        "chrom",
-        arrow::datatypes::DataType::Utf8,
-        false,
-    )]);
+    let left_expr = left.region_name_expr().ok_or(DataFusionError::Execution(
+        "Could not downcast left chrom expression to RegionNamePhysicalExpr".to_string(),
+    ))?;
 
-    let chrom_expr = ChromPhysicalExpr::from_chrom(left.chrom_expr().unwrap().chrom(), &schema)?;
+    let region_name_expr = RegionNamePhysicalExpr::from_name_and_value(
+        left_expr.field_name().to_string(),
+        left_expr.field_value().to_string(),
+    )?;
 
-    let region_expr = RegionPhysicalExpr::new(Arc::new(chrom_expr), Some(Arc::new(interval)));
+    let region_expr = RegionPhysicalExpr::new(Arc::new(region_name_expr), Some(Arc::new(interval)));
 
     Ok(Some(region_expr))
 }
@@ -159,12 +174,12 @@ fn try_merge_region_exprs(
             None => return Ok(None),
         };
 
-    let downcast_chrom_left = left.chrom_expr().ok_or(DataFusionError::Execution(
-        "Could not downcast left chrom expression to ChromPhysicalExpr".to_string(),
+    let downcast_chrom_left = left.region_name_expr().ok_or(DataFusionError::Execution(
+        "Could not downcast left chrom expression to RegionNamePhysicalExpr".to_string(),
     ))?;
 
-    let downcast_chrom_right = right.chrom_expr().ok_or(DataFusionError::Execution(
-        "Could not downcast right chrom expression to ChromPhysicalExpr".to_string(),
+    let downcast_chrom_right = right.region_name_expr().ok_or(DataFusionError::Execution(
+        "Could not downcast right chrom expression to RegionNamePhysicalExpr".to_string(),
     ))?;
 
     let merged_chrom = match try_merge_chrom_exprs(downcast_chrom_left, downcast_chrom_right)? {
@@ -172,7 +187,10 @@ fn try_merge_region_exprs(
         None => return Ok(None),
     };
 
-    let region = Region::new(merged_chrom.chrom(), merged_interval.interval().unwrap());
+    let region = Region::new(
+        merged_chrom.field_value(),
+        merged_interval.interval().unwrap(),
+    );
 
     // TODO: maybe this shouldn't be the pos schema
     let merged_region = RegionPhysicalExpr::from_region(region, pos_schema())?;
@@ -194,8 +212,8 @@ mod tests {
     use crate::{
         physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_interval_exprs},
         physical_plan::{
-            chrom_physical_expr::ChromPhysicalExpr,
             interval_physical_expr::{pos_schema, IntervalPhysicalExpr},
+            region_name_physical_expr::RegionNamePhysicalExpr,
         },
         tests::{and, gteq, lteq},
     };
@@ -210,17 +228,17 @@ mod tests {
             false,
         )]);
 
-        let chrom_expr_1 = ChromPhysicalExpr::from_chrom("1", &schema).unwrap();
-        let chrom_expr_2 = ChromPhysicalExpr::from_chrom("1", &schema).unwrap();
+        let chrom_expr_1 = RegionNamePhysicalExpr::from_chrom("1", &schema).unwrap();
+        let chrom_expr_2 = RegionNamePhysicalExpr::from_chrom("1", &schema).unwrap();
 
         let merged = try_merge_chrom_exprs(&chrom_expr_1, &chrom_expr_2)
             .unwrap()
             .unwrap();
 
-        assert_eq!(merged.chrom(), "1");
+        assert_eq!(merged.field_value(), "1");
 
         // Try merging two chrom expressions with different chromosomes
-        let chrom_expr_3 = ChromPhysicalExpr::from_chrom("2", &schema).unwrap();
+        let chrom_expr_3 = RegionNamePhysicalExpr::from_chrom("2", &schema).unwrap();
 
         let merged = try_merge_chrom_exprs(&chrom_expr_1, &chrom_expr_3).unwrap();
         assert!(merged.is_none());

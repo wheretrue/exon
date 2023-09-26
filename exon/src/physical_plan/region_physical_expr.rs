@@ -21,42 +21,44 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::error::{invalid_chrom::InvalidChromError, invalid_region::InvalidRegionError};
+use crate::error::{invalid_chrom::InvalidRegionNameError, invalid_region::InvalidRegionError};
 
-use super::{chrom_physical_expr::ChromPhysicalExpr, interval_physical_expr::IntervalPhysicalExpr};
+use super::{
+    interval_physical_expr::IntervalPhysicalExpr, region_name_physical_expr::RegionNamePhysicalExpr,
+};
 
 /// A physical expression that represents a region, e.g. chr1:100-200.
 #[derive(Debug)]
 pub struct RegionPhysicalExpr {
-    chrom_expr: Arc<dyn PhysicalExpr>,
+    region_name_expr: Arc<dyn PhysicalExpr>,
     interval_expr: Option<Arc<dyn PhysicalExpr>>,
 }
 
 impl RegionPhysicalExpr {
     /// Create a new `RegionPhysicalExpr` from a region and two inner expressions.
     pub fn new(
-        chrom_expr: Arc<dyn PhysicalExpr>,
+        region_name_expr: Arc<dyn PhysicalExpr>,
         interval_expr: Option<Arc<dyn PhysicalExpr>>,
     ) -> Self {
         Self {
-            chrom_expr,
+            region_name_expr,
             interval_expr,
         }
     }
 
     /// Get the region.
     pub fn region(&self) -> Result<Region> {
-        let internal_chrom_expr = self.chrom_expr().ok_or(InvalidChromError)?;
-        let chrom_str = internal_chrom_expr.chrom();
+        let internal_region_name_expr = self.region_name_expr().ok_or(InvalidRegionNameError)?;
+        let field_value = internal_region_name_expr.field_value();
 
         match self.interval_expr() {
             Some(interval_expr) => {
                 let interval = interval_expr.interval()?;
-                let region = Region::new(chrom_str, interval);
+                let region = Region::new(field_value, interval);
                 Ok(region)
             }
             None => {
-                let region = chrom_str.parse().map_err(|_| InvalidChromError)?;
+                let region = field_value.parse().map_err(|_| InvalidRegionNameError)?;
                 Ok(region)
             }
         }
@@ -70,8 +72,10 @@ impl RegionPhysicalExpr {
     }
 
     /// Get the chromosome expression.
-    pub fn chrom_expr(&self) -> Option<&ChromPhysicalExpr> {
-        self.chrom_expr.as_any().downcast_ref::<ChromPhysicalExpr>()
+    pub fn region_name_expr(&self) -> Option<&RegionNamePhysicalExpr> {
+        self.region_name_expr
+            .as_any()
+            .downcast_ref::<RegionNamePhysicalExpr>()
     }
 
     /// Create a new `RegionPhysicalExpr` from a region and a schema.
@@ -81,7 +85,7 @@ impl RegionPhysicalExpr {
         let end = region.interval().end().map(usize::from);
 
         let interval_expr = IntervalPhysicalExpr::from_interval(start, end, &schema)?;
-        let chrom_expr = ChromPhysicalExpr::from_chrom(region.name(), &schema)?;
+        let chrom_expr = RegionNamePhysicalExpr::from_chrom(region.name(), &schema)?;
 
         let region_expr = Self::new(Arc::new(chrom_expr), Some(Arc::new(interval_expr)));
 
@@ -93,14 +97,14 @@ impl Display for RegionPhysicalExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "RegionPhysicalExpr {{ chrom: {}, interval: {:?} }}",
-            self.chrom_expr, self.interval_expr,
+            "RegionPhysicalExpr {{ region_name: {}, interval: {:?} }}",
+            self.region_name_expr, self.interval_expr,
         )
     }
 }
 
-impl From<ChromPhysicalExpr> for RegionPhysicalExpr {
-    fn from(value: ChromPhysicalExpr) -> Self {
+impl From<RegionNamePhysicalExpr> for RegionPhysicalExpr {
+    fn from(value: RegionNamePhysicalExpr) -> Self {
         let chrom_expr = Arc::new(value);
 
         Self::new(chrom_expr, None)
@@ -111,7 +115,7 @@ impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
     type Error = DataFusionError;
 
     fn try_from(expr: BinaryExpr) -> Result<Self, Self::Error> {
-        if let Ok(chrom) = ChromPhysicalExpr::try_from(expr.clone()) {
+        if let Ok(chrom) = RegionNamePhysicalExpr::try_from(expr.clone()) {
             let new_region = Self::from(chrom);
             return Ok(new_region);
         }
@@ -120,7 +124,7 @@ impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
             .left()
             .as_any()
             .downcast_ref::<BinaryExpr>()
-            .map(|e| ChromPhysicalExpr::try_from(e.clone()))
+            .map(|e| RegionNamePhysicalExpr::try_from(e.clone()))
             .transpose()?;
 
         let pos_op = expr
@@ -166,12 +170,12 @@ impl PartialEq<dyn Any> for RegionPhysicalExpr {
                 return false;
             }
 
-            let left_chrom = match self.chrom_expr() {
+            let left_chrom = match self.region_name_expr() {
                 Some(chrom_expr) => chrom_expr,
                 None => return false,
             };
 
-            let right_chrom = match other.chrom_expr() {
+            let right_chrom = match other.region_name_expr() {
                 Some(chrom_expr) => chrom_expr,
                 None => return false,
             };
@@ -209,14 +213,14 @@ impl PhysicalExpr for RegionPhysicalExpr {
         let eval = match self.interval_expr {
             Some(ref interval_expr) => {
                 let binary_expr = BinaryExpr::new(
-                    self.chrom_expr.clone(),
+                    self.region_name_expr.clone(),
                     datafusion::logical_expr::Operator::And,
                     interval_expr.clone(),
                 );
 
                 binary_expr.evaluate(batch)
             }
-            None => self.chrom_expr.evaluate(batch),
+            None => self.region_name_expr.evaluate(batch),
         };
 
         tracing::info!("Got eval: {:?}", eval);
@@ -233,7 +237,7 @@ impl PhysicalExpr for RegionPhysicalExpr {
         _children: Vec<std::sync::Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn PhysicalExpr>> {
         Ok(Arc::new(RegionPhysicalExpr::new(
-            self.chrom_expr.clone(),
+            self.region_name_expr.clone(),
             self.interval_expr.clone(),
         )))
     }
@@ -241,7 +245,7 @@ impl PhysicalExpr for RegionPhysicalExpr {
     fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
         let mut s = state;
 
-        self.chrom_expr.dyn_hash(&mut s);
+        self.region_name_expr.dyn_hash(&mut s);
 
         if let Some(ref interval_expr) = self.interval_expr {
             interval_expr.dyn_hash(&mut s);
