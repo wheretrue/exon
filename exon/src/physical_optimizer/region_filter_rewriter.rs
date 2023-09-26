@@ -17,7 +17,7 @@ use std::sync::Arc;
 use datafusion::error::Result;
 use datafusion::{common::tree_node::Transformed, physical_plan::PhysicalExpr};
 
-use crate::physical_plan::interval_physical_expr::IntervalPhysicalExpr;
+use crate::physical_plan::pos_interval_physical_expr::PosIntervalPhysicalExpr;
 use crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr;
 use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
 
@@ -37,7 +37,7 @@ pub fn transform_region_expressions(
                 return Ok(Transformed::Yes(Arc::new(region_expr)));
             }
 
-            if let Ok(interval_expr) = IntervalPhysicalExpr::try_from(be.clone()) {
+            if let Ok(interval_expr) = PosIntervalPhysicalExpr::try_from(be.clone()) {
                 return Ok(Transformed::Yes(Arc::new(interval_expr)));
             }
 
@@ -58,8 +58,10 @@ pub fn transform_region_expressions(
 
             // Case 2: left is a chrom expression and right is an interval expression
             if let Some(_left_chrom) = be.left().as_any().downcast_ref::<RegionNamePhysicalExpr>() {
-                if let Some(_right_interval) =
-                    be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
+                if let Some(_right_interval) = be
+                    .right()
+                    .as_any()
+                    .downcast_ref::<PosIntervalPhysicalExpr>()
                 {
                     let new_expr =
                         RegionPhysicalExpr::new(be.left().clone(), Some(be.right().clone()));
@@ -70,8 +72,10 @@ pub fn transform_region_expressions(
 
             // Case 3: left is a region expression and the right is an interval expression
             if let Some(left_region) = be.left().as_any().downcast_ref::<RegionPhysicalExpr>() {
-                if let Some(right_interval) =
-                    be.right().as_any().downcast_ref::<IntervalPhysicalExpr>()
+                if let Some(right_interval) = be
+                    .right()
+                    .as_any()
+                    .downcast_ref::<PosIntervalPhysicalExpr>()
                 {
                     let new_region = try_merge_region_with_interval(left_region, right_interval)?;
 
