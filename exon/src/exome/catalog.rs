@@ -16,7 +16,7 @@ mod schema;
 
 pub use schema::Schema;
 
-use super::proto;
+use super::proto::{self, health_client::HealthClient, HealthCheckRequest};
 
 // Create a type alias for the catalog service client.
 type CatalogServiceClient =
@@ -31,7 +31,6 @@ pub struct ExomeCatalogClient {
 }
 
 /// Implement Debug for ExomeCatalogClient.
-
 impl ExomeCatalogClient {
     /// Connects to the Exome Catalog service at the given URL with the specified organization ID.
     /// Returns an instance of ExomeCatalogClient upon successful connection.
@@ -40,6 +39,50 @@ impl ExomeCatalogClient {
     ///
     /// * `url` - The URL of the Exome Catalog service.
     /// * `organization_id` - The organization ID associated with the client.
+    /// * `token` - The token to use for authentication.
+    ///
+    /// # Returns
+    ///
+    /// An instance of ExomeCatalogClient on success, or a boxed error on failure.
+    pub async fn connect_with_tls(
+        url: String,
+        organization_id: String,
+        token: String,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let tls = tonic::transport::ClientTlsConfig::new();
+
+        let channel = tonic::transport::Channel::from_shared(url)?
+            .tls_config(tls)?
+            .connect()
+            .await?;
+
+        let catalog_service_client =
+            proto::catalog_service_client::CatalogServiceClient::new(channel.clone());
+
+        let mut health_check_client = HealthClient::new(channel);
+        let health_check_request = HealthCheckRequest {
+            service: "exome".to_string(),
+        };
+
+        let _ = health_check_client.check(health_check_request).await?;
+
+        let s = Self {
+            organization_id,
+            catalog_service_client,
+            token,
+        };
+
+        Ok(s)
+    }
+
+    /// Connects to the Exome Catalog service at the given URL with the specified organization ID without TLS.
+    /// Returns an instance of ExomeCatalogClient upon successful connection.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL of the Exome Catalog service.
+    /// * `organization_id` - The organization ID associated with the client.
+    /// * `token` - The token to use for authentication.
     ///
     /// # Returns
     ///
@@ -49,8 +92,12 @@ impl ExomeCatalogClient {
         organization_id: String,
         token: String,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        let channel = tonic::transport::Channel::from_shared(url)?
+            .connect()
+            .await?;
+
         let catalog_service_client =
-            proto::catalog_service_client::CatalogServiceClient::connect(url.clone()).await?;
+            proto::catalog_service_client::CatalogServiceClient::new(channel);
 
         let s = Self {
             organization_id,
@@ -194,12 +241,15 @@ impl ExomeCatalogClient {
         let url = url::Url::parse(&url)?;
 
         let token = std::env::var("EXON_EXOME_TOKEN")?;
-
         let organization_id = std::env::var("EXON_EXOME_ORGANIZATION_ID")?;
 
-        let client = Self::connect(url.to_string(), organization_id, token).await?;
+        let use_tls = std::env::var("EXON_EXOME_USE_TLS")?;
 
-        Ok(client)
+        if use_tls == "true" {
+            Self::connect_with_tls(url.to_string(), organization_id, token).await
+        } else {
+            Self::connect(url.to_string(), organization_id, token).await
+        }
     }
 
     /// Lists the tables associated with a specific schema.
