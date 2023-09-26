@@ -9,7 +9,7 @@ readme = "README.md"
 version = "0.3.2"
 
 [dependencies]
-clap = {version = "4.4.4", features = ["derive"]}
+clap = {version = "4.4.5", features = ["derive"]}
 datafusion = {workspace = true}
 exon = {path = "../exon", features = ["all"], version = "0.3.2" }
 noodles = {version = "0.52", features = ["core", "vcf", "bgzf"]}
