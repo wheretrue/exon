@@ -17,3 +17,11 @@ query T
 SELECT quality_score FROM bam LIMIT 1;
 ----
 8DCCCC?::>CDDB<<>@3CCDBD@DBDFHHHFEIIGCAIIHIF@@DDGGEBEGEIHGGGDGG?BHHHDFFFF@@<
+
+query T
+SELECT tags FROM bam LIMIT 1;
+----
+{tag:NH,value:1},{tag:HI,value:1},{tag:AS,value:149},{tag:nM,value:1},{tag:NM,value:0},{tag:XS,value:-},{tag:RG,value:H7G9G.1}
+
+statement ok
+DROP TABLE bam;
