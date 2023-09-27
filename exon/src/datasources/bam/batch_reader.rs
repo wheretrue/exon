@@ -82,7 +82,8 @@ where
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut record_batch = SAMArrayBuilder::create(self.header.clone());
+        let mut record_batch =
+            SAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
@@ -91,7 +92,7 @@ where
             }
         }
 
-        if record_batch.len() == 0 {
+        if record_batch.is_empty() {
             return Ok(None);
         }
 
@@ -125,7 +126,8 @@ impl StreamRecordBatchAdapter {
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut record_batch = SAMArrayBuilder::create(self.header.clone());
+        let mut record_batch =
+            SAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for _ in 0..self.config.batch_size {
             match self.stream.next().await {
@@ -135,16 +137,13 @@ impl StreamRecordBatchAdapter {
             }
         }
 
-        if record_batch.len() == 0 {
+        if record_batch.is_empty() {
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+        let batch = RecordBatch::try_new(self.config.projected_schema()?, record_batch.finish())?;
 
-        match &self.config.projection {
-            Some(projection) => Ok(Some(batch.project(projection)?)),
-            None => Ok(Some(batch)),
-        }
+        Ok(Some(batch))
     }
 
     pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {

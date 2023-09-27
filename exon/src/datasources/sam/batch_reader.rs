@@ -72,11 +72,12 @@ where
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut record_batch = SAMArrayBuilder::create(self.header.clone());
+        let mut array_builder =
+            SAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
-                Some(record) => record_batch.append(&record).map_err(|e| {
+                Some(record) => array_builder.append(&record).map_err(|e| {
                     std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
                         format!("invalid record: {e}"),
@@ -86,15 +87,12 @@ where
             }
         }
 
-        if record_batch.is_empty() {
+        if array_builder.is_empty() {
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+        let batch = RecordBatch::try_new(self.config.projected_schema()?, array_builder.finish())?;
 
-        match self.config.projection {
-            Some(ref projection) => Ok(Some(batch.project(projection)?)),
-            None => Ok(Some(batch)),
-        }
+        Ok(Some(batch))
     }
 }
