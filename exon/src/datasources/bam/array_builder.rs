@@ -15,13 +15,20 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayBuilder, ArrayRef, GenericStringBuilder, Int32Builder},
-    datatypes::{DataType, Field, Schema},
+    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, StructBuilder},
+    datatypes::{DataType, Field, Fields, Schema},
     error::ArrowError,
 };
 use noodles::sam::{alignment::Record, header::Header};
 
 pub fn schema() -> Schema {
+    let tag_struct = DataType::Struct(Fields::from(vec![
+        Field::new("tag", DataType::Utf8, false),
+        Field::new("value", DataType::Utf8, true), // Assuming VALUE as a string for simplicity.
+    ]));
+
+    let tag_struct_list = DataType::List(Arc::new(Field::new("item", tag_struct, true)));
+
     Schema::new(vec![
         Field::new("name", DataType::Utf8, false),
         Field::new("flag", DataType::Int32, false),
@@ -33,6 +40,7 @@ pub fn schema() -> Schema {
         Field::new("mate_reference", DataType::Utf8, true),
         Field::new("sequence", DataType::Utf8, false),
         Field::new("quality_score", DataType::Utf8, false),
+        Field::new("tags", tag_struct_list, false),
     ])
 }
 
@@ -47,12 +55,26 @@ pub struct BAMArrayBuilder {
     mate_references: GenericStringBuilder<i32>,
     sequences: GenericStringBuilder<i32>,
     quality_scores: GenericStringBuilder<i32>,
+    tags: GenericListBuilder<i32, StructBuilder>,
+
+    rows: usize,
 
     header: Header,
 }
 
 impl BAMArrayBuilder {
     pub fn create(header: Header) -> Self {
+        let tag_field = Field::new("tag", DataType::Utf8, false);
+        let value_field = Field::new("value", DataType::Utf8, true);
+
+        let tag = StructBuilder::new(
+            Fields::from(vec![tag_field, value_field]),
+            vec![
+                Box::new(GenericStringBuilder::<i32>::new()),
+                Box::new(GenericStringBuilder::<i32>::new()),
+            ],
+        );
+
         Self {
             names: GenericStringBuilder::<i32>::new(),
             flags: Int32Builder::new(),
@@ -64,13 +86,16 @@ impl BAMArrayBuilder {
             mate_references: GenericStringBuilder::<i32>::new(),
             sequences: GenericStringBuilder::<i32>::new(),
             quality_scores: GenericStringBuilder::<i32>::new(),
+            tags: GenericListBuilder::new(tag),
+
+            rows: 0,
 
             header,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.quality_scores.len()
+        self.rows
     }
 
     pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
@@ -112,6 +137,31 @@ impl BAMArrayBuilder {
         self.quality_scores
             .append_value(quality_scores.to_string().as_str());
 
+        let data = record.data();
+        let tags = data.keys();
+
+        let tag_struct = self.tags.values();
+        for tag in tags {
+            let tag_value = data.get(&tag).unwrap();
+
+            let tag_value_string = tag_value.to_string();
+
+            tag_struct
+                .field_builder::<GenericStringBuilder<i32>>(0)
+                .unwrap()
+                .append_value(tag.to_string());
+
+            tag_struct
+                .field_builder::<GenericStringBuilder<i32>>(1)
+                .unwrap()
+                .append_value(tag_value_string);
+
+            tag_struct.append(true);
+        }
+        self.tags.append(true);
+
+        self.rows += 1;
+
         Ok(())
     }
 
@@ -126,6 +176,7 @@ impl BAMArrayBuilder {
         let mate_references = self.mate_references.finish();
         let sequences = self.sequences.finish();
         let quality_scores = self.quality_scores.finish();
+        let tags = self.tags.finish();
 
         vec![
             Arc::new(names),
@@ -138,6 +189,7 @@ impl BAMArrayBuilder {
             Arc::new(mate_references),
             Arc::new(sequences),
             Arc::new(quality_scores),
+            Arc::new(tags),
         ]
     }
 }
