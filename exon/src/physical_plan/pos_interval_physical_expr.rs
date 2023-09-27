@@ -169,7 +169,7 @@ impl TryFrom<Arc<dyn PhysicalExpr>> for PosIntervalPhysicalExpr {
 
 impl PartialEq<dyn Any> for PosIntervalPhysicalExpr {
     fn eq(&self, other: &dyn Any) -> bool {
-        if let Some(other) = other.downcast_ref::<PosIntervalPhysicalExpr>() {
+        if let Some(other) = other.downcast_ref::<Self>() {
             self.start == other.start && self.end == other.end
         } else {
             false
