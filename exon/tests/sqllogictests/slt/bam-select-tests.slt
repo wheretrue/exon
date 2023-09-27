@@ -1,0 +1,19 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam/test.bam';
+
+query T
+SELECT name, flag, reference, start, end, mapping_quality, cigar, mate_reference FROM bam LIMIT 1;
+----
+READ_ID 83 chr1 12203704 12217173 NULL 55M13394N21M chr1
+
+query T
+SELECT sequence FROM bam LIMIT 1;
+----
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+query T
+SELECT quality_score FROM bam LIMIT 1;
+----
+8DCCCC?::>CDDB<<>@3CCDBD@DBDFHHHFEIIGCAIIHIF@@DDGGEBEGEIHGGGDGG?BHHHDFFFF@@<
