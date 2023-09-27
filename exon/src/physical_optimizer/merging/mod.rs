@@ -15,7 +15,8 @@
 use std::sync::Arc;
 
 use datafusion::error::{DataFusionError, Result};
-use noodles::core::Region;
+
+mod start_stop;
 
 use crate::physical_plan::{
     pos_interval_physical_expr::{pos_schema, PosIntervalPhysicalExpr},
@@ -49,7 +50,7 @@ fn intersect_ranges(
 }
 
 /// Merge two `RegionNamePhysicalExpr`s.
-pub(crate) fn try_merge_chrom_exprs(
+pub(crate) fn try_merge_region_name_exprs(
     left: &crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr,
     right: &crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr,
 ) -> Result<Option<crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr>> {
@@ -151,53 +152,6 @@ pub fn try_merge_region_with_interval(
     Ok(Some(region_expr))
 }
 
-/// Merge to `RegionPhysicalExpr`s.
-#[allow(dead_code)]
-fn try_merge_region_exprs(
-    left: &RegionPhysicalExpr,
-    right: &RegionPhysicalExpr,
-) -> Result<Option<RegionPhysicalExpr>> {
-    // To merge two region expressions, we need to merge the two interval expressions and then
-    // merge the two chrom expressions. If that succeeds, we can create a new region expression.
-
-    let downcast_interval_left = left.interval_expr().ok_or(DataFusionError::Execution(
-        "Could not downcast left interval expression to IntervalPhysicalExpr".to_string(),
-    ))?;
-
-    let downcast_interval_right = right.interval_expr().ok_or(DataFusionError::Execution(
-        "Could not downcast right interval expression to IntervalPhysicalExpr".to_string(),
-    ))?;
-
-    let merged_interval =
-        match try_merge_interval_exprs(downcast_interval_left, downcast_interval_right)? {
-            Some(interval) => interval,
-            None => return Ok(None),
-        };
-
-    let downcast_chrom_left = left.region_name_expr().ok_or(DataFusionError::Execution(
-        "Could not downcast left chrom expression to RegionNamePhysicalExpr".to_string(),
-    ))?;
-
-    let downcast_chrom_right = right.region_name_expr().ok_or(DataFusionError::Execution(
-        "Could not downcast right chrom expression to RegionNamePhysicalExpr".to_string(),
-    ))?;
-
-    let merged_chrom = match try_merge_chrom_exprs(downcast_chrom_left, downcast_chrom_right)? {
-        Some(chrom) => chrom,
-        None => return Ok(None),
-    };
-
-    let region = Region::new(
-        merged_chrom.field_value(),
-        merged_interval.interval().unwrap(),
-    );
-
-    // TODO: maybe this shouldn't be the pos schema
-    let merged_region = RegionPhysicalExpr::from_region(region, pos_schema())?;
-
-    Ok(Some(merged_region))
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -210,7 +164,7 @@ mod tests {
     use noodles::core::Position;
 
     use crate::{
-        physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_interval_exprs},
+        physical_optimizer::merging::{try_merge_interval_exprs, try_merge_region_name_exprs},
         physical_plan::{
             pos_interval_physical_expr::{pos_schema, PosIntervalPhysicalExpr},
             region_name_physical_expr::RegionNamePhysicalExpr,
@@ -231,7 +185,7 @@ mod tests {
         let chrom_expr_1 = RegionNamePhysicalExpr::from_chrom("1", &schema).unwrap();
         let chrom_expr_2 = RegionNamePhysicalExpr::from_chrom("1", &schema).unwrap();
 
-        let merged = try_merge_chrom_exprs(&chrom_expr_1, &chrom_expr_2)
+        let merged = try_merge_region_name_exprs(&chrom_expr_1, &chrom_expr_2)
             .unwrap()
             .unwrap();
 
@@ -240,7 +194,7 @@ mod tests {
         // Try merging two chrom expressions with different chromosomes
         let chrom_expr_3 = RegionNamePhysicalExpr::from_chrom("2", &schema).unwrap();
 
-        let merged = try_merge_chrom_exprs(&chrom_expr_1, &chrom_expr_3).unwrap();
+        let merged = try_merge_region_name_exprs(&chrom_expr_1, &chrom_expr_3).unwrap();
         assert!(merged.is_none());
     }
 
