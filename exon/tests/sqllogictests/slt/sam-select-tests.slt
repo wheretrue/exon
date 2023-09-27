@@ -1,0 +1,22 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE sam STORED AS SAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/sam/test.sam';
+
+query T
+SELECT name, flag, reference, start, end, mapping_quality, cigar, mate_reference FROM sam LIMIT 1;
+----
+ref1_grp1_p001 99 ref1 1 10 0 10M ref1
+
+query T
+SELECT sequence FROM sam LIMIT 1;
+----
+CGAGCTCGGT
+
+query T
+SELECT quality_score FROM sam LIMIT 1;
+----
+!!!!!!!!!!
+
+statement ok
+DROP TABLE sam;
