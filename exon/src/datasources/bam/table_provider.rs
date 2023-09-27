@@ -208,7 +208,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_read_bam() {
+    async fn test_read_bam() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
@@ -223,8 +223,7 @@ mod tests {
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
             )
-            .await
-            .unwrap();
+            .await?;
 
         let df = ctx.read_table(table).unwrap();
 
@@ -233,7 +232,10 @@ mod tests {
         for batch in bs {
             row_cnt += batch.num_rows();
         }
-        assert_eq!(row_cnt, 61)
+
+        assert_eq!(row_cnt, 61);
+
+        Ok(())
     }
 
     #[tokio::test]
