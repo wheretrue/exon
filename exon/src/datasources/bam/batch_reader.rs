@@ -20,7 +20,9 @@ use futures::{Stream, StreamExt};
 use noodles::sam::alignment::Record;
 use tokio::io::{AsyncBufRead, AsyncRead};
 
-use super::{array_builder::BAMArrayBuilder, config::BAMConfig};
+use crate::datasources::sam::SAMArrayBuilder;
+
+use super::config::BAMConfig;
 
 /// A batch reader for BAM files.
 pub struct BatchReader<R>
@@ -80,7 +82,7 @@ where
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut record_batch = BAMArrayBuilder::create(self.header.clone());
+        let mut record_batch = SAMArrayBuilder::create(self.header.clone());
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
@@ -123,7 +125,7 @@ impl StreamRecordBatchAdapter {
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut record_batch = BAMArrayBuilder::create(self.header.clone());
+        let mut record_batch = SAMArrayBuilder::create(self.header.clone());
 
         for _ in 0..self.config.batch_size {
             match self.stream.next().await {

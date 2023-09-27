@@ -56,9 +56,11 @@ impl ListingBAMTableConfig {
     }
 }
 
-use crate::physical_plan::file_scan_config_builder::FileScanConfigBuilder;
+use crate::{
+    datasources::sam::schema, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+};
 
-use super::{array_builder::schema, BAMScan};
+use super::BAMScan;
 
 #[derive(Debug, Clone)]
 /// Listing options for a BAM table
