@@ -16,7 +16,7 @@
 pub mod region_name_physical_expr;
 
 /// A physical expression that represents a genomic interval.
-pub mod interval_physical_expr;
+pub mod pos_interval_physical_expr;
 
 /// A physical expression that represents a region, e.g. chr1:100-200.
 pub mod region_physical_expr;
@@ -26,3 +26,6 @@ pub mod object_store;
 
 /// Builder for a file scan configuration.
 pub mod file_scan_config_builder;
+
+/// A physical expression that represents start/end interval
+pub mod start_end_interval_physical_expr;

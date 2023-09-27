@@ -35,13 +35,13 @@ pub(crate) fn pos_schema() -> SchemaRef {
 
 /// A physical expression that represents a genomic interval.
 #[derive(Debug)]
-pub struct IntervalPhysicalExpr {
+pub struct PosIntervalPhysicalExpr {
     start: usize,
     end: Option<usize>,
     inner: Arc<dyn PhysicalExpr>,
 }
 
-impl IntervalPhysicalExpr {
+impl PosIntervalPhysicalExpr {
     /// Create a new interval physical expression from an interval and an inner expression.
     pub fn new(start: usize, end: Option<usize>, inner: Arc<dyn PhysicalExpr>) -> Self {
         Self { start, end, inner }
@@ -104,7 +104,7 @@ impl IntervalPhysicalExpr {
     }
 }
 
-impl Display for IntervalPhysicalExpr {
+impl Display for PosIntervalPhysicalExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -114,7 +114,7 @@ impl Display for IntervalPhysicalExpr {
     }
 }
 
-impl TryFrom<BinaryExpr> for IntervalPhysicalExpr {
+impl TryFrom<BinaryExpr> for PosIntervalPhysicalExpr {
     type Error = DataFusionError;
 
     fn try_from(expr: BinaryExpr) -> Result<Self, Self::Error> {
@@ -155,7 +155,7 @@ impl TryFrom<BinaryExpr> for IntervalPhysicalExpr {
     }
 }
 
-impl TryFrom<Arc<dyn PhysicalExpr>> for IntervalPhysicalExpr {
+impl TryFrom<Arc<dyn PhysicalExpr>> for PosIntervalPhysicalExpr {
     type Error = DataFusionError;
 
     fn try_from(expr: Arc<dyn PhysicalExpr>) -> Result<Self, Self::Error> {
@@ -167,9 +167,9 @@ impl TryFrom<Arc<dyn PhysicalExpr>> for IntervalPhysicalExpr {
     }
 }
 
-impl PartialEq<dyn Any> for IntervalPhysicalExpr {
+impl PartialEq<dyn Any> for PosIntervalPhysicalExpr {
     fn eq(&self, other: &dyn Any) -> bool {
-        if let Some(other) = other.downcast_ref::<IntervalPhysicalExpr>() {
+        if let Some(other) = other.downcast_ref::<Self>() {
             self.start == other.start && self.end == other.end
         } else {
             false
@@ -177,13 +177,13 @@ impl PartialEq<dyn Any> for IntervalPhysicalExpr {
     }
 }
 
-impl PartialEq for IntervalPhysicalExpr {
+impl PartialEq for PosIntervalPhysicalExpr {
     fn eq(&self, other: &Self) -> bool {
         self.start == other.start && self.end == other.end
     }
 }
 
-impl PhysicalExpr for IntervalPhysicalExpr {
+impl PhysicalExpr for PosIntervalPhysicalExpr {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -217,7 +217,7 @@ impl PhysicalExpr for IntervalPhysicalExpr {
         self: std::sync::Arc<Self>,
         _children: Vec<std::sync::Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn PhysicalExpr>> {
-        Ok(Arc::new(IntervalPhysicalExpr::new(
+        Ok(Arc::new(PosIntervalPhysicalExpr::new(
             self.start,
             self.end,
             self.inner.clone(),
@@ -246,11 +246,11 @@ mod tests {
     use noodles::core::Position;
 
     use crate::{
-        physical_plan::interval_physical_expr,
+        physical_plan::pos_interval_physical_expr,
         tests::{eq, gteq},
     };
 
-    use super::IntervalPhysicalExpr;
+    use super::PosIntervalPhysicalExpr;
 
     #[test]
     fn test_call_interval_with_no_upper_bound() {
@@ -259,7 +259,8 @@ mod tests {
         ]));
 
         let expr = gteq(col("pos", &schema).unwrap(), lit(4));
-        let interval_expr = interval_physical_expr::IntervalPhysicalExpr::try_from(expr).unwrap();
+        let interval_expr =
+            pos_interval_physical_expr::PosIntervalPhysicalExpr::try_from(expr).unwrap();
 
         assert_eq!(interval_expr.start, 4);
         assert_eq!(interval_expr.end, None);
@@ -275,7 +276,7 @@ mod tests {
 
         let pos_expr = eq(col("pos", &schema).unwrap(), lit(4));
 
-        let interval = super::IntervalPhysicalExpr::try_from(pos_expr).unwrap();
+        let interval = super::PosIntervalPhysicalExpr::try_from(pos_expr).unwrap();
 
         assert_eq!(
             interval.interval().unwrap(),
@@ -297,8 +298,11 @@ mod tests {
 
         let binary_expr = eq(col("pos", &batch.schema()).unwrap(), lit(1i64));
 
-        let expr =
-            interval_physical_expr::IntervalPhysicalExpr::new(1, Some(1), Arc::new(binary_expr));
+        let expr = pos_interval_physical_expr::PosIntervalPhysicalExpr::new(
+            1,
+            Some(1),
+            Arc::new(binary_expr),
+        );
 
         let result = match expr.evaluate(&batch)? {
             datafusion::physical_plan::ColumnarValue::Array(array) => array,
@@ -329,7 +333,7 @@ mod tests {
             arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
         ]));
 
-        let interval_expr = IntervalPhysicalExpr::from_interval(1, Some(10), &schema).unwrap();
+        let interval_expr = PosIntervalPhysicalExpr::from_interval(1, Some(10), &schema).unwrap();
 
         // The interval_expr should be a BinaryExpr with an AND operator
         let inner_expr = interval_expr
@@ -344,7 +348,7 @@ mod tests {
         }
 
         // Now test that without an end, we get a GtEq
-        let interval_expr = IntervalPhysicalExpr::from_interval(1, None, &schema).unwrap();
+        let interval_expr = PosIntervalPhysicalExpr::from_interval(1, None, &schema).unwrap();
 
         let inner_expr = interval_expr
             .inner

@@ -21,7 +21,7 @@ use datafusion::physical_plan::expressions::BinaryExpr;
 use datafusion::physical_plan::filter::FilterExec;
 use datafusion::physical_plan::{with_new_children_if_necessary, ExecutionPlan};
 
-use crate::physical_plan::interval_physical_expr::IntervalPhysicalExpr;
+use crate::physical_plan::pos_interval_physical_expr::PosIntervalPhysicalExpr;
 
 fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
     let plan = if plan.children().is_empty() {
@@ -53,7 +53,7 @@ fn optimize(plan: Arc<dyn ExecutionPlan>) -> Result<Transformed<Arc<dyn Executio
         None => return Ok(Transformed::No(plan)),
     };
 
-    let interval_expr = match IntervalPhysicalExpr::try_from(pred.clone()) {
+    let interval_expr = match PosIntervalPhysicalExpr::try_from(pred.clone()) {
         Ok(expr) => expr,
         Err(_) => return Ok(Transformed::No(plan)),
     };
@@ -94,7 +94,9 @@ mod tests {
     use datafusion::{physical_plan::filter::FilterExec, prelude::SessionContext};
     use noodles::core::region::Interval;
 
-    use crate::{physical_plan::interval_physical_expr::IntervalPhysicalExpr, ExonSessionExt};
+    use crate::{
+        physical_plan::pos_interval_physical_expr::PosIntervalPhysicalExpr, ExonSessionExt,
+    };
 
     #[tokio::test]
     async fn test_interval_rule_eq() {
@@ -123,7 +125,7 @@ mod tests {
         let pred = filter_exec
             .predicate()
             .as_any()
-            .downcast_ref::<IntervalPhysicalExpr>()
+            .downcast_ref::<PosIntervalPhysicalExpr>()
             .unwrap();
 
         let expected_interval = Interval::from_str("1-1").unwrap();

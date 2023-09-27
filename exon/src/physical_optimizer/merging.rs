@@ -18,7 +18,7 @@ use datafusion::error::{DataFusionError, Result};
 use noodles::core::Region;
 
 use crate::physical_plan::{
-    interval_physical_expr::{pos_schema, IntervalPhysicalExpr},
+    pos_interval_physical_expr::{pos_schema, PosIntervalPhysicalExpr},
     region_name_physical_expr::RegionNamePhysicalExpr,
     region_physical_expr::RegionPhysicalExpr,
 };
@@ -68,12 +68,12 @@ pub(crate) fn try_merge_chrom_exprs(
 
 /// Merge two `IntervalPhysicalExpr`s.
 pub fn try_merge_interval_exprs(
-    left: &IntervalPhysicalExpr,
-    right: &IntervalPhysicalExpr,
-) -> Result<Option<IntervalPhysicalExpr>> {
+    left: &PosIntervalPhysicalExpr,
+    right: &PosIntervalPhysicalExpr,
+) -> Result<Option<PosIntervalPhysicalExpr>> {
     match intersect_ranges(left.interval_tuple(), right.interval_tuple()) {
         Some((start, Some(end))) => {
-            return Ok(Some(IntervalPhysicalExpr::new(
+            return Ok(Some(PosIntervalPhysicalExpr::new(
                 start,
                 Some(end),
                 left.inner().clone(),
@@ -81,7 +81,7 @@ pub fn try_merge_interval_exprs(
         }
         Some((start, None)) => {
             let schema = pos_schema();
-            let interval_expr = IntervalPhysicalExpr::from_interval(start, None, &schema)?;
+            let interval_expr = PosIntervalPhysicalExpr::from_interval(start, None, &schema)?;
 
             Ok(Some(interval_expr))
         }
@@ -91,13 +91,13 @@ pub fn try_merge_interval_exprs(
 
 pub fn try_merge_region_with_interval(
     left: &RegionPhysicalExpr,
-    right: &IntervalPhysicalExpr,
+    right: &PosIntervalPhysicalExpr,
 ) -> Result<Option<RegionPhysicalExpr>> {
     let interval = match left.interval_expr() {
         Some(interval_expr) => interval_expr,
         None => {
             let new_interval = right;
-            let new_interval = IntervalPhysicalExpr::new(
+            let new_interval = PosIntervalPhysicalExpr::new(
                 new_interval.start(),
                 new_interval.end(),
                 new_interval.inner().clone(),
@@ -212,7 +212,7 @@ mod tests {
     use crate::{
         physical_optimizer::merging::{try_merge_chrom_exprs, try_merge_interval_exprs},
         physical_plan::{
-            interval_physical_expr::{pos_schema, IntervalPhysicalExpr},
+            pos_interval_physical_expr::{pos_schema, PosIntervalPhysicalExpr},
             region_name_physical_expr::RegionNamePhysicalExpr,
         },
         tests::{and, gteq, lteq},
@@ -251,17 +251,17 @@ mod tests {
         ]));
 
         let left_expr = gteq(col("pos", &schema).unwrap(), lit(3));
-        let left_interval = IntervalPhysicalExpr::try_from(left_expr).unwrap();
+        let left_interval = PosIntervalPhysicalExpr::try_from(left_expr).unwrap();
 
         let right_expr = lteq(col("pos", &schema).unwrap(), lit(4));
-        let right_interval = IntervalPhysicalExpr::try_from(right_expr).unwrap();
+        let right_interval = PosIntervalPhysicalExpr::try_from(right_expr).unwrap();
 
         try_merge_interval_exprs(&left_interval, &right_interval)
             .unwrap()
             .unwrap();
 
         let right_expr = lteq(col("pos", &schema).unwrap(), lit(2));
-        let right_interval = IntervalPhysicalExpr::try_from(right_expr).unwrap();
+        let right_interval = PosIntervalPhysicalExpr::try_from(right_expr).unwrap();
 
         let merged = try_merge_interval_exprs(&left_interval, &right_interval).unwrap();
         assert!(merged.is_none());
@@ -280,8 +280,8 @@ mod tests {
 
         let inner = Arc::new(inner_expression);
 
-        let right_interval = IntervalPhysicalExpr::new(1, Some(10), inner.clone());
-        let left_interval = IntervalPhysicalExpr::new(1, Some(10), inner.clone());
+        let right_interval = PosIntervalPhysicalExpr::new(1, Some(10), inner.clone());
+        let left_interval = PosIntervalPhysicalExpr::new(1, Some(10), inner.clone());
 
         let merged = try_merge_interval_exprs(&left_interval, &right_interval)
             .unwrap()
@@ -298,10 +298,10 @@ mod tests {
         ]));
 
         let left_inner = gteq(col("pos", &schema).unwrap(), lit(ScalarValue::from(10)));
-        let left = IntervalPhysicalExpr::try_from(left_inner).unwrap();
+        let left = PosIntervalPhysicalExpr::try_from(left_inner).unwrap();
 
         let right_inner = lteq(col("pos", &schema).unwrap(), lit(ScalarValue::from(20)));
-        let right = IntervalPhysicalExpr::try_from(right_inner).unwrap();
+        let right = PosIntervalPhysicalExpr::try_from(right_inner).unwrap();
 
         let merged = try_merge_interval_exprs(&left, &right)
             .unwrap()
@@ -324,10 +324,10 @@ mod tests {
         ]));
 
         let gteq_expr = gteq(col("pos", &schema).unwrap(), lit(4));
-        let gt_interval = super::IntervalPhysicalExpr::try_from(gteq_expr).unwrap();
+        let gt_interval = super::PosIntervalPhysicalExpr::try_from(gteq_expr).unwrap();
 
         let lteq_expr = lteq(col("pos", &schema).unwrap(), lit(10));
-        let lt_interval = super::IntervalPhysicalExpr::try_from(lteq_expr).unwrap();
+        let lt_interval = super::PosIntervalPhysicalExpr::try_from(lteq_expr).unwrap();
 
         let interval = try_merge_interval_exprs(&gt_interval, &lt_interval)
             .unwrap()
@@ -346,10 +346,10 @@ mod tests {
         let schema = pos_schema();
 
         let left_expr = gteq(col("pos", &schema).unwrap(), lit(3));
-        let left_interval = IntervalPhysicalExpr::try_from(left_expr).unwrap();
+        let left_interval = PosIntervalPhysicalExpr::try_from(left_expr).unwrap();
 
         let right_expr = gteq(col("pos", &schema).unwrap(), lit(4));
-        let right_interval = IntervalPhysicalExpr::try_from(right_expr).unwrap();
+        let right_interval = PosIntervalPhysicalExpr::try_from(right_expr).unwrap();
 
         let merged = try_merge_interval_exprs(&left_interval, &right_interval)
             .unwrap()

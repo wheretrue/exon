@@ -160,6 +160,14 @@ mod tests {
         BinaryExpr::new(left, Operator::GtEq, right)
     }
 
+    pub(crate) fn gt(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
+        BinaryExpr::new(left, Operator::Gt, right)
+    }
+
+    pub(crate) fn lt(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
+        BinaryExpr::new(left, Operator::Lt, right)
+    }
+
     pub fn make_object_store() -> Arc<dyn ObjectStore> {
         let local_file_system = LocalFileSystem::new();
 

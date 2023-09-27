@@ -24,7 +24,8 @@ use noodles::core::Region;
 use crate::error::{invalid_chrom::InvalidRegionNameError, invalid_region::InvalidRegionError};
 
 use super::{
-    interval_physical_expr::IntervalPhysicalExpr, region_name_physical_expr::RegionNamePhysicalExpr,
+    pos_interval_physical_expr::PosIntervalPhysicalExpr,
+    region_name_physical_expr::RegionNamePhysicalExpr,
 };
 
 /// A physical expression that represents a region, e.g. chr1:100-200.
@@ -65,10 +66,10 @@ impl RegionPhysicalExpr {
     }
 
     /// Get the interval expression.
-    pub fn interval_expr(&self) -> Option<&IntervalPhysicalExpr> {
+    pub fn interval_expr(&self) -> Option<&PosIntervalPhysicalExpr> {
         self.interval_expr
             .as_ref()
-            .and_then(|expr| expr.as_any().downcast_ref::<IntervalPhysicalExpr>())
+            .and_then(|expr| expr.as_any().downcast_ref::<PosIntervalPhysicalExpr>())
     }
 
     /// Get the chromosome expression.
@@ -84,7 +85,7 @@ impl RegionPhysicalExpr {
 
         let end = region.interval().end().map(usize::from);
 
-        let interval_expr = IntervalPhysicalExpr::from_interval(start, end, &schema)?;
+        let interval_expr = PosIntervalPhysicalExpr::from_interval(start, end, &schema)?;
         let chrom_expr = RegionNamePhysicalExpr::from_chrom(region.name(), &schema)?;
 
         let region_expr = Self::new(Arc::new(chrom_expr), Some(Arc::new(interval_expr)));
@@ -131,7 +132,7 @@ impl TryFrom<BinaryExpr> for RegionPhysicalExpr {
             .right()
             .as_any()
             .downcast_ref::<BinaryExpr>()
-            .map(|binary_expr| IntervalPhysicalExpr::try_from(binary_expr.clone()))
+            .map(|binary_expr| PosIntervalPhysicalExpr::try_from(binary_expr.clone()))
             .transpose()?;
 
         match (chrom_op, pos_op) {
