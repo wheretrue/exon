@@ -165,6 +165,15 @@ impl ExonListingTableFactory {
                 let table = ListingVCFTable::try_new(config, schema)?;
                 Ok(Arc::new(table))
             }
+            ExonFileType::IndexedBAM => {
+                let bam_options = ListingBAMTableOptions::default().with_indexed(true);
+                let schema = bam_options.infer_schema().await?;
+
+                let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
+
+                let table = ListingBAMTable::try_new(config, schema)?;
+                Ok(Arc::new(table))
+            }
             ExonFileType::FASTA => {
                 let options = ListingFASTATableOptions::new(file_compression_type);
                 let schema = options.infer_schema().await?;

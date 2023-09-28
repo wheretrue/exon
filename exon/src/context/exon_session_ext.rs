@@ -26,7 +26,6 @@ use noodles::core::Region;
 
 use crate::{
     datasources::{
-        bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
         bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
@@ -145,6 +144,7 @@ pub trait ExonSessionExt {
             "HMMDOMTAB",
             "VCF",
             "INDEXED_VCF",
+            "INDEXED_BAM",
             "SAM",
             #[cfg(feature = "mzml")]
             "MZML",
@@ -317,11 +317,11 @@ pub trait ExonSessionExt {
     /// Query a BAM file.
     ///
     /// File must be indexed and index file must be in the same directory as the BAM file.
-    async fn query_bam_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError>;
+    // async fn query_bam_file(
+    //     &self,
+    //     table_path: &str,
+    //     query: &str,
+    // ) -> Result<DataFrame, DataFusionError>;
 
     /// Query a gzipped indexed VCF file.
     ///
@@ -486,31 +486,31 @@ impl ExonSessionExt for SessionContext {
         Ok(df)
     }
 
-    async fn query_bam_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError> {
-        let region = query.parse().map_err(|e| {
-            DataFusionError::Execution(format!(
-                "Failed to parse query '{}' as region: {}",
-                query, e
-            ))
-        })?;
+    // async fn query_bam_file(
+    //     &self,
+    //     table_path: &str,
+    //     query: &str,
+    // ) -> Result<DataFrame, DataFusionError> {
+    //     let region = query.parse().map_err(|e| {
+    //         DataFusionError::Execution(format!(
+    //             "Failed to parse query '{}' as region: {}",
+    //             query, e
+    //         ))
+    //     })?;
 
-        let options = ListingBAMTableOptions::default().with_region(region);
+    //     let options = ListingBAMTableOptions::default().with_indexed(true);
 
-        let schema = options.infer_schema().await?;
+    //     let schema = options.infer_schema().await?;
 
-        let listing_url = ListingTableUrl::parse(table_path)?;
-        let config = ListingBAMTableConfig::new(listing_url).with_options(options);
+    //     let listing_url = ListingTableUrl::parse(table_path)?;
+    //     let config = ListingBAMTableConfig::new(listing_url).with_options(options);
 
-        let table = ListingBAMTable::try_new(config, schema)?;
+    //     let table = ListingBAMTable::try_new(config, schema)?;
 
-        let df = self.read_table(Arc::new(table))?;
+    //     let df = self.read_table(Arc::new(table))?;
 
-        Ok(df)
-    }
+    //     Ok(df)
+    // }
 }
 
 #[cfg(test)]
@@ -682,24 +682,24 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_query_bam() -> Result<(), DataFusionError> {
-        let ctx = SessionContext::new();
+    // #[tokio::test]
+    // async fn test_query_bam() -> Result<(), DataFusionError> {
+    //     let ctx = SessionContext::new();
 
-        let path = test_path("bam", "test.bam");
-        let query = "chr1:1-12209153";
+    //     let path = test_path("bam", "test.bam");
+    //     let query = "chr1:1-12209153";
 
-        let df = ctx
-            .query_bam_file(path.to_str().unwrap(), query)
-            .await
-            .unwrap();
+    //     let df = ctx
+    //         .query_bam_file(path.to_str().unwrap(), query)
+    //         .await
+    //         .unwrap();
 
-        let batches = df.collect().await.unwrap();
+    //     let batches = df.collect().await.unwrap();
 
-        assert!(!batches.is_empty());
+    //     assert!(!batches.is_empty());
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     #[tokio::test]
     async fn test_read_bam() -> Result<(), DataFusionError> {

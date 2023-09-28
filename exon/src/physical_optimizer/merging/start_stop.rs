@@ -20,11 +20,12 @@ use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::{
     error::Result,
     logical_expr::Operator,
-    physical_plan::expressions::{col, lit, BinaryExpr, Column, Literal},
+    physical_plan::expressions::{col, lit, BinaryExpr},
 };
 
 use super::intersect_ranges;
 
+#[allow(dead_code)]
 fn create_binary_expression(start: usize, end: usize) -> BinaryExpr {
     //  SELECT * FROM intervals
     // WHERE
@@ -50,6 +51,7 @@ fn create_binary_expression(start: usize, end: usize) -> BinaryExpr {
 }
 
 // Helper function that combines two start/end intervals into a single interval.
+#[allow(dead_code)]
 pub fn try_merge_start_end_exprs(
     left: &StartEndIntervalPhysicalExpr,
     right: &StartEndIntervalPhysicalExpr,

@@ -19,7 +19,6 @@
 mod array_builder;
 mod config;
 mod file_opener;
-mod indexed_file_utils;
 mod indexed_scanner;
 mod scanner;
 mod schema_builder;
@@ -30,7 +29,6 @@ mod indexed_async_batch_stream;
 
 pub use self::array_builder::VCFArrayBuilder;
 pub use self::config::VCFConfig;
-pub use self::indexed_file_utils::get_byte_range_for_file;
 pub use self::indexed_scanner::IndexedVCFScanner;
 pub use self::scanner::VCFScan;
 pub use self::schema_builder::VCFSchemaBuilder;

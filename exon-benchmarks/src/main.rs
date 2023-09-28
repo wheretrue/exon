@@ -127,7 +127,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.query_bam_file(path, region).await.unwrap();
+            ctx.sql(
+                format!(
+                    "CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '{}';",
+                    path
+                )
+                .as_str(),
+            )
+            .await?;
+
+            let df = ctx
+                .sql(format!("SELECT * FROM bam WHERE region = '{}';", region).as_str())
+                .await?;
+
             let cnt = df.count().await?;
 
             eprintln!("Count: {}", cnt);

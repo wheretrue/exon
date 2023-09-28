@@ -73,3 +73,5 @@ pub use self::exon_listing_table_factory::ExonListingTableFactory;
 
 mod exon_file_scan_config;
 pub use self::exon_file_scan_config::ExonFileScanConfig;
+
+pub(crate) mod indexed_file_utils;

@@ -14,7 +14,6 @@
 
 use std::{any::Any, fmt::Display, str::FromStr, sync::Arc};
 
-use arrow::datatypes::SchemaRef;
 use datafusion::{
     error::{DataFusionError, Result},
     physical_plan::{expressions::BinaryExpr, PhysicalExpr},
@@ -251,26 +250,4 @@ impl PhysicalExpr for StartEndRegionPhysicalExpr {
             interval_expr.dyn_hash(&mut s);
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use arrow::{array::BooleanArray, record_batch::RecordBatch};
-    use datafusion::{
-        logical_expr::Operator,
-        physical_plan::{
-            expressions::{col, lit, BinaryExpr},
-            PhysicalExpr,
-        },
-        scalar::ScalarValue,
-    };
-    use noodles::core::{Position, Region};
-
-    #[test]
-    fn test_from_binary_exprs() {}
-
-    #[tokio::test]
-    async fn test_evaluate() {}
 }

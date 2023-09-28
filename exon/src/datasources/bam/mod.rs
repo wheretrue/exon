@@ -19,6 +19,8 @@
 mod batch_reader;
 mod config;
 mod file_opener;
+mod indexed_file_opener;
+mod indexed_scanner;
 mod record_stream;
 mod scanner;
 
