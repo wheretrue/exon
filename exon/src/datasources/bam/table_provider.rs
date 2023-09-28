@@ -398,7 +398,7 @@ mod tests {
         ctx.sql(&create_external_table_sql).await?;
 
         let select_sql = "SELECT * FROM bam_file WHERE reference = 'chr1';";
-        let df = ctx.sql(select_sql).await?;
+        let df = ctx.sql(&select_sql).await?;
         let cnt = df.count().await?;
 
         assert_eq!(cnt, 61);
