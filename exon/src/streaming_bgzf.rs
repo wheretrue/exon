@@ -84,10 +84,7 @@ mod tests {
     use object_store::path::Path;
     use tokio_util::io::StreamReader;
 
-    use crate::{
-        datasources::vcf::get_byte_range_for_file, streaming_bgzf::AsyncBGZFReader,
-        tests::test_path,
-    };
+    use crate::{streaming_bgzf::AsyncBGZFReader, tests::test_path};
 
     #[cfg(not(target_os = "windows"))]
     #[tokio::test]
@@ -104,7 +101,9 @@ mod tests {
         let mut reader = AsyncBGZFReader::from_reader(stream_reader);
 
         let region = "1".parse()?;
-        let chunks = get_byte_range_for_file(object_store.clone(), &object_meta, &region).await?;
+        let chunks = crate::datasources::indexed_file_utils::IndexedFile::Vcf
+            .get_byte_range_for_file(object_store.clone(), &object_meta, &region)
+            .await?;
         let first_chunk = chunks.first().unwrap();
 
         reader.scan_to_virtual_position(first_chunk.start()).await?;

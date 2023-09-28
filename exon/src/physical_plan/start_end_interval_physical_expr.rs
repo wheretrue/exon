@@ -76,6 +76,11 @@ impl StartEndIntervalPhysicalExpr {
     pub fn inner(&self) -> &Arc<dyn PhysicalExpr> {
         &self.inner
     }
+
+    /// Return a tuple of (start, end) for the interval.
+    pub fn interval_tuple(&self) -> (usize, Option<usize>) {
+        (self.start, self.end)
+    }
 }
 
 impl Display for StartEndIntervalPhysicalExpr {

@@ -29,3 +29,6 @@ pub mod file_scan_config_builder;
 
 /// A physical expression that represents start/end interval
 pub mod start_end_interval_physical_expr;
+
+/// A region expression that builds off of a start/end interval.
+pub mod start_end_region_physical_expr;

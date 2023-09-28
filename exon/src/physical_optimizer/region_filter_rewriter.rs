@@ -21,7 +21,7 @@ use crate::physical_plan::pos_interval_physical_expr::PosIntervalPhysicalExpr;
 use crate::physical_plan::region_name_physical_expr::RegionNamePhysicalExpr;
 use crate::physical_plan::region_physical_expr::RegionPhysicalExpr;
 
-use super::merging::{try_merge_chrom_exprs, try_merge_region_with_interval};
+use super::merging::{try_merge_region_name_exprs, try_merge_region_with_interval};
 
 pub fn transform_region_expressions(
     e: Arc<dyn PhysicalExpr>,
@@ -48,7 +48,7 @@ pub fn transform_region_expressions(
                 if let Some(right_chrom) =
                     be.right().as_any().downcast_ref::<RegionNamePhysicalExpr>()
                 {
-                    match try_merge_chrom_exprs(left_chrom, right_chrom) {
+                    match try_merge_region_name_exprs(left_chrom, right_chrom) {
                         Ok(Some(new_expr)) => return Ok(Transformed::Yes(Arc::new(new_expr))),
                         Ok(None) => return Ok(Transformed::No(e)),
                         Err(e) => return Err(e),

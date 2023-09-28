@@ -41,6 +41,10 @@ pub enum ExonFileType {
     /// BAM file format.
     BAM,
 
+    /// Indexed BAM file format.
+    /// This is a special case of BAM file format that must be indexed.
+    IndexedBAM,
+
     /// SAM file format.
     SAM,
 
@@ -80,6 +84,7 @@ impl FromStr for ExonFileType {
             "BCF" => Ok(Self::BCF),
             "GFF" => Ok(Self::GFF),
             "BAM" => Ok(Self::BAM),
+            "INDEXED_BAM" => Ok(Self::IndexedBAM),
             "SAM" => Ok(Self::SAM),
             #[cfg(feature = "mzml")]
             "MZML" => Ok(Self::MZML),
@@ -102,6 +107,7 @@ impl Display for ExonFileType {
             Self::FASTQ => write!(f, "FASTQ"),
             Self::VCF => write!(f, "VCF"),
             Self::IndexedVCF => write!(f, "INDEXED_VCF"),
+            Self::IndexedBAM => write!(f, "INDEXED_BAM"),
             Self::BCF => write!(f, "BCF"),
             Self::GFF => write!(f, "GFF"),
             Self::BAM => write!(f, "BAM"),
@@ -171,6 +177,7 @@ mod tests {
         assert_eq!(ExonFileType::BCF.to_string(), "BCF");
         assert_eq!(ExonFileType::GFF.to_string(), "GFF");
         assert_eq!(ExonFileType::BAM.to_string(), "BAM");
+        assert_eq!(ExonFileType::IndexedBAM.to_string(), "INDEXED_BAM");
         assert_eq!(ExonFileType::SAM.to_string(), "SAM");
         #[cfg(feature = "genbank")]
         assert_eq!(ExonFileType::GENBANK.to_string(), "GENBANK");
