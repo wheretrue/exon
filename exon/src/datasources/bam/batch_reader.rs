@@ -17,12 +17,10 @@ use std::{pin::Pin, sync::Arc};
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use futures::{Stream, StreamExt};
-use noodles::sam::alignment::Record;
+use noodles::bam::lazy::Record;
 use tokio::io::{AsyncBufRead, AsyncRead};
 
-use crate::datasources::sam::SAMArrayBuilder;
-
-use super::config::BAMConfig;
+use super::{array_builder::BAMArrayBuilder, config::BAMConfig};
 
 /// A batch reader for BAM files.
 pub struct BatchReader<R>
@@ -75,7 +73,7 @@ where
     async fn read_record(&mut self) -> std::io::Result<Option<Record>> {
         let mut record = Record::default();
 
-        match self.reader.read_record(&self.header, &mut record).await? {
+        match self.reader.read_lazy_record(&mut record).await? {
             0 => Ok(None),
             _ => Ok(Some(record)),
         }
@@ -83,7 +81,7 @@ where
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
         let mut record_batch =
-            SAMArrayBuilder::create(self.header.clone(), self.config.projection());
+            BAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
@@ -127,7 +125,7 @@ impl StreamRecordBatchAdapter {
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
         let mut record_batch =
-            SAMArrayBuilder::create(self.header.clone(), self.config.projection());
+            BAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for _ in 0..self.config.batch_size {
             match self.stream.next().await {

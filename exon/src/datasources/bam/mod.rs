@@ -16,6 +16,7 @@
 //!
 //! Reads BAM files. It is the binary version of SAM files.
 
+mod array_builder;
 mod batch_reader;
 mod config;
 mod file_opener;
