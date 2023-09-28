@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::SchemaRef;
+use datafusion::error::Result;
 use object_store::ObjectStore;
 
 use crate::datasources::DEFAULT_BATCH_SIZE;
@@ -61,5 +62,19 @@ impl BAMConfig {
     pub fn with_some_projection(mut self, projection: Option<Vec<usize>>) -> Self {
         self.projection = projection;
         self
+    }
+
+    /// Get the projection, returning the identity projection if none is set.
+    pub fn projection(&self) -> Vec<usize> {
+        self.projection
+            .clone()
+            .unwrap_or_else(|| (0..self.file_schema.fields().len()).collect())
+    }
+
+    /// Get the projected schema.
+    pub fn projected_schema(&self) -> Result<SchemaRef> {
+        let schema = self.file_schema.project(&self.projection())?;
+
+        Ok(Arc::new(schema))
     }
 }
