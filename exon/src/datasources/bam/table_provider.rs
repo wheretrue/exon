@@ -37,6 +37,12 @@ pub struct RegionBuilder {
     end: Option<i32>,
 }
 
+impl Default for RegionBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RegionBuilder {
     /// Create a new RegionBuilder
     pub fn new() -> Self {
@@ -49,32 +55,25 @@ impl RegionBuilder {
 
     /// Add the expression to the builder
     pub fn add_from_expr(mut self, expr: &Expr) -> Self {
-        match expr {
-            Expr::BinaryExpr(be) => {
-                let left = be.left.as_ref();
-                let right = be.right.as_ref();
-                let op = be.op;
+        if let Expr::BinaryExpr(be) = expr {
+            let left = be.left.as_ref();
+            let right = be.right.as_ref();
+            let op = be.op;
 
-                match (left, right, op) {
-                    (Expr::Column(c), Expr::Literal(l), Operator::Eq)
-                        if c.name.as_str() == "reference" =>
-                    {
-                        self.reference = Some(l.to_string());
-                    }
-                    (Expr::Column(c), Expr::Literal(l), Operator::Gt)
-                        if c.name.as_str() == "end" =>
-                    {
-                        self.end = l.to_string().parse::<i32>().ok();
-                    }
-                    (Expr::Column(c), Expr::Literal(l), Operator::Lt)
-                        if c.name.as_str() == "start" =>
-                    {
-                        self.start = l.to_string().parse::<i32>().ok();
-                    }
-                    _ => {}
+            match (left, right, op) {
+                (Expr::Column(c), Expr::Literal(l), Operator::Eq)
+                    if c.name.as_str() == "reference" =>
+                {
+                    self.reference = Some(l.to_string());
                 }
+                (Expr::Column(c), Expr::Literal(l), Operator::Gt) if c.name.as_str() == "end" => {
+                    self.end = l.to_string().parse::<i32>().ok();
+                }
+                (Expr::Column(c), Expr::Literal(l), Operator::Lt) if c.name.as_str() == "start" => {
+                    self.start = l.to_string().parse::<i32>().ok();
+                }
+                _ => {}
             }
-            _ => {}
         }
 
         self
@@ -399,7 +398,7 @@ mod tests {
         ctx.sql(&create_external_table_sql).await?;
 
         let select_sql = "SELECT * FROM bam_file WHERE reference = 'chr1';";
-        let df = ctx.sql(&select_sql).await?;
+        let df = ctx.sql(select_sql).await?;
         let cnt = df.count().await?;
 
         assert_eq!(cnt, 61);
