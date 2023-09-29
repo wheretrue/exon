@@ -168,9 +168,9 @@ impl ListingBAMTableOptions {
     async fn create_physical_plan_with_region(
         &self,
         conf: FileScanConfig,
-        region: Arc<Region>,
+        _region: Arc<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedBAMScan::new(conf, region);
+        let scan = IndexedBAMScan::new(conf);
         Ok(Arc::new(scan))
     }
 
@@ -250,12 +250,12 @@ impl TableProvider for ListingBAMTable {
                     (Expr::Column(c), Expr::Literal(_), Operator::Gt)
                         if c.name.as_str() == "end" =>
                     {
-                        TableProviderFilterPushDown::Inexact
+                        TableProviderFilterPushDown::Exact
                     }
                     (Expr::Column(c), Expr::Literal(_), Operator::Lt)
                         if c.name.as_str() == "start" =>
                     {
-                        TableProviderFilterPushDown::Inexact
+                        TableProviderFilterPushDown::Exact
                     }
                     // If the left is a column and the right is a literal we can push down
                     _ => TableProviderFilterPushDown::Unsupported,
@@ -350,7 +350,7 @@ mod tests {
 
     use crate::{
         datasources::{ExonFileType, ExonListingTableFactory},
-        tests::test_listing_table_url,
+        tests::{setup_tracing, test_listing_table_url},
         ExonSessionExt,
     };
 
@@ -387,6 +387,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_with_index() -> Result<(), Box<dyn std::error::Error>> {
+        setup_tracing();
         let ctx = SessionContext::new_exon();
 
         let table_path = test_listing_table_url("bam");
@@ -397,9 +398,11 @@ mod tests {
         );
         ctx.sql(&create_external_table_sql).await?;
 
-        let select_sql = "SELECT * FROM bam_file WHERE reference = 'chr1';";
+        let select_sql = "SELECT name, start, reference FROM bam_file WHERE reference = 'chr1';";
         let df = ctx.sql(select_sql).await?;
         let cnt = df.count().await?;
+
+        tracing::debug!("Count: {}", cnt);
 
         assert_eq!(cnt, 61);
 

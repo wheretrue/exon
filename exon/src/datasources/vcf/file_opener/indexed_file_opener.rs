@@ -109,13 +109,12 @@ impl FileOpener for IndexedVCFOpener {
                             file_meta.location()
                         );
 
+                        let start = vp_start.compressed() as usize;
                         let end = if vp_start.compressed() == vp_end.compressed() {
                             file_meta.object_meta.size
                         } else {
                             vp_end.compressed() as usize
                         };
-
-                        let start = vp_start.compressed() as usize;
 
                         let get_options = GetOptions {
                             range: Some(Range { start, end }),

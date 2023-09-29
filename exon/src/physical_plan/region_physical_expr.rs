@@ -224,7 +224,7 @@ impl PhysicalExpr for RegionPhysicalExpr {
             None => self.region_name_expr.evaluate(batch),
         };
 
-        tracing::info!("Got eval: {:?}", eval);
+        tracing::trace!("Got eval: {:?}", eval);
 
         eval
     }
