@@ -15,13 +15,23 @@
 use std::{io, sync::Arc};
 
 use datafusion::{
-    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    datasource::{
+        listing::FileRange,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::core::Region;
+use noodles::{
+    bam::lazy::record::Data,
+    bgzf::{self, VirtualPosition},
+    core::Region,
+    sam::Header,
+};
 use object_store::GetResultPayload;
 use tokio_util::io::StreamReader;
+
+use crate::streaming_bgzf::AsyncBGZFReader;
 
 use super::{
     batch_reader::{BatchReader, StreamRecordBatchAdapter},
@@ -49,41 +59,91 @@ impl FileOpener for IndexedBAMOpener {
         let config = self.config.clone();
         let region = self.region.clone();
 
-        Ok(Box::pin(async move {
-            let get_request = config.object_store.get(file_meta.location()).await?;
+        todo!();
 
-            match get_request.payload {
-                GetResultPayload::File(_file, path) => {
-                    let mut reader =
-                        noodles::bam::indexed_reader::Builder::default().build_from_path(path)?;
+        // Ok(Box::pin(async move {
+        //     let get_request = config.object_store.get(file_meta.location()).await?;
+        //     let get_stream = get_request.into_stream();
 
-                    let header = reader.read_header()?;
+        //     let stream_reader = Box::pin(get_stream.map_err(DataFusionError::from));
+        //     let stream_reader = StreamReader::new(stream_reader);
 
-                    let query = reader
-                        .query(&header, &region)?
-                        .map(Ok)
-                        .collect::<io::Result<Vec<_>>>()?;
+        //     let mut first_bam_reader = noodles::bam::AsyncReader::new(stream_reader);
 
-                    let record_stream = futures::stream::iter(query).boxed();
+        //     let bam_header: Header =
+        //         first_bam_reader.read_header().await?.parse().map_err(|_| {
+        //             DataFusionError::Execution("Error parsing BAM header".to_string())
+        //         })?;
 
-                    let batch_adapter =
-                        StreamRecordBatchAdapter::new(record_stream, header, config.clone());
+        //     first_bam_reader.read_reference_sequences().await?;
 
-                    let batch_stream = batch_adapter.into_stream();
+        //     let header_offset = first_bam_reader.virtual_position();
 
-                    Ok(batch_stream.boxed())
-                }
-                GetResultPayload::Stream(s) => {
-                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+        //     let bgzf_reader = match file_meta.range {
+        //         Some(FileRange { start, end }) => {
+        //             let vp_start = VirtualPosition::from(start as u64);
+        //             let vp_end = VirtualPosition::from(end as u64);
 
-                    let stream_reader = StreamReader::new(stream_reader);
-                    let batch_reader = BatchReader::new(stream_reader, config).await?;
+        //             if vp_end.compressed() == 0 {
+        //                 let stream = config
+        //                     .object_store
+        //                     .get(file_meta.location())
+        //                     .await?
+        //                     .into_stream()
+        //                     .map_err(DataFusionError::from);
 
-                    let batch_stream = batch_reader.into_stream();
+        //                 let stream_reader = StreamReader::new(Box::pin(stream));
 
-                    Ok(batch_stream.boxed())
-                }
-            }
-        }))
+        //                 let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
+        //                 async_reader.scan_to_virtual_position(header_offset).await?;
+
+        //                 async_reader
+        //             }
+        //         }
+        //         None => {
+        //             todo!()
+        //         }
+        //     };
+
+        //     // let bgzf_reader = AsyncBGZFReader::new(bgzf_reader);
+        //     let bgzf_reader = bgzf_reader.into_inner();
+
+        //     let bam_reader = noodles::bam::AsyncReader::from(bgzf_reader);
+
+        //     let lazy_records = bam_reader.lazy_records().await;
+
+        // match get_request.payload {
+        //     GetResultPayload::File(_file, path) => {
+        //         let mut reader =
+        //             noodles::bam::indexed_reader::Builder::default().build_from_path(path)?;
+
+        //         let header = reader.read_header()?;
+
+        //         let query = reader
+        //             .query(&header, &region)?
+        //             .map(Ok)
+        //             .collect::<io::Result<Vec<_>>>()?;
+
+        //         let record_stream = futures::stream::iter(query).boxed();
+
+        //         let batch_adapter =
+        //             StreamRecordBatchAdapter::new(record_stream, header, config.clone());
+
+        //         let batch_stream = batch_adapter.into_stream();
+
+        //         Ok(batch_stream.boxed())
+        //     }
+        //     GetResultPayload::Stream(s) => {
+        //         let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+
+        //         let stream_reader = StreamReader::new(stream_reader);
+        //         let batch_reader = BatchReader::new(stream_reader, config).await?;
+
+        //         let batch_stream = batch_reader.into_stream();
+
+        //         Ok(batch_stream.boxed())
+        //     }
+        // }
+        // }))
     }
 }
