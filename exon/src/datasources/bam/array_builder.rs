@@ -20,7 +20,9 @@ use arrow::{
     error::ArrowError,
 };
 use itertools::Itertools;
-use noodles::{bam::lazy::Record, sam::header::ReferenceSequences};
+use noodles::sam::header::ReferenceSequences;
+
+use super::async_batch_stream::SemiLazyRecord;
 
 /// Builds an vector of arrays from a SAM file.
 pub struct BAMArrayBuilder {
@@ -81,20 +83,20 @@ impl BAMArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
+    pub fn append(&mut self, record: &SemiLazyRecord) -> Result<(), ArrowError> {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
                     let sam_read_name: Option<noodles::sam::record::ReadName> =
-                        record.read_name().map(|v| v.try_into().unwrap());
+                        record.record().read_name().map(|v| v.try_into().unwrap());
 
                     self.names.append_option(sam_read_name);
                 }
                 1 => {
-                    let flag_bits = record.flags().bits();
+                    let flag_bits = record.record().flags().bits();
                     self.flags.append_value(flag_bits as i32);
                 }
-                2 => match record.reference_sequence_id()? {
+                2 => match record.record().reference_sequence_id()? {
                     Some(reference_sequence_id) => {
                         let names = &self.reference_sequences.keys().collect::<Vec<_>>();
 
@@ -107,35 +109,32 @@ impl BAMArrayBuilder {
                 },
                 3 => {
                     self.starts
-                        .append_option(record.alignment_start()?.map(|v| v.get() as i32));
+                        .append_option(record.record().alignment_start()?.map(|v| v.get() as i32));
                 }
                 4 => {
-                    let template_length = record.template_length();
+                    let template_length = record.record().template_length();
                     let alignment_end = record
+                        .record()
                         .alignment_start()?
                         .map(|v| v.get() as i32 + template_length);
 
                     self.ends.append_option(alignment_end);
                 }
                 5 => {
-                    self.mapping_qualities
-                        .append_option(record.mapping_quality().map(|v| v.get().to_string()));
+                    self.mapping_qualities.append_option(
+                        record
+                            .record()
+                            .mapping_quality()
+                            .map(|v| v.get().to_string()),
+                    );
                 }
                 6 => {
                     let cigar = record.cigar();
-
-                    let cigar_string = cigar
-                        .iter()
-                        .map(|c| {
-                            let c = c.unwrap();
-
-                            c.to_string()
-                        })
-                        .join("");
+                    let cigar_string = cigar.iter().map(|c| c.to_string()).join("");
 
                     self.cigar.append_value(cigar_string.as_str());
                 }
-                7 => match record.mate_reference_sequence_id()? {
+                7 => match record.record().mate_reference_sequence_id()? {
                     Some(mate_reference_sequence_id) => {
                         let mate_reference_name =
                             &self.reference_sequences[mate_reference_sequence_id];
@@ -148,14 +147,14 @@ impl BAMArrayBuilder {
                     }
                 },
                 8 => {
-                    let sequence = record.sequence();
+                    let sequence = record.record().sequence();
                     let sam_record_sequence: noodles::sam::record::Sequence =
                         sequence.try_into()?;
 
                     self.sequences.append_value(sam_record_sequence.to_string());
                 }
                 9 => {
-                    let quality_scores = record.quality_scores();
+                    let quality_scores = record.record().quality_scores();
                     let sam_record_quality_scores: noodles::sam::record::QualityScores =
                         quality_scores.try_into()?;
 
@@ -163,7 +162,7 @@ impl BAMArrayBuilder {
                         .append_value(sam_record_quality_scores.to_string().as_str());
                 }
                 10 => {
-                    let data = record.data();
+                    let data = record.record().data();
                     let data: noodles::sam::record::Data = data.try_into()?;
                     let tags = data.keys();
 

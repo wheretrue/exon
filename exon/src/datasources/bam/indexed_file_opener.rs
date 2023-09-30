@@ -22,7 +22,7 @@ use datafusion::{
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::bgzf::VirtualPosition;
+use noodles::{bgzf::VirtualPosition, core::Region};
 use object_store::GetOptions;
 use tokio_util::io::StreamReader;
 
@@ -35,13 +35,13 @@ pub struct IndexedBAMOpener {
     /// The base configuration for the file scan.
     config: Arc<BAMConfig>,
     // An optional region to filter on.
-    // region: Arc<Region>,
+    region: Arc<Region>,
 }
 
 impl IndexedBAMOpener {
     /// Create a new BAM file opener.
-    pub fn new(config: Arc<BAMConfig>) -> Self {
-        Self { config }
+    pub fn new(config: Arc<BAMConfig>, region: Arc<Region>) -> Self {
+        Self { config, region }
     }
 }
 
@@ -49,7 +49,7 @@ impl FileOpener for IndexedBAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
         // TODO: push down region
-        // let region = self.region.clone();
+        let region = self.region.clone();
 
         Ok(Box::pin(async move {
             let get_request = config.object_store.get(file_meta.location()).await?;
@@ -133,9 +133,9 @@ impl FileOpener for IndexedBAMOpener {
             let reference_sequences = Arc::new(reference_sequences);
 
             let batch_stream =
-                AsyncBatchStream::new(bam_reader, config, reference_sequences).into_stream();
+                AsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
 
-            Ok(batch_stream.boxed())
+            Ok(batch_stream.into_stream().boxed())
         }))
     }
 }

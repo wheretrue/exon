@@ -23,6 +23,7 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use noodles::core::Region;
 
 #[derive(Debug)]
 /// Implements a datafusion `ExecutionPlan` for BAM files.
@@ -35,13 +36,14 @@ pub struct IndexedBAMScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
     // A region filter for the scan.
-    // region_filter: Arc<Region>,
+    region: Arc<Region>,
 }
 
 impl IndexedBAMScan {
     /// Create a new BAM scan.
-    pub fn new(base_config: FileScanConfig) -> Self {
+    pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
         let projected_schema = match &base_config.projection {
             Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
             None => base_config.file_schema.clone(),
@@ -51,6 +53,7 @@ impl IndexedBAMScan {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
+            region,
         }
     }
 }
@@ -107,7 +110,7 @@ impl ExecutionPlan for IndexedBAMScan {
             config = config.with_some_projection(Some(projection.clone()));
         }
 
-        let opener = IndexedBAMOpener::new(Arc::new(config));
+        let opener = IndexedBAMOpener::new(Arc::new(config), self.region.clone());
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

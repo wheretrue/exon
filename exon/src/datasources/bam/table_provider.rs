@@ -168,9 +168,9 @@ impl ListingBAMTableOptions {
     async fn create_physical_plan_with_region(
         &self,
         conf: FileScanConfig,
-        _region: Arc<Region>,
+        region: Arc<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedBAMScan::new(conf);
+        let scan = IndexedBAMScan::new(conf, region);
         Ok(Arc::new(scan))
     }
 
@@ -250,12 +250,12 @@ impl TableProvider for ListingBAMTable {
                     (Expr::Column(c), Expr::Literal(_), Operator::Gt)
                         if c.name.as_str() == "end" =>
                     {
-                        TableProviderFilterPushDown::Exact
+                        TableProviderFilterPushDown::Inexact
                     }
                     (Expr::Column(c), Expr::Literal(_), Operator::Lt)
                         if c.name.as_str() == "start" =>
                     {
-                        TableProviderFilterPushDown::Exact
+                        TableProviderFilterPushDown::Inexact
                     }
                     // If the left is a column and the right is a literal we can push down
                     _ => TableProviderFilterPushDown::Unsupported,
