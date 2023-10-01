@@ -3,6 +3,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 name: Release Python package
 
