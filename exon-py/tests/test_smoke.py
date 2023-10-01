@@ -14,4 +14,5 @@
 
 
 def test_smoke():
+    """A smoke test for the exon-py library."""
     assert True
