@@ -7,17 +7,19 @@ authors = [
   {name = "Trent Hauck", email = "trent@trenthauck.com"},
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = [
+  'adbc_driver_flightsql==0.7.0',
+  'pyarrow==13.0.0',
+  'grpcio==1.59.0',
+  'protobuf==4.24.3',
+]
 description = ''
 dynamic = ["version"]
 keywords = []

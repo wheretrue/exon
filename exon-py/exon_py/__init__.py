@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-# Setup logging for the exonpy library
+# Setup logging for the exon_py library
 import logging
 from contextlib import contextmanager
 

@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from exonpy.proto.exome.v1 import catalog_pb2 as exome_dot_v1_dot_catalog__pb2
+from exon_py.proto.exome.v1 import catalog_pb2 as exome_dot_v1_dot_catalog__pb2
 
 
 class CatalogServiceStub(object):
@@ -439,9 +439,7 @@ def add_CatalogServiceServicer_to_server(servicer, server):
             response_serializer=exome_dot_v1_dot_catalog__pb2.RunQueryResponse.SerializeToString,
         ),
     }
-    generic_handler = grpc.method_handlers_generic_handler(
-        "exome.v1.CatalogService", rpc_method_handlers
-    )
+    generic_handler = grpc.method_handlers_generic_handler("exome.v1.CatalogService", rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
