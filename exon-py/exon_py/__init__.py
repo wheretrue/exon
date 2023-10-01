@@ -1,5 +1,3 @@
-"""ExonPy is a Python library for working with exon data."""
-
 # Copyright 2023 WHERE TRUE Technologies.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# Setup logging for the exonpy library
+import logging
 from contextlib import contextmanager
 
 import adbc_driver_flightsql.dbapi as flight_sql
 import grpc
 from adbc_driver_flightsql import DatabaseOptions
 
-from exonpy.proto.exome.v1 import health_check_pb2
-from exonpy.proto.exome.v1 import health_check_pb2_grpc
-
-from exonpy.proto.exome.v1 import catalog_pb2
-from exonpy.proto.exome.v1 import catalog_pb2_grpc
-
-# Setup logging for the exonpy library
-import logging
+from exon_py.proto.exome.v1 import catalog_pb2, catalog_pb2_grpc, health_check_pb2, health_check_pb2_grpc
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -101,9 +95,7 @@ class ExomeConnection:
         return "ExomeConnection()"
 
 
-def _flight_sql_connect(
-    uri: str, skip_verify: bool, token: str, protocol: str = "grpc+tls"
-):
+def _flight_sql_connect(uri: str, token: str, protocol: str = "grpc+tls", *, skip_verify: bool = True):
     """Connect to an Exome server."""
     try:
         flight_connection = flight_sql.connect(
@@ -116,7 +108,8 @@ def _flight_sql_connect(
 
     # pylint: disable=invalid-name
     except Exception as e:
-        raise ExomeError("Connection failed") from e
+        error_msg = f"Error connecting to Exome server: {e}"
+        raise ExomeError(error_msg) from None
 
     return flight_connection
 
@@ -136,7 +129,7 @@ def _connect_to_exome_request(
 
     # pylint: disable=invalid-name
     except Exception as e:
-        raise ExomeError(str(e))
+        raise ExomeError(str(e)) from None
 
     token = token_response.token
 
@@ -144,9 +137,7 @@ def _connect_to_exome_request(
 
 
 def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnection:
-    creds = grpc.ssl_channel_credentials(
-        root_certificates=None, private_key=None, certificate_chain=None
-    )
+    creds = grpc.ssl_channel_credentials(root_certificates=None, private_key=None, certificate_chain=None)
 
     channel = grpc.secure_channel(uri, creds)
     stub = catalog_pb2_grpc.CatalogServiceStub(channel)
@@ -161,7 +152,6 @@ def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnect
     return exome_grpc_connection
 
 
-# Connect should be able to be a context manager
 @contextmanager
 def connect(username: str, password: str, organization_name: str = "Public", **kwargs):
     """Connect to an Exome server."""
@@ -188,9 +178,7 @@ def connect(username: str, password: str, organization_name: str = "Public", **k
 
 def health_check(uri: str) -> health_check_pb2.HealthCheckResponse:
     """Return the health of the Exome server."""
-    creds = grpc.ssl_channel_credentials(
-        root_certificates=None, private_key=None, certificate_chain=None
-    )
+    creds = grpc.ssl_channel_credentials(root_certificates=None, private_key=None, certificate_chain=None)
 
     channel = grpc.secure_channel(uri, creds)
 

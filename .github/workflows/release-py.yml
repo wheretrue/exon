@@ -1,0 +1,40 @@
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+name: Release Python package
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./exon-py
+
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install hatch
+
+    - name: Build package
+      run: hatch build
+
+    - name: Test package
+      run: hatch run test
+
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
