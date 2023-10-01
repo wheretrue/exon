@@ -66,64 +66,67 @@ impl FileOpener for IndexedBAMOpener {
 
             let header_offset = first_bam_reader.virtual_position();
 
-            let bgzf_reader = match file_meta.range {
+            let (vp_start, vp_end) = match file_meta.range {
                 Some(FileRange { start, end }) => {
                     let vp_start = VirtualPosition::from(start as u64);
                     let vp_end = VirtualPosition::from(end as u64);
-
-                    if vp_end.compressed() == 0 {
-                        let stream = config
-                            .object_store
-                            .get(file_meta.location())
-                            .await?
-                            .into_stream()
-                            .map_err(DataFusionError::from);
-
-                        let stream_reader = StreamReader::new(Box::pin(stream));
-
-                        let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
-                        async_reader.scan_to_virtual_position(header_offset).await?;
-
-                        async_reader
-                    } else {
-                        let start = vp_start.compressed() as usize;
-                        let end = if vp_start.compressed() == vp_end.compressed() {
-                            tracing::debug!("Reading entire file because start == end");
-                            file_meta.object_meta.size
-                        } else {
-                            vp_end.compressed() as usize
-                        };
-
-                        tracing::debug!(
-                            "Reading compressed range: {}..{} of {}",
-                            vp_start.compressed(),
-                            vp_end.compressed(),
-                            file_meta.location()
-                        );
-
-                        let get_options = GetOptions {
-                            range: Some(Range { start, end }),
-                            ..Default::default()
-                        };
-
-                        let get_response = config
-                            .object_store
-                            .get_opts(file_meta.location(), get_options)
-                            .await?;
-
-                        let stream = get_response.into_stream().map_err(DataFusionError::from);
-
-                        let stream_reader = StreamReader::new(Box::pin(stream));
-                        let async_reader = AsyncBGZFReader::from_reader(stream_reader);
-
-                        tracing::debug!("Scanning to {} if necessary", vp_start.uncompressed());
-
-                        async_reader
-                    }
+                    (vp_start, vp_end)
                 }
                 None => {
-                    todo!()
+                    return Err(DataFusionError::Execution(
+                        "Indexed BAM opener needs a range.".to_string(),
+                    ))
                 }
+            };
+
+            let bgzf_reader = if vp_end.compressed() == 0 {
+                let stream = config
+                    .object_store
+                    .get(file_meta.location())
+                    .await?
+                    .into_stream()
+                    .map_err(DataFusionError::from);
+
+                let stream_reader = StreamReader::new(Box::pin(stream));
+
+                let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
+                async_reader.scan_to_virtual_position(header_offset).await?;
+
+                async_reader
+            } else {
+                let start = vp_start.compressed() as usize;
+                let end = if vp_start.compressed() == vp_end.compressed() {
+                    tracing::debug!("Reading entire file because start == end");
+                    file_meta.object_meta.size
+                } else {
+                    vp_end.compressed() as usize
+                };
+
+                tracing::debug!(
+                    "Reading compressed range: {}..{} of {}",
+                    vp_start.compressed(),
+                    vp_end.compressed(),
+                    file_meta.location()
+                );
+
+                let get_options = GetOptions {
+                    range: Some(Range { start, end }),
+                    ..Default::default()
+                };
+
+                let get_response = config
+                    .object_store
+                    .get_opts(file_meta.location(), get_options)
+                    .await?;
+
+                let stream = get_response.into_stream().map_err(DataFusionError::from);
+
+                let stream_reader = StreamReader::new(Box::pin(stream));
+                let async_reader = AsyncBGZFReader::from_reader(stream_reader);
+
+                tracing::debug!("Scanning to {} if necessary", vp_start.uncompressed());
+
+                async_reader
             };
 
             let bgzf_reader = bgzf_reader.into_inner();
