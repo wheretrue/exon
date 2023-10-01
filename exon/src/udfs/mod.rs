@@ -25,3 +25,6 @@ pub mod massspec;
 
 /// UDFs for VCF files.
 pub mod vcf;
+
+/// UDF to filter BAM's by region.
+pub mod bam_region_filter;

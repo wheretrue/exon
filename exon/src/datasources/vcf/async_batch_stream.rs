@@ -28,7 +28,7 @@ pub struct AsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
 {
-    /// The underlying record stream.
+    /// The underlying reader.
     reader: noodles::vcf::AsyncReader<R>,
 
     /// The VCF configuration.

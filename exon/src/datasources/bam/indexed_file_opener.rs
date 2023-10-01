@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{io, sync::Arc};
+use std::{ops::Range, sync::Arc};
 
 use datafusion::{
-    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    datasource::{
+        listing::FileRange,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::core::Region;
-use object_store::GetResultPayload;
+use noodles::{bgzf::VirtualPosition, core::Region};
+use object_store::GetOptions;
 use tokio_util::io::StreamReader;
 
-use super::{
-    batch_reader::{BatchReader, StreamRecordBatchAdapter},
-    config::BAMConfig,
-};
+use crate::streaming_bgzf::AsyncBGZFReader;
+
+use super::{async_batch_stream::AsyncBatchStream, config::BAMConfig};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct IndexedBAMOpener {
     /// The base configuration for the file scan.
     config: Arc<BAMConfig>,
-
-    /// An optional region to filter on.
+    // An optional region to filter on.
     region: Arc<Region>,
 }
 
@@ -47,43 +48,97 @@ impl IndexedBAMOpener {
 impl FileOpener for IndexedBAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
+        // TODO: push down region
         let region = self.region.clone();
 
         Ok(Box::pin(async move {
             let get_request = config.object_store.get(file_meta.location()).await?;
+            let get_stream = get_request.into_stream();
 
-            match get_request.payload {
-                GetResultPayload::File(_file, path) => {
-                    let mut reader =
-                        noodles::bam::indexed_reader::Builder::default().build_from_path(path)?;
+            let stream_reader = Box::pin(get_stream.map_err(DataFusionError::from));
+            let stream_reader = StreamReader::new(stream_reader);
 
-                    let header = reader.read_header()?;
+            let mut first_bam_reader = noodles::bam::AsyncReader::new(stream_reader);
 
-                    let query = reader
-                        .query(&header, &region)?
-                        .map(Ok)
-                        .collect::<io::Result<Vec<_>>>()?;
+            first_bam_reader.read_header().await?;
 
-                    let record_stream = futures::stream::iter(query).boxed();
+            let reference_sequences = first_bam_reader.read_reference_sequences().await?;
 
-                    let batch_adapter =
-                        StreamRecordBatchAdapter::new(record_stream, header, config.clone());
+            let header_offset = first_bam_reader.virtual_position();
 
-                    let batch_stream = batch_adapter.into_stream();
-
-                    Ok(batch_stream.boxed())
+            let (vp_start, vp_end) = match file_meta.range {
+                Some(FileRange { start, end }) => {
+                    let vp_start = VirtualPosition::from(start as u64);
+                    let vp_end = VirtualPosition::from(end as u64);
+                    (vp_start, vp_end)
                 }
-                GetResultPayload::Stream(s) => {
-                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
-
-                    let stream_reader = StreamReader::new(stream_reader);
-                    let batch_reader = BatchReader::new(stream_reader, config).await?;
-
-                    let batch_stream = batch_reader.into_stream();
-
-                    Ok(batch_stream.boxed())
+                None => {
+                    return Err(DataFusionError::Execution(
+                        "Indexed BAM opener needs a range.".to_string(),
+                    ))
                 }
-            }
+            };
+
+            let bgzf_reader = if vp_end.compressed() == 0 {
+                let stream = config
+                    .object_store
+                    .get(file_meta.location())
+                    .await?
+                    .into_stream()
+                    .map_err(DataFusionError::from);
+
+                let stream_reader = StreamReader::new(Box::pin(stream));
+
+                let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
+                async_reader.scan_to_virtual_position(header_offset).await?;
+
+                async_reader
+            } else {
+                let start = vp_start.compressed() as usize;
+                let end = if vp_start.compressed() == vp_end.compressed() {
+                    tracing::debug!("Reading entire file because start == end");
+                    file_meta.object_meta.size
+                } else {
+                    vp_end.compressed() as usize
+                };
+
+                tracing::debug!(
+                    "Reading compressed range: {}..{} of {}",
+                    vp_start.compressed(),
+                    vp_end.compressed(),
+                    file_meta.location()
+                );
+
+                let get_options = GetOptions {
+                    range: Some(Range { start, end }),
+                    ..Default::default()
+                };
+
+                let get_response = config
+                    .object_store
+                    .get_opts(file_meta.location(), get_options)
+                    .await?;
+
+                let stream = get_response.into_stream().map_err(DataFusionError::from);
+
+                let stream_reader = StreamReader::new(Box::pin(stream));
+                let async_reader = AsyncBGZFReader::from_reader(stream_reader);
+
+                tracing::debug!("Scanning to {} if necessary", vp_start.uncompressed());
+
+                async_reader
+            };
+
+            let bgzf_reader = bgzf_reader.into_inner();
+
+            let bam_reader = noodles::bam::AsyncReader::from(bgzf_reader);
+
+            let reference_sequences = Arc::new(reference_sequences);
+
+            let batch_stream =
+                AsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
+
+            Ok(batch_stream.into_stream().boxed())
         }))
     }
 }
