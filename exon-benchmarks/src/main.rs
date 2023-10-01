@@ -129,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             ctx.sql(
                 format!(
-                    "CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '{}';",
+                    "CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '{}';",
                     path
                 )
                 .as_str(),
@@ -137,7 +137,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
 
             let df = ctx
-                .sql(format!("SELECT * FROM bam WHERE region = '{}';", region).as_str())
+                .sql(
+                    format!(
+                        "SELECT reference FROM bam WHERE bam_region_filter('{}', reference, start, end) = true;",
+                        region
+                    )
+                    .as_str(),
+                )
                 .await?;
 
             let cnt = df.count().await?;

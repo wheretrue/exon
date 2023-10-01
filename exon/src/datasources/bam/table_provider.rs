@@ -24,101 +24,28 @@ use datafusion::{
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
-    logical_expr::{expr::ScalarUDF, Operator, TableProviderFilterPushDown, TableType},
+    logical_expr::{expr::ScalarUDF, TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
-use noodles::core::{region::Interval, Region};
+use noodles::core::Region;
 
-/// A builder for a Region.
-pub struct RegionBuilder {
-    reference: Option<String>,
-    start: Option<i32>,
-    end: Option<i32>,
-}
-
-impl Default for RegionBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RegionBuilder {
-    /// Create a new RegionBuilder
-    pub fn new() -> Self {
-        RegionBuilder {
-            reference: None,
-            start: None,
-            end: None,
-        }
-    }
-
-    pub fn add_from_scalar_udf(mut self, scalar_udf: ScalarUDF) -> Self {
-        if scalar_udf.fun.name.as_str() == "bam_region_filter" {
-            let args = scalar_udf.args;
-            if args.len() == 2 {
-                let first_arg = args.get(0).unwrap();
-
-                match first_arg {
-                    Expr::Literal(l) => {
-                        self.reference = Some(l.to_string());
-                    }
-                    _ => {}
+fn infer_region_from_scalar_udf(scalar_udf: &ScalarUDF) -> Option<Region> {
+    if scalar_udf.fun.name.as_str() == "bam_region_filter" {
+        if scalar_udf.args.len() == 2 || scalar_udf.args.len() == 4 {
+            match &scalar_udf.args[0] {
+                Expr::Literal(l) => {
+                    let region_str = l.to_string();
+                    let region = Region::from_str(region_str.as_str()).ok()?;
+                    Some(region)
                 }
+                _ => None,
             }
+        } else {
+            None
         }
-
-        self
-    }
-
-    /// Add the expression to the builder
-    pub fn add_from_expr(mut self, expr: &Expr) -> Self {
-        if let Expr::BinaryExpr(be) = expr {
-            let left = be.left.as_ref();
-            let right = be.right.as_ref();
-            let op = be.op;
-
-            match (left, right, op) {
-                (Expr::Column(c), Expr::Literal(l), Operator::Eq)
-                    if c.name.as_str() == "reference" =>
-                {
-                    self.reference = Some(l.to_string());
-                }
-                (Expr::Column(c), Expr::Literal(l), Operator::Gt) if c.name.as_str() == "end" => {
-                    self.end = l.to_string().parse::<i32>().ok();
-                }
-                (Expr::Column(c), Expr::Literal(l), Operator::Lt) if c.name.as_str() == "start" => {
-                    self.start = l.to_string().parse::<i32>().ok();
-                }
-                _ => {}
-            }
-        }
-
-        self
-    }
-
-    /// Add a slice of expressions to the builder
-    pub fn add_from_exprs(mut self, exprs: &[Expr]) -> Self {
-        for expr in exprs {
-            match expr {
-                Expr::ScalarUDF(s) => self = self.add_from_scalar_udf(s.clone()),
-                _ => continue,
-            }
-        }
-
-        self
-    }
-
-    /// Build the region
-    pub fn build(self) -> Option<Region> {
-        match (self.reference, self.start, self.end) {
-            (Some(name), Some(start), Some(end)) => {
-                let interval = Interval::from_str(&format!("{}..{}", end, start)).ok()?;
-                Some(Region::new(name, interval))
-            }
-            (Some(name), None, None) => Region::from_str(name.as_str()).ok(),
-            _ => None,
-        }
+    } else {
+        None
     }
 }
 
@@ -250,7 +177,7 @@ impl TableProvider for ListingBAMTable {
             .iter()
             .map(|f| match f {
                 Expr::ScalarUDF(s) if s.fun.name.as_str() == "bam_region_filter" => {
-                    if s.args.len() == 2 {
+                    if s.args.len() == 2 || s.args.len() == 4 {
                         tracing::debug!("Pushing down region filter");
                         TableProviderFilterPushDown::Exact
                     } else {
@@ -278,12 +205,30 @@ impl TableProvider for ListingBAMTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let region = RegionBuilder::new().add_from_exprs(filters).build();
-        if region.is_none() && self.options.indexed {
+        let regions = filters
+            .iter()
+            .filter_map(|f| {
+                if let Expr::ScalarUDF(s) = f {
+                    infer_region_from_scalar_udf(s)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<Region>>();
+
+        if regions.len() > 1 {
+            return Err(DataFusionError::Execution(
+                "Multiple regions are not supported".to_string(),
+            ));
+        }
+
+        if regions.is_empty() && self.options.indexed {
             return Err(DataFusionError::Execution(
                 "Indexed BAM requires a region filter".to_string(),
             ));
         }
+
+        let region = regions.get(0).cloned();
 
         match region {
             None => {
@@ -397,13 +342,11 @@ mod tests {
         );
         ctx.sql(&create_external_table_sql).await?;
 
-        let select_sql = "SELECT name, start, reference FROM bam_file WHERE bam_region_filter('chr1', reference) = true;";
+        let select_sql = "SELECT name, start, reference FROM bam_file WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;";
         let df = ctx.sql(select_sql).await?;
         let cnt = df.count().await?;
 
-        tracing::debug!("Count: {}", cnt);
-
-        assert_eq!(cnt, 61);
+        assert_eq!(cnt, 7);
 
         Ok(())
     }

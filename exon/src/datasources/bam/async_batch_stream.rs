@@ -195,8 +195,6 @@ where
         let schema = self.config.projected_schema()?;
         let batch = RecordBatch::try_new(schema, builder.finish())?;
 
-        tracing::debug!("Read batch with {} rows", batch.num_rows());
-
         Ok(Some(batch))
     }
 }

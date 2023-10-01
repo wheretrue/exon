@@ -22,6 +22,8 @@ use arrow::{
 use itertools::Itertools;
 use noodles::sam::header::ReferenceSequences;
 
+use crate::config::BATCH_SIZE;
+
 use super::async_batch_stream::SemiLazyRecord;
 
 /// Builds an vector of arrays from a SAM file.
@@ -44,6 +46,7 @@ pub struct BAMArrayBuilder {
     rows: usize,
 
     reference_sequences: Arc<ReferenceSequences>,
+    reference_names: Vec<String>,
 }
 
 impl BAMArrayBuilder {
@@ -60,12 +63,22 @@ impl BAMArrayBuilder {
             ],
         );
 
+        let reference_names = reference_sequences
+            .keys()
+            .map(|k| k.to_string())
+            .collect::<Vec<_>>();
+
+        let item_capacity = BATCH_SIZE;
+
         Self {
             names: GenericStringBuilder::<i32>::new(),
             flags: Int32Builder::new(),
-            references: GenericStringBuilder::<i32>::new(),
-            starts: Int32Builder::new(),
-            ends: Int32Builder::new(),
+            references: GenericStringBuilder::<i32>::with_capacity(
+                item_capacity,
+                item_capacity * 10,
+            ),
+            starts: Int32Builder::with_capacity(item_capacity),
+            ends: Int32Builder::with_capacity(item_capacity),
             mapping_qualities: GenericStringBuilder::<i32>::new(),
             cigar: GenericStringBuilder::<i32>::new(),
             mate_references: GenericStringBuilder::<i32>::new(),
@@ -79,6 +92,7 @@ impl BAMArrayBuilder {
             rows: 0,
 
             reference_sequences,
+            reference_names,
         }
     }
 
@@ -98,10 +112,9 @@ impl BAMArrayBuilder {
                 }
                 2 => match record.record().reference_sequence_id()? {
                     Some(reference_sequence_id) => {
-                        let names = &self.reference_sequences.keys().collect::<Vec<_>>();
+                        let reference_name = &self.reference_names[reference_sequence_id];
 
-                        let reference_name = &names[reference_sequence_id];
-                        self.references.append_value(reference_name.to_string());
+                        self.references.append_value(reference_name);
                     }
                     None => {
                         self.references.append_null();
