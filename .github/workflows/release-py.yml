@@ -4,6 +4,8 @@ on:
 permissions:
   contents: read
 
+name: Release Python package
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
