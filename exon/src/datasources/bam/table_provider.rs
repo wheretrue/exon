@@ -24,7 +24,7 @@ use datafusion::{
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
-    logical_expr::{Operator, TableProviderFilterPushDown, TableType},
+    logical_expr::{expr::ScalarUDF, Operator, TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
@@ -51,6 +51,24 @@ impl RegionBuilder {
             start: None,
             end: None,
         }
+    }
+
+    pub fn add_from_scalar_udf(mut self, scalar_udf: ScalarUDF) -> Self {
+        if scalar_udf.fun.name.as_str() == "bam_region_filter" {
+            let args = scalar_udf.args;
+            if args.len() == 2 {
+                let first_arg = args.get(0).unwrap();
+
+                match first_arg {
+                    Expr::Literal(l) => {
+                        self.reference = Some(l.to_string());
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        self
     }
 
     /// Add the expression to the builder
@@ -82,7 +100,10 @@ impl RegionBuilder {
     /// Add a slice of expressions to the builder
     pub fn add_from_exprs(mut self, exprs: &[Expr]) -> Self {
         for expr in exprs {
-            self = self.add_from_expr(expr);
+            match expr {
+                Expr::ScalarUDF(s) => self = self.add_from_scalar_udf(s.clone()),
+                _ => continue,
+            }
         }
 
         self
@@ -224,42 +245,20 @@ impl TableProvider for ListingBAMTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
+        tracing::debug!("Filters for BAM table provider: {:?}", filters);
         Ok(filters
             .iter()
-            .map(|f| {
-                // if f is a binary expression it might be able to be pushed down.
-
-                let be = match f {
-                    Expr::BinaryExpr(be) => be,
-                    _ => return TableProviderFilterPushDown::Unsupported,
-                };
-
-                // Get the left, right and operator
-                let left = be.left.as_ref();
-                let right = be.right.as_ref();
-                let op = be.op;
-
-                match (left, right, op) {
-                    // If the left is a column and the right is a literal we can push down
-                    // the filter
-                    (Expr::Column(c), Expr::Literal(_), Operator::Eq)
-                        if c.name.as_str() == "reference" =>
-                    {
-                        TableProviderFilterPushDown::Inexact
+            .map(|f| match f {
+                Expr::ScalarUDF(s) if s.fun.name.as_str() == "bam_region_filter" => {
+                    if s.args.len() == 2 {
+                        tracing::debug!("Pushing down region filter");
+                        TableProviderFilterPushDown::Exact
+                    } else {
+                        tracing::debug!("Unsupported number of arguments for region filter");
+                        TableProviderFilterPushDown::Unsupported
                     }
-                    (Expr::Column(c), Expr::Literal(_), Operator::Gt)
-                        if c.name.as_str() == "end" =>
-                    {
-                        TableProviderFilterPushDown::Inexact
-                    }
-                    (Expr::Column(c), Expr::Literal(_), Operator::Lt)
-                        if c.name.as_str() == "start" =>
-                    {
-                        TableProviderFilterPushDown::Inexact
-                    }
-                    // If the left is a column and the right is a literal we can push down
-                    _ => TableProviderFilterPushDown::Unsupported,
                 }
+                _ => TableProviderFilterPushDown::Unsupported,
             })
             .collect())
     }
@@ -398,7 +397,7 @@ mod tests {
         );
         ctx.sql(&create_external_table_sql).await?;
 
-        let select_sql = "SELECT name, start, reference FROM bam_file WHERE reference = 'chr1';";
+        let select_sql = "SELECT name, start, reference FROM bam_file WHERE bam_region_filter('chr1', reference) = true;";
         let df = ctx.sql(select_sql).await?;
         let cnt = df.count().await?;
 

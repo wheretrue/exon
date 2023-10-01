@@ -35,6 +35,7 @@ use crate::{
     physical_optimizer::{
         file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,
     },
+    udfs::bam_region_filter::register_bam_udf,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -101,6 +102,9 @@ pub trait ExonSessionExt {
         for vcf_udf in crate::udfs::vcf::register_vcf_udfs() {
             ctx.register_udf(vcf_udf);
         }
+
+        // Register BAM region filter UDF
+        register_bam_udf(&ctx);
 
         ctx
     }
