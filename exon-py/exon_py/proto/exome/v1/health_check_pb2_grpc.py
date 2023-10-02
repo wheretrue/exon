@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from exonpy.proto.exome.v1 import (
+from exon_py.proto.exome.v1 import (
     health_check_pb2 as exome_dot_v1_dot_health__check__pb2,
 )
 
@@ -41,9 +41,7 @@ def add_HealthServicer_to_server(servicer, server):
             response_serializer=exome_dot_v1_dot_health__check__pb2.HealthCheckResponse.SerializeToString,
         ),
     }
-    generic_handler = grpc.method_handlers_generic_handler(
-        "exome.v1.Health", rpc_method_handlers
-    )
+    generic_handler = grpc.method_handlers_generic_handler("exome.v1.Health", rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
