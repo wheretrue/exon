@@ -1,3 +1,4 @@
+"""The Exome Python client library."""
 # Copyright 2023 WHERE TRUE Technologies.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Setup logging for the exon_py library
 import logging
+import warnings
 from contextlib import contextmanager
 
 import adbc_driver_flightsql.dbapi as flight_sql
@@ -23,8 +23,14 @@ from adbc_driver_flightsql import DatabaseOptions
 
 from exon_py.proto.exome.v1 import catalog_pb2, catalog_pb2_grpc, health_check_pb2, health_check_pb2_grpc
 
-logging.basicConfig(level=logging.DEBUG)
+warnings.simplefilter(action="ignore", category=Warning)
+
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "connect",
+    "ExomeConnection",
+]
 
 
 class ExomeError(Exception):
@@ -58,14 +64,12 @@ class ExomeConnection:
 
     def __init__(
         self,
-        conn: flight_sql.Connection,
+        flight_conn: flight_sql.Connection,
         exome_grpc_connection: ExomeGrpcConnection,
-        organization_name: str = "Public",
     ):
         """Create a new connection to an Exome server."""
-        self.conn = conn
+        self.flight_conn = flight_conn
         self.exome_grpc_connection = exome_grpc_connection
-        self.organization_name = organization_name
 
     def set_library_id(self, library_id: str):
         """Set the library ID."""
@@ -74,7 +78,7 @@ class ExomeConnection:
     @contextmanager
     def cursor(self):
         """Return a cursor for the connection."""
-        cursor = self.conn.cursor()
+        cursor = self.flight_conn.cursor()
 
         try:
             yield cursor
@@ -88,7 +92,7 @@ class ExomeConnection:
 
     def close(self):
         """Close the connection."""
-        self.conn.close()
+        self.flight_conn.close()
 
     def __repr__(self):
         """Return a string representation of the connection."""
@@ -153,15 +157,18 @@ def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnect
 
 
 @contextmanager
-def connect(username: str, password: str, organization_name: str = "Public", **kwargs):
+def connect(
+    username: str,
+    password: str,
+    organization_name: str = "Public",
+    *,
+    uri: str = "adbc.exome.wheretrue.com:443",
+    skip_verify: bool = False,
+):
     """Connect to an Exome server."""
-    uri = kwargs.get("uri", "localhost:50051")
-
     exome_connection = connect_to_exome(uri, username, password)
 
-    skip_verify = kwargs.get("skip_verify", True)
-
-    flight_connection = _flight_sql_connect(uri, skip_verify, exome_connection.token)
+    flight_connection = _flight_sql_connect(uri, exome_connection.token, skip_verify=skip_verify)
 
     exome_conn = ExomeConnection(flight_connection, exome_connection, organization_name)
 
@@ -177,7 +184,14 @@ def connect(username: str, password: str, organization_name: str = "Public", **k
 
 
 def health_check(uri: str) -> health_check_pb2.HealthCheckResponse:
-    """Return the health of the Exome server."""
+    """Return the health of the Exome server.
+
+    Args:
+        uri (str): The URI of the Exome server. For example `adbc.exome.wheretrue.com`.
+
+    Returns:
+        health_check_pb2.HealthCheckResponse: The health of the Exome server.
+    """
     creds = grpc.ssl_channel_credentials(root_certificates=None, private_key=None, certificate_chain=None)
 
     channel = grpc.secure_channel(uri, creds)
