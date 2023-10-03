@@ -218,13 +218,13 @@ impl TableProvider for ListingBAMTable {
 
         if regions.len() > 1 {
             return Err(DataFusionError::Execution(
-                "Multiple regions are not supported".to_string(),
+                "Multiple regions are not supported yet".to_string(),
             ));
         }
 
         if regions.is_empty() && self.options.indexed {
             return Err(DataFusionError::Execution(
-                "Indexed BAM requires a region filter".to_string(),
+                "INDEXED_BAM table type requires a region filter".to_string(),
             ));
         }
 
