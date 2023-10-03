@@ -142,7 +142,7 @@ impl ExecutionPlan for VCFScan {
         if let Some(projections) = &self.base_config.projection {
             config = config.with_projection(projections.clone());
         }
-        tracing::debug!("VCF starting scan with config: {:#?}", config);
+        tracing::trace!("VCF starting scan with config: {:#?}", config);
 
         let opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;

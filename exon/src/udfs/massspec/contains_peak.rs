@@ -43,9 +43,9 @@ use datafusion::{
 /// * `result` - A BooleanArray. The BooleanArray contains true if the spectrum
 ///    contains a peak within the tolerance and false otherwise.
 fn contains_peak(args: &[ArrayRef]) -> DataFusionResult<ArrayRef> {
-    if args.len() < 3 {
+    if args.len() != 3 {
         return Err(datafusion::error::DataFusionError::Execution(
-            "contains_peak takes at least two arguments".to_string(),
+            "contains_peak takes three arguments".to_string(),
         ));
     }
 

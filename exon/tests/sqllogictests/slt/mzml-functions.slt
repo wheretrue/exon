@@ -1,0 +1,26 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE mzml_table STORED AS MZML LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/mzml-pyoteomics/pyoteomics.mzML'
+----
+
+query I
+SELECT contains_peak(mz.mz, 200.0, 1.0) AS has_peak FROM mzml_table LIMIT 1;
+----
+true
+
+query I
+SELECT contains_peak(mz.mz, 0.0, 1.0) AS has_peak FROM mzml_table LIMIT 1;
+----
+false
+
+statement error
+SELECT contains_peak(mz.mz) AS has_peak FROM mzml_table LIMIT 1;
+
+query I
+SELECT bin_vectors(mz.mz, intensity.intensity, 200.0, 10, 1.0) AS bins FROM mzml_table LIMIT 1;
+----
+0,0,0,0,203667.40002441406,0,0,0,0,0
+
+statement ok
+DROP TABLE mzml_table

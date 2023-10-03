@@ -479,20 +479,26 @@ mod tests {
         let path = crate::tests::test_fixture_table_url("chr17/")?;
 
         let ctx = SessionContext::new_exon();
-        let registration_result = ctx
-            .register_vcf_file("vcf_file", path.to_string().as_str())
-            .await;
+        ctx.sql(
+            format!(
+                "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+                path.to_string().as_str()
+            )
+            .as_str(),
+        )
+        .await?;
 
-        assert!(registration_result.is_ok());
-
-        let sql = "SELECT chrom FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000 AND qual != 100;";
+        let sql =
+            "SELECT chrom FROM vcf_file WHERE vcf_region_filter('17:1000-1000000', chrom, pos) AND qual != 100;";
         let df = ctx.sql(sql).await?;
 
         let cnt_where_qual_neq_100 = df.count().await?;
         assert!(cnt_where_qual_neq_100 > 0);
 
         let cnt_total = ctx
-            .sql("SELECT chrom FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000;")
+            .sql(
+                "SELECT chrom FROM vcf_file WHERE vcf_region_filter('17:1000-1000000', chrom, pos)",
+            )
             .await?
             .count()
             .await?;
