@@ -65,4 +65,4 @@ jobs:
         awslocal s3api put-object --bucket test-bucket --key test.fasta --body ./exon/test-data/datasources/fasta/test.fasta
 
         cargo test
-        cargo test --package exon --test sqllogictests
+        cargo test --package exon --test sqllogictests --all-features
