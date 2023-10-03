@@ -148,14 +148,6 @@ mod tests {
         BinaryExpr::new(left, Operator::Eq, right)
     }
 
-    pub(crate) fn and(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
-        BinaryExpr::new(left, Operator::And, right)
-    }
-
-    pub(crate) fn lteq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
-        BinaryExpr::new(left, Operator::LtEq, right)
-    }
-
     pub(crate) fn gteq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
         BinaryExpr::new(left, Operator::GtEq, right)
     }

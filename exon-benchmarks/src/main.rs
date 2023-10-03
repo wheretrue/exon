@@ -18,7 +18,6 @@ use datafusion::{
     prelude::{col, lit, SessionContext},
 };
 use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
-use noodles::core::Region;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -100,7 +99,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match &cli.command {
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
-            let region: Region = region.parse().unwrap();
 
             let ctx = SessionContext::new_exon();
             ctx.runtime_env()
@@ -108,14 +106,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .unwrap();
 
-            ctx.register_vcf_file("vcf_file", path).await?;
-
-            let chrom = region.name();
-            let start = region.interval().start().unwrap();
-            let end = region.interval().end().unwrap();
+            ctx.sql(
+                format!(
+                    "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+                    path
+                )
+                .as_str(),
+            )
+            .await?;
 
             let df = ctx
-                .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE chrom = '{}' and pos BETWEEN {} and {}", chrom, start, end).as_str())
+                .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE vcf_region_filter('{}', chrom, pos) = true;", region).as_str())
                 .await?;
 
             let cnt = df.count().await?;

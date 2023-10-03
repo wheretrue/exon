@@ -27,12 +27,6 @@ use noodles::core::region::Interval;
 
 use crate::error::invalid_interval::InvalidIntervalError;
 
-pub(crate) fn pos_schema() -> SchemaRef {
-    Arc::new(arrow::datatypes::Schema::new(vec![
-        arrow::datatypes::Field::new("pos", arrow::datatypes::DataType::Int64, false),
-    ]))
-}
-
 /// A physical expression that represents a genomic interval.
 #[derive(Debug)]
 pub struct PosIntervalPhysicalExpr {

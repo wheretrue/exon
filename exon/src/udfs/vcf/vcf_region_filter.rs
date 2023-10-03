@@ -22,16 +22,16 @@ use datafusion::{
     prelude::SessionContext,
 };
 
-/// Return true if the BAM record overlaps the region.
-fn bam_region_filter(_args: &[ArrayRef]) -> DataFusionResult<ArrayRef> {
+/// Return true if the VCF record is in the region. This should not be called directly.
+fn vcf_region_filter(_args: &[ArrayRef]) -> DataFusionResult<ArrayRef> {
     Err(DataFusionError::Plan(
-        "bam_region_filter should not be called, check your query".to_string(),
+        "vcf_region_filter should not be called, check your query".to_string(),
     ))
 }
 
-/// Create a scalar UDF for BAM region filtering.
-pub fn register_bam_region_filter_udf(ctx: &SessionContext) {
-    let func = make_scalar_function(bam_region_filter);
+/// Create a scalar UDF for VCF region filtering.
+pub fn register_vcf_region_filter_udf(ctx: &SessionContext) {
+    let func = make_scalar_function(vcf_region_filter);
 
     let volatility = Volatility::Immutable;
     let return_type = Arc::new(DataType::Boolean);
@@ -40,23 +40,12 @@ pub fn register_bam_region_filter_udf(ctx: &SessionContext) {
     let signatures = Signature::one_of(
         vec![
             TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
-            TypeSignature::Exact(vec![
-                DataType::Utf8,
-                DataType::Utf8,
-                DataType::Int32,
-                DataType::Int32,
-            ]),
-            TypeSignature::Exact(vec![
-                DataType::Utf8,
-                DataType::Utf8,
-                DataType::Int64,
-                DataType::Int64,
-            ]),
+            TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8, DataType::Int64]),
         ],
         volatility,
     );
 
-    let scalar = ScalarUDF::new("bam_region_filter", &signatures, &return_type, &func);
+    let scalar = ScalarUDF::new("vcf_region_filter", &signatures, &return_type, &func);
 
     ctx.register_udf(scalar);
 }

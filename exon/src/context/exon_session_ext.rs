@@ -31,11 +31,11 @@ use crate::{
         ExonFileType, ExonListingTableFactory,
     },
     new_exon_config,
-    physical_optimizer::region_between_rewriter::RegionBetweenRule,
-    physical_optimizer::{
-        file_repartitioner::ExonRoundRobin, interval_optimizer_rule::ExonIntervalOptimizer,
+    physical_optimizer::file_repartitioner::ExonRoundRobin,
+    udfs::{
+        bam_region_filter::register_bam_region_filter_udf,
+        vcf::vcf_region_filter::register_vcf_region_filter_udf,
     },
-    udfs::bam_region_filter::register_bam_udf,
 };
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
@@ -104,7 +104,10 @@ pub trait ExonSessionExt {
         }
 
         // Register BAM region filter UDF
-        register_bam_udf(&ctx);
+        register_bam_region_filter_udf(&ctx);
+
+        // Register VCF region filter UDF
+        register_vcf_region_filter_udf(&ctx);
 
         ctx
     }
@@ -126,15 +129,9 @@ pub trait ExonSessionExt {
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let round_robin_optimizer = ExonRoundRobin::default();
-        let region_between_optimizer = RegionBetweenRule::default();
-        let interval_region_optimizer = ExonIntervalOptimizer::default();
 
         let mut state = SessionState::with_config_rt(config, runtime)
-            .with_physical_optimizer_rules(vec![
-                Arc::new(round_robin_optimizer),
-                Arc::new(region_between_optimizer),
-                Arc::new(interval_region_optimizer),
-            ]);
+            .with_physical_optimizer_rules(vec![Arc::new(round_robin_optimizer)]);
 
         let sources = vec![
             "BAM",
