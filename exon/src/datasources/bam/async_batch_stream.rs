@@ -117,6 +117,9 @@ where
 
     /// The region interval.
     region_interval: Interval,
+
+    /// The number of bytes read.
+    bytes_read: usize,
 }
 
 fn get_reference_sequence_for_region(
@@ -152,6 +155,7 @@ where
             reference_sequences,
             region_reference,
             region_interval,
+            bytes_read: 0,
         })
     }
 
@@ -161,16 +165,28 @@ where
             match reader.read_record_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),
                 Ok(None) => None,
-                Err(e) => Some((Err(ArrowError::ExternalError(Box::new(e))), reader)),
+                Err(e) => {
+                    tracing::error!(
+                        "Error reading record batch: {}, on bytes {}",
+                        e,
+                        reader.bytes_read
+                    );
+                    Some((Err(ArrowError::ExternalError(Box::new(e))), reader))
+                }
             }
         })
     }
 
     async fn read_record(&mut self) -> std::io::Result<Option<noodles::bam::lazy::Record>> {
         let mut record = noodles::bam::lazy::Record::default();
-        match self.reader.read_lazy_record(&mut record).await? {
-            0 => Ok(None),
-            _ => Ok(Some(record)),
+
+        let bytes_read = self.reader.read_lazy_record(&mut record).await?;
+        self.bytes_read += bytes_read;
+
+        if bytes_read == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(record))
         }
     }
 
