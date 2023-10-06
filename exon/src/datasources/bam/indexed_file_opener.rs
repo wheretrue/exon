@@ -139,7 +139,7 @@ impl FileOpener for IndexedBAMOpener {
                 AsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
 
             if vp_start.compressed() == vp_end.compressed() {
-                batch_stream.set_max_bytes(vp_end.uncompressed() as u16);
+                batch_stream.set_max_bytes(vp_end.uncompressed());
             }
 
             Ok(batch_stream.into_stream().boxed())
