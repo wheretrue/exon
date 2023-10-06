@@ -160,7 +160,7 @@ def connect_to_exome(uri: str, username: str, password: str) -> ExomeGrpcConnect
 def connect(
     username: str,
     password: str,
-    organization_name: str = "Public",
+    organization_name: str = "Public",  # TODO: unused for now
     *,
     uri: str = "adbc.exome.wheretrue.com:443",
     skip_verify: bool = False,
@@ -170,7 +170,7 @@ def connect(
 
     flight_connection = _flight_sql_connect(uri, exome_connection.token, skip_verify=skip_verify)
 
-    exome_conn = ExomeConnection(flight_connection, exome_connection, organization_name)
+    exome_conn = ExomeConnection(flight_connection, exome_connection)
 
     try:
         yield exome_conn
