@@ -90,10 +90,7 @@ fn optimize_file_partitions(
             .children()
             .iter()
             .map(|child| {
-                let optimized = optimize_file_partitions(child.clone(), target_partitions)
-                    .map(Transformed::into);
-
-                optimized
+                optimize_file_partitions(child.clone(), target_partitions).map(Transformed::into)
             })
             .collect::<Result<_>>()?;
 
