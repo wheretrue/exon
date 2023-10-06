@@ -17,7 +17,7 @@ async-trait = "0.1.73"
 aws-config = {version = "0.56.1", optional = true}
 aws-credential-types = {version = "0.56.0", optional = true}
 base64 = {version = "0.21", optional = true}
-byteorder = {version = "1.4.3", optional = true}
+byteorder = {version = "1.4.3"}
 bytes = "1.5.0"
 datafusion = {workspace = true}
 flate2 = {version = "1.0.27", optional = true}
@@ -46,12 +46,12 @@ sqllogictest = "0.17.0"
 all = ["aws", "ffi", "gcp", "genbank", "mzml"]
 aws = ["object_store/aws", "dep:aws-config", "dep:aws-credential-types", "dep:url"]
 exome = ["dep:prost", "dep:tonic", "dep:url"]
-fcs = ["dep:byteorder"]
+fcs = []
 ffi = ["arrow/ffi", "dep:pin-project"]
 fixtures = []
 gcp = ["object_store/gcp", "dep:url"]
 genbank = ["dep:gb-io"]
-mzml = ["dep:base64", "dep:flate2", "dep:quick-xml", "dep:serde", "dep:byteorder"]
+mzml = ["dep:base64", "dep:flate2", "dep:quick-xml", "dep:serde"]
 
 [[test]]
 harness = false
