@@ -135,8 +135,12 @@ impl FileOpener for IndexedBAMOpener {
 
             let reference_sequences = Arc::new(reference_sequences);
 
-            let batch_stream =
+            let mut batch_stream =
                 AsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
+
+            if vp_start.compressed() == vp_end.compressed() {
+                batch_stream.set_max_bytes(vp_end.uncompressed() as u16);
+            }
 
             Ok(batch_stream.into_stream().boxed())
         }))

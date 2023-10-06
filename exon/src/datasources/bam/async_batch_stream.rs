@@ -104,7 +104,7 @@ where
     R: AsyncBufRead + Unpin,
 {
     /// The underlying reader.
-    reader: noodles::bam::AsyncReader<R>,
+    reader: noodles::bam::AsyncReader<noodles::bgzf::AsyncReader<R>>,
 
     /// The BAM configuration.
     config: Arc<BAMConfig>,
@@ -118,8 +118,8 @@ where
     /// The region interval.
     region_interval: Interval,
 
-    /// The number of bytes read.
-    bytes_read: usize,
+    /// The max uncompressed bytes read.
+    max_bytes: Option<u16>,
 }
 
 fn get_reference_sequence_for_region(
@@ -141,7 +141,7 @@ where
     R: AsyncBufRead + Unpin,
 {
     pub fn try_new(
-        reader: noodles::bam::AsyncReader<R>,
+        reader: noodles::bam::AsyncReader<noodles::bgzf::AsyncReader<R>>,
         config: Arc<BAMConfig>,
         reference_sequences: Arc<noodles::sam::header::ReferenceSequences>,
         region: Arc<Region>,
@@ -155,8 +155,12 @@ where
             reference_sequences,
             region_reference,
             region_interval,
-            bytes_read: 0,
+            max_bytes: None,
         })
+    }
+
+    pub fn set_max_bytes(&mut self, max_bytes: u16) {
+        self.max_bytes = Some(max_bytes);
     }
 
     /// Stream the record batches from the VCF file.
@@ -165,14 +169,7 @@ where
             match reader.read_record_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),
                 Ok(None) => None,
-                Err(e) => {
-                    tracing::error!(
-                        "Error reading record batch: {}, on bytes {}",
-                        e,
-                        reader.bytes_read
-                    );
-                    Some((Err(ArrowError::ExternalError(Box::new(e))), reader))
-                }
+                Err(e) => Some((Err(ArrowError::ExternalError(Box::new(e))), reader)),
             }
         })
     }
@@ -180,8 +177,13 @@ where
     async fn read_record(&mut self) -> std::io::Result<Option<noodles::bam::lazy::Record>> {
         let mut record = noodles::bam::lazy::Record::default();
 
+        if let Some(max_bytes) = self.max_bytes {
+            if self.reader.virtual_position().uncompressed() >= max_bytes {
+                return Ok(None);
+            }
+        }
+
         let bytes_read = self.reader.read_lazy_record(&mut record).await?;
-        self.bytes_read += bytes_read;
 
         if bytes_read == 0 {
             Ok(None)

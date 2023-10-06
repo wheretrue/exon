@@ -43,7 +43,9 @@ run-benchmarks:
 
 	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/bam-s3-query_{{GIT_SHA}}.json \
 		-n exon-bam-s3-query \
-		'./target/profiling/exon-benchmarks bam-query -p s3://com.wheretrue.exome/cyt_assist_10x/CytAssist_FFPE_Human_Colon_Post_Xenium_Rep1_possorted_genome_bam.bam -r chr1:100000-1000000'
+		'./target/profiling/exon-benchmarks bam-query -p s3://com.wheretrue.exome/cyt_assist_10x/CytAssist_FFPE_Human_Colon_Post_Xenium_Rep1_possorted_genome_bam.bam -r chr1:100000-1000000' \
+		-n samtools \
+		'samtools view -c s3://com.wheretrue.exome/cyt_assist_10x/CytAssist_FFPE_Human_Colon_Post_Xenium_Rep1_possorted_genome_bam.bam chr1:100000-1000000'
 
 	# Run bam benchmarks.
 	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{GIT_SHA}}.json \
