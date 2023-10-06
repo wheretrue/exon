@@ -99,7 +99,6 @@ pub struct ListingVCFTableOptions {
 impl ListingVCFTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType, indexed: bool) -> Self {
-        let file_compression_type = file_compression_type;
         let file_extension = ExonFileType::VCF.get_file_extension(file_compression_type);
 
         Self {
