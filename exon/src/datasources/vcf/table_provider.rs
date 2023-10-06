@@ -321,8 +321,9 @@ impl TableProvider for ListingVCFTable {
         }
 
         if regions.is_empty() && self.options.indexed {
-            return Err(DataFusionError::NotImplemented(
-                "INDEXED_VCF table reuires a region filter".to_string(),
+            return Err(DataFusionError::Plan(
+                "INDEXED_VCF table requires a region filter. See the UDF 'vcf_region_filter'."
+                    .to_string(),
             ));
         }
 

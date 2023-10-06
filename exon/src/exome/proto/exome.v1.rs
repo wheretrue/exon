@@ -41,6 +41,15 @@ pub struct Organization {
     #[prost(string, tag = "4")]
     pub updated_at: ::prost::alloc::string::String,
 }
+/// Association between a use and an organization.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserOrganization {
+    #[prost(message, optional, tag = "1")]
+    pub organization: ::core::option::Option<Organization>,
+    #[prost(string, tag = "2")]
+    pub role: ::prost::alloc::string::String,
+}
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetOrganizationRequest {
@@ -64,7 +73,7 @@ pub struct GetUserOrganizationsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserOrganizationsResponse {
     #[prost(message, repeated, tag = "1")]
-    pub organizations: ::prost::alloc::vec::Vec<Organization>,
+    pub organizations: ::prost::alloc::vec::Vec<UserOrganization>,
 }
 /// User
 #[allow(clippy::derive_partial_eq_without_eq)]

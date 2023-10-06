@@ -102,12 +102,6 @@ impl FileOpener for IndexedVCFOpener {
                         async_reader
                     } else {
                         // Otherwise, we read the compressed range from the object store.
-                        tracing::debug!(
-                            "Reading compressed range: {}..{} of {}",
-                            vp_start.compressed(),
-                            vp_end.compressed(),
-                            file_meta.location()
-                        );
 
                         let start = vp_start.compressed() as usize;
                         let end = if vp_start.compressed() == vp_end.compressed() {
@@ -115,6 +109,15 @@ impl FileOpener for IndexedVCFOpener {
                         } else {
                             vp_end.compressed() as usize
                         };
+
+                        tracing::info!(
+                            "Reading compressed range: {}..{} (uncompressed {}..{}) of {}",
+                            vp_start.compressed(),
+                            vp_end.compressed(),
+                            start,
+                            end,
+                            file_meta.location()
+                        );
 
                         let get_options = GetOptions {
                             range: Some(Range { start, end }),

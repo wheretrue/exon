@@ -223,8 +223,8 @@ impl TableProvider for ListingBAMTable {
         }
 
         if regions.is_empty() && self.options.indexed {
-            return Err(DataFusionError::Execution(
-                "INDEXED_BAM table type requires a region filter".to_string(),
+            return Err(DataFusionError::Plan(
+                "INDEXED_BAM table type requires a region filter. See the 'bam_region_filter' function.".to_string(),
             ));
         }
 
