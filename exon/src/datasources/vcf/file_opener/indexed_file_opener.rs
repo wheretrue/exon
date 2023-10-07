@@ -77,7 +77,7 @@ impl FileOpener for IndexedVCFOpener {
 
             let header_offset = vcf_reader.virtual_position();
 
-            let bgzf_reader = match file_meta.range {
+            let batch_stream = match file_meta.range {
                 Some(FileRange { start, end }) => {
                     // The ranges are actually virtual positions in the bgzf file.
                     let vp_start = VirtualPosition::from(start as u64);
@@ -99,7 +99,11 @@ impl FileOpener for IndexedVCFOpener {
                         let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
                         async_reader.scan_to_virtual_position(header_offset).await?;
 
-                        async_reader
+                        let bgzf_reader = async_reader.into_inner();
+
+                        let vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
+
+                        IndexedAsyncBatchStream::new(vcf_reader, config, Arc::new(header), region)
                     } else {
                         // Otherwise, we read the compressed range from the object store.
 
@@ -159,7 +163,23 @@ impl FileOpener for IndexedVCFOpener {
                                 .await?;
                         }
 
-                        async_reader
+                        let bgzf_reader = async_reader.into_inner();
+
+                        let vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
+
+                        let mut batch_stream = IndexedAsyncBatchStream::new(
+                            vcf_reader,
+                            config,
+                            Arc::new(header),
+                            region,
+                        );
+
+                        if vp_start.compressed() == vp_end.compressed() {
+                            batch_stream =
+                                batch_stream.with_max_bytes(vp_end.uncompressed() as usize);
+                        }
+
+                        batch_stream
                     }
                 }
                 None => {
@@ -182,19 +202,15 @@ impl FileOpener for IndexedVCFOpener {
                         async_reader.scan_to_virtual_position(header_offset).await?;
                     }
 
-                    async_reader
+                    let bgzf_reader = async_reader.into_inner();
+
+                    let vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
+
+                    IndexedAsyncBatchStream::new(vcf_reader, config, Arc::new(header), region)
                 }
             };
 
-            let bgzf_reader = bgzf_reader.into_inner();
-
-            let vcf_reader = noodles::vcf::AsyncReader::new(bgzf_reader);
-
-            let batch_stream =
-                IndexedAsyncBatchStream::new(vcf_reader, config, Arc::new(header), region);
-
             let batch_stream = batch_stream.into_stream();
-
             Ok(batch_stream.boxed())
         }))
     }

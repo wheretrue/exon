@@ -23,7 +23,7 @@ use futures::{StreamExt, TryStreamExt};
 use noodles::bgzf::{self};
 use tokio_util::io::StreamReader;
 
-use crate::datasources::vcf::{async_batch_stream::AsyncBatchStream, VCFConfig};
+use crate::datasources::vcf::{AsyncBatchStream, VCFConfig};
 
 /// A file opener for VCF files.
 #[derive(Debug)]
