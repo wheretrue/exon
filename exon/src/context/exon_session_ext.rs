@@ -80,36 +80,8 @@ pub trait ExonSessionExt {
     /// Create a new Exon based [`SessionContext`].
     fn new_exon() -> SessionContext {
         let exon_config = new_exon_config();
-        let ctx = SessionContext::with_config_exon(exon_config);
 
-        // Register the mass spec UDFs
-        #[cfg(feature = "mzml")]
-        for mass_spec_udf in crate::udfs::massspec::register_udfs() {
-            ctx.register_udf(mass_spec_udf);
-        }
-
-        // Register the sequence UDFs
-        for sequence_udf in crate::udfs::sequence::register_udfs() {
-            ctx.register_udf(sequence_udf);
-        }
-
-        // Register the sam flag UDFs
-        for sam_udf in crate::udfs::samflags::register_udfs() {
-            ctx.register_udf(sam_udf);
-        }
-
-        // Register the VCF UDFs
-        for vcf_udf in crate::udfs::vcf::register_vcf_udfs() {
-            ctx.register_udf(vcf_udf);
-        }
-
-        // Register BAM region filter UDF
-        register_bam_region_filter_udf(&ctx);
-
-        // Register VCF region filter UDF
-        register_vcf_region_filter_udf(&ctx);
-
-        ctx
+        Self::with_config_exon(exon_config)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config.
@@ -117,14 +89,6 @@ pub trait ExonSessionExt {
         let runtime = Arc::new(RuntimeEnv::default());
         Self::with_config_rt_exon(config, runtime)
     }
-
-    /// Register a Exon table from the given path of a certain type and optional compression type.
-    async fn register_exon_table(
-        &self,
-        name: &str,
-        table_path: &str,
-        file_type: &str,
-    ) -> Result<(), DataFusionError>;
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
@@ -157,8 +121,45 @@ pub trait ExonSessionExt {
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
 
-        SessionContext::with_state(state)
+        let ctx = SessionContext::with_state(state);
+
+        // Register the mass spec UDFs
+        #[cfg(feature = "mzml")]
+        for mass_spec_udf in crate::udfs::massspec::register_udfs() {
+            ctx.register_udf(mass_spec_udf);
+        }
+
+        // Register the sequence UDFs
+        for sequence_udf in crate::udfs::sequence::register_udfs() {
+            ctx.register_udf(sequence_udf);
+        }
+
+        // Register the sam flag UDFs
+        for sam_udf in crate::udfs::samflags::register_udfs() {
+            ctx.register_udf(sam_udf);
+        }
+
+        // Register the VCF UDFs
+        for vcf_udf in crate::udfs::vcf::register_vcf_udfs() {
+            ctx.register_udf(vcf_udf);
+        }
+
+        // Register BAM region filter UDF
+        register_bam_region_filter_udf(&ctx);
+
+        // Register VCF region filter UDF
+        register_vcf_region_filter_udf(&ctx);
+
+        ctx
     }
+
+    /// Register a Exon table from the given path of a certain type and optional compression type.
+    async fn register_exon_table(
+        &self,
+        name: &str,
+        table_path: &str,
+        file_type: &str,
+    ) -> Result<(), DataFusionError>;
 
     /// Read a FASTA file.
     async fn read_fasta(
