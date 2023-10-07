@@ -30,7 +30,7 @@ where
     R: AsyncBufRead + Unpin,
 {
     /// The underlying record stream.
-    reader: noodles::vcf::AsyncReader<R>,
+    reader: noodles::vcf::AsyncReader<noodles::bgzf::AsyncReader<R>>,
 
     /// The VCF configuration.
     config: Arc<VCFConfig>,
@@ -40,6 +40,9 @@ where
 
     /// The region to use for filtering.
     region: Arc<Region>,
+
+    /// The max uncompressed bytes from the BGZF reader.
+    max_bytes: usize,
 }
 
 impl<R> IndexedAsyncBatchStream<R>
@@ -48,7 +51,7 @@ where
 {
     /// Create a new VCF record batch reader.
     pub fn new(
-        reader: noodles::vcf::AsyncReader<R>,
+        reader: noodles::vcf::AsyncReader<noodles::bgzf::AsyncReader<R>>,
         config: Arc<VCFConfig>,
         header: Arc<noodles::vcf::Header>,
         region: Arc<Region>,
@@ -58,10 +61,20 @@ where
             config,
             header,
             region,
+            max_bytes: usize::MAX,
         }
     }
 
+    pub fn with_max_bytes(mut self, max_bytes: usize) -> Self {
+        self.max_bytes = max_bytes;
+        self
+    }
+
     async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
+        if self.reader.virtual_position().uncompressed() as usize >= self.max_bytes {
+            return Ok(None);
+        }
+
         let mut record = noodles::vcf::lazy::Record::default();
 
         match self.reader.read_lazy_record(&mut record).await {

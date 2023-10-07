@@ -28,6 +28,7 @@ mod async_batch_stream;
 mod indexed_async_batch_stream;
 
 pub use self::array_builder::VCFArrayBuilder;
+pub use self::async_batch_stream::AsyncBatchStream;
 pub use self::config::VCFConfig;
 pub use self::indexed_scanner::IndexedVCFScanner;
 pub use self::scanner::VCFScan;
