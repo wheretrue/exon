@@ -27,6 +27,7 @@ use datafusion::{
 use itertools::Itertools;
 
 use crate::datasources::{
+    bam::{BAMScan, IndexedBAMScan},
     bed::BEDScan,
     fasta::FASTAScan,
     fastq::FASTQScan,
@@ -129,6 +130,20 @@ fn optimize_file_partitions(
 
     if let Some(indexed_vcf_scan) = new_plan.as_any().downcast_ref::<IndexedVCFScanner>() {
         let new_scan = indexed_vcf_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
+
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
+    }
+
+    if let Some(bam_scan) = new_plan.as_any().downcast_ref::<BAMScan>() {
+        let new_scan = bam_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
+
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
+    }
+
+    if let Some(indexed_bam_scan) = new_plan.as_any().downcast_ref::<IndexedBAMScan>() {
+        let new_scan = indexed_bam_scan.get_repartitioned(target_partitions);
         let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
         return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));

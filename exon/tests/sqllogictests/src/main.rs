@@ -166,7 +166,7 @@ async fn run_tests() -> Result<(), DataFusionError> {
         let mut runner =
             sqllogictest::Runner::new(|| async { Ok(ExonTextRunner::new(exon_context.clone())) });
         runner.run_file_async(test_file.path()).await.map_err(|e| {
-            DataFusionError::Execution(format!("Error running sqllogictest file: {:?}", e))
+            DataFusionError::Execution(format!("Error running sqllogictest file: {}", e))
         })?;
     }
 

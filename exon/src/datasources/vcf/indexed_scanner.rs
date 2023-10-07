@@ -63,7 +63,7 @@ impl IndexedVCFScanner {
         &self.base_config
     }
 
-    /// Return the reparitioned scan.
+    /// Return the repartitioned scan.
     pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
         if target_partitions == 1 {
             return self.clone();

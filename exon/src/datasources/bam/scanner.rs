@@ -24,9 +24,11 @@ use datafusion::{
 };
 use noodles::core::Region;
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::BAMConfig, file_opener::BAMOpener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for BAM files.
 pub struct BAMScan {
     /// The schema of the data source.
@@ -62,6 +64,27 @@ impl BAMScan {
     pub fn with_region_filter(mut self, region_filter: Region) -> Self {
         self.region_filter = Some(region_filter);
         self
+    }
+
+    /// Return the repartitioned scan.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            tracing::info!(
+                "Repartitioned {} file groups into {}",
+                self.base_config.file_groups.len(),
+                repartitioned_file_groups.len()
+            );
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
     }
 }
 
