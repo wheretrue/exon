@@ -127,6 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let region = region.as_str();
 
             let ctx = SessionContext::new_exon();
+            ctx.runtime_env()
+                .exon_register_object_store_uri(path)
+                .await
+                .unwrap();
 
             ctx.sql(
                 format!(

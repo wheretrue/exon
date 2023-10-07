@@ -78,7 +78,6 @@ where
         Ok(buf)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use object_store::path::Path;

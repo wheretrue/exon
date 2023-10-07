@@ -104,7 +104,7 @@ where
     R: AsyncBufRead + Unpin,
 {
     /// The underlying reader.
-    reader: noodles::bam::AsyncReader<R>,
+    reader: noodles::bam::AsyncReader<noodles::bgzf::AsyncReader<R>>,
 
     /// The BAM configuration.
     config: Arc<BAMConfig>,
@@ -117,6 +117,9 @@ where
 
     /// The region interval.
     region_interval: Interval,
+
+    /// The max uncompressed bytes read.
+    max_bytes: Option<u16>,
 }
 
 fn get_reference_sequence_for_region(
@@ -138,7 +141,7 @@ where
     R: AsyncBufRead + Unpin,
 {
     pub fn try_new(
-        reader: noodles::bam::AsyncReader<R>,
+        reader: noodles::bam::AsyncReader<noodles::bgzf::AsyncReader<R>>,
         config: Arc<BAMConfig>,
         reference_sequences: Arc<noodles::sam::header::ReferenceSequences>,
         region: Arc<Region>,
@@ -152,7 +155,12 @@ where
             reference_sequences,
             region_reference,
             region_interval,
+            max_bytes: None,
         })
+    }
+
+    pub fn set_max_bytes(&mut self, max_bytes: u16) {
+        self.max_bytes = Some(max_bytes);
     }
 
     /// Stream the record batches from the VCF file.
@@ -168,9 +176,19 @@ where
 
     async fn read_record(&mut self) -> std::io::Result<Option<noodles::bam::lazy::Record>> {
         let mut record = noodles::bam::lazy::Record::default();
-        match self.reader.read_lazy_record(&mut record).await? {
-            0 => Ok(None),
-            _ => Ok(Some(record)),
+
+        if let Some(max_bytes) = self.max_bytes {
+            if self.reader.virtual_position().uncompressed() >= max_bytes {
+                return Ok(None);
+            }
+        }
+
+        let bytes_read = self.reader.read_lazy_record(&mut record).await?;
+
+        if bytes_read == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(record))
         }
     }
 
