@@ -1,0 +1,23 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam/';
+
+query T
+SELECT COUNT(*) FROM bam WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
+----
+7
+
+statement ok
+DROP TABLE bam;
+
+statement ok
+CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam-multifile/';
+
+query T
+SELECT COUNT(*) FROM bam WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
+----
+14
+
+statement ok
+DROP TABLE bam;

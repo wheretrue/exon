@@ -14,6 +14,8 @@
 
 use std::{any::Any, fmt, sync::Arc};
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::BAMConfig, indexed_file_opener::IndexedBAMOpener};
 use arrow::datatypes::SchemaRef;
 use datafusion::{
@@ -25,7 +27,7 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for BAM files.
 pub struct IndexedBAMScan {
     /// The schema of the data source.
@@ -56,11 +58,32 @@ impl IndexedBAMScan {
             region,
         }
     }
+
+    /// Return the repartitioned scan.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            tracing::info!(
+                "Repartitioned {} file groups into {}",
+                self.base_config.file_groups.len(),
+                repartitioned_file_groups.len()
+            );
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
+    }
 }
 
 impl DisplayAs for IndexedBAMScan {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
-        write!(f, "IndexedBAMScan")
+        write!(f, "IndexedBAMScan: {:?}", self.base_config)
     }
 }
 
