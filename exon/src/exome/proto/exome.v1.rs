@@ -422,6 +422,8 @@ pub struct CreateTableRequest {
     pub file_format: ::prost::alloc::string::String,
     #[prost(bool, tag = "6")]
     pub is_listing: bool,
+    #[prost(string, tag = "7")]
+    pub compression_type_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

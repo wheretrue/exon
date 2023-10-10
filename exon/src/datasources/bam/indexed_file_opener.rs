@@ -28,7 +28,7 @@ use tokio_util::io::StreamReader;
 
 use crate::streaming_bgzf::AsyncBGZFReader;
 
-use super::{async_batch_stream::AsyncBatchStream, config::BAMConfig};
+use super::{config::BAMConfig, indexed_batch_stream::AsyncBatchStream};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct IndexedBAMOpener {

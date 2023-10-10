@@ -140,10 +140,7 @@ impl ExecutionPlan for BAMScan {
             config = config.with_some_projection(Some(projection.clone()));
         }
 
-        let mut opener = BAMOpener::new(Arc::new(config));
-        if let Some(region) = &self.region_filter {
-            opener = opener.with_region(region.clone());
-        }
+        let opener = BAMOpener::new(Arc::new(config));
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

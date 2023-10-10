@@ -43,6 +43,11 @@ enum Commands {
         #[arg(short, long)]
         region: String,
     },
+    /// Run a BAM scan on a file... no region.
+    BAMScan {
+        #[arg(short, long)]
+        path: String,
+    },
     /// Scan a FASTA file and count the number of non-methionine start codons
     FASTACodonScan {
         /// which path to use
@@ -120,6 +125,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await?;
 
             let cnt = df.count().await?;
+            eprintln!("Count: {}", cnt);
+        }
+        Some(Commands::BAMScan { path }) => {
+            let path = path.as_str();
+            let ctx = SessionContext::new_exon();
+            ctx.runtime_env()
+                .exon_register_object_store_uri(path)
+                .await
+                .unwrap();
+
+            ctx.sql(
+                format!(
+                    "CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '{}';",
+                    path
+                )
+                .as_str(),
+            )
+            .await?;
+
+            let df = ctx.sql("SELECT reference FROM bam").await?;
+            let cnt = df.count().await?;
+
             eprintln!("Count: {}", cnt);
         }
         Some(Commands::BAMQuery { path, region }) => {

@@ -12,105 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{io, sync::Arc};
+use std::sync::Arc;
 
 use datafusion::{
     datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
-use noodles::core::Region;
-use object_store::GetResultPayload;
 use tokio_util::io::StreamReader;
 
-use super::{
-    batch_reader::{BatchReader, StreamRecordBatchAdapter},
-    config::BAMConfig,
-    record_stream::RecordIterator,
-};
+use super::{batch_reader::BatchReader, config::BAMConfig};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct BAMOpener {
     /// The base configuration for the file scan.
     config: Arc<BAMConfig>,
-
-    /// An optional region to filter on.
-    region: Option<Region>,
 }
 
 impl BAMOpener {
     /// Create a new BAM file opener.
     pub fn new(config: Arc<BAMConfig>) -> Self {
-        Self {
-            config,
-            region: None,
-        }
-    }
-
-    /// Set the region to filter on.
-    pub fn with_region(mut self, region: Region) -> Self {
-        self.region = Some(region);
-        self
+        Self { config }
     }
 }
 
 impl FileOpener for BAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
-        let region = self.region.clone();
 
         Ok(Box::pin(async move {
             let get_request = config.object_store.get(file_meta.location()).await?;
 
-            match get_request.payload {
-                GetResultPayload::File(file, path) => match region {
-                    Some(region) => {
-                        let mut reader = noodles::bam::indexed_reader::Builder::default()
-                            .build_from_path(path)?;
+            let get_stream = get_request.into_stream();
+            let stream_reader = Box::pin(get_stream.map_err(DataFusionError::from));
+            let stream_reader = StreamReader::new(stream_reader);
 
-                        let header = reader.read_header()?;
+            let reader = BatchReader::new(stream_reader, config).await?;
 
-                        let query = reader
-                            .query(&header, &region)?
-                            .map(Ok)
-                            .collect::<io::Result<Vec<_>>>()?;
-
-                        let record_stream = futures::stream::iter(query).boxed();
-
-                        let batch_adapter =
-                            StreamRecordBatchAdapter::new(record_stream, header, config.clone());
-
-                        let batch_stream = batch_adapter.into_stream();
-
-                        Ok(batch_stream.boxed())
-                    }
-                    None => {
-                        let mut reader = noodles::bam::Reader::new(file);
-
-                        let header = reader.read_header()?;
-
-                        let record_iterator = RecordIterator::new(reader, header.clone()).unwrap();
-                        let record_stream = futures::stream::iter(record_iterator).boxed();
-
-                        let batch_adapter =
-                            StreamRecordBatchAdapter::new(record_stream, header, config.clone());
-
-                        let batch_stream = batch_adapter.into_stream();
-
-                        Ok(batch_stream.boxed())
-                    }
-                },
-                GetResultPayload::Stream(s) => {
-                    let stream_reader = Box::pin(s.map_err(DataFusionError::from));
-
-                    let stream_reader = StreamReader::new(stream_reader);
-                    let batch_reader = BatchReader::new(stream_reader, config).await?;
-
-                    let batch_stream = batch_reader.into_stream();
-
-                    Ok(batch_stream.boxed())
-                }
-            }
+            Ok(reader.into_stream().boxed())
         }))
     }
 }

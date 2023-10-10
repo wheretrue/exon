@@ -24,7 +24,7 @@ use noodles::sam::header::ReferenceSequences;
 
 use crate::config::BATCH_SIZE;
 
-use super::async_batch_stream::SemiLazyRecord;
+use super::indexed_batch_stream::SemiLazyRecord;
 
 /// Builds an vector of arrays from a SAM file.
 pub struct BAMArrayBuilder {
@@ -45,7 +45,6 @@ pub struct BAMArrayBuilder {
 
     rows: usize,
 
-    reference_sequences: Arc<ReferenceSequences>,
     reference_names: Vec<String>,
 }
 
@@ -91,13 +90,12 @@ impl BAMArrayBuilder {
 
             rows: 0,
 
-            reference_sequences,
             reference_names,
         }
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &SemiLazyRecord) -> Result<(), ArrowError> {
+    pub(crate) fn append(&mut self, record: &SemiLazyRecord) -> Result<(), ArrowError> {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
@@ -125,12 +123,7 @@ impl BAMArrayBuilder {
                         .append_option(record.record().alignment_start()?.map(|v| v.get() as i32));
                 }
                 4 => {
-                    let template_length = record.record().template_length();
-                    let alignment_end = record
-                        .record()
-                        .alignment_start()?
-                        .map(|v| v.get() as i32 + template_length);
-
+                    let alignment_end = record.alignment_end().map(|v| v.get() as i32);
                     self.ends.append_option(alignment_end);
                 }
                 5 => {
@@ -149,11 +142,9 @@ impl BAMArrayBuilder {
                 }
                 7 => match record.record().mate_reference_sequence_id()? {
                     Some(mate_reference_sequence_id) => {
-                        let mate_reference_name =
-                            &self.reference_sequences[mate_reference_sequence_id];
+                        let mate_reference_name = &self.reference_names[mate_reference_sequence_id];
 
-                        self.mate_references
-                            .append_value(mate_reference_name.to_string());
+                        self.mate_references.append_value(mate_reference_name);
                     }
                     None => {
                         self.mate_references.append_null();
