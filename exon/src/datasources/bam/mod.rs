@@ -17,13 +17,12 @@
 //! Reads BAM files. It is the binary version of SAM files.
 
 mod array_builder;
-mod async_batch_stream;
 mod batch_reader;
 mod config;
 mod file_opener;
+mod indexed_batch_stream;
 mod indexed_file_opener;
 mod indexed_scanner;
-mod record_stream;
 mod scanner;
 
 /// Table provider for BAM files.
@@ -33,3 +32,5 @@ pub use config::BAMConfig;
 pub use file_opener::BAMOpener;
 pub use indexed_scanner::IndexedBAMScan;
 pub use scanner::BAMScan;
+
+pub(crate) use indexed_batch_stream::SemiLazyRecord;

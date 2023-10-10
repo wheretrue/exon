@@ -31,7 +31,7 @@ use super::{array_builder::BAMArrayBuilder, BAMConfig};
 
 /// This is a semi-lazy record that can be used to filter on the region without
 /// having to decode the entire record or re-decode the cigar.
-pub struct SemiLazyRecord {
+pub(crate) struct SemiLazyRecord {
     inner: Record,
     cigar: Cigar,
     alignment_end: Option<Position>,
@@ -183,7 +183,7 @@ where
             }
         }
 
-        let bytes_read = self.reader.read_lazy_record(&mut record).await?;
+        let bytes_read: usize = self.reader.read_lazy_record(&mut record).await?;
 
         if bytes_read == 0 {
             Ok(None)

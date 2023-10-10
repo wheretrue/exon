@@ -33,6 +33,11 @@ run-benchmarks:
 		'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ -r 17:100-10000000'
 
 	# Run multiple file.
+	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-scan-{{GIT_SHA}}.json \
+		-n samtools \
+		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam' \
+		-n exon-bam-query \
+		'./target/profiling/exon-benchmarks bam-query -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -r 20:1000000-100000000'
 
 	# Run vcf s3 benchmarks.
 	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/vcf-s3-query_{{GIT_SHA}}.json \
@@ -50,9 +55,9 @@ run-benchmarks:
 	# Run bam benchmarks.
 	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{GIT_SHA}}.json \
 		-n samtools \
-		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam 20:1000000-100000000' \
+		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam' \
 		-n exon-bam-query \
-		'./target/profiling/exon-benchmarks bam-query -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -r 20:1000000-100000000'
+		'./target/profiling/exon-benchmarks bam-scan -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -r 20:1000000-100000000'
 
 	# Run FASTA scan benchmarks.
 	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-meth-scan_{{GIT_SHA}}.json \
