@@ -12,10 +12,11 @@ members = [
   "exon-examples",
   "exon-cli",
 ]
+resolver = "2"
 
 [workspace.dependencies]
 arrow = {version = "46"}
-datafusion = {version = "31", features = ["default"]}
+datafusion = {version = "31", features = ["compression"]}
 object_store = {version = "0.7.1"}
 
 [profile.release]
