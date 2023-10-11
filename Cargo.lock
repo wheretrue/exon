@@ -1460,7 +1460,6 @@ dependencies = [
  "noodles",
  "num_cpus",
  "object_store",
- "parking_lot",
  "pin-project",
  "prost",
  "quick-xml",
