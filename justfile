@@ -9,7 +9,7 @@ download-bam-file:
 	samtools index exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam
 
 download-fixtures:
-	aws s3 cp --recursive s3://wtt-01-dist-prd/chr17/ exon/test-data/fixtures/
+	aws s3 cp --recursive s3://wtt-01-dist-prd/chr17/ exon/exon-core/test-data/fixtures/
 
 GIT_SHA := `git describe --always --abbrev=7 --dirty`
 
