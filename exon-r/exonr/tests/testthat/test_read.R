@@ -1,5 +1,5 @@
 test_that("reading a FASTA works", {
-    batch_reader <- read_fasta_file("../../../../exon/test-data/datasources/fasta/test.fa")
+    batch_reader <- read_fasta_file("../../../../exon/exon-core/test-data/datasources/fasta/test.fa")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -10,7 +10,7 @@ test_that("reading a FASTA works", {
 })
 
 test_that("reading a FASTQ works", {
-    batch_reader <- read_fastq_file("../../../../exon/test-data/datasources/fastq/test.fq")
+    batch_reader <- read_fastq_file("../../../../exon/exon-core/test-data/datasources/fastq/test.fq")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -21,7 +21,7 @@ test_that("reading a FASTQ works", {
 })
 
 test_that("reading a GFF works", {
-    batch_reader <- read_gff_file("../../../../exon/test-data/datasources/gff/test.gff")
+    batch_reader <- read_gff_file("../../../../exon/exon-core/test-data/datasources/gff/test.gff")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -32,7 +32,7 @@ test_that("reading a GFF works", {
 })
 
 test_that("reading a GenBank works", {
-    batch_reader <- read_genbank_file("../../../../exon/test-data/datasources/genbank/test.gb")
+    batch_reader <- read_genbank_file("../../../../exon/exon-core/test-data/datasources/genbank/test.gb")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -43,7 +43,7 @@ test_that("reading a GenBank works", {
 })
 
 test_that("reading a VCF works", {
-    batch_reader <- read_vcf_file("../../../../exon/test-data/datasources/vcf/index.vcf")
+    batch_reader <- read_vcf_file("../../../../exon/exon-core/test-data/datasources/vcf/index.vcf")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -54,7 +54,7 @@ test_that("reading a VCF works", {
 })
 
 test_that("reading a block gzipped VCF works", {
-    batch_reader <- read_vcf_file("../../../../exon/test-data/datasources/vcf/index.vcf.gz")
+    batch_reader <- read_vcf_file("../../../../exon/exon-core/test-data/datasources/vcf/index.vcf.gz")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -65,7 +65,7 @@ test_that("reading a block gzipped VCF works", {
 })
 
 test_that("reading a BCF works", {
-    batch_reader <- read_vcf_file("../../../../exon/test-data/datasources/bcf/index.bcf")
+    batch_reader <- read_vcf_file("../../../../exon/exon-core/test-data/datasources/bcf/index.bcf")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -76,7 +76,7 @@ test_that("reading a BCF works", {
 })
 
 # test_that("reading a BED works", {
-#     batch_reader <- read_bed_file("../../../../exon/test-data/datasources/bed/test.bed")
+#     batch_reader <- read_bed_file("../../../../exon/exon-core/test-data/datasources/bed/test.bed")
 #     df <- as.data.frame(batch_reader$read_table())
 
 #     # Check the column names are what's expected.
@@ -87,7 +87,7 @@ test_that("reading a BCF works", {
 # })
 
 test_that("reading a SAM works", {
-    batch_reader <- read_sam_file("../../../../exon/test-data/datasources/sam/test.sam")
+    batch_reader <- read_sam_file("../../../../exon/exon-core/test-data/datasources/sam/test.sam")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -98,7 +98,7 @@ test_that("reading a SAM works", {
 })
 
 test_that("reading a BAM works", {
-    batch_reader <- read_sam_file("../../../../exon/test-data/datasources/bam/test.bam")
+    batch_reader <- read_sam_file("../../../../exon/exon-core/test-data/datasources/bam/test.bam")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -109,7 +109,7 @@ test_that("reading a BAM works", {
 })
 
 test_that("reading a mzml file works", {
-    batch_reader <- read_mzml_file("../../../../exon/test-data/datasources/mzml/test.mzML")
+    batch_reader <- read_mzml_file("../../../../exon/exon-core/test-data/datasources/mzml/test.mzML")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.

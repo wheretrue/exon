@@ -43,7 +43,7 @@ jobs:
         library(exonr)
 
         # Read in an example file
-        batch_reader <- exonr::read_fasta_file("exon/test-data/datasources/fasta/test.fasta")
+        batch_reader <- exonr::read_fasta_file("exon/exon-core/test-data/datasources/fasta/test.fasta")
 
         # Convert to a data.frame
         batch_df <- as.data.frame(batch_reader)
