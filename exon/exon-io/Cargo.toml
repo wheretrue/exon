@@ -1,0 +1,16 @@
+[package]
+edition = "2021"
+homepage = {workspace = true}
+keywords = ["biology", "science", "arrow"]
+license = {workspace = true}
+name = "exon-io"
+readme = {workspace = true}
+version = "0.3.4-beta.3"
+
+[dependencies]
+async-trait = "0.1.73"
+aws-config = {version = "0.56.1"}
+aws-credential-types = {version = "0.56.0"}
+object_store = {workspace = true, features = ["aws"]}
+tokio = {version = "1", features = ["io-util"]}
+url = {version = "2.4.1"}

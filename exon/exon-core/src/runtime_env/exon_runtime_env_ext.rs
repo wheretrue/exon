@@ -18,7 +18,7 @@ use async_trait::async_trait;
 use datafusion::{error::DataFusionError, execution::runtime_env::RuntimeEnv};
 use object_store::ObjectStore;
 
-use crate::io::build_s3_object_store;
+use exon_io::build_s3_object_store;
 
 /// Extension trait for [`RuntimeEnv`] that provides additional methods for Exon use-cases.
 ///

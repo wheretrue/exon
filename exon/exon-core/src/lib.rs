@@ -105,15 +105,9 @@ pub mod physical_plan;
 #[cfg(feature = "ffi")]
 pub mod ffi;
 
-/// I/O module for Exon.
-#[cfg(feature = "aws")]
-mod io;
-
 /// Runtime environment for Exon.
-#[cfg(any(feature = "aws", feature = "gcp"))]
 mod runtime_env;
 
-#[cfg(any(feature = "aws", feature = "gcp"))]
 pub use runtime_env::ExonRuntimeEnvExt;
 
 /// Exome-specific extensions.
