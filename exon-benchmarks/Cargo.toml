@@ -11,7 +11,7 @@ version = "0.3.4-beta.3"
 [dependencies]
 clap = {version = "4.4.6", features = ["derive"]}
 datafusion = {workspace = true}
-exon = {path = "../exon", features = ["all"], version = "0.3.4-beta.3" }
+exon = {path = "../exon/exon-core", features = ["all"], version = "0.3.4-beta.3"}
 noodles = {version = "0.53", features = ["core", "vcf", "bgzf"]}
 tokio = {version = "1", features = ["full"]}
 tracing = "0.1.37"
