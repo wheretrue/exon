@@ -13,7 +13,7 @@ version = "0.3.4-beta.5"
 
 [dependencies]
 arrow = {workspace = true}
-async-trait = "0.1.73"
+async-trait = "0.1.74"
 base64 = {version = "0.21", optional = true}
 byteorder = {version = "1.5.0", optional = true}
 bytes = "1.5.0"
