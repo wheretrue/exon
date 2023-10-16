@@ -1443,7 +1443,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.3.4-beta.3"
+version = "0.3.4-beta.5"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.3.4-beta.3"
+version = "0.3.4-beta.5"
 dependencies = [
  "clap",
  "datafusion",
@@ -1508,7 +1508,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.3.4-beta.3"
+version = "0.3.4-beta.5"
 dependencies = [
  "async-trait",
  "aws-config",

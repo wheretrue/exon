@@ -9,7 +9,7 @@ keywords = ["biology", "science", "arrow"]
 license = {workspace = true}
 name = "exon"
 readme = {workspace = true}
-version = "0.3.4-beta.3"
+version = "0.3.4-beta.5"
 
 [dependencies]
 arrow = {workspace = true}
@@ -18,7 +18,7 @@ base64 = {version = "0.21", optional = true}
 byteorder = {version = "1.5.0", optional = true}
 bytes = "1.5.0"
 datafusion = {workspace = true}
-exon-io = {path = "../exon-io", version = "0.3.4-beta.3"}
+exon-io = {path = "../exon-io", version = "0.3.4-beta.5" }
 flate2 = {version = "1.0.28", optional = true}
 futures = "0.3.28"
 gb-io = {version = "0.7.1", optional = true}
