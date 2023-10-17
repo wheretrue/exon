@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod alignment;
+
 mod gc_content;
 mod reverse_complement;
 
@@ -23,8 +26,6 @@ use datafusion::{
     physical_plan::functions::make_scalar_function,
     prelude::create_udf,
 };
-pub use gc_content::gc_content;
-pub use reverse_complement::reverse_complement;
 
 /// Returns a vector of ScalarUDFs from the sequence module.
 pub fn register_udfs() -> Vec<ScalarUDF> {
@@ -34,14 +35,23 @@ pub fn register_udfs() -> Vec<ScalarUDF> {
             vec![DataType::Utf8],
             Arc::new(DataType::Float32),
             Volatility::Immutable,
-            make_scalar_function(gc_content),
+            make_scalar_function(gc_content::gc_content),
         ),
         create_udf(
             "reverse_complement",
             vec![DataType::Utf8],
             Arc::new(DataType::Utf8),
             Volatility::Immutable,
-            make_scalar_function(reverse_complement),
+            make_scalar_function(reverse_complement::reverse_complement),
+        ),
+        // only build on linux and macos
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        create_udf(
+            "alignment_score",
+            vec![DataType::Utf8, DataType::Utf8],
+            Arc::new(DataType::Float32),
+            Volatility::Immutable,
+            make_scalar_function(alignment::alignment_score),
         ),
     ]
 }
