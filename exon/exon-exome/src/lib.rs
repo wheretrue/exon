@@ -16,4 +16,4 @@ mod exome;
 mod exome_catalog_manager;
 mod exome_session_ext;
 
-pub use exome::ExomeCatalogClient;
+pub use exome_session_ext::ExomeSessionExt;

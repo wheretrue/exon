@@ -83,12 +83,11 @@ impl ExomeSessionExt for SessionContext {
 }
 
 #[cfg(test)]
-#[cfg(feature = "exome")]
-#[allow(unused_imports)]
 mod tests {
     use datafusion::prelude::SessionContext;
+    use exon::ExonSessionExt;
 
-    use crate::{context::ExomeSessionExt, exome::ExomeCatalogClient, ExonSessionExt};
+    use crate::{exome::ExomeCatalogClient, ExomeSessionExt};
 
     // Test the client
     #[tokio::test]

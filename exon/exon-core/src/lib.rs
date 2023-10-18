@@ -110,13 +110,6 @@ mod runtime_env;
 
 pub use runtime_env::ExonRuntimeEnvExt;
 
-/// Exome-specific extensions.
-#[cfg(feature = "exome")]
-pub mod exome;
-
-#[cfg(feature = "exome")]
-pub use context::ExomeSessionExt;
-
 /// Error types for Exon.
 pub mod error;
 

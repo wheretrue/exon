@@ -15,9 +15,3 @@
 mod exon_session_ext;
 
 pub use exon_session_ext::ExonSessionExt;
-
-#[cfg(feature = "exome")]
-mod exome_session_ext;
-
-#[cfg(feature = "exome")]
-pub use exome_session_ext::ExomeSessionExt;
