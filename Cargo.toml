@@ -18,7 +18,7 @@ resolver = "2"
 
 [workspace.dependencies]
 arrow = {version = "46"}
-async-trait = "0.1.73"
+async-trait = "0.1.74"
 datafusion = {version = "31", features = ["compression"]}
 object_store = {version = "0.7.1"}
 url = {version = "2.4.1"}
