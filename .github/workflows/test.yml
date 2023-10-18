@@ -14,7 +14,7 @@ jobs:
 
     - name: run tests
       run: |
-        cargo test
+        cargo test --package exon --test sqllogictests --all-features
 
   linux:
     runs-on: ubuntu-latest
