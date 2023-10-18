@@ -9,6 +9,7 @@ repository = "https://github.com/wheretrue/exon"
 members = [
   "exon/exon-core",
   "exon/exon-io",
+  "exon/exon-exome",
   "exon-benchmarks",
   "exon-examples",
   "exon-cli",
@@ -17,8 +18,12 @@ resolver = "2"
 
 [workspace.dependencies]
 arrow = {version = "46"}
+async-trait = "0.1.74"
 datafusion = {version = "31", features = ["compression"]}
 object_store = {version = "0.7.1"}
+tokio = {version = "1", features = ["io-util"]}
+tokio-util = {version = "0.7.9", features = ["compat"]}
+url = {version = "2.4.1"}
 
 [profile.release]
 codegen-units = 1

@@ -1,5 +1,7 @@
 /target
 
+**/target
+
 # See `download-fixtures` in the justfile
 exon/exon-core/test-data/fixtures/
 

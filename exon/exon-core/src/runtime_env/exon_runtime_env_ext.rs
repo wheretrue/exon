@@ -68,7 +68,6 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
         url: &url::Url,
     ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError> {
         match url.scheme() {
-            #[cfg(feature = "aws")]
             "s3" => self.register_s3_object_store(url).await,
 
             #[cfg(feature = "gcp")]
