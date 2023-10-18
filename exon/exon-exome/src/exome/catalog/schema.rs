@@ -19,12 +19,12 @@ use datafusion::{
     catalog::schema::SchemaProvider, common::FileCompressionType, datasource::TableProvider,
     prelude::SessionContext,
 };
-
-use crate::{
+use exon::{
     datasources::{ExonFileType, ExonListingTableFactory},
-    exome::proto,
     ExonRuntimeEnvExt,
 };
+
+use crate::exome::proto;
 
 use super::ExomeCatalogClient;
 

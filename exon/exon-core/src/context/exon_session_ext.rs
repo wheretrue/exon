@@ -487,32 +487,6 @@ impl ExonSessionExt for SessionContext {
 
         Ok(df)
     }
-
-    // async fn query_bam_file(
-    //     &self,
-    //     table_path: &str,
-    //     query: &str,
-    // ) -> Result<DataFrame, DataFusionError> {
-    //     let region = query.parse().map_err(|e| {
-    //         DataFusionError::Execution(format!(
-    //             "Failed to parse query '{}' as region: {}",
-    //             query, e
-    //         ))
-    //     })?;
-
-    //     let options = ListingBAMTableOptions::default().with_indexed(true);
-
-    //     let schema = options.infer_schema().await?;
-
-    //     let listing_url = ListingTableUrl::parse(table_path)?;
-    //     let config = ListingBAMTableConfig::new(listing_url).with_options(options);
-
-    //     let table = ListingBAMTable::try_new(config, schema)?;
-
-    //     let df = self.read_table(Arc::new(table))?;
-
-    //     Ok(df)
-    // }
 }
 
 #[cfg(test)]
@@ -900,7 +874,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(all(feature = "aws", not(target_os = "windows")))]
+    #[cfg(not(target_os = "windows"))]
     #[tokio::test]
     async fn test_read_s3() -> Result<(), DataFusionError> {
         use crate::ExonRuntimeEnvExt;
