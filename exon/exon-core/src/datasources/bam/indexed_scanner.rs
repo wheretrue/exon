@@ -16,7 +16,7 @@ use std::{any::Any, fmt, sync::Arc};
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::BAMConfig, indexed_file_opener::IndexedBAMOpener};
+use super::indexed_file_opener::IndexedBAMOpener;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
@@ -25,6 +25,7 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use exon_bam::BAMConfig;
 use noodles::core::Region;
 
 #[derive(Debug, Clone)]

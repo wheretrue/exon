@@ -18,10 +18,9 @@ use datafusion::{
     datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
+use exon_bam::{BAMConfig, BatchReader};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::BAMConfig};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct BAMOpener {
