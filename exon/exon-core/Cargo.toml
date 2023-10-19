@@ -19,6 +19,7 @@ byteorder = {version = "1.5.0", optional = true}
 bytes = "1.5.0"
 datafusion = {workspace = true}
 exon-bam = {path = "../exon-bam", version = "0.3.4-beta.5"}
+exon-common = {path = "../exon-common", version = "0.3.4-beta.5"}
 exon-fasta = {path = "../exon-fasta", version = "0.3.4-beta.5"}
 exon-io = {path = "../exon-io", version = "0.3.4-beta.5"}
 flate2 = {version = "1.0.28", optional = true}

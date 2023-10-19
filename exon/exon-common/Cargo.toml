@@ -1,0 +1,16 @@
+[package]
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "exon-common"
+readme.workspace = true
+repository.workspace = true
+version = "0.3.4-beta.5"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = {workspace = true}
+glob = "0.3.1"
+object_store = {workspace = true}
+url = {workspace = true}

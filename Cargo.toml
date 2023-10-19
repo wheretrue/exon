@@ -13,6 +13,7 @@ members = [
   "exon/exon-bam",
   "exon/exon-fasta",
   "exon/exon-test",
+  "exon/exon-common",
   "exon-benchmarks",
   "exon-examples",
   "exon-cli",

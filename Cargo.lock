@@ -1452,6 +1452,7 @@ dependencies = [
  "bytes",
  "datafusion",
  "exon-bam",
+ "exon-common",
  "exon-fasta",
  "exon-io",
  "exon-test",
@@ -1506,6 +1507,16 @@ dependencies = [
  "datafusion",
  "exon",
  "tokio",
+ "url",
+]
+
+[[package]]
+name = "exon-common"
+version = "0.3.4-beta.5"
+dependencies = [
+ "futures",
+ "glob",
+ "object_store",
  "url",
 ]
 

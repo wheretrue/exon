@@ -28,7 +28,11 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
-use noodles::core::Region;
+use exon_bam::TagSchemaBuilder;
+use futures::{StreamExt, TryStreamExt};
+use noodles::{bam::lazy::Record, core::Region};
+use object_store::ObjectStore;
+use tokio_util::io::StreamReader;
 
 fn infer_region_from_scalar_udf(scalar_udf: &ScalarUDF) -> Option<Region> {
     if scalar_udf.fun.name.as_str() == "bam_region_filter" {
@@ -88,6 +92,8 @@ pub struct ListingBAMTableOptions {
     file_extension: String,
 
     indexed: bool,
+
+    tag_as_struct: bool,
 }
 
 impl Default for ListingBAMTableOptions {
@@ -95,14 +101,64 @@ impl Default for ListingBAMTableOptions {
         Self {
             file_extension: String::from("bam"),
             indexed: false,
+            tag_as_struct: false,
         }
     }
 }
 
 impl ListingBAMTableOptions {
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
+    pub async fn infer_schema(
+        &self,
+        state: &SessionState,
+        table_path: &ListingTableUrl,
+    ) -> datafusion::error::Result<SchemaRef> {
+        if !self.tag_as_struct {
+            let schema = schema();
+            return Ok(Arc::new(schema));
+        }
+
+        let store = state.runtime_env().object_store(table_path)?;
+
+        let mut files = exon_common::object_store_files_from_table_path(
+            &store,
+            table_path.as_ref(),
+            table_path.prefix(),
+            self.file_extension.as_str(),
+            None,
+        )
+        .await;
+
+        let mut tag_schema_builder = TagSchemaBuilder::new();
+
+        while let Some(f) = files.next().await {
+            let f = f?;
+
+            let get_result = store.get(&f.location).await?;
+
+            let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+            let stream_reader = StreamReader::new(stream_reader);
+            let mut reader = noodles::bam::AsyncReader::new(stream_reader);
+
+            reader.read_header().await?;
+            reader.read_reference_sequences().await?;
+
+            let mut record = Record::default();
+
+            reader.read_lazy_record(&mut record).await?;
+
+            let data = record.data();
+            let data: noodles::sam::record::Data = data.try_into()?;
+
+            tag_schema_builder.add_tag_data(&data).map_err(|e| {
+                DataFusionError::Execution(format!(
+                    "Error adding tag data to schema builder: {}",
+                    e
+                ))
+            })?;
+        }
+
+        let schema = tag_schema_builder.build();
 
         Ok(Arc::new(schema))
     }
@@ -110,6 +166,12 @@ impl ListingBAMTableOptions {
     /// Update the indexed flag
     pub fn with_indexed(mut self, indexed: bool) -> Self {
         self.indexed = indexed;
+        self
+    }
+
+    /// Update the tag_as_struct flag
+    pub fn with_tag_as_struct(mut self, tag_as_struct: bool) -> Self {
+        self.tag_as_struct = tag_as_struct;
         self
     }
 
