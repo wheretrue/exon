@@ -20,17 +20,10 @@ use noodles::sam::record::{
     Data,
 };
 
+#[derive(Debug, Default)]
 pub struct TagSchemaBuilder {
     /// The set of fields that have been seen.
     fields: HashMap<Tag, Field>,
-}
-
-impl Default for TagSchemaBuilder {
-    fn default() -> Self {
-        Self {
-            fields: HashMap::new(),
-        }
-    }
 }
 
 impl TagSchemaBuilder {
@@ -41,11 +34,7 @@ impl TagSchemaBuilder {
     }
 
     pub fn build(self) -> Schema {
-        let mut values = self
-            .fields
-            .into_iter()
-            .map(|(_, field)| field)
-            .collect::<Vec<_>>();
+        let mut values = self.fields.into_values().collect::<Vec<_>>();
 
         values.sort();
 
