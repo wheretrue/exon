@@ -78,13 +78,11 @@ mod test {
         common::FileCompressionType,
         datasource::physical_plan::{FileMeta, FileOpener},
     };
+    use exon_test::test_listing_table_dir;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
-    use crate::{
-        datasources::genbank::{GenbankConfig, GenbankOpener},
-        tests::test_listing_table_dir,
-    };
+    use crate::datasources::genbank::{GenbankConfig, GenbankOpener};
 
     #[tokio::test]
     async fn test_opener() {

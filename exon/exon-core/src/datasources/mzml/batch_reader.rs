@@ -87,11 +87,10 @@ where
 mod tests {
     use std::sync::Arc;
 
+    use exon_test::test_listing_table_dir;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
     use tokio_util::io::StreamReader;
-
-    use crate::tests::test_listing_table_dir;
 
     #[tokio::test]
     async fn test_mzml_batch_reader() {

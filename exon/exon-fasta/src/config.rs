@@ -17,8 +17,6 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use object_store::ObjectStore;
 
-use crate::{config::FASTA_READER_SEQUENCE_CAPACITY, datasources::DEFAULT_BATCH_SIZE};
-
 /// Configuration for a FASTA data source.
 pub struct FASTAConfig {
     /// The number of rows to read at a time.
@@ -43,9 +41,9 @@ impl FASTAConfig {
         Self {
             object_store,
             file_schema,
-            batch_size: DEFAULT_BATCH_SIZE,
+            batch_size: 8192,
             projection: None,
-            fasta_sequence_buffer_capacity: FASTA_READER_SEQUENCE_CAPACITY,
+            fasta_sequence_buffer_capacity: 384, // TODO: have this us a param
         }
     }
 

@@ -419,9 +419,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::test_path;
-
     use super::*;
+
+    use exon_test::test_path;
 
     #[tokio::test]
     async fn test_read_file() -> std::io::Result<()> {

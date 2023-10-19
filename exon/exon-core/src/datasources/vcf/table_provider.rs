@@ -394,7 +394,7 @@ impl TableProvider for ListingVCFTable {
 mod tests {
     use crate::{
         datasources::{vcf::IndexedVCFScanner, ExonListingTableFactory},
-        tests::{setup_tracing, test_path},
+        tests::setup_tracing,
         ExonSessionExt,
     };
 
@@ -403,6 +403,7 @@ mod tests {
         physical_plan::{coalesce_partitions::CoalescePartitionsExec, filter::FilterExec},
         prelude::SessionContext,
     };
+    use exon_test::test_path;
 
     #[cfg(feature = "fixtures")]
     #[tokio::test]

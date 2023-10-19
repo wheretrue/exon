@@ -146,9 +146,11 @@ impl ExecutionPlan for FCSScan {
 
 #[cfg(test)]
 mod tests {
-    use crate::{datasources::ExonListingTableFactory, tests::test_listing_table_url};
+    use crate::datasources::ExonListingTableFactory;
 
     use datafusion::{common::FileCompressionType, prelude::SessionContext};
+
+    use exon_test::test_listing_table_url;
 
     #[tokio::test]
     async fn test_fcs_read() -> Result<(), Box<dyn std::error::Error>> {

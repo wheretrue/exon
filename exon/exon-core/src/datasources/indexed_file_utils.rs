@@ -211,10 +211,11 @@ async fn list_files_for_scan(
 mod tests {
     use std::sync::Arc;
 
+    use exon_test::test_listing_table_dir;
     use noodles::bgzf::VirtualPosition;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
-    use crate::{datasources::indexed_file_utils::IndexedFile, tests::test_listing_table_dir};
+    use crate::datasources::indexed_file_utils::IndexedFile;
 
     #[tokio::test]
     async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {

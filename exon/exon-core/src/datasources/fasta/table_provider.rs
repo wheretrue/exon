@@ -33,8 +33,9 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_fasta::schema;
 
-use super::{config::schema, FASTAScan};
+use super::FASTAScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -202,9 +203,10 @@ impl TableProvider for ListingFASTATable {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::test_listing_table_url, ExonSessionExt};
+    use crate::ExonSessionExt;
 
     use datafusion::prelude::SessionContext;
+    use exon_test::test_listing_table_url;
 
     #[tokio::test]
     async fn test_query_gzip_compression() -> Result<(), Box<dyn std::error::Error>> {

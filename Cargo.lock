@@ -1452,7 +1452,9 @@ dependencies = [
  "bytes",
  "datafusion",
  "exon-bam",
+ "exon-fasta",
  "exon-io",
+ "exon-test",
  "flate2",
  "futures",
  "gb-io",
@@ -1531,6 +1533,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "exon-fasta"
+version = "0.3.4-beta.5"
+dependencies = [
+ "arrow",
+ "exon-test",
+ "futures",
+ "itertools 0.11.0",
+ "noodles",
+ "object_store",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "exon-io"
 version = "0.3.4-beta.5"
 dependencies = [
@@ -1540,6 +1556,14 @@ dependencies = [
  "object_store",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "exon-test"
+version = "0.3.4-beta.5"
+dependencies = [
+ "datafusion",
+ "object_store",
 ]
 
 [[package]]

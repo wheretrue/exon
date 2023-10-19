@@ -118,12 +118,11 @@ mod tests {
     use std::sync::Arc;
 
     use datafusion::arrow::util::pretty::pretty_format_batches;
+    use exon_test::test_listing_table_dir;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
     use tokio_util::io::StreamReader;
-
-    use crate::tests::test_listing_table_dir;
 
     #[tokio::test]
     async fn test_streaming_batch_reader() {
