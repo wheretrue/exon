@@ -13,11 +13,13 @@
 // limitations under the License.
 
 mod array_builder;
+mod bam_infer_schema;
 mod batch_reader;
 mod config;
 mod indexed_async_batch_stream;
 
 pub use array_builder::BAMArrayBuilder;
+pub use bam_infer_schema::TagSchemaBuilder;
 pub use batch_reader::BatchReader;
 pub use config::BAMConfig;
 pub use indexed_async_batch_stream::IndexedAsyncBatchStream;
