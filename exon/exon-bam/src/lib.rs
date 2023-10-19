@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Data source for BAM files.
-//!
-//! Reads BAM files. It is the binary version of SAM files.
+mod array_builder;
+mod batch_reader;
+mod config;
+mod indexed_async_batch_stream;
 
-mod file_opener;
-mod indexed_file_opener;
-mod indexed_scanner;
-mod scanner;
-
-/// Table provider for BAM files.
-pub mod table_provider;
-
-pub use file_opener::BAMOpener;
-pub use indexed_scanner::IndexedBAMScan;
-pub use scanner::BAMScan;
+pub use array_builder::BAMArrayBuilder;
+pub use batch_reader::BatchReader;
+pub use config::BAMConfig;
+pub use indexed_async_batch_stream::IndexedAsyncBatchStream;

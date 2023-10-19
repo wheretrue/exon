@@ -22,9 +22,9 @@ use arrow::{
 use itertools::Itertools;
 use noodles::sam::header::ReferenceSequences;
 
-use crate::config::BATCH_SIZE;
+const BATCH_SIZE: usize = 8192;
 
-use super::indexed_batch_stream::SemiLazyRecord;
+use super::indexed_async_batch_stream::SemiLazyRecord;
 
 /// Builds an vector of arrays from a SAM file.
 pub struct BAMArrayBuilder {

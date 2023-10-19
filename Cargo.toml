@@ -10,6 +10,7 @@ members = [
   "exon/exon-core",
   "exon/exon-io",
   "exon/exon-exome",
+  "exon/exon-bam",
   "exon-benchmarks",
   "exon-examples",
   "exon-cli",
@@ -20,6 +21,7 @@ resolver = "2"
 arrow = {version = "46"}
 async-trait = "0.1.74"
 datafusion = {version = "31", features = ["compression"]}
+futures = "0.3.28"
 object_store = {version = "0.7.1"}
 tokio = {version = "1", features = ["io-util"]}
 tokio-util = {version = "0.7.9", features = ["compat"]}

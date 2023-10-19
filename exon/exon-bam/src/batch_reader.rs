@@ -20,7 +20,7 @@ use futures::Stream;
 use noodles::bam::lazy::Record;
 use tokio::io::{AsyncBufRead, AsyncRead};
 
-use super::{array_builder::BAMArrayBuilder, config::BAMConfig, SemiLazyRecord};
+use crate::{indexed_async_batch_stream::SemiLazyRecord, BAMArrayBuilder, BAMConfig};
 
 /// A batch reader for BAM files.
 pub struct BatchReader<R>

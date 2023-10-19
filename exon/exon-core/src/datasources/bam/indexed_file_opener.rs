@@ -21,14 +21,13 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_bam::{BAMConfig, IndexedAsyncBatchStream};
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf::VirtualPosition, core::Region};
 use object_store::GetOptions;
 use tokio_util::io::StreamReader;
 
 use crate::streaming_bgzf::AsyncBGZFReader;
-
-use super::{config::BAMConfig, indexed_batch_stream::AsyncBatchStream};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct IndexedBAMOpener {
@@ -136,7 +135,7 @@ impl FileOpener for IndexedBAMOpener {
             let reference_sequences = Arc::new(reference_sequences);
 
             let mut batch_stream =
-                AsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
+                IndexedAsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
 
             if vp_start.compressed() == vp_end.compressed() {
                 batch_stream.set_max_bytes(vp_end.uncompressed());

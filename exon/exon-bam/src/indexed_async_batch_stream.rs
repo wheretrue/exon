@@ -18,7 +18,6 @@ use arrow::{
     error::{ArrowError, Result as ArrowResult},
     record_batch::RecordBatch,
 };
-use datafusion::error::DataFusionError;
 use futures::Stream;
 use noodles::{
     bam::lazy::Record,
@@ -38,7 +37,7 @@ pub(crate) struct SemiLazyRecord {
 }
 
 impl TryFrom<Record> for SemiLazyRecord {
-    type Error = DataFusionError;
+    type Error = arrow::error::ArrowError;
 
     fn try_from(record: Record) -> Result<Self, Self::Error> {
         let cigar: Cigar = record.cigar().try_into()?;
@@ -48,7 +47,7 @@ impl TryFrom<Record> for SemiLazyRecord {
         let alignment_end = alignment_end
             .map(Position::try_from)
             .transpose()
-            .map_err(|e| DataFusionError::Execution(format!("invalid alignment end: {}", e)))?;
+            .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
 
         Ok(Self {
             inner: record,
@@ -99,7 +98,7 @@ impl SemiLazyRecord {
     }
 }
 
-pub struct AsyncBatchStream<R>
+pub struct IndexedAsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
 {
@@ -136,7 +135,7 @@ fn get_reference_sequence_for_region(
         })
 }
 
-impl<R> AsyncBatchStream<R>
+impl<R> IndexedAsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
 {

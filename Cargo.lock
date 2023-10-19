@@ -1451,6 +1451,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "datafusion",
+ "exon-bam",
  "exon-io",
  "flate2",
  "futures",
@@ -1468,6 +1469,18 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "exon-bam"
+version = "0.3.4-beta.5"
+dependencies = [
+ "arrow",
+ "futures",
+ "itertools 0.11.0",
+ "noodles",
+ "object_store",
+ "tokio",
 ]
 
 [[package]]

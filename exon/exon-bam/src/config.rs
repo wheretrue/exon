@@ -15,10 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::SchemaRef;
-use datafusion::error::Result;
 use object_store::ObjectStore;
-
-use crate::datasources::DEFAULT_BATCH_SIZE;
 
 /// The configuration for the BAM data source.
 pub struct BAMConfig {
@@ -41,7 +38,7 @@ impl BAMConfig {
         Self {
             object_store,
             file_schema,
-            batch_size: DEFAULT_BATCH_SIZE,
+            batch_size: 8096,
             projection: None,
         }
     }
@@ -72,7 +69,7 @@ impl BAMConfig {
     }
 
     /// Get the projected schema.
-    pub fn projected_schema(&self) -> Result<SchemaRef> {
+    pub fn projected_schema(&self) -> arrow::error::Result<SchemaRef> {
         let schema = self.file_schema.project(&self.projection())?;
 
         Ok(Arc::new(schema))

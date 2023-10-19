@@ -22,11 +22,12 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use exon_bam::BAMConfig;
 use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::BAMConfig, file_opener::BAMOpener};
+use super::file_opener::BAMOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for BAM files.
