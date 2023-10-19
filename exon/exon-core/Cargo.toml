@@ -33,7 +33,7 @@ quick-xml = {version = "0.30.0", features = ["async-tokio", "serialize", "overla
 serde = {version = "1", features = ["derive"], optional = true}
 tokio = {workspace = true}
 tokio-util = {workspace = true}
-tracing = "0.1.39"
+tracing = "0.1.40"
 tracing-subscriber = "0.3.17"
 url = {workspace = true}
 
