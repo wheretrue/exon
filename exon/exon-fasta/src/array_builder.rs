@@ -39,6 +39,10 @@ impl FASTAArrayBuilder {
         self.names.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
         self.names.append_value(record.name());
         self.descriptions.append_option(record.description());

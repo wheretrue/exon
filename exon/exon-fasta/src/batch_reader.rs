@@ -83,7 +83,7 @@ where
             }
         }
 
-        if record_batch.len() == 0 {
+        if record_batch.is_empty() {
             return Ok(None);
         }
 
@@ -113,10 +113,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::test_listing_table_dir;
-
     use super::super::config::FASTAConfig;
     use super::BatchReader;
+    use exon_test::test_listing_table_dir;
     use futures::StreamExt;
     use std::sync::Arc;
 

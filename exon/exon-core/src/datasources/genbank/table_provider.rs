@@ -228,12 +228,10 @@ impl TableProvider for ListingGenbankTable {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        datasources::{ExonFileType, ExonListingTableFactory},
-        tests::test_listing_table_url,
-    };
+    use crate::datasources::{ExonFileType, ExonListingTableFactory};
 
     use datafusion::{common::FileCompressionType, prelude::SessionContext};
+    use exon_test::test_listing_table_url;
 
     #[tokio::test]
     async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {

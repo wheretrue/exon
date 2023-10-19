@@ -240,8 +240,9 @@ mod tests {
         physical_plan::{coalesce_partitions::CoalescePartitionsExec, joins::HashJoinExec},
         prelude::SessionContext,
     };
+    use exon_test::test_path;
 
-    use crate::{datasources::fasta::FASTAScan, tests::test_path, ExonSessionExt};
+    use crate::{datasources::fasta::FASTAScan, ExonSessionExt};
 
     #[tokio::test]
     async fn test_regroup_file_partitions() {

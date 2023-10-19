@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod file_opener;
-mod scanner;
+mod array_builder;
+mod batch_reader;
+mod config;
 
-/// Table provider for FASTA files.
-pub mod table_provider;
-
-pub use self::file_opener::FASTAOpener;
-pub use self::scanner::FASTAScan;
+pub use array_builder::FASTAArrayBuilder;
+pub use batch_reader::BatchReader;
+pub use config::schema;
+pub use config::FASTAConfig;

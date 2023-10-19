@@ -78,12 +78,11 @@ mod tests {
     use arrow::record_batch::RecordBatchReader;
     use datafusion::error::DataFusionError;
     use datafusion::prelude::SessionContext;
+    use exon_test::test_path;
 
     use crate::context::ExonSessionExt;
     use crate::ffi::create_dataset_stream_from_table_provider;
     use crate::ffi::ArrowArrayStream;
-
-    use crate::tests::test_path;
 
     #[test]
     pub fn test() -> Result<(), DataFusionError> {

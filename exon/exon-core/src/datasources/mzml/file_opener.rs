@@ -75,12 +75,10 @@ mod test {
         common::FileCompressionType,
         datasource::physical_plan::{FileMeta, FileOpener},
     };
+    use exon_test::test_listing_table_dir;
     use futures::StreamExt;
 
-    use crate::{
-        datasources::mzml::{MzMLConfig, MzMLOpener},
-        tests::test_listing_table_dir,
-    };
+    use crate::datasources::mzml::{MzMLConfig, MzMLOpener};
 
     #[tokio::test]
     async fn test_opener() {

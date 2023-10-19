@@ -19,10 +19,9 @@ use datafusion::{
     datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
+use exon_fasta::{BatchReader, FASTAConfig};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::FASTAConfig};
 
 /// Implements a datafusion `FileOpener` for FASTA files.
 pub struct FASTAOpener {
@@ -75,12 +74,11 @@ mod test {
         common::FileCompressionType,
         datasource::physical_plan::{FileMeta, FileOpener},
     };
+    use exon_fasta::FASTAConfig;
+    use exon_test::test_listing_table_dir;
     use futures::StreamExt;
 
-    use crate::{
-        datasources::fasta::{config::FASTAConfig, file_opener::FASTAOpener},
-        tests::test_listing_table_dir,
-    };
+    use crate::datasources::fasta::file_opener::FASTAOpener;
 
     #[tokio::test]
     async fn test_opener() {

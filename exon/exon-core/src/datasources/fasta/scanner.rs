@@ -23,10 +23,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use exon_fasta::FASTAConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::FASTAConfig, file_opener::FASTAOpener};
+use super::file_opener::FASTAOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for FASTA files.
