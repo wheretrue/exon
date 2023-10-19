@@ -493,9 +493,8 @@ impl ExonSessionExt for SessionContext {
 mod tests {
     use arrow::array::Float32Array;
     use datafusion::{error::DataFusionError, prelude::SessionContext};
-    use exon_test::test_path;
 
-    use crate::context::exon_session_ext::ExonSessionExt;
+    use crate::{session_context::exon_context_ext::ExonSessionExt, tests::test_path};
 
     #[tokio::test]
     async fn test_register() -> Result<(), DataFusionError> {

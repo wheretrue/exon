@@ -12,34 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::{error::DataFusionError, prelude::SessionContext};
+use std::sync::Arc;
 
-use crate::exome::{register_catalog, ExomeCatalogClient};
+use datafusion::{
+    error::DataFusionError,
+    logical_expr::LogicalPlan,
+    physical_plan::ExecutionPlan,
+    physical_planner::{DefaultPhysicalPlanner, PhysicalPlanner},
+    prelude::SessionContext,
+};
+use exon::ExonSessionExt;
 
-use async_trait::async_trait;
+use crate::{
+    exome::{register_catalog, ExomeCatalogClient},
+    ExomeExtensionPlanner,
+};
 
-/// Extension trait for [`SessionContext`] that adds methods for working with
-/// Exome.
-#[async_trait]
-pub trait ExomeSessionExt {
-    /// Registers the library on the SessionContext.
-    async fn register_library(
-        &mut self,
-        library_id: String,
-        client: &mut ExomeCatalogClient,
-    ) -> Result<(), DataFusionError>;
-
-    /// Registers the library on the SessionContext by name.
-    async fn register_library_by_name(
-        &mut self,
-        library_name: String,
-        client: &mut ExomeCatalogClient,
-    ) -> Result<(), DataFusionError>;
+pub struct ExomeSession {
+    pub(crate) session: SessionContext,
 }
 
-#[async_trait]
-impl ExomeSessionExt for SessionContext {
-    async fn register_library(
+impl Default for ExomeSession {
+    fn default() -> Self {
+        Self {
+            session: SessionContext::new_exon(),
+        }
+    }
+}
+
+impl ExomeSession {
+    pub async fn register_library(
         &mut self,
         library_id: String,
         client: &mut ExomeCatalogClient,
@@ -54,7 +56,7 @@ impl ExomeSessionExt for SessionContext {
 
             register_catalog(
                 client.clone(),
-                self.clone().into(),
+                Arc::new(self.session.clone()),
                 catalog_name,
                 catalog_id,
             )
@@ -64,7 +66,7 @@ impl ExomeSessionExt for SessionContext {
         Ok(())
     }
 
-    async fn register_library_by_name(
+    pub async fn register_library_by_name(
         &mut self,
         library_name: String,
         client: &mut ExomeCatalogClient,
@@ -77,17 +79,29 @@ impl ExomeSessionExt for SessionContext {
 
                 self.register_library(library_id, client).await
             }
-            None => return Err(DataFusionError::Execution("Library not found".to_string())),
+            None => Err(DataFusionError::Execution("Library not found".to_string())),
         }
+    }
+
+    pub async fn create_physical_plan(
+        &self,
+        plan: LogicalPlan,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let state = self.session.state();
+        let plan = state.optimize(&plan)?;
+
+        let ddl_planner = ExomeExtensionPlanner::new();
+        let planner = DefaultPhysicalPlanner::with_extension_planners(vec![Arc::new(ddl_planner)]);
+
+        let plan = planner.create_physical_plan(&plan, &state).await?;
+
+        Ok(plan)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use datafusion::prelude::SessionContext;
-    use exon::ExonSessionExt;
-
-    use crate::{exome::ExomeCatalogClient, ExomeSessionExt};
+    use crate::{exome::ExomeCatalogClient, ExomeSession};
 
     // Test the client
     #[tokio::test]
@@ -99,20 +113,21 @@ mod tests {
         )
         .await?;
 
-        let mut session = SessionContext::new_exon();
+        // let mut session = SessionContext::new_exon();
+        let mut exome_session = ExomeSession::default();
 
         let catalog_name = "test_catalog";
         let schema_name = "test_schema";
         let table_name = "test_table";
 
-        session
+        exome_session
             .register_library(
                 "00000000-0000-0000-0000-000000000000".to_string(),
                 &mut client,
             )
             .await?;
 
-        let catalog_names = session.catalog_names();
+        let catalog_names = exome_session.session.catalog_names();
 
         assert!(catalog_names.contains(&catalog_name.to_string()));
 
@@ -121,7 +136,7 @@ mod tests {
             catalog_name, schema_name, table_name
         );
 
-        let df = session.sql(&sql).await?;
+        let df = exome_session.session.sql(&sql).await?;
 
         let results = df.collect().await?;
 

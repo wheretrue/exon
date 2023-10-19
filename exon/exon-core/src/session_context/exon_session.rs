@@ -12,11 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exome;
-mod exome_catalog_manager;
-mod exome_extension_planner;
-mod exome_session;
+use datafusion::{logical_expr::LogicalPlan, prelude::SessionContext};
 
-pub use exome_catalog_manager::ExomeCatalogManager;
-pub use exome_extension_planner::ExomeExtensionPlanner;
-pub use exome_session::ExomeSession;
+use crate::ExonSessionExt;
+
+pub struct ExonSession {
+    ctx: SessionContext,
+}
+
+impl Default for ExonSession {
+    fn default() -> Self {
+        Self {
+            ctx: SessionContext::new_exon(),
+        }
+    }
+}
+
+impl ExonSession {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub async fn create_physical_plan(
+        &self,
+        logical_plan: LogicalPlan,
+    ) -> datafusion::error::Result<()> {
+        Ok(())
+    }
+}

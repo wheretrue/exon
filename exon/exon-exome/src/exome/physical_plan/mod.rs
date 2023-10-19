@@ -12,6 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_session_ext;
+use std::sync::Arc;
 
-pub use exon_session_ext::ExonSessionExt;
+use arrow::datatypes::{DataType, Field, Schema};
+use datafusion::common::DFSchemaRef;
+use once_cell::sync::Lazy;
+
+mod create_catalog_exec;
+
+pub(crate) use create_catalog_exec::CreateCatalogExec;
+
+pub static CHANGE_SCHEMA: Lazy<Arc<Schema>> = Lazy::new(|| {
+    Arc::new(Schema::new(vec![Field::new(
+        "change",
+        DataType::Utf8,
+        false,
+    )]))
+});
+
+pub static CHANGE_LOGICAL_SCHEMA: Lazy<DFSchemaRef> =
+    Lazy::new(|| Arc::new(CHANGE_SCHEMA.as_ref().clone().try_into().unwrap()));

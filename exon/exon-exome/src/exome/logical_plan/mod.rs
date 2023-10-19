@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exome;
-mod exome_catalog_manager;
-mod exome_extension_planner;
-mod exome_session;
+mod create_catalog;
 
-pub use exome_catalog_manager::ExomeCatalogManager;
-pub use exome_extension_planner::ExomeExtensionPlanner;
-pub use exome_session::ExomeSession;
+pub(crate) use create_catalog::CreateCatalog;
