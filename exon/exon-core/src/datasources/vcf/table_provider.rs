@@ -170,38 +170,23 @@ impl ListingVCFTableOptions {
     ) -> Result<SchemaRef> {
         let store = state.runtime_env().object_store(table_path)?;
 
-        let mut files: Vec<ObjectMeta> = Vec::new();
+        let files = exon_common::object_store_files_from_table_path(
+            &store,
+            table_path.as_ref(),
+            table_path.prefix(),
+            self.file_extension.as_str(),
+            None,
+        )
+        .await;
 
-        if table_path.to_string().ends_with('/') {
-            let store_list = store.list(Some(table_path.prefix())).await?;
-            store_list
-                .try_for_each(|v| {
-                    let path = v.location.clone();
-                    let extension_match = path.as_ref().ends_with(self.file_extension.as_str());
-                    let glob_match = table_path.contains(&path);
-                    if extension_match && glob_match {
-                        files.push(v);
-                    }
-                    futures::future::ready(Ok(()))
-                })
-                .await?;
+        // collect the files as a slice
+        let files = files
+            .try_collect::<Vec<_>>()
+            .await
+            .map_err(|e| DataFusionError::Execution(format!("Unable to get path info: {}", e)))?;
 
-            self.infer_schema_from_object_meta(state, &store, &files)
-                .await
-        } else {
-            let store_head = match store.head(table_path.prefix()).await {
-                Ok(object_meta) => object_meta,
-                Err(e) => {
-                    return Err(DataFusionError::Execution(format!(
-                        "Unable to get path info: {}",
-                        e
-                    )))
-                }
-            };
-
-            self.infer_schema_from_object_meta(state, &store, &[store_head])
-                .await
-        }
+        self.infer_schema_from_object_meta(state, &store, &files)
+            .await
     }
 
     async fn create_physical_plan_with_region(

@@ -103,7 +103,7 @@ impl ExonListingTableFactory {
             }
             ExonFileType::BAM => {
                 let options = ListingBAMTableOptions::default();
-                let schema = options.infer_schema().await?;
+                let schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(options);
                 let table = ListingBAMTable::try_new(config, schema)?;
@@ -167,7 +167,7 @@ impl ExonListingTableFactory {
             }
             ExonFileType::IndexedBAM => {
                 let bam_options = ListingBAMTableOptions::default().with_indexed(true);
-                let schema = bam_options.infer_schema().await?;
+                let schema = bam_options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
 
