@@ -14,4 +14,9 @@
 
 mod create_catalog;
 
-pub(crate) use create_catalog::CreateCatalog;
+pub(crate) use create_catalog::CreateExomeCatalog;
+
+#[derive(Debug, Clone)]
+pub enum LogicalPlan {
+    DataFusion(datafusion::logical_expr::LogicalPlan),
+}

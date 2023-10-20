@@ -48,7 +48,7 @@ pub enum Change {
 ///
 /// It is used as an extension to Exon.
 pub struct ExomeCatalogManager {
-    client: ExomeCatalogClient,
+    pub(crate) client: ExomeCatalogClient,
 }
 
 impl ExomeCatalogManager {

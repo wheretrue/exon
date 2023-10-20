@@ -17,13 +17,17 @@ use std::{str::FromStr, sync::Arc};
 use async_trait::async_trait;
 use datafusion::{
     execution::context::SessionState,
-    logical_expr::{LogicalPlan, UserDefinedLogicalNode},
+    logical_expr::{
+        Extension, LogicalPlan as DfLogicalPlan, UserDefinedLogicalNode, UserDefinedLogicalNodeCore,
+    },
     physical_plan::ExecutionPlan,
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
 };
 
+use crate::exome::logical_plan::LogicalPlan;
+
 pub enum ExtensionType {
-    CreateCatalog,
+    CreateExomeCatalog,
 }
 
 impl FromStr for ExtensionType {
@@ -31,9 +35,25 @@ impl FromStr for ExtensionType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "create_catalog" => Ok(ExtensionType::CreateCatalog),
+            "CreateExomeCatalog" => Ok(ExtensionType::CreateExomeCatalog),
             _ => Err(()),
         }
+    }
+}
+
+pub trait DfExtensionNode: Sized + UserDefinedLogicalNodeCore {
+    const NODE_NAME: &'static str;
+
+    fn into_extension(self) -> Extension {
+        Extension {
+            node: Arc::new(self),
+        }
+    }
+
+    fn into_logical_plan(self) -> LogicalPlan {
+        LogicalPlan::DataFusion(datafusion::logical_expr::LogicalPlan::Extension(
+            self.into_extension(),
+        ))
     }
 }
 
@@ -51,7 +71,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
         &self,
         _planner: &dyn PhysicalPlanner,
         node: &dyn UserDefinedLogicalNode,
-        _logical_inputs: &[&LogicalPlan],
+        _logical_inputs: &[&DfLogicalPlan],
         _physical_inputs: &[Arc<dyn ExecutionPlan>],
         _session_state: &SessionState,
     ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
@@ -63,10 +83,10 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
         })?;
 
         match extension_type {
-            ExtensionType::CreateCatalog => {
+            ExtensionType::CreateExomeCatalog => {
                 let create_catalog_logical_plan = node
                     .as_any()
-                    .downcast_ref::<crate::exome::logical_plan::CreateCatalog>()
+                    .downcast_ref::<crate::exome::logical_plan::CreateExomeCatalog>()
                     .unwrap();
 
                 let physical_plan = crate::exome::physical_plan::CreateCatalogExec::new(

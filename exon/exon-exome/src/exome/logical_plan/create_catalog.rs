@@ -12,22 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::logical_expr::UserDefinedLogicalNodeCore;
+use datafusion::logical_expr::{CreateCatalog, UserDefinedLogicalNodeCore};
 
-use crate::exome::physical_plan::CHANGE_LOGICAL_SCHEMA;
+use crate::{
+    exome::physical_plan::CHANGE_LOGICAL_SCHEMA, exome_extension_planner::DfExtensionNode,
+};
+
+const NODE_NAME: &str = "CreateExomeCatalog";
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct CreateCatalog {
+pub struct CreateExomeCatalog {
     pub name: String,
 }
 
-impl UserDefinedLogicalNodeCore for CreateCatalog {
+impl UserDefinedLogicalNodeCore for CreateExomeCatalog {
     fn name(&self) -> &str {
-        "CreateCatalog"
+        NODE_NAME
     }
 
     fn inputs(&self) -> Vec<&datafusion::logical_expr::LogicalPlan> {
-        todo!()
+        vec![]
     }
 
     fn schema(&self) -> &datafusion::common::DFSchemaRef {
@@ -39,7 +43,7 @@ impl UserDefinedLogicalNodeCore for CreateCatalog {
     }
 
     fn fmt_for_explain(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "CreateCatalog")
+        write!(f, "{}", NODE_NAME)
     }
 
     fn from_template(
@@ -48,5 +52,17 @@ impl UserDefinedLogicalNodeCore for CreateCatalog {
         _inputs: &[datafusion::logical_expr::LogicalPlan],
     ) -> Self {
         self.clone()
+    }
+}
+
+impl DfExtensionNode for CreateExomeCatalog {
+    const NODE_NAME: &'static str = NODE_NAME;
+}
+
+impl From<CreateCatalog> for CreateExomeCatalog {
+    fn from(value: CreateCatalog) -> Self {
+        CreateExomeCatalog {
+            name: value.catalog_name,
+        }
     }
 }

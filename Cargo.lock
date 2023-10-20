@@ -1538,6 +1538,7 @@ dependencies = [
  "async-trait",
  "datafusion",
  "exon",
+ "futures",
  "once_cell",
  "prost",
  "tokio",

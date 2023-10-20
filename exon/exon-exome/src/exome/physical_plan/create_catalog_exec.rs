@@ -14,10 +14,13 @@
 
 use std::sync::Arc;
 
+use arrow::record_batch::RecordBatch;
 use datafusion::{
     error::DataFusionError,
-    physical_plan::{DisplayAs, ExecutionPlan, Partitioning},
+    physical_plan::{stream::RecordBatchStreamAdapter, DisplayAs, ExecutionPlan, Partitioning},
 };
+
+use futures::stream;
 
 use crate::exome_catalog_manager::{Change, CreateCatalog, ExomeCatalogManager};
 
@@ -32,6 +35,23 @@ pub struct CreateCatalogExec {
 impl CreateCatalogExec {
     pub fn new(name: String, library_id: String) -> Self {
         Self { name, library_id }
+    }
+
+    pub async fn create_catalog(
+        self,
+        manager: Arc<ExomeCatalogManager>,
+    ) -> Result<RecordBatch, DataFusionError> {
+        let changes = vec![Change::CreateCatalog(CreateCatalog::new(
+            self.name.clone(),
+            self.library_id.clone(),
+        ))];
+
+        manager
+            .apply_changes(changes)
+            .await
+            .map_err(|e| DataFusionError::Execution(format!("Error applying changes: {}", e)))?;
+
+        Ok(RecordBatch::new_empty(CHANGE_SCHEMA.clone()))
     }
 }
 
@@ -87,37 +107,25 @@ impl ExecutionPlan for CreateCatalogExec {
             ));
         }
 
-        let exome_catalog_manager = context
+        let exome_catalog_manager = match context
             .session_config()
             .get_extension::<ExomeCatalogManager>()
-            .unwrap();
-
-        let name = self.name.clone();
-        let library_id = self.library_id.clone();
-
-        tokio::spawn(async move {
-            let changes = vec![Change::CreateCatalog(CreateCatalog::new(
-                name.clone(),
-                library_id.clone(),
-            ))];
-
-            let result = exome_catalog_manager
-                .apply_changes(changes)
-                .await
-                .map_err(|e| DataFusionError::Execution(format!("Error applying changes: {}", e)));
-
-            match result {
-                Ok(_) => {}
-                Err(e) => {
-                    println!("Error applying changes: {}", e);
-                }
+        {
+            Some(exome_catalog_manager) => exome_catalog_manager,
+            None => {
+                return Err(DataFusionError::Execution(
+                    "ExomeCatalogManager not found".to_string(),
+                ))
             }
-        });
+        };
 
-        // Create an empty stream
-        Ok(Box::pin(
-            datafusion::physical_plan::EmptyRecordBatchStream::new(self.schema()),
-        ))
+        let this = self.clone();
+        let stream = stream::once(this.create_catalog(exome_catalog_manager));
+
+        Ok(Box::pin(RecordBatchStreamAdapter::new(
+            CHANGE_SCHEMA.clone(),
+            stream,
+        )))
     }
 
     fn statistics(&self) -> datafusion::physical_plan::Statistics {
