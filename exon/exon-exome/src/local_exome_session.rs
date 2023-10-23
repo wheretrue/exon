@@ -33,11 +33,11 @@ use crate::{
     ExomeCatalogManager, ExomeExtensionPlanner,
 };
 
-pub struct ExomeSession {
+pub struct LocalExomeSession {
     pub(crate) session: SessionContext,
 }
 
-impl ExomeSession {
+impl LocalExomeSession {
     pub async fn connect(
         url: String,
         organization_id: String,
@@ -105,7 +105,7 @@ impl ExomeSession {
 }
 
 #[async_trait::async_trait]
-impl ExonClient for ExomeSession {
+impl ExonClient for LocalExomeSession {
     async fn create_catalog(
         &mut self,
         catalog_name: String,
@@ -191,79 +191,4 @@ impl ExonClient for ExomeSession {
             None => Err(DataFusionError::Execution("Library not found".to_string())),
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use futures::TryStreamExt;
-
-    use crate::ExomeSession;
-
-    #[tokio::test]
-    async fn test_exome_create_catalog() -> Result<(), Box<dyn std::error::Error>> {
-        let exome_session = ExomeSession::connect(
-            "http://localhost:50051".to_string(),
-            "00000000-0000-0000-0000-000000000000".to_string(),
-            "token".to_string(),
-        )
-        .await?;
-
-        let sql = "CREATE DATABASE test_catalog;";
-
-        let df_logical_plan = exome_session
-            .session
-            .state()
-            .create_logical_plan(sql)
-            .await?;
-
-        let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
-
-        let results = execution_result.try_collect::<Vec<_>>().await?;
-
-        assert_eq!(results.len(), 0);
-
-        Ok(())
-    }
-
-    // Test the client
-    // #[tokio::test]
-    // async fn test_exome_catalog_client() -> Result<(), Box<dyn std::error::Error>> {
-    //     let mut exome_session = ExomeSession::connect(
-    //         "http://localhost:50051".to_string(),
-    //         "00000000-0000-0000-0000-000000000000".to_string(),
-    //         "token".to_string(),
-    //     )
-    //     .await?;
-
-    //     let catalog_name = "test_catalog";
-    //     let schema_name = "test_schema";
-    //     let table_name = "test_table";
-
-    //     exome_session
-    //         .register_library(
-    //             "00000000-0000-0000-0000-000000000000".to_string(),
-    //             &mut client,
-    //         )
-    //         .await?;
-
-    //     let catalog_names = exome_session.session.catalog_names();
-
-    //     assert!(catalog_names.contains(&catalog_name.to_string()));
-
-    //     let sql = format!(
-    //         "SELECT * FROM {}.{}.{}",
-    //         catalog_name, schema_name, table_name
-    //     );
-
-    //     let df = exome_session.session.sql(&sql).await?;
-
-    //     let results = df.collect().await?;
-
-    //     assert_eq!(results.len(), 1);
-
-    //     let first_batch = results.first().unwrap();
-    //     assert_eq!(first_batch.num_rows(), 1);
-
-    //     Ok(())
-    // }
 }

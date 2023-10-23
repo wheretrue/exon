@@ -12,12 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exome;
-mod exome_catalog_manager;
-mod exome_extension_planner;
-mod exome_session;
-mod exon_client;
+use datafusion::error::DataFusionError;
 
-pub use exome_catalog_manager::ExomeCatalogManager;
-pub use exome_extension_planner::ExomeExtensionPlanner;
-pub use exome_session::ExomeSession;
+#[async_trait::async_trait]
+pub trait ExonClient {
+    async fn register_library(&mut self, library_id: String) -> Result<(), DataFusionError>;
+
+    async fn register_library_by_name(
+        &mut self,
+        library_name: String,
+    ) -> Result<(), DataFusionError>;
+
+    async fn create_catalog(
+        &mut self,
+        catalog_name: String,
+        library_id: String,
+    ) -> Result<(), DataFusionError>;
+}
