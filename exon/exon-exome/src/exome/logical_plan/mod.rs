@@ -13,8 +13,10 @@
 // limitations under the License.
 
 mod create_catalog;
+mod drop_catalog;
 
 pub(crate) use create_catalog::CreateExomeCatalog;
+pub(crate) use drop_catalog::DropExomeCatalog;
 
 #[derive(Debug, Clone)]
 pub enum LogicalPlan {

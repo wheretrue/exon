@@ -28,6 +28,7 @@ use crate::exome::logical_plan::LogicalPlan;
 
 pub enum ExtensionType {
     CreateExomeCatalog,
+    DropExomeCatalog,
 }
 
 impl FromStr for ExtensionType {
@@ -36,6 +37,7 @@ impl FromStr for ExtensionType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "CreateExomeCatalog" => Ok(ExtensionType::CreateExomeCatalog),
+            "DropExomeCatalog" => Ok(ExtensionType::DropExomeCatalog),
             _ => Err(()),
         }
     }
@@ -65,6 +67,12 @@ impl ExomeExtensionPlanner {
     }
 }
 
+impl Default for ExomeExtensionPlanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl ExtensionPlanner for ExomeExtensionPlanner {
     async fn plan_extension(
@@ -91,6 +99,19 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
 
                 let physical_plan = crate::exome::physical_plan::CreateCatalogExec::new(
                     create_catalog_logical_plan.name.clone(),
+                    "00000000-0000-0000-0000-000000000000".to_string(),
+                );
+
+                return Ok(Some(Arc::new(physical_plan)));
+            }
+            ExtensionType::DropExomeCatalog => {
+                let drop_catalog_logical_plan = node
+                    .as_any()
+                    .downcast_ref::<crate::exome::logical_plan::DropExomeCatalog>()
+                    .unwrap();
+
+                let physical_plan = crate::exome::physical_plan::DropCatalogExec::new(
+                    drop_catalog_logical_plan.name.clone(),
                     "00000000-0000-0000-0000-000000000000".to_string(),
                 );
 

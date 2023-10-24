@@ -38,9 +38,15 @@ pub struct CreateSchema {
     catalog_id: String,
 }
 
+pub struct DropCatalog {
+    name: String,
+    library_id: String,
+}
+
 /// Change is a change to apply to the Exome Catalog service.
 pub enum Change {
     CreateCatalog(CreateCatalog),
+    DropCatalog(DropCatalog),
     CreateSchema(CreateSchema),
 }
 
@@ -65,6 +71,11 @@ impl ExomeCatalogManager {
                 Change::CreateCatalog(create_catalog) => {
                     self.client
                         .create_catalog(create_catalog.name, create_catalog.library_id)
+                        .await?;
+                }
+                Change::DropCatalog(drop_catalog) => {
+                    self.client
+                        .drop_catalog(drop_catalog.name, drop_catalog.library_id)
                         .await?;
                 }
                 Change::CreateSchema(create_schema) => {

@@ -18,6 +18,8 @@ mod exome_extension_planner;
 mod exome_session;
 mod exon_client;
 
+pub use exome::ExomeCatalogClient;
 pub use exome_catalog_manager::ExomeCatalogManager;
 pub use exome_extension_planner::ExomeExtensionPlanner;
 pub use exome_session::ExomeSession;
+pub use exon_client::ExonClient;

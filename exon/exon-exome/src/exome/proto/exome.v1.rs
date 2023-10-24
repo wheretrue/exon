@@ -249,6 +249,17 @@ pub struct Catalog {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DropCatalogRequest {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DropCatalogResponse {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateCatalogRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -507,8 +518,8 @@ pub struct GetUserAuditLogResponse {
 /// Generated client implementations.
 pub mod catalog_service_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     #[derive(Debug, Clone)]
     pub struct CatalogServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -552,8 +563,9 @@ pub mod catalog_service_client {
                     <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
                 >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             CatalogServiceClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -592,17 +604,23 @@ pub mod catalog_service_client {
         pub async fn create_library(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateLibraryRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateLibraryResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::CreateLibraryResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/CreateLibrary");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/CreateLibrary",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateLibrary"));
@@ -611,17 +629,23 @@ pub mod catalog_service_client {
         pub async fn list_libraries(
             &mut self,
             request: impl tonic::IntoRequest<super::ListLibrariesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListLibrariesResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::ListLibrariesResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/ListLibraries");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/ListLibraries",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "ListLibraries"));
@@ -630,16 +654,23 @@ pub mod catalog_service_client {
         pub async fn get_library(
             &mut self,
             request: impl tonic::IntoRequest<super::GetLibraryRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetLibraryResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetLibraryResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetLibrary");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetLibrary",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetLibrary"));
@@ -648,57 +679,99 @@ pub mod catalog_service_client {
         pub async fn get_library_by_name(
             &mut self,
             request: impl tonic::IntoRequest<super::GetLibraryByNameRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetLibraryByNameResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetLibraryByNameResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetLibraryByName");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetLibraryByName",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "GetLibraryByName",
-            ));
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetLibraryByName"));
             self.inner.unary(req, path, codec).await
         }
         /// Catalog
         pub async fn create_catalog(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateCatalogRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateCatalogResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::CreateCatalogResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/CreateCatalog");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/CreateCatalog",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateCatalog"));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn drop_catalog(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DropCatalogRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DropCatalogResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/DropCatalog",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "DropCatalog"));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn get_catalog(
             &mut self,
             request: impl tonic::IntoRequest<super::GetCatalogRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetCatalogResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetCatalogResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetCatalog");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetCatalog",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetCatalog"));
@@ -707,17 +780,23 @@ pub mod catalog_service_client {
         pub async fn list_catalogs(
             &mut self,
             request: impl tonic::IntoRequest<super::ListCatalogsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListCatalogsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::ListCatalogsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/ListCatalogs");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/ListCatalogs",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "ListCatalogs"));
@@ -726,39 +805,49 @@ pub mod catalog_service_client {
         pub async fn get_catalog_by_name(
             &mut self,
             request: impl tonic::IntoRequest<super::GetCatalogByNameRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetCatalogByNameResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetCatalogByNameResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetCatalogByName");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetCatalogByName",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "GetCatalogByName",
-            ));
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetCatalogByName"));
             self.inner.unary(req, path, codec).await
         }
         /// Schema
         pub async fn create_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSchemaRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateSchemaResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::CreateSchemaResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/CreateSchema");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/CreateSchema",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateSchema"));
@@ -767,16 +856,23 @@ pub mod catalog_service_client {
         pub async fn list_schemas(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSchemasRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListSchemasResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::ListSchemasResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/ListSchemas");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/ListSchemas",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "ListSchemas"));
@@ -785,15 +881,23 @@ pub mod catalog_service_client {
         pub async fn get_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetSchemaRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetSchemaResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetSchemaResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetSchema");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetSchema",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetSchema"));
@@ -802,38 +906,49 @@ pub mod catalog_service_client {
         pub async fn get_schema_by_name(
             &mut self,
             request: impl tonic::IntoRequest<super::GetSchemaByNameRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetSchemaByNameResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetSchemaByNameResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetSchemaByName");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetSchemaByName",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "GetSchemaByName",
-            ));
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetSchemaByName"));
             self.inner.unary(req, path, codec).await
         }
         /// Table
         pub async fn create_table(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateTableRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateTableResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::CreateTableResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/CreateTable");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/CreateTable",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateTable"));
@@ -842,16 +957,23 @@ pub mod catalog_service_client {
         pub async fn list_tables(
             &mut self,
             request: impl tonic::IntoRequest<super::ListTablesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListTablesResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::ListTablesResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/ListTables");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/ListTables",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "ListTables"));
@@ -860,15 +982,23 @@ pub mod catalog_service_client {
         pub async fn get_table(
             &mut self,
             request: impl tonic::IntoRequest<super::GetTableRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetTableResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetTableResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetTable");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetTable",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetTable"));
@@ -877,17 +1007,23 @@ pub mod catalog_service_client {
         pub async fn get_table_by_name(
             &mut self,
             request: impl tonic::IntoRequest<super::GetTableByNameRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetTableByNameResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetTableByNameResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetTableByName");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetTableByName",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetTableByName"));
@@ -897,38 +1033,49 @@ pub mod catalog_service_client {
         pub async fn list_file_formats(
             &mut self,
             request: impl tonic::IntoRequest<super::ListFileFormatsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListFileFormatsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::ListFileFormatsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/ListFileFormats");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/ListFileFormats",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "ListFileFormats",
-            ));
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "ListFileFormats"));
             self.inner.unary(req, path, codec).await
         }
         /// User information.
         pub async fn create_user(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateUserRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateUserResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::CreateUserResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/CreateUser");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/CreateUser",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateUser"));
@@ -941,35 +1088,46 @@ pub mod catalog_service_client {
             tonic::Response<super::CreateUserAuthProviderResponse>,
             tonic::Status,
         > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/exome.v1.CatalogService/CreateUserAuthProvider",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "CreateUserAuthProvider",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("exome.v1.CatalogService", "CreateUserAuthProvider"),
+                );
             self.inner.unary(req, path, codec).await
         }
         pub async fn get_token(
             &mut self,
             request: impl tonic::IntoRequest<super::GetTokenRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetTokenResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetTokenResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetToken");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetToken",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetToken"));
@@ -978,15 +1136,23 @@ pub mod catalog_service_client {
         pub async fn get_user(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetUserResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetUserResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetUser");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetUser",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetUser"));
@@ -995,17 +1161,23 @@ pub mod catalog_service_client {
         pub async fn get_user_by_email(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserByEmailRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetUserByEmailResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetUserByEmailResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetUserByEmail");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetUserByEmail",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetUserByEmail"));
@@ -1014,79 +1186,100 @@ pub mod catalog_service_client {
         pub async fn get_user_organizations(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserOrganizationsRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetUserOrganizationsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetUserOrganizationsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/exome.v1.CatalogService/GetUserOrganizations",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "GetUserOrganizations",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("exome.v1.CatalogService", "GetUserOrganizations"),
+                );
             self.inner.unary(req, path, codec).await
         }
         pub async fn get_organization(
             &mut self,
             request: impl tonic::IntoRequest<super::GetOrganizationRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetOrganizationResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetOrganizationResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetOrganization");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetOrganization",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "GetOrganization",
-            ));
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetOrganization"));
             self.inner.unary(req, path, codec).await
         }
         pub async fn get_user_audit_log(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserAuditLogRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetUserAuditLogResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetUserAuditLogResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/GetUserAuditLog");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetUserAuditLog",
+            );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "exome.v1.CatalogService",
-                "GetUserAuditLog",
-            ));
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetUserAuditLog"));
             self.inner.unary(req, path, codec).await
         }
         pub async fn run_query(
             &mut self,
             request: impl tonic::IntoRequest<super::RunQueryRequest>,
-        ) -> std::result::Result<tonic::Response<super::RunQueryResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::RunQueryResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/exome.v1.CatalogService/RunQuery");
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/RunQuery",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "RunQuery"));
@@ -1108,7 +1301,17 @@ pub struct HealthCheckResponse {
 }
 /// Nested message and enum types in `HealthCheckResponse`.
 pub mod health_check_response {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
     #[repr(i32)]
     pub enum ServingStatus {
         Unknown = 0,
@@ -1145,8 +1348,8 @@ pub mod health_check_response {
 /// Generated client implementations.
 pub mod health_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     #[derive(Debug, Clone)]
     pub struct HealthClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -1190,8 +1393,9 @@ pub mod health_client {
                     <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
                 >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + Send + Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
         {
             HealthClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1229,19 +1433,23 @@ pub mod health_client {
         pub async fn check(
             &mut self,
             request: impl tonic::IntoRequest<super::HealthCheckRequest>,
-        ) -> std::result::Result<tonic::Response<super::HealthCheckResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::HealthCheckResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/exome.v1.Health/Check");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("exome.v1.Health", "Check"));
+            req.extensions_mut().insert(GrpcMethod::new("exome.v1.Health", "Check"));
             self.inner.unary(req, path, codec).await
         }
     }

@@ -34,7 +34,7 @@ use crate::{
 };
 
 pub struct ExomeSession {
-    pub(crate) session: SessionContext,
+    pub session: SessionContext,
 }
 
 impl ExomeSession {
@@ -79,6 +79,8 @@ impl ExomeSession {
             DfLogicalPlan::Ddl(ddl_plan) => match ddl_plan {
                 DdlStatement::CreateCatalog(create_catalog) => {
                     let create_exome_catalog = CreateExomeCatalog::from(create_catalog);
+
+                    #[allow(clippy::infallible_destructuring_match)]
                     let create_exome_catalog_plan = match create_exome_catalog.into_logical_plan() {
                         LogicalPlan::DataFusion(plan) => plan,
                     };
@@ -90,17 +92,27 @@ impl ExomeSession {
 
                     Ok(execution)
                 }
-                _ => {
-                    return Err(DataFusionError::Execution(
-                        "Unsupported DDL statement".to_string(),
-                    ))
-                }
+                _ => Err(DataFusionError::Execution(
+                    "Unsupported DDL statement".to_string(),
+                )),
             },
             _ => {
                 let df = self.session.execute_logical_plan(plan).await?;
                 df.execute_stream().await
             }
         }
+    }
+}
+
+impl From<ExomeCatalogClient> for ExomeSession {
+    fn from(client: ExomeCatalogClient) -> Self {
+        let extension_manager = ExomeCatalogManager::new(client.clone());
+
+        let config = new_exon_config().with_extension(Arc::new(extension_manager));
+
+        let session = SessionContext::with_config_exon(config);
+
+        Self { session }
     }
 }
 
@@ -217,53 +229,23 @@ mod tests {
             .await?;
 
         let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
-
         let results = execution_result.try_collect::<Vec<_>>().await?;
 
-        assert_eq!(results.len(), 0);
+        assert_eq!(results.len(), 1);
+
+        // Let's try to create a catalog with the same name, it should fail
+        let sql = "CREATE DATABASE test_catalog;";
+        let df_logical_plan = exome_session
+            .session
+            .state()
+            .create_logical_plan(sql)
+            .await?;
+
+        let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
+        let results = execution_result.try_collect::<Vec<_>>().await;
+
+        assert!(results.is_err());
 
         Ok(())
     }
-
-    // Test the client
-    // #[tokio::test]
-    // async fn test_exome_catalog_client() -> Result<(), Box<dyn std::error::Error>> {
-    //     let mut exome_session = ExomeSession::connect(
-    //         "http://localhost:50051".to_string(),
-    //         "00000000-0000-0000-0000-000000000000".to_string(),
-    //         "token".to_string(),
-    //     )
-    //     .await?;
-
-    //     let catalog_name = "test_catalog";
-    //     let schema_name = "test_schema";
-    //     let table_name = "test_table";
-
-    //     exome_session
-    //         .register_library(
-    //             "00000000-0000-0000-0000-000000000000".to_string(),
-    //             &mut client,
-    //         )
-    //         .await?;
-
-    //     let catalog_names = exome_session.session.catalog_names();
-
-    //     assert!(catalog_names.contains(&catalog_name.to_string()));
-
-    //     let sql = format!(
-    //         "SELECT * FROM {}.{}.{}",
-    //         catalog_name, schema_name, table_name
-    //     );
-
-    //     let df = exome_session.session.sql(&sql).await?;
-
-    //     let results = df.collect().await?;
-
-    //     assert_eq!(results.len(), 1);
-
-    //     let first_batch = results.first().unwrap();
-    //     assert_eq!(first_batch.num_rows(), 1);
-
-    //     Ok(())
-    // }
 }

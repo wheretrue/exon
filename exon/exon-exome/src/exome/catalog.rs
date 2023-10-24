@@ -279,6 +279,20 @@ impl ExomeCatalogClient {
         Ok(response.id)
     }
 
+    /// Delete a catalog.
+    pub async fn drop_catalog(
+        &self,
+        name: String,
+        library_id: String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let request = self.make_request(proto::DropCatalogRequest { name, library_id })?;
+
+        let mut client = self.catalog_service_client.clone();
+        client.drop_catalog(request).await?;
+
+        Ok(())
+    }
+
     /// Create a schema, returning its ID.
     pub async fn create_schema(
         &self,

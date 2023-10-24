@@ -13,7 +13,5 @@
 // limitations under the License.
 
 mod exon_context_ext;
-mod exon_session;
 
 pub use exon_context_ext::ExonSessionExt;
-pub use exon_session::ExonSession;
