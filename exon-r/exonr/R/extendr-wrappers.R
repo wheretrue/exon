@@ -21,6 +21,8 @@ ExonSessionContext$new <- function() .Call(wrap__ExonSessionContext__new)
 
 ExonSessionContext$sql <- function(query) .Call(wrap__ExonSessionContext__sql, self, query)
 
+ExonSessionContext$execute <- function(query) .Call(wrap__ExonSessionContext__execute, self, query)
+
 #' @export
 `$.ExonSessionContext` <- function (self, name) { func <- ExonSessionContext[[name]]; environment(func) <- environment(); func }
 

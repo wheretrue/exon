@@ -199,6 +199,9 @@ ExonRSessionContext <- R6Class("ExonRSessionContext",
             df <- private$exon_session_context$sql(query)
 
             return(ExonDataFrame$new(df))
+        },
+        execute = function(query) {
+            private$exon_session_context$execute(query)
         }
     ),
     private = list(

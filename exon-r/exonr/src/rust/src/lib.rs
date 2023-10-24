@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod runtime;
-// mod session_context;
-
 use std::sync::Arc;
 
 use arrow::ffi_stream::export_reader_into_raw;
 use arrow::ffi_stream::FFI_ArrowArrayStream;
 use datafusion::error::DataFusionError;
+use datafusion::prelude::DataFrame;
 use datafusion::prelude::SessionContext;
 use exon::ffi::DataFrameRecordBatchStream;
 use exon::new_exon_config;
 use exon::ExonRuntimeEnvExt;
 use exon::{ffi::create_dataset_stream_from_table_provider, ExonSessionExt};
-use extendr_api::{extendr, extendr_module, list, Attributes, Conversions, IntoRobj, Result};
+use extendr_api::{
+    extendr, extendr_module, list, prelude::*, Attributes, Conversions, IntoRobj, Result,
+};
+use tokio::runtime::Runtime;
 
 fn read_inferred_exon_table_inner(path: &str, stream_ptr: *mut FFI_ArrowArrayStream) -> Result<()> {
     let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
@@ -83,12 +84,6 @@ fn read_inferred_exon_table(file_path: &str, stream_ptr: &str) -> list::List {
 
     r_result_list(val)
 }
-
-use extendr_api::prelude::*;
-use tokio::runtime::Runtime;
-
-use datafusion::prelude::DataFrame;
-use extendr_api::rprintln;
 
 #[derive(Debug, Clone)]
 pub struct RDataFrame(pub DataFrame);
@@ -165,6 +160,29 @@ impl ExonSessionContext {
         let rdf = RDataFrame::from(df);
 
         Ok(rdf)
+    }
+
+    /// Eagerly execute a query and return the results.
+    fn execute(&mut self, query: &str) -> Result<()> {
+        self.runtime.block_on(async {
+            let df = self.ctx.sql(query).await.map_err(|e| {
+                Error::from(format!(
+                    "Error executing query: {}\n{}",
+                    query,
+                    e.to_string()
+                ))
+            })?;
+
+            df.collect().await.map_err(|e| {
+                Error::from(format!(
+                    "Error collecting results: {}\n{}",
+                    query,
+                    e.to_string()
+                ))
+            })?;
+
+            Ok::<(), Error>(())
+        })
     }
 }
 
