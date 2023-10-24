@@ -91,7 +91,7 @@ test_that("reading a SAM works", {
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
-    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
+    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score", "tags"))
 
     # Check there's two rows.
     expect_equal(nrow(df), 1)
@@ -102,7 +102,7 @@ test_that("reading a BAM works", {
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
-    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
+    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score", "tags"))
 
     # Check there's two rows.
     expect_equal(nrow(df), 61)
