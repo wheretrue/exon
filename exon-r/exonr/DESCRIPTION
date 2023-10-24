@@ -14,5 +14,6 @@ Imports:
     nanoarrow (>= 0.2.0),
     R6 (>= 2.5.0)
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    duckdb (>= 0.8.0)
 Config/testthat/edition: 3
