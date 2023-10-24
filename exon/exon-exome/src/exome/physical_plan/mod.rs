@@ -12,14 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exome;
-mod exome_catalog_manager;
-mod exome_extension_planner;
-mod exome_session;
-mod exon_client;
+use std::sync::Arc;
 
-pub use exome::ExomeCatalogClient;
-pub use exome_catalog_manager::ExomeCatalogManager;
-pub use exome_extension_planner::ExomeExtensionPlanner;
-pub use exome_session::ExomeSession;
-pub use exon_client::ExonClient;
+use arrow::datatypes::{DataType, Field, Schema};
+use datafusion::common::DFSchemaRef;
+use once_cell::sync::Lazy;
+
+mod create_catalog_exec;
+mod drop_catalog_exec;
+
+pub(crate) use create_catalog_exec::CreateCatalogExec;
+pub(crate) use drop_catalog_exec::DropCatalogExec;
+
+pub static CHANGE_SCHEMA: Lazy<Arc<Schema>> = Lazy::new(|| {
+    Arc::new(Schema::new(vec![Field::new(
+        "change",
+        DataType::Utf8,
+        false,
+    )]))
+});
+
+pub static CHANGE_LOGICAL_SCHEMA: Lazy<DFSchemaRef> =
+    Lazy::new(|| Arc::new(CHANGE_SCHEMA.as_ref().clone().try_into().unwrap()));

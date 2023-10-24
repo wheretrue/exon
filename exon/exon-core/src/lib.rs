@@ -80,8 +80,8 @@
 //! # }
 //! ```
 
-mod context;
-pub use context::ExonSessionExt;
+mod session_context;
+pub use session_context::ExonSessionExt;
 
 mod config;
 pub use config::new_exon_config;

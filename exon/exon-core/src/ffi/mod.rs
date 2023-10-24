@@ -80,9 +80,9 @@ mod tests {
     use datafusion::prelude::SessionContext;
     use exon_test::test_path;
 
-    use crate::context::ExonSessionExt;
     use crate::ffi::create_dataset_stream_from_table_provider;
     use crate::ffi::ArrowArrayStream;
+    use crate::session_context::ExonSessionExt;
 
     #[test]
     pub fn test() -> Result<(), DataFusionError> {

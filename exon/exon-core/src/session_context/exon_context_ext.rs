@@ -495,7 +495,7 @@ mod tests {
     use datafusion::{error::DataFusionError, prelude::SessionContext};
     use exon_test::test_path;
 
-    use crate::context::exon_session_ext::ExonSessionExt;
+    use crate::session_context::exon_context_ext::ExonSessionExt;
 
     #[tokio::test]
     async fn test_register() -> Result<(), DataFusionError> {
@@ -658,25 +658,6 @@ mod tests {
 
         Ok(())
     }
-
-    // #[tokio::test]
-    // async fn test_query_bam() -> Result<(), DataFusionError> {
-    //     let ctx = SessionContext::new();
-
-    //     let path = test_path("bam", "test.bam");
-    //     let query = "chr1:1-12209153";
-
-    //     let df = ctx
-    //         .query_bam_file(path.to_str().unwrap(), query)
-    //         .await
-    //         .unwrap();
-
-    //     let batches = df.collect().await.unwrap();
-
-    //     assert!(!batches.is_empty());
-
-    //     Ok(())
-    // }
 
     #[tokio::test]
     async fn test_read_bam() -> Result<(), DataFusionError> {

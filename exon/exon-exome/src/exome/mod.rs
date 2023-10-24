@@ -21,6 +21,8 @@ use datafusion::{
 };
 
 mod catalog;
+pub(crate) mod logical_plan;
+pub(crate) mod physical_plan;
 
 mod proto;
 

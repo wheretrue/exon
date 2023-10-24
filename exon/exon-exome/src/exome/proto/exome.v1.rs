@@ -249,6 +249,17 @@ pub struct Catalog {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DropCatalogRequest {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DropCatalogResponse {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateCatalogRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -714,6 +725,31 @@ pub mod catalog_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "CreateCatalog"));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn drop_catalog(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DropCatalogRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DropCatalogResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/DropCatalog",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "DropCatalog"));
             self.inner.unary(req, path, codec).await
         }
         pub async fn get_catalog(

@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_session_ext;
+mod create_catalog;
+mod drop_catalog;
 
-pub use exon_session_ext::ExonSessionExt;
+pub(crate) use create_catalog::CreateExomeCatalog;
+pub(crate) use drop_catalog::DropExomeCatalog;
+
+#[derive(Debug, Clone)]
+pub enum LogicalPlan {
+    DataFusion(datafusion::logical_expr::LogicalPlan),
+}

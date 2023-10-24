@@ -12,14 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exome;
-mod exome_catalog_manager;
-mod exome_extension_planner;
-mod exome_session;
-mod exon_client;
+mod exon_context_ext;
 
-pub use exome::ExomeCatalogClient;
-pub use exome_catalog_manager::ExomeCatalogManager;
-pub use exome_extension_planner::ExomeExtensionPlanner;
-pub use exome_session::ExomeSession;
-pub use exon_client::ExonClient;
+pub use exon_context_ext::ExonSessionExt;

@@ -264,4 +264,57 @@ impl ExomeCatalogClient {
 
         Ok(response.tables)
     }
+
+    /// Create a catalog, returning its ID.
+    pub async fn create_catalog(
+        &self,
+        name: String,
+        library_id: String,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let request = self.make_request(proto::CreateCatalogRequest { name, library_id })?;
+
+        let mut client = self.catalog_service_client.clone();
+        let response = client.create_catalog(request).await?.into_inner();
+
+        Ok(response.id)
+    }
+
+    /// Delete a catalog.
+    pub async fn drop_catalog(
+        &self,
+        name: String,
+        library_id: String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let request = self.make_request(proto::DropCatalogRequest { name, library_id })?;
+
+        let mut client = self.catalog_service_client.clone();
+        client.drop_catalog(request).await?;
+
+        Ok(())
+    }
+
+    /// Create a schema, returning its ID.
+    pub async fn create_schema(
+        &self,
+        name: String,
+        description: String,
+        authority: String,
+        path: String,
+        is_listing: bool,
+        catalog_id: String,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let request = self.make_request(proto::CreateSchemaRequest {
+            name,
+            description,
+            authority,
+            path,
+            is_listing,
+            catalog_id,
+        })?;
+
+        let mut client = self.catalog_service_client.clone();
+        let response = client.create_schema(request).await?.into_inner();
+
+        Ok(response.id)
+    }
 }

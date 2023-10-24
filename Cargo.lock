@@ -1534,9 +1534,12 @@ dependencies = [
 name = "exon-exome"
 version = "0.3.4-beta.5"
 dependencies = [
+ "arrow",
  "async-trait",
  "datafusion",
  "exon",
+ "futures",
+ "once_cell",
  "prost",
  "tokio",
  "tonic",
