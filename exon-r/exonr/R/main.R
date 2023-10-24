@@ -3,6 +3,7 @@
 
 library(arrow)
 library(nanoarrow)
+library(R6)
 
 #' Copy the inferred exon table from the given path into the given stream.
 #'
@@ -168,3 +169,69 @@ read_mzml_file <- function(file_path) {
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
+
+
+#' An ExonDataFrame is a data frame that is backed by an Exon engine.
+#'
+#' @description An ExonDataFrame is a data frame that is backed by an Exon engine.
+#'
+#' @method initialize Initialize
+#' @method to_arrow ToArrow
+#'
+#' @export
+ExonDataFrame <- R6Class("ExonDataFrame",
+    public = list(
+        #' @description Initialize the ExonDataFrame object.
+        #' @param result Dataframe that serves as the base for ExonDataFrame.
+        initialize = function(result) {
+            private$data_frame <- result
+        },
+        #' @description Convert the ExonDataFrame to an Arrow table.
+        to_arrow = function() {
+            stream <- nanoarrow::nanoarrow_allocate_array_stream()
+            pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
+
+            private$data_frame$to_arrow(pointer_addr)
+
+            record_batch_stream <- arrow::RecordBatchStreamReader$import_from_c(pointer_addr)
+
+            arrow::arrow_table(record_batch_stream)
+        }
+    ),
+    private = list(
+        data_frame = NULL
+    )
+)
+
+#' An ExonRSessionContext is a context for an Exon session.
+#'
+#' @description An ExonRSessionContext is a context for an Exon session.
+#'
+#' @method initialize Initialize
+#' @method sql SQL
+#' @method execute Execute
+#'
+#' @export
+ExonRSessionContext <- R6Class("ExonRSessionContext",
+    public = list(
+        #' @description Initialize the ExonRSessionContext object.
+        initialize = function() {
+            private$exon_session_context <- ExonSessionContext$new()
+        },
+        #' @description Execute an SQL query.
+        #' @param query The SQL query to execute. Returns an ExonDataFrame.
+        sql = function(query) {
+            df <- private$exon_session_context$sql(query)
+
+            return(ExonDataFrame$new(df))
+        },
+        #' @description Execute an SQL query.
+        #' @param query The SQL query to execute. Runs eagerly.
+        execute = function(query) {
+            private$exon_session_context$execute(query)
+        }
+    ),
+    private = list(
+        exon_session_context = NULL
+    )
+)

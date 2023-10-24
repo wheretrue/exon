@@ -8,12 +8,11 @@ crate-type = ['staticlib']
 name = 'exonr'
 
 [dependencies]
-arrow = {version = "43", features = ["ffi"]}
-datafusion = {version = "28", features = ["default"]}
-exon = {version = "0.2.6", features = ["all"]}
+arrow = {version = "46", features = ["ffi"]}
+datafusion = "31"
+exon = {version = "0.3.4-beta.3", features = ["all"]}
 extendr-api = '*'
-object_store = {version = "0.6.1", features = ["aws", "gcp"]}
-tokio = {version = '*', features = ['full']}
+tokio = {version = '1', features = ['rt']}
 url = "2.4.0"
 
 [workspace]

@@ -15,5 +15,31 @@ NULL
 #' @export
 read_inferred_exon_table <- function(file_path, stream_ptr) .Call(wrap__read_inferred_exon_table, file_path, stream_ptr)
 
+ExonSessionContext <- new.env(parent = emptyenv())
+
+ExonSessionContext$new <- function() .Call(wrap__ExonSessionContext__new)
+
+ExonSessionContext$sql <- function(query) .Call(wrap__ExonSessionContext__sql, self, query)
+
+ExonSessionContext$execute <- function(query) .Call(wrap__ExonSessionContext__execute, self, query)
+
+#' @export
+`$.ExonSessionContext` <- function (self, name) { func <- ExonSessionContext[[name]]; environment(func) <- environment(); func }
+
+#' @export
+`[[.ExonSessionContext` <- `$.ExonSessionContext`
+
+RDataFrame <- new.env(parent = emptyenv())
+
+RDataFrame$print <- function() .Call(wrap__RDataFrame__print, self)
+
+RDataFrame$to_arrow <- function(stream_ptr) .Call(wrap__RDataFrame__to_arrow, self, stream_ptr)
+
+#' @export
+`$.RDataFrame` <- function (self, name) { func <- RDataFrame[[name]]; environment(func) <- environment(); func }
+
+#' @export
+`[[.RDataFrame` <- `$.RDataFrame`
+
 
 # nolint end

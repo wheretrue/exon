@@ -91,7 +91,7 @@ test_that("reading a SAM works", {
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
-    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
+    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score", "tags"))
 
     # Check there's two rows.
     expect_equal(nrow(df), 1)
@@ -102,7 +102,7 @@ test_that("reading a BAM works", {
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
-    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score"))
+    expect_equal(colnames(df), c("name", "flag", "reference", "start", "end", "mapping_quality", "cigar", "mate_reference", "sequence", "quality_score", "tags"))
 
     # Check there's two rows.
     expect_equal(nrow(df), 61)
@@ -117,4 +117,36 @@ test_that("reading a mzml file works", {
 
     # Check there's two rows.
     expect_equal(nrow(df), 2)
+})
+
+test_that("querying an exon session works", {
+    skip_if_not(requireNamespace("duckdb", quietly = TRUE))
+
+    library(duckdb)
+
+    session <- ExonRSessionContext$new()
+    session$execute("CREATE EXTERNAL TABLE gene_annotations STORED AS GFF LOCATION '../../../../exon/exon-core/test-data/datasources/gff/test.gff'")
+
+    rdf <- session$sql("SELECT seqname, source, type, start, \"end\", score, strand, phase FROM gene_annotations")
+    batch_reader <- rdf$to_arrow()
+
+    con <- dbConnect(duckdb::duckdb())
+
+    arrow::to_duckdb(batch_reader, table_name = "gene_annotations", con = con)
+
+    result <- dbGetQuery(con, "SELECT * FROM gene_annotations")
+
+    df <- as.data.frame(result)
+
+    expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase"))
+    expect_equal(nrow(df), 5000)
+
+    result <- dbGetQuery(con, "SELECT * FROM gene_annotations")
+
+    df <- as.data.frame(result)
+
+    expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase"))
+    expect_equal(nrow(df), 5000)
+
+    dbDisconnect(con)
 })
