@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod runtime;
+// mod session_context;
+
 use std::sync::Arc;
 
+use arrow::ffi_stream::export_reader_into_raw;
 use arrow::ffi_stream::FFI_ArrowArrayStream;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::SessionContext;
+use exon::ffi::DataFrameRecordBatchStream;
 use exon::new_exon_config;
 use exon::ExonRuntimeEnvExt;
 use exon::{ffi::create_dataset_stream_from_table_provider, ExonSessionExt};
-use extendr_api::{extendr, extendr_module, list, Attributes, Conversions, IntoRobj};
+use extendr_api::{extendr, extendr_module, list, Attributes, Conversions, IntoRobj, Result};
 
-fn read_inferred_exon_table_inner(
-    path: &str,
-    stream_ptr: *mut FFI_ArrowArrayStream,
-) -> Result<(), DataFusionError> {
+fn read_inferred_exon_table_inner(path: &str, stream_ptr: *mut FFI_ArrowArrayStream) -> Result<()> {
     let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
     let config = new_exon_config();
@@ -41,6 +43,13 @@ fn read_inferred_exon_table_inner(
         create_dataset_stream_from_table_provider(df, rt.clone(), stream_ptr).await?;
 
         Ok::<(), DataFusionError>(())
+    })
+    .map_err(|e| {
+        Error::from(format!(
+            "Error reading inferred exon table: {}\n{}",
+            path,
+            e.to_string()
+        ))
     })?;
 
     Ok(())
@@ -75,8 +84,95 @@ fn read_inferred_exon_table(file_path: &str, stream_ptr: &str) -> list::List {
     r_result_list(val)
 }
 
+use extendr_api::prelude::*;
+use tokio::runtime::Runtime;
+
+use datafusion::prelude::DataFrame;
+use extendr_api::rprintln;
+
+#[derive(Debug, Clone)]
+pub struct RDataFrame(pub DataFrame);
+
+#[extendr]
+impl RDataFrame {
+    pub fn print(&self) -> Self {
+        rprintln!("{:?}", self);
+        self.clone()
+    }
+
+    pub fn to_arrow(&self, stream_ptr: &str) -> Result<()> {
+        let stream_out_ptr_addr: usize = stream_ptr.parse().unwrap();
+
+        let stream_out_ptr = stream_out_ptr_addr as *mut FFI_ArrowArrayStream;
+
+        let runtime = Arc::new(Runtime::new().unwrap());
+
+        let stream = runtime
+            .block_on(async {
+                self.0.clone().execute_stream().await.map_err(|e| {
+                    Error::from(format!(
+                        "Error executing query: {}\n{}",
+                        "self.0.execute_stream().await",
+                        e.to_string()
+                    ))
+                })
+            })
+            .unwrap();
+
+        let dataset_record_batch_stream = DataFrameRecordBatchStream::new(stream, runtime);
+
+        unsafe { export_reader_into_raw(Box::new(dataset_record_batch_stream), stream_out_ptr) }
+
+        Ok(())
+    }
+}
+
+impl From<DataFrame> for RDataFrame {
+    fn from(df: DataFrame) -> Self {
+        Self(df)
+    }
+}
+
+pub struct ExonSessionContext {
+    ctx: SessionContext,
+    runtime: Runtime,
+}
+
+impl Default for ExonSessionContext {
+    fn default() -> Self {
+        Self {
+            ctx: SessionContext::new_exon(),
+            runtime: Runtime::new().unwrap(),
+        }
+    }
+}
+
+#[extendr]
+impl ExonSessionContext {
+    fn new() -> Result<Self> {
+        Ok(Self::default())
+    }
+
+    fn sql(&mut self, query: &str) -> Result<RDataFrame> {
+        let df = self.runtime.block_on(self.ctx.sql(query)).map_err(|e| {
+            Error::from(format!(
+                "Error executing query: {}\n{}",
+                query,
+                e.to_string()
+            ))
+        })?;
+
+        let rdf = RDataFrame::from(df);
+
+        Ok(rdf)
+    }
+}
+
 extendr_module! {
     mod exonr;
 
     fn read_inferred_exon_table;
+
+    impl ExonSessionContext;
+    impl RDataFrame;
 }

@@ -118,3 +118,14 @@ test_that("reading a mzml file works", {
     # Check there's two rows.
     expect_equal(nrow(df), 2)
 })
+
+test_that("querying an exon session works", {
+    session <- ExonRSessionContext$new()
+    rdf <- session$sql("SELECT 1 AS one")
+
+    batch_reader <- rdf$to_arrow()
+    df <- as.data.frame(batch_reader$read_table())
+
+    expect_equal(colnames(df), c("one"))
+    expect_equal(nrow(df), 1)
+})

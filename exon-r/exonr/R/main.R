@@ -3,6 +3,7 @@
 
 library(arrow)
 library(nanoarrow)
+library(R6)
 
 #' Copy the inferred exon table from the given path into the given stream.
 #'
@@ -168,3 +169,39 @@ read_mzml_file <- function(file_path) {
 
     return(arrow::RecordBatchStreamReader$import_from_c(pointer_addr))
 }
+
+
+ExonDataFrame <- R6Class("ExonDataFrame",
+    public = list(
+        initialize = function(result) {
+            private$data_frame <- result
+        },
+        to_arrow = function() {
+            stream <- nanoarrow::nanoarrow_allocate_array_stream()
+            pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
+
+            private$data_frame$to_arrow(pointer_addr)
+
+            arrow::RecordBatchStreamReader$import_from_c(pointer_addr)
+        }
+    ),
+    private = list(
+        data_frame = NULL
+    )
+)
+
+ExonRSessionContext <- R6Class("ExonRSessionContext",
+    public = list(
+        initialize = function() {
+            private$exon_session_context <- ExonSessionContext$new()
+        },
+        sql = function(query) {
+            df <- private$exon_session_context$sql(query)
+
+            return(ExonDataFrame$new(df))
+        }
+    ),
+    private = list(
+        exon_session_context = NULL
+    )
+)
