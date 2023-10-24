@@ -141,5 +141,12 @@ test_that("querying an exon session works", {
     expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase"))
     expect_equal(nrow(df), 5000)
 
+    result <- dbGetQuery(con, "SELECT * FROM gene_annotations")
+
+    df <- as.data.frame(result)
+
+    expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase"))
+    expect_equal(nrow(df), 5000)
+
     dbDisconnect(con)
 })
