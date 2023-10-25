@@ -203,6 +203,7 @@ mod tests {
                 ExonFileType::FASTQ,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

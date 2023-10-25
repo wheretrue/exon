@@ -188,6 +188,7 @@ mod tests {
                 ExonFileType::SAM,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

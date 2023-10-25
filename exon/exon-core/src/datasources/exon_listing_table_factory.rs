@@ -14,6 +14,7 @@
 
 use std::{str::FromStr, sync::Arc};
 
+use arrow::datatypes::{DataType, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
@@ -69,6 +70,7 @@ impl ExonListingTableFactory {
         file_type: ExonFileType,
         file_compression_type: FileCompressionType,
         location: String,
+        table_partition_cols: Vec<(String, DataType)>,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let table_path = ListingTableUrl::parse(&location)?;
 
@@ -193,11 +195,12 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::GFF => {
-                let options = ListingGFFTableOptions::new(file_compression_type);
-                let schema = options.infer_schema().await?;
+                let options = ListingGFFTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
+                let file_schema = options.infer_schema().await?;
 
                 let config = ListingGFFTableConfig::new(table_path).with_options(options);
-                let table = ListingGFFTable::try_new(config, schema)?;
+                let table = ListingGFFTable::try_new(config, file_schema)?;
 
                 Ok(Arc::new(table))
             }
@@ -224,6 +227,18 @@ impl TableProviderFactory for ExonListingTableFactory {
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let file_compression_type: FileCompressionType = cmd.file_compression_type.into();
 
+        let schema: SchemaRef = Arc::new(cmd.schema.as_ref().to_owned().into());
+        let table_partition_cols = cmd
+            .table_partition_cols
+            .iter()
+            .map(|col| match schema.field_with_name(col) {
+                Ok(field) => Ok((field.name().clone(), field.data_type().clone())),
+                Err(_) => Ok((col.clone(), DataType::Utf8)),
+            })
+            .collect::<datafusion::common::Result<Vec<_>>>()?
+            .into_iter()
+            .collect::<Vec<_>>();
+
         let file_type = ExonFileType::from_str(&cmd.file_type).map_err(|_| {
             datafusion::error::DataFusionError::Execution(format!(
                 "Unsupported file type: {}",
@@ -236,6 +251,7 @@ impl TableProviderFactory for ExonListingTableFactory {
             file_type,
             file_compression_type,
             cmd.location.clone(),
+            table_partition_cols,
         )
         .await
     }

@@ -32,3 +32,11 @@ sq0 caat 8 13 NULL + NULL
 
 statement ok
 DROP TABLE gff_table;
+
+statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS GFF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-partition/';
+
+query T
+SELECT COUNT(*) AS cnt FROM gff_table;
+----
+10000

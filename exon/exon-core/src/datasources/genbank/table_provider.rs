@@ -245,6 +245,7 @@ mod tests {
                 ExonFileType::GENBANK,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

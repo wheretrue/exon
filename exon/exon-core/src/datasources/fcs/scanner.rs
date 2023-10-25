@@ -165,6 +165,7 @@ mod tests {
                 crate::datasources::ExonFileType::FCS,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

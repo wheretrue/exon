@@ -65,6 +65,12 @@ impl FileScanConfigBuilder {
         self
     }
 
+    /// Set the table partition columns.
+    pub fn table_partition_cols(mut self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        self.table_partition_cols = table_partition_cols;
+        self
+    }
+
     /// Build a `FileScanConfig` from the current state of the builder.
     pub fn build(self) -> FileScanConfig {
         FileScanConfig {

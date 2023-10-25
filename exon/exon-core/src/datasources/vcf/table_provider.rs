@@ -576,6 +576,7 @@ mod tests {
                 crate::datasources::ExonFileType::VCF,
                 datafusion::common::FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 
