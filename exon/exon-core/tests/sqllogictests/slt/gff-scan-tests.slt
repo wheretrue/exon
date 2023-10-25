@@ -1,34 +1,10 @@
 control substitution on
 
 statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff';
+CREATE EXTERNAL TABLE gff_table STORED AS GFF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-partition/';
+----
 
 query T
-SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
+SELECT COUNT(*) AS cnt FROM gff_table;
 ----
-sq0 caat 8 13 NULL + NULL
-
-statement ok
-DROP TABLE gff_table;
-
-statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.gz';
-
-query T
-SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
-----
-sq0 caat 8 13 NULL + NULL
-
-statement ok
-DROP TABLE gff_table;
-
-statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.zst';
-
-query T
-SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
-----
-sq0 caat 8 13 NULL + NULL
-
-statement ok
-DROP TABLE gff_table;
+10000

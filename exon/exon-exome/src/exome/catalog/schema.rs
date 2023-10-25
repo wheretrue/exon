@@ -108,6 +108,7 @@ impl SchemaProvider for Schema {
                 file_type,
                 file_compression_type,
                 proto_table.location.clone(),
+                Vec::new(),
             )
             .await
             .unwrap();

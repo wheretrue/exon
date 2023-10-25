@@ -68,6 +68,8 @@ pub struct ListingGFFTableOptions {
     file_extension: String,
 
     file_compression_type: FileCompressionType,
+
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingGFFTableOptions {
@@ -78,6 +80,15 @@ impl ListingGFFTableOptions {
         Self {
             file_extension,
             file_compression_type,
+            table_partition_cols: Vec::new(),
+        }
+    }
+
+    /// Set the table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
         }
     }
 
@@ -175,6 +186,7 @@ impl TableProvider for ListingGFFTable {
             partitioned_file_lists,
         )
         .projection_option(projection.cloned())
+        .table_partition_cols(self.options.table_partition_cols.clone())
         .limit_option(limit)
         .build();
 
@@ -233,6 +245,7 @@ mod tests {
                 ExonFileType::GFF,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

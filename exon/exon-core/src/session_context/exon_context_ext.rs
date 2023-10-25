@@ -356,6 +356,7 @@ impl ExonSessionExt for SessionContext {
                 file_type,
                 file_compression_type,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 
@@ -393,6 +394,7 @@ impl ExonSessionExt for SessionContext {
                 file_type,
                 file_compress_type,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

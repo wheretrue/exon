@@ -202,6 +202,7 @@ mod tests {
                 ExonFileType::BED,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 

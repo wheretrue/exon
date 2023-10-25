@@ -201,6 +201,7 @@ mod tests {
                 ExonFileType::MZML,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
+                Vec::new(),
             )
             .await?;
 
