@@ -54,7 +54,7 @@ Execute an SQL query.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{query}}{The SQL query to execute.}
+\item{\code{query}}{The SQL query to execute. Runs eagerly.}
 }
 \if{html}{\out{</div>}}
 }
