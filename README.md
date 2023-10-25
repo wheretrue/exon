@@ -14,6 +14,7 @@ Please note Exon was recently excised from a larger library, so please be patien
 * [Installation](#installation)
 * [Usage](#usage)
 * [File Formats](#file-formats)
+* [Related Projects](#related-projects)
 * [Settings](#settings)
 * [Benchmarks](#benchmarks)
 
@@ -61,6 +62,11 @@ Please see the [rust docs](https://docs.rs/exon) for more information.
 
 [^1]: Uses bgzip not gzip.
 [^2]: mzML also works.
+
+## Related Projects
+
+* [Exon R Bindings](./exon-r/README.md)
+* [BioBear](https://www.github.com/wheretrue/biobear)
 
 ## Settings
 
