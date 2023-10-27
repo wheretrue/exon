@@ -20,4 +20,4 @@ tokio = {workspace = true}
 tokio-util = {workspace = true}
 
 [dev-dependencies]
-exon-test = {path = "../exon-test", version = "0.3.4-beta.6"}
+exon-test = {path = "../exon-test", version = "0.3.4-beta.7"}
