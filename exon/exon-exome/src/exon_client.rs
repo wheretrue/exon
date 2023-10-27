@@ -16,10 +16,9 @@ use datafusion::error::DataFusionError;
 
 #[async_trait::async_trait]
 pub trait ExonClient {
-    async fn register_library(&mut self, library_id: String) -> Result<(), DataFusionError>;
-
-    async fn register_library_by_name(
+    async fn register_library(
         &mut self,
+        organization_name: String,
         library_name: String,
     ) -> Result<(), DataFusionError>;
 
