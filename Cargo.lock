@@ -2284,9 +2284,9 @@ dependencies = [
 
 [[package]]
 name = "noodles"
-version = "0.55.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de44e418359f87564942f592782671c69de012c2237d247052d982c9e0af2ef6"
+checksum = "9ba860dd272b95bc6758e9cf1ec9d13d159c928726b020432a88bd897ca75bbb"
 dependencies = [
  "noodles-bam",
  "noodles-bcf",
@@ -2306,14 +2306,15 @@ dependencies = [
 
 [[package]]
 name = "noodles-bam"
-version = "0.48.0"
+version = "0.49.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb38cdafed820062fd94176087cce7e4097c5f0dfc0cf1e826e78eeec7671a62"
+checksum = "27efd2e9691c3cf6c894559089562f2dceebfd1f09fe1bc59e85235e16b77e1e"
 dependencies = [
  "bit-vec",
  "byteorder",
  "bytes",
  "futures",
+ "indexmap 2.0.0",
  "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
@@ -2323,9 +2324,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-bcf"
-version = "0.40.0"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d2f92703316ccd82b68bd9a5f660f873f68d4e2ce56d541178d6c7aaaee9f5b"
+checksum = "94375177dd31eaab6a97a114581ff2aec70409d5e1ce76ce22085bb3d76b271d"
 dependencies = [
  "byteorder",
  "futures",
@@ -2370,9 +2371,9 @@ checksum = "94fbe3192fe33acacabaedd387657f39b0fc606f1996d546db0dfe14703b843a"
 
 [[package]]
 name = "noodles-cram"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c042243fe92a407cab3226ee20ed080ae2fd0fb4ddcda53067240301914d4216"
+checksum = "91136934a387be89869d66443bff6be4006fae31b7fdb1da32a99ac84d091085"
 dependencies = [
  "async-compression",
  "bitflags 2.3.3",
@@ -2393,9 +2394,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-csi"
-version = "0.25.1"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39d86e55b4784ba7c38b4ffbfc24e122bc05ce971b0a664e8e1a15ffd9de68a7"
+checksum = "e0531175d5473e6057c1724c1242b19bfc42dba644fe275b4df89c5b8d31a782"
 dependencies = [
  "bit-vec",
  "byteorder",
@@ -2431,9 +2432,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-gff"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd864469dd763c515349fbbc885a2dd4279e92b227652b56777e8b5d550e29c2"
+checksum = "2a70052d45f0bf58198617f282a6564c2c22602aa9bfff293a30b90060148ce6"
 dependencies = [
  "indexmap 2.0.0",
  "noodles-bgzf",
@@ -2444,9 +2445,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-gtf"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1431f14914b67b6e3012de3cd685bacda004cc7a3f8032512b84d18c50046d40"
+checksum = "fc089e0d2a80c447213126e85d52b4408ed7a737f64e4a01521336962a6f67aa"
 dependencies = [
  "noodles-bgzf",
  "noodles-core",
@@ -2455,9 +2456,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-sam"
-version = "0.45.0"
+version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c79a79257e5c5f81f6c656db66fcf9da7e15d8aa499a9b0b0130a410b1590ae"
+checksum = "045d64736a3772d6edf5e05c167398808a45ce2c802627c7ba542820f3a48b64"
 dependencies = [
  "bitflags 2.3.3",
  "futures",
@@ -2472,12 +2473,13 @@ dependencies = [
 
 [[package]]
 name = "noodles-tabix"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d12d6981ba752798cb03abc9604324ff6cbc1e5354252f95c372545d967a6daf"
+checksum = "415e319f97784c110a85756a8747bf26e9a18bf321b113d00984ca1af7a6fef9"
 dependencies = [
  "bit-vec",
  "byteorder",
+ "indexmap 2.0.0",
  "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
@@ -2486,9 +2488,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-vcf"
-version = "0.43.0"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f13f0225114584f7ab147f146532dccc584e810006a4dfb275544957e7722884"
+checksum = "82d34757c2d465c34dab54582b475ad53fd3ffb5b12943b7166876235db8a297"
 dependencies = [
  "futures",
  "indexmap 2.0.0",
