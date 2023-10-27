@@ -1575,7 +1575,7 @@ dependencies = [
 
 [[package]]
 name = "exon-test"
-version = "0.3.4-beta.7"
+version = "0.3.4-beta.8"
 dependencies = [
  "datafusion",
  "object_store",
