@@ -1,4 +1,5 @@
 [package]
+description = "Exon test crate"
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
