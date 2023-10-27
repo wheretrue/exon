@@ -1443,7 +1443,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1476,7 +1476,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "arrow",
  "futures",
@@ -1488,7 +1488,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "clap",
  "datafusion",
@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "futures",
  "glob",
@@ -1532,7 +1532,7 @@ dependencies = [
 
 [[package]]
 name = "exon-exome"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1549,7 +1549,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "arrow",
  "exon-test",
@@ -1563,7 +1563,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 dependencies = [
  "async-trait",
  "aws-config",

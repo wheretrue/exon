@@ -6,7 +6,7 @@ keywords = ["biology", "science", "arrow"]
 license = {workspace = true}
 name = "exon-io"
 readme = {workspace = true}
-version = "0.3.4-beta.6"
+version = "0.3.4-beta.7"
 
 [dependencies]
 async-trait = "0.1.73"
