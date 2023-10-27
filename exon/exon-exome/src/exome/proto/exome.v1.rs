@@ -19,9 +19,9 @@ pub struct RunQueryRequest {
     #[prost(string, tag = "1")]
     pub query: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub library_id: ::prost::alloc::string::String,
+    pub library_name: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
-    pub organization_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -33,12 +33,10 @@ pub struct RunQueryResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Organization {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub created_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub updated_at: ::prost::alloc::string::String,
 }
 /// Association between a use and an organization.
@@ -54,7 +52,7 @@ pub struct UserOrganization {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetOrganizationRequest {
     #[prost(string, tag = "1")]
-    pub organization_id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -168,14 +166,10 @@ pub struct FileFormat {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Library {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "2")]
     pub created_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "3")]
     pub updated_at: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -186,19 +180,19 @@ pub struct CreateLibraryRequest {
     #[prost(string, tag = "2")]
     pub description: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
-    pub organization_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateLibraryResponse {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListLibrariesRequest {
     #[prost(string, tag = "1")]
-    pub organization_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -210,7 +204,9 @@ pub struct ListLibrariesResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetLibraryRequest {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -224,7 +220,7 @@ pub struct GetLibraryByNameRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub organization_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -237,11 +233,11 @@ pub struct GetLibraryByNameResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Catalog {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_name: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
-    pub library_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
     pub created_at: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
@@ -253,7 +249,7 @@ pub struct DropCatalogRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub library_id: ::prost::alloc::string::String,
+    pub library_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -264,19 +260,25 @@ pub struct CreateCatalogRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub library_id: ::prost::alloc::string::String,
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateCatalogResponse {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetCatalogRequest {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -288,7 +290,9 @@ pub struct GetCatalogResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListCatalogsRequest {
     #[prost(string, tag = "1")]
-    pub library_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -296,42 +300,28 @@ pub struct ListCatalogsResponse {
     #[prost(message, repeated, tag = "1")]
     pub catalogs: ::prost::alloc::vec::Vec<Catalog>,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCatalogByNameRequest {
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub library_id: ::prost::alloc::string::String,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCatalogByNameResponse {
-    #[prost(message, optional, tag = "1")]
-    pub catalog: ::core::option::Option<Catalog>,
-}
 /// Schema
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "2")]
     pub authority: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "3")]
     pub path: ::prost::alloc::string::String,
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "4")]
     pub is_listing: bool,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "5")]
     pub created_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "8")]
+    #[prost(string, tag = "6")]
     pub updated_at: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub library_name: ::prost::alloc::string::String,
     #[prost(string, tag = "9")]
-    pub catalog_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -347,19 +337,27 @@ pub struct CreateSchemaRequest {
     #[prost(bool, tag = "5")]
     pub is_listing: bool,
     #[prost(string, tag = "6")]
-    pub catalog_id: ::prost::alloc::string::String,
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSchemaResponse {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListSchemasRequest {
     #[prost(string, tag = "1")]
-    pub catalog_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub catalog_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -371,25 +369,17 @@ pub struct ListSchemasResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSchemaRequest {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSchemaResponse {
-    #[prost(message, optional, tag = "1")]
-    pub schema: ::core::option::Option<Schema>,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetSchemaByNameRequest {
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub catalog_id: ::prost::alloc::string::String,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetSchemaByNameResponse {
     #[prost(message, optional, tag = "1")]
     pub schema: ::core::option::Option<Schema>,
 }
@@ -398,25 +388,29 @@ pub struct GetSchemaByNameResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Table {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
     pub location: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub schema_name: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
-    pub schema_id: ::prost::alloc::string::String,
-    #[prost(string, tag = "6")]
     pub file_format: ::prost::alloc::string::String,
-    #[prost(bool, tag = "7")]
+    #[prost(bool, tag = "6")]
     pub is_listing: bool,
-    #[prost(string, tag = "8")]
+    #[prost(string, tag = "7")]
     pub created_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "9")]
+    #[prost(string, tag = "8")]
     pub updated_at: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub compression_type: ::prost::alloc::string::String,
     #[prost(string, tag = "10")]
-    pub compression_type_id: ::prost::alloc::string::String,
+    pub table_partition_cols: ::prost::alloc::string::String,
+    #[prost(string, tag = "11")]
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "12")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "13")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -428,25 +422,39 @@ pub struct CreateTableRequest {
     #[prost(string, tag = "3")]
     pub location: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
-    pub schema_id: ::prost::alloc::string::String,
+    pub schema_name: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
     pub file_format: ::prost::alloc::string::String,
     #[prost(bool, tag = "6")]
     pub is_listing: bool,
     #[prost(string, tag = "7")]
-    pub compression_type_id: ::prost::alloc::string::String,
+    pub compression_type: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub table_partition_cols: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "10")]
+    pub library_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateTableResponse {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetTableRequest {
     #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub schema_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -458,27 +466,19 @@ pub struct GetTableResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTablesRequest {
     #[prost(string, tag = "1")]
-    pub schema_id: ::prost::alloc::string::String,
+    pub schema_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub catalog_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub library_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListTablesResponse {
     #[prost(message, repeated, tag = "1")]
     pub tables: ::prost::alloc::vec::Vec<Table>,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetTableByNameRequest {
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub schema_id: ::prost::alloc::string::String,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetTableByNameResponse {
-    #[prost(message, optional, tag = "1")]
-    pub table: ::core::option::Option<Table>,
 }
 /// Audit Log
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -497,7 +497,7 @@ pub struct UserAuditLog {
     #[prost(string, tag = "6")]
     pub target_entity_type: ::prost::alloc::string::String,
     #[prost(string, tag = "7")]
-    pub target_entity_id: ::prost::alloc::string::String,
+    pub target_entity: ::prost::alloc::string::String,
     #[prost(string, tag = "8")]
     pub created_at: ::prost::alloc::string::String,
     #[prost(string, tag = "9")]
@@ -507,7 +507,7 @@ pub struct UserAuditLog {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserAuditLogRequest {
     #[prost(string, tag = "1")]
-    pub organization_id: ::prost::alloc::string::String,
+    pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -676,31 +676,6 @@ pub mod catalog_service_client {
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetLibrary"));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn get_library_by_name(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetLibraryByNameRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetLibraryByNameResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/exome.v1.CatalogService/GetLibraryByName",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetLibraryByName"));
-            self.inner.unary(req, path, codec).await
-        }
         /// Catalog
         pub async fn create_catalog(
             &mut self,
@@ -802,31 +777,6 @@ pub mod catalog_service_client {
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "ListCatalogs"));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn get_catalog_by_name(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetCatalogByNameRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetCatalogByNameResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/exome.v1.CatalogService/GetCatalogByName",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetCatalogByName"));
-            self.inner.unary(req, path, codec).await
-        }
         /// Schema
         pub async fn create_schema(
             &mut self,
@@ -903,31 +853,6 @@ pub mod catalog_service_client {
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetSchema"));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn get_schema_by_name(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetSchemaByNameRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetSchemaByNameResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/exome.v1.CatalogService/GetSchemaByName",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetSchemaByName"));
-            self.inner.unary(req, path, codec).await
-        }
         /// Table
         pub async fn create_table(
             &mut self,
@@ -1002,31 +927,6 @@ pub mod catalog_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetTable"));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn get_table_by_name(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetTableByNameRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetTableByNameResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/exome.v1.CatalogService/GetTableByName",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetTableByName"));
             self.inner.unary(req, path, codec).await
         }
         /// File Formats

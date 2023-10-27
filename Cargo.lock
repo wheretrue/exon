@@ -1543,6 +1543,7 @@ dependencies = [
  "prost",
  "tokio",
  "tonic",
+ "tracing",
  "url",
 ]
 

@@ -121,7 +121,7 @@ impl ExonClient for ExomeSession {
     async fn create_catalog(
         &mut self,
         catalog_name: String,
-        library_id: String,
+        library_name: String,
     ) -> Result<(), DataFusionError> {
         let manager = self
             .session
@@ -134,49 +134,20 @@ impl ExonClient for ExomeSession {
         manager
             .client
             .clone()
-            .create_catalog(catalog_name, library_id)
+            .create_catalog(
+                catalog_name,
+                library_name,
+                manager.client.organization_name.clone(),
+            )
             .await
             .map_err(|e| DataFusionError::Execution(format!("Error creating catalog {}", e)))?;
 
         Ok(())
     }
 
-    async fn register_library(&mut self, library_id: String) -> Result<(), DataFusionError> {
-        let manager = self
-            .session
-            .state()
-            .task_ctx()
-            .session_config()
-            .get_extension::<ExomeCatalogManager>()
-            .unwrap();
-
-        let exome_catalogs = manager
-            .client
-            .clone()
-            .get_catalogs(library_id)
-            .await
-            .map_err(|e| {
-                DataFusionError::Execution(format!("Error getting catalogs for library {}", e))
-            })?;
-
-        for catalog in exome_catalogs {
-            let catalog_name = catalog.name.clone();
-            let catalog_id = catalog.id.clone();
-
-            register_catalog(
-                manager.client.clone(),
-                Arc::new(self.session.clone()),
-                catalog_name,
-                catalog_id,
-            )
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    async fn register_library_by_name(
+    async fn register_library(
         &mut self,
+        organization_name: String,
         library_name: String,
     ) -> Result<(), DataFusionError> {
         let manager = self
@@ -187,21 +158,43 @@ impl ExonClient for ExomeSession {
             .get_extension::<ExomeCatalogManager>()
             .unwrap();
 
-        let library = manager
+        tracing::info!(
+            "Registering library {} for organization {}",
+            library_name,
+            organization_name
+        );
+
+        let exome_catalogs = manager
             .client
             .clone()
-            .get_library_by_name(library_name)
+            .get_catalogs(organization_name, library_name)
             .await
-            .unwrap();
+            .map_err(|e| {
+                DataFusionError::Execution(format!("Error getting catalogs for library {}", e))
+            })?;
 
-        match library {
-            Some(library) => {
-                let library_id = library.id.clone();
+        for catalog in exome_catalogs {
+            let catalog_name = catalog.name.clone();
+            let library_name = catalog.library_name.clone();
+            let organization_name = catalog.organization_name.clone();
 
-                self.register_library(library_id).await
-            }
-            None => Err(DataFusionError::Execution("Library not found".to_string())),
+            tracing::info!(
+                "Registering catalog {} for library {}",
+                catalog_name,
+                library_name
+            );
+
+            register_catalog(
+                manager.client.clone(),
+                Arc::new(self.session.clone()),
+                organization_name,
+                library_name,
+                catalog_name,
+            )
+            .await?;
         }
+
+        Ok(())
     }
 }
 

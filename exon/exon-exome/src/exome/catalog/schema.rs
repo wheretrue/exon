@@ -40,6 +40,7 @@ impl std::fmt::Debug for Schema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Schema")
             .field("inner", &self.inner)
+            .field("tables", &self.tables)
             .finish()
     }
 }
@@ -63,9 +64,14 @@ impl Schema {
     }
 
     pub async fn refresh(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let schema_id = self.inner.id.clone();
+        let library_name = self.inner.library_name.clone();
+        let catalog_name = self.inner.catalog_name.clone();
+        let schema_name = self.inner.name.clone();
 
-        let tables = self.exome_client.get_tables(schema_id).await?;
+        let tables = self
+            .exome_client
+            .get_tables(schema_name, catalog_name, library_name)
+            .await?;
 
         self.tables.clear();
 
@@ -97,7 +103,7 @@ impl SchemaProvider for Schema {
             .unwrap();
 
         let file_compression_type =
-            FileCompressionType::from_str(&proto_table.compression_type_id).unwrap();
+            FileCompressionType::from_str(&proto_table.compression_type).unwrap();
 
         let file_type = ExonFileType::from_str(&proto_table.file_format).unwrap();
 

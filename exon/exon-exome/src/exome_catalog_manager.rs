@@ -19,12 +19,12 @@ use crate::exome::ExomeCatalogClient;
 /// CreateCatalog is a change to create a catalog.
 pub struct CreateCatalog {
     name: String,
-    library_id: String,
+    library_name: String,
 }
 
 impl CreateCatalog {
-    pub fn new(name: String, library_id: String) -> Self {
-        Self { name, library_id }
+    pub fn new(name: String, library_name: String) -> Self {
+        Self { name, library_name }
     }
 }
 
@@ -35,7 +35,8 @@ pub struct CreateSchema {
     authority: String,
     path: String,
     is_listing: bool,
-    catalog_id: String,
+    catalog_name: String,
+    library_name: String,
 }
 
 pub struct DropCatalog {
@@ -70,7 +71,11 @@ impl ExomeCatalogManager {
             match change {
                 Change::CreateCatalog(create_catalog) => {
                     self.client
-                        .create_catalog(create_catalog.name, create_catalog.library_id)
+                        .create_catalog(
+                            create_catalog.name,
+                            create_catalog.library_name,
+                            self.client.organization_name.clone(),
+                        )
                         .await?;
                 }
                 Change::DropCatalog(drop_catalog) => {
@@ -86,7 +91,8 @@ impl ExomeCatalogManager {
                             create_schema.authority,
                             create_schema.path,
                             create_schema.is_listing,
-                            create_schema.catalog_id,
+                            create_schema.catalog_name,
+                            create_schema.library_name,
                         )
                         .await?;
                 }

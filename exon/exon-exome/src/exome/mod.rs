@@ -32,15 +32,19 @@ pub use catalog::ExomeCatalogClient;
 pub async fn register_catalog(
     client: ExomeCatalogClient,
     session: Arc<SessionContext>,
+    organization_name: String,
+    library_name: String,
     catalog_name: String,
-    exome_catalog_id: String,
 ) -> Result<(), DataFusionError> {
     let memory_catalog = MemoryCatalogProvider::new();
 
     let mut client = client.clone();
-    let schemas = client.get_schemas(exome_catalog_id).await.map_err(|e| {
-        DataFusionError::Execution(format!("Error getting schemas for catalog {}", e))
-    })?;
+    let schemas = client
+        .get_schemas(organization_name, library_name, catalog_name.clone())
+        .await
+        .map_err(|e| {
+            DataFusionError::Execution(format!("Error getting schemas for catalog {}", e))
+        })?;
 
     for schema in schemas {
         let schema_name = schema.name.clone();
@@ -50,6 +54,8 @@ pub async fn register_catalog(
             .map_err(|e| {
                 DataFusionError::Execution(format!("Error creating schema for catalog {}", e))
             })?;
+
+        tracing::info!("Registering schema {:#?}", schema);
 
         memory_catalog
             .register_schema(&schema_name, Arc::new(schema))
