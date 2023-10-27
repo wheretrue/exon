@@ -6,7 +6,7 @@ license.workspace = true
 name = "exon-bam"
 readme.workspace = true
 repository.workspace = true
-version = "0.3.4-beta.5"
+version = "0.3.4-beta.6"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
