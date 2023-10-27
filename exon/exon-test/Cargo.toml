@@ -4,6 +4,7 @@ edition.workspace = true
 homepage.workspace = true
 license.workspace = true
 name = "exon-test"
+publish = false
 readme.workspace = true
 repository.workspace = true
 version = "0.3.4-beta.7"
