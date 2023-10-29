@@ -19,9 +19,13 @@ use datafusion::common::DFSchemaRef;
 use once_cell::sync::Lazy;
 
 mod create_catalog_exec;
+mod create_schema_exec;
+mod create_table_exec;
 mod drop_catalog_exec;
 
 pub(crate) use create_catalog_exec::CreateCatalogExec;
+pub(crate) use create_schema_exec::CreateSchemaExec;
+pub(crate) use create_table_exec::CreateTableExec;
 pub(crate) use drop_catalog_exec::DropCatalogExec;
 
 pub static CHANGE_SCHEMA: Lazy<Arc<Schema>> = Lazy::new(|| {

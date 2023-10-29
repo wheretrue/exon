@@ -22,28 +22,35 @@ use datafusion::{
 
 use futures::stream;
 
-use crate::exome_catalog_manager::{Change, CreateCatalog, ExomeCatalogManager};
+use crate::exome_catalog_manager::{
+    CatalogName, Change, CreateSchema, ExomeCatalogManager, LibraryName, SchemaName,
+};
 
 use super::CHANGE_SCHEMA;
 
 #[derive(Debug, Clone)]
 pub struct CreateSchemaExec {
-    name: String,
-    library_id: String,
+    name: SchemaName,
+    catalog_name: CatalogName,
 }
 
-impl CreateCatalogExec {
-    pub fn new(name: String, library_id: String) -> Self {
-        Self { name, library_id }
+impl CreateSchemaExec {
+    pub fn new(name: SchemaName, catalog_name: CatalogName) -> Self {
+        Self { name, catalog_name }
     }
 
-    pub async fn create_catalog(
+    pub async fn create_schema(
         self,
         manager: Arc<ExomeCatalogManager>,
     ) -> Result<RecordBatch, DataFusionError> {
-        let changes = vec![Change::CreateCatalog(CreateCatalog::new(
-            self.name.clone(),
-            self.library_id.clone(),
+        eprintln!(
+            "CreateSchemaExec::create_schema: name: {}, catalog_name: {}",
+            self.name, self.catalog_name
+        );
+        let changes = vec![Change::CreateSchema(CreateSchema::new(
+            self.name,
+            self.catalog_name,
+            LibraryName("example_library".to_string()),
         ))];
 
         manager
@@ -55,7 +62,7 @@ impl CreateCatalogExec {
     }
 }
 
-impl DisplayAs for CreateCatalogExec {
+impl DisplayAs for CreateSchemaExec {
     fn fmt_as(
         &self,
         _t: datafusion::physical_plan::DisplayFormatType,
@@ -65,7 +72,7 @@ impl DisplayAs for CreateCatalogExec {
     }
 }
 
-impl ExecutionPlan for CreateCatalogExec {
+impl ExecutionPlan for CreateSchemaExec {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -90,9 +97,9 @@ impl ExecutionPlan for CreateCatalogExec {
         self: std::sync::Arc<Self>,
         _children: Vec<std::sync::Arc<dyn ExecutionPlan>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn ExecutionPlan>> {
-        Ok(Arc::new(CreateCatalogExec {
+        Ok(Arc::new(CreateSchemaExec {
             name: self.name.clone(),
-            library_id: self.library_id.clone(),
+            catalog_name: self.catalog_name.clone(),
         }))
     }
 
@@ -120,7 +127,7 @@ impl ExecutionPlan for CreateCatalogExec {
         };
 
         let this = self.clone();
-        let stream = stream::once(this.create_catalog(exome_catalog_manager));
+        let stream = stream::once(this.create_schema(exome_catalog_manager));
 
         Ok(Box::pin(RecordBatchStreamAdapter::new(
             CHANGE_SCHEMA.clone(),
