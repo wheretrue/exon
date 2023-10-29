@@ -1,0 +1,22 @@
+[package]
+description = "A library for reading and writing GFF files with Exon."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "exon-gff"
+readme.workspace = true
+repository.workspace = true
+version = "0.3.4-beta.9"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrow = {workspace = true}
+futures = {workspace = true}
+noodles = {version = "0.56", features = ["gff"]}
+object_store = {workspace = true}
+tokio = {workspace = true}
+tokio-util = {workspace = true}
+
+[dev-dependencies]
+exon-test = {path = "../exon-test", version = "0.3.4-beta.9"}

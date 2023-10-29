@@ -1454,6 +1454,7 @@ dependencies = [
  "exon-bam",
  "exon-common",
  "exon-fasta",
+ "exon-gff",
  "exon-io",
  "exon-test",
  "flate2",
@@ -1555,6 +1556,19 @@ dependencies = [
  "exon-test",
  "futures",
  "itertools 0.11.0",
+ "noodles",
+ "object_store",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "exon-gff"
+version = "0.3.4-beta.9"
+dependencies = [
+ "arrow",
+ "exon-test",
+ "futures",
  "noodles",
  "object_store",
  "tokio",

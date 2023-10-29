@@ -23,10 +23,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use exon_gff::GFFConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::GFFConfig, file_opener::GFFOpener};
+use super::file_opener::GFFOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for GFF files.

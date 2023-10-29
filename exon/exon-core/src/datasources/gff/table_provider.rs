@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
@@ -29,6 +29,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_gff::schema;
 
 use crate::{
     datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
@@ -194,36 +195,6 @@ impl TableProvider for ListingGFFTable {
 
         Ok(plan)
     }
-}
-
-/// Schema for a GFF file
-pub fn schema() -> SchemaRef {
-    let attribute_key_field = Field::new("keys", DataType::Utf8, false);
-
-    // attribute_value_field is a list of strings
-    let value_field = Field::new("item", DataType::Utf8, true);
-    let attribute_value_field = Field::new("values", DataType::List(Arc::new(value_field)), true);
-
-    let inner = Schema::new(vec![
-        Field::new("seqname", DataType::Utf8, false),
-        Field::new("source", DataType::Utf8, true),
-        Field::new("type", DataType::Utf8, false),
-        Field::new("start", DataType::Int64, false),
-        Field::new("end", DataType::Int64, false),
-        Field::new("score", DataType::Float32, true),
-        Field::new("strand", DataType::Utf8, false),
-        Field::new("phase", DataType::Utf8, true),
-        Field::new_map(
-            "attributes",
-            "entries",
-            attribute_key_field,
-            attribute_value_field,
-            false,
-            true,
-        ),
-    ]);
-
-    inner.into()
 }
 
 #[cfg(test)]

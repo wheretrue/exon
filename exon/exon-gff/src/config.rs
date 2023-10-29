@@ -14,12 +14,38 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use object_store::ObjectStore;
 
-use crate::datasources::DEFAULT_BATCH_SIZE;
+/// Schema for a GFF file
+pub fn schema() -> SchemaRef {
+    let attribute_key_field = Field::new("keys", DataType::Utf8, false);
 
-use super::table_provider::schema;
+    // attribute_value_field is a list of strings
+    let value_field = Field::new("item", DataType::Utf8, true);
+    let attribute_value_field = Field::new("values", DataType::List(Arc::new(value_field)), true);
+
+    let inner = Schema::new(vec![
+        Field::new("seqname", DataType::Utf8, false),
+        Field::new("source", DataType::Utf8, true),
+        Field::new("type", DataType::Utf8, false),
+        Field::new("start", DataType::Int64, false),
+        Field::new("end", DataType::Int64, false),
+        Field::new("score", DataType::Float32, true),
+        Field::new("strand", DataType::Utf8, false),
+        Field::new("phase", DataType::Utf8, true),
+        Field::new_map(
+            "attributes",
+            "entries",
+            attribute_key_field,
+            attribute_value_field,
+            false,
+            true,
+        ),
+    ]);
+
+    inner.into()
+}
 
 /// Configuration for a GFF data source.
 pub struct GFFConfig {
@@ -44,7 +70,7 @@ impl GFFConfig {
         Self {
             file_schema,
             object_store,
-            batch_size: DEFAULT_BATCH_SIZE,
+            batch_size: 8096,
             projection: None,
         }
     }

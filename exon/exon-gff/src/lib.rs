@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! GFF Datasource Module
-//!
-//! This module provides functionality for working with GFF files as a data source.
+mod array_builder;
+mod batch_reader;
+mod config;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for GFF files.
-pub mod table_provider;
-
-pub use self::file_opener::GFFOpener;
-pub use self::scanner::GFFScan;
+pub use array_builder::GFFArrayBuilder;
+pub use batch_reader::BatchReader;
+pub use config::schema;
+pub use config::GFFConfig;
