@@ -1,4 +1,5 @@
 [package]
+description = "Exon CLI"
 edition = "2021"
 name = "exon-cli"
 version = "0.3.4-beta.11"
@@ -8,6 +9,6 @@ version = "0.3.4-beta.11"
 [dependencies]
 clap = {version = "4.4.7", features = ["derive"]}
 datafusion.workspace = true
-exon = {path = "../exon/exon-core", features = ["all"]}
+exon = {path = "../exon/exon-core", features = ["all"], version = "0.3.4-beta.11"}
 tokio = {version = "1.33.0", features = ["io-util"]}
 url = "2.4.1"
