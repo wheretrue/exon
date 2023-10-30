@@ -1443,7 +1443,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.3.4-beta.10"
+version = "0.3.4-beta.11"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1502,7 +1502,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.3.4-beta.10"
+version = "0.3.4-beta.11"
 dependencies = [
  "clap",
  "datafusion",
@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.3.4-beta.10"
+version = "0.3.4-beta.11"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1533,7 +1533,7 @@ dependencies = [
 
 [[package]]
 name = "exon-exome"
-version = "0.3.4-beta.10"
+version = "0.3.4-beta.11"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1550,7 +1550,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.3.4-beta.10"
+version = "0.3.4-beta.11"
 dependencies = [
  "arrow",
  "exon-test",
@@ -1564,7 +1564,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.3.4-beta.9"
+version = "0.3.4-beta.11"
 dependencies = [
  "arrow",
  "exon-test",
