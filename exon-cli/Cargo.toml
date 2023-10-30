@@ -2,7 +2,7 @@
 description = "Exon CLI"
 edition = "2021"
 name = "exon-cli"
-version = "0.3.4-beta.11"
+version = "0.3.4-beta.12"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
