@@ -115,13 +115,13 @@ impl GFFConfig {
 
     /// Set the projection.
     pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
-        self.projection = Some(projection);
-        self
-    }
+        let file_projection = projection
+            .iter()
+            .filter(|f| **f < self.file_schema.fields().len())
+            .cloned()
+            .collect::<Vec<_>>();
 
-    /// Set the projection from an optional vector.
-    pub fn with_some_projection(mut self, projection: Option<Vec<usize>>) -> Self {
-        self.projection = projection;
+        self.projection = Some(file_projection);
         self
     }
 }

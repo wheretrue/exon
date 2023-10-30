@@ -106,7 +106,6 @@ where
         let batch =
             RecordBatch::try_new(self.config.file_schema.clone(), gff_array_builder.finish())?;
 
-        eprintln!("proj {:?}", self.config.projection);
         match &self.config.projection {
             Some(projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),

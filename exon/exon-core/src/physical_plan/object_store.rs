@@ -14,12 +14,9 @@
 
 use std::{ops::Range, sync::Arc};
 
-use arrow::datatypes::DataType;
 use bytes::Bytes;
 use datafusion::{
     datasource::{listing::FileRange, physical_plan::FileMeta},
-    execution::context::SessionState,
-    prelude::Expr,
     scalar::ScalarValue,
 };
 use object_store::{path::Path, ObjectStore};
@@ -28,7 +25,7 @@ use datafusion::{
     datasource::listing::{ListingTableUrl, PartitionedFile},
     error::{DataFusionError, Result},
 };
-use futures::{stream::BoxStream, TryStreamExt};
+use futures::TryStreamExt;
 
 /// Get a byte region from an object store.
 ///
@@ -113,7 +110,7 @@ pub async fn list_files_for_scan(
             };
 
             let path = table_path.prefix();
-            let partition_values = parse_partition_key_values(&path, table_partition_cols).unwrap();
+            let partition_values = parse_partition_key_values(path, table_partition_cols).unwrap();
 
             let mut pc: PartitionedFile = store_head.into();
             pc.partition_values = partition_values
@@ -141,7 +138,7 @@ fn parse_partition_key_values(
     }
 
     for part in path.parts() {
-        let split = part.as_ref().split("=").collect::<Vec<&str>>();
+        let split = part.as_ref().split('=').collect::<Vec<&str>>();
 
         if split.len() != 2 {
             continue;

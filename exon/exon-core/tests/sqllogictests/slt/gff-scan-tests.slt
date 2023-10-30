@@ -37,6 +37,6 @@ statement ok
 CREATE EXTERNAL TABLE gff_table STORED AS GFF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-partition/';
 
 query T
-SELECT * FROM gff_table WHERE sample = '1' LIMIT 1;
+SELECT seqname, sample FROM gff_table WHERE sample = '1' LIMIT 1;
 ----
-10000
+sq0 1

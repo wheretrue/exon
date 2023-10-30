@@ -97,14 +97,6 @@ impl ListingGFFTableOptions {
 
     /// Infer the schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        // let partition_fields = self
-        //     .table_partition_cols
-        //     .iter()
-        //     .map(|(name, data_type)| Field::new(name, data_type.clone(), false))
-        //     .collect::<Vec<_>>();
-
-        // let schema = GFFSchemaBuilder::default().extend(partition_fields).build();
-
         let schema = GFFSchemaBuilder::default().build();
 
         Ok(schema)
@@ -113,7 +105,7 @@ impl ListingGFFTableOptions {
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
-        filters: Option<&Arc<dyn PhysicalExpr>>,
+        _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
         let scan = GFFScan::new(conf.clone(), self.file_compression_type);
 
@@ -201,7 +193,7 @@ impl TableProvider for ListingGFFTable {
                     }
                 }
 
-                return TableProviderFilterPushDown::Unsupported;
+                TableProviderFilterPushDown::Unsupported
             })
             .collect())
     }
