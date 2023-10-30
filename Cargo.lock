@@ -1533,7 +1533,7 @@ dependencies = [
 
 [[package]]
 name = "exon-exome"
-version = "0.3.4-beta.11"
+version = "0.3.4"
 dependencies = [
  "arrow",
  "async-trait",
