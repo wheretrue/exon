@@ -1,37 +1,37 @@
 control substitution on
 
-# statement ok
-# CREATE EXTERNAL TABLE gff_table STORED AS GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff';
-#
-# query T
-# SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
-# ----
-# sq0 caat 8 13 NULL + NULL
-#
-# statement ok
-# DROP TABLE gff_table;
-#
-# statement ok
-# CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.gz';
-#
-# query T
-# SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
-# ----
-# sq0 caat 8 13 NULL + NULL
-#
-# statement ok
-# DROP TABLE gff_table;
-#
-# statement ok
-# CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.zst';
-#
-# query T
-# SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
-# ----
-# sq0 caat 8 13 NULL + NULL
-#
-# statement ok
-# DROP TABLE gff_table;
+statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff';
+
+query T
+SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
+----
+sq0 caat 8 13 NULL + NULL
+
+statement ok
+DROP TABLE gff_table;
+
+statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.gz';
+
+query T
+SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
+----
+sq0 caat 8 13 NULL + NULL
+
+statement ok
+DROP TABLE gff_table;
+
+statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.zst';
+
+query T
+SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
+----
+sq0 caat 8 13 NULL + NULL
+
+statement ok
+DROP TABLE gff_table;
 
 statement ok
 CREATE EXTERNAL TABLE gff_table STORED AS GFF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-partition/';
@@ -40,3 +40,16 @@ query T
 SELECT seqname, sample FROM gff_table WHERE sample = '1' LIMIT 1;
 ----
 sq0 1
+
+query T
+SELECT COUNT(*) FROM gff_table WHERE sample = '1';
+----
+5000
+
+query T
+SELECT COUNT(*) FROM gff_table;
+----
+10000
+
+statement ok
+DROP TABLE gff_table;
