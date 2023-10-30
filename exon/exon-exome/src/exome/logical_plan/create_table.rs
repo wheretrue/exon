@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::logical_expr::{CreateExternalTable, UserDefinedLogicalNodeCore};
+use datafusion::{
+    common::parsers::CompressionTypeVariant,
+    logical_expr::{CreateExternalTable, UserDefinedLogicalNodeCore},
+};
 
 use crate::{
     exome::physical_plan::CHANGE_LOGICAL_SCHEMA, exome_extension_planner::DfExtensionNode,
@@ -95,7 +98,20 @@ impl TryFrom<CreateExternalTable> for CreateExomeTable {
         // TODO: how to get this?
         let is_listing = true;
 
-        let compression_type = value.file_compression_type.to_string();
+        let compression_type = match value.file_compression_type {
+            CompressionTypeVariant::GZIP => "GZIP".to_string(),
+            CompressionTypeVariant::ZSTD => "ZSTD".to_string(),
+            CompressionTypeVariant::UNCOMPRESSED => "UNCOMPRESSED".to_string(),
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!(
+                        "Unsupported file compression type {:?}",
+                        value.file_compression_type
+                    ),
+                ))
+            }
+        };
 
         Ok(CreateExomeTable {
             name: table_name.to_string(),
