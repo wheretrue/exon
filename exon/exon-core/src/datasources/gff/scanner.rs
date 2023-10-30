@@ -23,10 +23,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use exon_gff::GFFConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::GFFConfig, file_opener::GFFOpener};
+use super::file_opener::GFFOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for GFF files.
@@ -117,13 +118,17 @@ impl ExecutionPlan for GFFScan {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let config = GFFConfig::new(object_store)
+        let mut config = GFFConfig::new(object_store)
             .with_schema(self.base_config.file_schema.clone())
-            .with_batch_size(context.session_config().batch_size())
-            .with_some_projection(self.base_config.projection.clone());
+            .with_batch_size(context.session_config().batch_size());
+
+        if let Some(projection) = &self.base_config.projection {
+            config = config.with_projection(projection.clone());
+        }
 
         let opener = GFFOpener::new(Arc::new(config), self.file_compression_type);
 
+        // this should have the pc_projector, which would project the scalar fields from the PartitionFile to the RecordBatch
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)

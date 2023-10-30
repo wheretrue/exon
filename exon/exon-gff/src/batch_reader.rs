@@ -99,7 +99,7 @@ where
             }
         }
 
-        if gff_array_builder.len() == 0 {
+        if gff_array_builder.is_empty() {
             return Ok(None);
         }
 
@@ -110,56 +110,5 @@ where
             Some(projection) => Ok(Some(batch.project(projection)?)),
             None => Ok(Some(batch)),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use datafusion::arrow::util::pretty::pretty_format_batches;
-    use exon_test::test_listing_table_dir;
-    use futures::StreamExt;
-    use object_store::{local::LocalFileSystem, ObjectStore};
-
-    use tokio_util::io::StreamReader;
-
-    #[tokio::test]
-    async fn test_streaming_batch_reader() {
-        let object_store = Arc::new(LocalFileSystem::new());
-
-        let config = Arc::new(super::GFFConfig::new(object_store.clone()));
-
-        let path = test_listing_table_dir("gff", "test.gff");
-        let reader = object_store.get(&path).await.unwrap();
-
-        let stream = reader.into_stream();
-        let buf_reader = StreamReader::new(stream);
-
-        let batch_reader = super::BatchReader::new(buf_reader, config);
-
-        let batch_stream = batch_reader.into_stream().boxed();
-
-        let batches = batch_stream
-            .map(|batch| batch.unwrap())
-            .collect::<Vec<_>>()
-            .await;
-
-        assert_eq!(batches.len(), 1);
-
-        // Check the first 2 rows of the first batch are what's expected.
-        let batch = &batches[0];
-        let smaller_batch = batch.slice(0, 2);
-
-        let expected = r#"+---------+--------+------+-------+-----+-------+--------+-------+----------------------------------------+
-| seqname | source | type | start | end | score | strand | phase | attributes                             |
-+---------+--------+------+-------+-----+-------+--------+-------+----------------------------------------+
-| sq0     | caat   | gene | 8     | 13  |       | +      |       | {gene_id: [caat1], gene_name: [gene0]} |
-| sq0     | caat   | gene | 8     | 13  |       | +      |       | {gene_id: [caat1], gene_name: [gene0]} |
-+---------+--------+------+-------+-----+-------+--------+-------+----------------------------------------+"#;
-
-        let formatted = pretty_format_batches(&[smaller_batch]).unwrap().to_string();
-
-        assert_eq!(formatted, expected);
     }
 }

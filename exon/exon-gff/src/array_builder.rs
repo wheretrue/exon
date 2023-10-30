@@ -36,6 +36,13 @@ pub struct GFFArrayBuilder {
         MapBuilder<GenericStringBuilder<i32>, GenericListBuilder<i32, GenericStringBuilder<i32>>>,
 }
 
+/// A default implementation for GFFArrayBuilder.
+impl Default for GFFArrayBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GFFArrayBuilder {
     pub fn new() -> Self {
         Self {
@@ -57,8 +64,14 @@ impl GFFArrayBuilder {
         }
     }
 
+    /// Returns the number of records in the array builder.
     pub fn len(&self) -> usize {
         self.seqnames.len()
+    }
+
+    /// Returns whether the array builder is empty.
+    pub fn is_empty(&self) -> bool {
+        self.seqnames.is_empty()
     }
 
     pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {

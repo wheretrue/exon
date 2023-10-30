@@ -15,8 +15,11 @@
 use std::{ops::Range, sync::Arc};
 
 use bytes::Bytes;
-use datafusion::datasource::{listing::FileRange, physical_plan::FileMeta};
-use object_store::ObjectStore;
+use datafusion::{
+    datasource::{listing::FileRange, physical_plan::FileMeta},
+    scalar::ScalarValue,
+};
+use object_store::{path::Path, ObjectStore};
 
 use datafusion::{
     datasource::listing::{ListingTableUrl, PartitionedFile},
@@ -63,6 +66,7 @@ pub async fn list_files_for_scan(
     store: Arc<dyn ObjectStore>,
     listing_table_urls: Vec<ListingTableUrl>,
     file_extension: &str,
+    table_partition_cols: &[String],
 ) -> Result<Vec<PartitionedFile>> {
     let mut lists: Vec<PartitionedFile> = Vec::new();
 
@@ -75,10 +79,20 @@ pub async fn list_files_for_scan(
             store_list
                 .try_for_each(|v| {
                     let path = v.location.clone();
+
+                    let partition_values =
+                        parse_partition_key_values(&path, table_partition_cols).unwrap();
+
                     let extension_match = path.as_ref().to_lowercase().ends_with(file_extension);
                     let glob_match = table_path.contains(&path);
                     if extension_match && glob_match {
-                        lists.push(v.into());
+                        let mut pc: PartitionedFile = v.into();
+                        pc.partition_values = partition_values
+                            .into_iter()
+                            .map(|(_, v)| ScalarValue::Utf8(Some(v)))
+                            .collect();
+
+                        lists.push(pc);
                     }
                     futures::future::ready(Ok(()))
                 })
@@ -95,9 +109,78 @@ pub async fn list_files_for_scan(
                 }
             };
 
-            lists.push(store_head.into());
+            let path = table_path.prefix();
+            let partition_values = parse_partition_key_values(path, table_partition_cols).unwrap();
+
+            let mut pc: PartitionedFile = store_head.into();
+            pc.partition_values = partition_values
+                .into_iter()
+                .map(|(_, v)| ScalarValue::Utf8(Some(v)))
+                .collect();
+
+            lists.push(pc);
         }
     }
 
     Ok(lists)
+}
+
+fn parse_partition_key_values(
+    path: &Path,
+    table_partition_cols: &[String],
+) -> Result<Vec<(String, String)>> {
+    let mut partition_key_values: Vec<(String, String)> = Vec::new();
+
+    let mut col_i = 0;
+    let max_i = table_partition_cols.len();
+    if max_i == 0 {
+        return Ok(partition_key_values);
+    }
+
+    for part in path.parts() {
+        let split = part.as_ref().split('=').collect::<Vec<&str>>();
+
+        if split.len() != 2 {
+            continue;
+        }
+
+        let key = split[0];
+        let value = split[1];
+
+        if key == table_partition_cols[col_i] {
+            partition_key_values.push((key.to_string(), value.to_string()));
+
+            col_i += 1;
+        }
+    }
+
+    if col_i != max_i {
+        return Err(DataFusionError::Execution(format!(
+            "Unable to parse partition key values: {}",
+            path
+        )));
+    }
+
+    Ok(partition_key_values)
+}
+
+#[cfg(test)]
+mod tests {
+    use object_store::path::Path;
+
+    use crate::physical_plan::object_store::parse_partition_key_values;
+
+    #[tokio::test]
+    async fn test_partition_parse_simple() -> Result<(), Box<dyn std::error::Error>> {
+        let path = Path::parse("users/thauck/wheretrue/github.com/wheretrue/exon/exon/exon-core/test-data/datasources/gff-partition/sample=1/test.gff")?;
+        let table_partition_cols = vec!["sample".to_string()];
+
+        let partition_values = parse_partition_key_values(&path, &table_partition_cols)?;
+
+        assert_eq!(partition_values.len(), 1);
+        assert_eq!(partition_values[0].0, "sample");
+        assert_eq!(partition_values[0].1, "1");
+
+        Ok(())
+    }
 }
