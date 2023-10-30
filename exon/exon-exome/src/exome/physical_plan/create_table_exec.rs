@@ -69,10 +69,6 @@ impl CreateTableExec {
         self,
         manager: Arc<ExomeCatalogManager>,
     ) -> Result<RecordBatch, DataFusionError> {
-        eprintln!(
-            "CreateTableExec::create_table: name: {}, catalog_name: {}, file_format: {}",
-            self.name, self.catalog_name, self.file_format
-        );
         let changes = vec![Change::CreateTable(CreateTable::new(
             self.name,
             self.schema_name,
