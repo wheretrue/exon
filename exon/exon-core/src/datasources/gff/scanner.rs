@@ -20,7 +20,7 @@ use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream, Statistics,
+        Partitioning, RecordBatchStream, SendableRecordBatchStream, Statistics,
     },
 };
 use exon_gff::GFFConfig;
@@ -124,8 +124,47 @@ impl ExecutionPlan for GFFScan {
             .with_some_projection(self.base_config.projection.clone());
 
         let opener = GFFOpener::new(Arc::new(config), self.file_compression_type);
+        eprintln!(
+            "file schema: {:?}",
+            self.base_config
+                .file_schema
+                .fields
+                .iter()
+                .map(|s| s.name())
+                .collect::<Vec<_>>()
+        );
 
+        // print the table partition cols
+        eprintln!(
+            "partition_cols: {:?}",
+            self.base_config
+                .table_partition_cols
+                .iter()
+                .map(|s| s.0.as_str())
+                .collect::<Vec<_>>()
+        );
+
+        let (projected_schema, ..) = self.base_config.project();
+        eprintln!(
+            "projected_schema: {:?}",
+            projected_schema
+                .fields
+                .iter()
+                .map(|s| s.name())
+                .collect::<Vec<_>>()
+        );
+
+        // this should have the pc_projector, which would project the scalar fields from the PartitionFile to the RecordBatch
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
+        eprintln!(
+            "projected_schema for stream: {:?}",
+            stream
+                .schema()
+                .fields
+                .iter()
+                .map(|s| s.name())
+                .collect::<Vec<_>>()
+        );
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
     }

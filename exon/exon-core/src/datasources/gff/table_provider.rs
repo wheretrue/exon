@@ -14,10 +14,10 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
+    common::{FileCompressionType, ToDFSchema},
     datasource::{
         listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
@@ -25,11 +25,13 @@ use datafusion::{
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
-    logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan},
+    logical_expr::{BinaryExpr, Operator, TableProviderFilterPushDown, TableType},
+    optimizer::utils::conjunction,
+    physical_expr::create_physical_expr,
+    physical_plan::{empty::EmptyExec, ExecutionPlan, PhysicalExpr},
     prelude::Expr,
 };
-use exon_gff::schema;
+use exon_gff::GFFSchemaBuilder;
 
 use crate::{
     datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
@@ -38,7 +40,7 @@ use crate::{
 use super::GFFScan;
 
 #[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
+/// Configuration for a GFF listing table
 pub struct ListingGFFTableConfig {
     inner: ListingTableConfig,
 
@@ -46,7 +48,7 @@ pub struct ListingGFFTableConfig {
 }
 
 impl ListingGFFTableConfig {
-    /// Create a new VCF listing table configuration
+    /// Create a new GFF listing table configuration
     pub fn new(table_path: ListingTableUrl) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
@@ -95,7 +97,15 @@ impl ListingGFFTableOptions {
 
     /// Infer the schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
+        // let partition_fields = self
+        //     .table_partition_cols
+        //     .iter()
+        //     .map(|(name, data_type)| Field::new(name, data_type.clone(), false))
+        //     .collect::<Vec<_>>();
+
+        // let schema = GFFSchemaBuilder::default().extend(partition_fields).build();
+
+        let schema = GFFSchemaBuilder::default().build();
 
         Ok(schema)
     }
@@ -103,6 +113,7 @@ impl ListingGFFTableOptions {
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
+        filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
         let scan = GFFScan::new(conf.clone(), self.file_compression_type);
 
@@ -115,6 +126,8 @@ impl ListingGFFTableOptions {
 pub struct ListingGFFTable {
     table_paths: Vec<ListingTableUrl>,
 
+    file_schema: SchemaRef,
+
     table_schema: SchemaRef,
 
     options: ListingGFFTableOptions,
@@ -122,10 +135,22 @@ pub struct ListingGFFTable {
 
 impl ListingGFFTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingGFFTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(config: ListingGFFTableConfig, file_schema: Arc<Schema>) -> Result<Self> {
+        let fields = config
+            .options
+            .as_ref()
+            .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?
+            .table_partition_cols
+            .iter()
+            .map(|f| Field::new(&f.0, f.1.clone(), false))
+            .collect::<Vec<_>>();
+
+        let schema_builder = GFFSchemaBuilder::default().extend(fields);
+
         Ok(Self {
             table_paths: config.inner.table_paths,
-            table_schema,
+            file_schema,
+            table_schema: schema_builder.build(),
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
@@ -140,6 +165,7 @@ impl TableProvider for ListingGFFTable {
     }
 
     fn schema(&self) -> SchemaRef {
+        // Listing tables return the file schema with the addition of the partition columns
         Arc::clone(&self.table_schema)
     }
 
@@ -153,7 +179,30 @@ impl TableProvider for ListingGFFTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
+            .map(|f| {
+                if let Expr::BinaryExpr(BinaryExpr { left, op, right }) = f {
+                    if *op == Operator::Eq {
+                        if let Expr::Column(c) = &**left {
+                            if let Expr::Literal(_) = &**right {
+                                let name = &c.name;
+
+                                if self
+                                    .options
+                                    .table_partition_cols
+                                    .iter()
+                                    .any(|(n, _)| n == name)
+                                {
+                                    return TableProviderFilterPushDown::Exact;
+                                } else {
+                                    return TableProviderFilterPushDown::Unsupported;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return TableProviderFilterPushDown::Unsupported;
+            })
             .collect())
     }
 
@@ -161,7 +210,7 @@ impl TableProvider for ListingGFFTable {
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -172,18 +221,40 @@ impl TableProvider for ListingGFFTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
+        let col_strings = self
+            .options
+            .table_partition_cols
+            .iter()
+            .map(|(n, _)| n.clone())
+            .collect::<Vec<_>>();
+
         let partitioned_file_lists = vec![
             crate::physical_plan::object_store::list_files_for_scan(
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,
+                &col_strings,
             )
             .await?,
         ];
 
+        let filters = if let Some(expr) = conjunction(filters.to_vec()) {
+            // NOTE: Use the table schema (NOT file schema) here because `expr` may contain references to partition columns.
+            let table_df_schema = self.table_schema.as_ref().clone().to_dfschema()?;
+            let filters = create_physical_expr(
+                &expr,
+                &table_df_schema,
+                &self.table_schema,
+                state.execution_props(),
+            )?;
+            Some(filters)
+        } else {
+            None
+        };
+
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
-            Arc::clone(&self.table_schema),
+            Arc::clone(&self.file_schema),
             partitioned_file_lists,
         )
         .projection_option(projection.cloned())
@@ -191,7 +262,11 @@ impl TableProvider for ListingGFFTable {
         .limit_option(limit)
         .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        // https://github.com/apache/arrow-datafusion/blob/9b45967edc6dba312ea223464dad3e66604d2095/datafusion/core/src/datasource/listing/table.rs#L774
+        let plan = self
+            .options
+            .create_physical_plan(file_scan_config, filters.as_ref())
+            .await?;
 
         Ok(plan)
     }
@@ -199,6 +274,7 @@ impl TableProvider for ListingGFFTable {
 
 #[cfg(test)]
 mod tests {
+    use arrow::datatypes::DataType;
     use datafusion::{common::FileCompressionType, prelude::SessionContext};
     use exon_test::test_listing_table_url;
 
@@ -209,14 +285,14 @@ mod tests {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
 
-        let table_path = test_listing_table_url("gff");
+        let table_path = test_listing_table_url("gff-partition");
         let table = ExonListingTableFactory::new()
             .create_from_file_type(
                 &session_state,
                 ExonFileType::GFF,
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
-                Vec::new(),
+                vec![("sample".to_string(), DataType::Utf8)],
             )
             .await?;
 

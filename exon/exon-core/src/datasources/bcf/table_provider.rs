@@ -214,6 +214,7 @@ impl TableProvider for ListingBCFTable {
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,
+                &[],
             )
             .await?,
         ];

@@ -163,6 +163,7 @@ impl TableProvider for ListingHMMDomTabTable {
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,
+                &[],
             )
             .await?,
         ];

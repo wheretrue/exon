@@ -179,6 +179,7 @@ impl TableProvider for ListingFASTATable {
                 object_store,
                 self.table_paths.clone(),
                 &self.options.file_extension,
+                &[],
             )
             .await?,
         ];
