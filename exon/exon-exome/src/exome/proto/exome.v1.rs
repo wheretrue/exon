@@ -307,20 +307,14 @@ pub struct Schema {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub authority: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub path: ::prost::alloc::string::String,
-    #[prost(bool, tag = "4")]
-    pub is_listing: bool,
-    #[prost(string, tag = "5")]
     pub created_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "3")]
     pub updated_at: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "4")]
     pub catalog_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "8")]
+    #[prost(string, tag = "5")]
     pub library_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "9")]
+    #[prost(string, tag = "6")]
     pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -329,18 +323,10 @@ pub struct CreateSchemaRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub authority: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
-    pub path: ::prost::alloc::string::String,
-    #[prost(bool, tag = "5")]
-    pub is_listing: bool,
-    #[prost(string, tag = "6")]
     pub catalog_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "3")]
     pub library_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "8")]
+    #[prost(string, tag = "4")]
     pub organization_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -418,22 +404,20 @@ pub struct CreateTableRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
     pub location: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub schema_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub file_format: ::prost::alloc::string::String,
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "5")]
     pub is_listing: bool,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "6")]
     pub compression_type: ::prost::alloc::string::String,
-    #[prost(string, tag = "8")]
+    #[prost(string, tag = "7")]
     pub table_partition_cols: ::prost::alloc::string::String,
-    #[prost(string, tag = "9")]
+    #[prost(string, tag = "8")]
     pub catalog_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "10")]
+    #[prost(string, tag = "9")]
     pub library_name: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]

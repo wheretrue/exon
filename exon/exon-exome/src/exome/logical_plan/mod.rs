@@ -13,9 +13,13 @@
 // limitations under the License.
 
 mod create_catalog;
+mod create_schema;
+mod create_table;
 mod drop_catalog;
 
 pub(crate) use create_catalog::CreateExomeCatalog;
+pub(crate) use create_schema::CreateExomeSchema;
+pub(crate) use create_table::CreateExomeTable;
 pub(crate) use drop_catalog::DropExomeCatalog;
 
 #[derive(Debug, Clone)]

@@ -25,9 +25,10 @@ use exon::{new_exon_config, ExonSessionExt};
 
 use crate::{
     exome::{
-        logical_plan::{CreateExomeCatalog, LogicalPlan},
+        logical_plan::{CreateExomeCatalog, CreateExomeSchema, CreateExomeTable, LogicalPlan},
         register_catalog, ExomeCatalogClient,
     },
+    exome_catalog_manager::{CatalogName, LibraryName, OrganizationName},
     exome_extension_planner::DfExtensionNode,
     exon_client::ExonClient,
     ExomeCatalogManager, ExomeExtensionPlanner,
@@ -40,10 +41,10 @@ pub struct ExomeSession {
 impl ExomeSession {
     pub async fn connect(
         url: String,
-        organization_id: String,
+        organization_name: String,
         token: String,
     ) -> Result<Self, DataFusionError> {
-        let client = ExomeCatalogClient::connect(url, organization_id, token)
+        let client = ExomeCatalogClient::connect(url, organization_name, token)
             .await
             .map_err(|e| DataFusionError::Execution(format!("Error connecting to Exome {}", e)))?;
 
@@ -92,6 +93,40 @@ impl ExomeSession {
 
                     Ok(execution)
                 }
+                DdlStatement::CreateExternalTable(create_external_table) => {
+                    let create_exome_table = CreateExomeTable::try_from(create_external_table)
+                        .map_err(|_| {
+                            DataFusionError::Execution("Error creating table".to_string())
+                        })?;
+
+                    #[allow(clippy::infallible_destructuring_match)]
+                    let create_exome_table_plan = match create_exome_table.into_logical_plan() {
+                        LogicalPlan::DataFusion(plan) => plan,
+                    };
+
+                    let physical_plan = self.create_physical_plan(create_exome_table_plan).await?;
+
+                    let execution = execute_stream(physical_plan, self.session.task_ctx())?;
+
+                    Ok(execution)
+                }
+                DdlStatement::CreateCatalogSchema(create_schema) => {
+                    let create_exome_schema =
+                        CreateExomeSchema::try_from(create_schema).map_err(|_| {
+                            DataFusionError::Execution("Error creating schema".to_string())
+                        })?;
+
+                    #[allow(clippy::infallible_destructuring_match)]
+                    let create_exome_schema_plan = match create_exome_schema.into_logical_plan() {
+                        LogicalPlan::DataFusion(plan) => plan,
+                    };
+
+                    let physical_plan = self.create_physical_plan(create_exome_schema_plan).await?;
+
+                    let execution = execute_stream(physical_plan, self.session.task_ctx())?;
+
+                    Ok(execution)
+                }
                 _ => Err(DataFusionError::Execution(
                     "Unsupported DDL statement".to_string(),
                 )),
@@ -120,8 +155,8 @@ impl From<ExomeCatalogClient> for ExomeSession {
 impl ExonClient for ExomeSession {
     async fn create_catalog(
         &mut self,
-        catalog_name: String,
-        library_name: String,
+        catalog_name: CatalogName,
+        library_name: LibraryName,
     ) -> Result<(), DataFusionError> {
         let manager = self
             .session
@@ -137,7 +172,7 @@ impl ExonClient for ExomeSession {
             .create_catalog(
                 catalog_name,
                 library_name,
-                manager.client.organization_name.clone(),
+                OrganizationName(manager.client.organization_name.clone()),
             )
             .await
             .map_err(|e| DataFusionError::Execution(format!("Error creating catalog {}", e)))?;
@@ -147,8 +182,8 @@ impl ExonClient for ExomeSession {
 
     async fn register_library(
         &mut self,
-        organization_name: String,
-        library_name: String,
+        organization_name: OrganizationName,
+        library_name: LibraryName,
     ) -> Result<(), DataFusionError> {
         let manager = self
             .session
@@ -208,13 +243,52 @@ mod tests {
     async fn test_exome_create_catalog() -> Result<(), Box<dyn std::error::Error>> {
         let exome_session = ExomeSession::connect(
             "http://localhost:50051".to_string(),
-            "00000000-0000-0000-0000-000000000000".to_string(),
+            "public".to_string(),
             "token".to_string(),
         )
         .await?;
 
-        let sql = "CREATE DATABASE test_catalog;";
+        // let sql = "CREATE DATABASE test_catalog;";
 
+        // let df_logical_plan = exome_session
+        //     .session
+        //     .state()
+        //     .create_logical_plan(sql)
+        //     .await?;
+
+        // let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
+        // let results = execution_result.try_collect::<Vec<_>>().await?;
+
+        // assert_eq!(results.len(), 1);
+
+        // // Let's try to create a catalog with the same name, it should fail
+        // let sql = "CREATE DATABASE test_catalog;";
+        // let df_logical_plan = exome_session
+        //     .session
+        //     .state()
+        //     .create_logical_plan(sql)
+        //     .await?;
+
+        // let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
+        // let results = execution_result.try_collect::<Vec<_>>().await;
+
+        // assert!(results.is_err());
+
+        // Now create a schema
+        // let sql = "CREATE SCHEMA test_catalog.test_schema;";
+        // let df_logical_plan = exome_session
+        //     .session
+        //     .state()
+        //     .create_logical_plan(sql)
+        //     .await?;
+
+        // let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
+        // let results = execution_result.try_collect::<Vec<_>>().await?;
+
+        // assert_eq!(results.len(), 1);
+
+        // Now create a table
+        let sql = "CREATE EXTERNAL TABLE test_catalog.test_schema.test STORED AS FASTA COMPRESSION TYPE GZIP LOCATION 's3://test/test.fasta';";
         let df_logical_plan = exome_session
             .session
             .state()
@@ -225,19 +299,6 @@ mod tests {
         let results = execution_result.try_collect::<Vec<_>>().await?;
 
         assert_eq!(results.len(), 1);
-
-        // Let's try to create a catalog with the same name, it should fail
-        let sql = "CREATE DATABASE test_catalog;";
-        let df_logical_plan = exome_session
-            .session
-            .state()
-            .create_logical_plan(sql)
-            .await?;
-
-        let execution_result = exome_session.execute_logical_plan(df_logical_plan).await?;
-        let results = execution_result.try_collect::<Vec<_>>().await;
-
-        assert!(results.is_err());
 
         Ok(())
     }

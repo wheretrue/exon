@@ -16,6 +16,10 @@ mod schema;
 
 pub use schema::Schema;
 
+use crate::exome_catalog_manager::{
+    CatalogName, LibraryName, OrganizationName, SchemaName, TableName,
+};
+
 use super::proto::{self, health_client::HealthClient, HealthCheckRequest};
 
 // Create a type alias for the catalog service client.
@@ -142,12 +146,12 @@ impl ExomeCatalogClient {
     /// A vector containing the retrieved catalogs on success, or a boxed error on failure.
     pub async fn get_catalogs(
         &mut self,
-        organization_name: String,
-        library_name: String,
+        organization_name: OrganizationName,
+        library_name: LibraryName,
     ) -> Result<Vec<proto::Catalog>, Box<dyn std::error::Error>> {
         let request = self.make_request(proto::ListCatalogsRequest {
-            organization_name,
-            library_name,
+            organization_name: organization_name.to_string(),
+            library_name: library_name.to_string(),
         })?;
 
         let response = self
@@ -262,18 +266,57 @@ impl ExomeCatalogClient {
     /// Create a catalog, returning its ID.
     pub async fn create_catalog(
         &self,
-        name: String,
-        library_name: String,
-        organization_name: String,
+        name: CatalogName,
+        library_name: LibraryName,
+        organization_name: OrganizationName,
     ) -> Result<String, Box<dyn std::error::Error>> {
+        eprintln!(
+            "Creating catalog {} for library {} in organization {}",
+            name, library_name, organization_name,
+        );
+
         let request = self.make_request(proto::CreateCatalogRequest {
-            name,
-            library_name,
-            organization_name,
+            name: name.to_string(),
+            library_name: library_name.to_string(),
+            organization_name: organization_name.to_string(),
         })?;
 
         let mut client = self.catalog_service_client.clone();
         let response = client.create_catalog(request).await?.into_inner();
+
+        Ok(response.name)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_table(
+        &self,
+        name: TableName,
+        schema_name: SchemaName,
+        catalog_name: CatalogName,
+        library_name: LibraryName,
+        location: String,
+        file_format: String,
+        is_listing: bool,
+        compression_type: String,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        eprintln!(
+            "CreateTable: name: {}, schema_name: {}, catalog_name: {}, file_format: {}",
+            name, schema_name, catalog_name, file_format
+        );
+        let request = self.make_request(proto::CreateTableRequest {
+            name: name.to_string(),
+            schema_name: schema_name.to_string(),
+            catalog_name: catalog_name.to_string(),
+            library_name: library_name.to_string(),
+            location,
+            file_format,
+            is_listing,
+            compression_type,
+            table_partition_cols: "".to_string(),
+        })?;
+
+        let mut client = self.catalog_service_client.clone();
+        let response = client.create_table(request).await?.into_inner();
 
         Ok(response.name)
     }
@@ -292,26 +335,16 @@ impl ExomeCatalogClient {
         Ok(())
     }
 
-    /// Create a schema, returning its ID.
-    #[allow(clippy::too_many_arguments)]
     pub async fn create_schema(
         &self,
-        name: String,
-        description: String,
-        authority: String,
-        path: String,
-        is_listing: bool,
-        catalog_name: String,
-        library_name: String,
+        name: SchemaName,
+        catalog_name: CatalogName,
+        library_name: LibraryName,
     ) -> Result<String, Box<dyn std::error::Error>> {
         let request = self.make_request(proto::CreateSchemaRequest {
-            name,
-            description,
-            authority,
-            path,
-            is_listing,
-            catalog_name,
-            library_name,
+            name: name.to_string(),
+            catalog_name: catalog_name.to_string(),
+            library_name: library_name.to_string(),
             organization_name: self.organization_name.clone(),
         })?;
 

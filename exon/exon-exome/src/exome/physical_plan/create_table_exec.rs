@@ -22,28 +22,66 @@ use datafusion::{
 
 use futures::stream;
 
-use crate::exome_catalog_manager::{Change, CreateCatalog, ExomeCatalogManager};
+use crate::exome_catalog_manager::{
+    CatalogName, Change, CreateTable, ExomeCatalogManager, LibraryName, SchemaName, TableName,
+};
 
 use super::CHANGE_SCHEMA;
 
 #[derive(Debug, Clone)]
-pub struct CreateCatalogExec {
-    name: String,
-    library_name: String,
+pub struct CreateTableExec {
+    name: TableName,
+    schema_name: SchemaName,
+    catalog_name: CatalogName,
+    library_name: LibraryName,
+
+    location: String,
+    file_format: String,
+    is_listing: bool,
+    compression_type: String,
 }
 
-impl CreateCatalogExec {
-    pub fn new(name: String, library_name: String) -> Self {
-        Self { name, library_name }
+impl CreateTableExec {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        name: TableName,
+        schema_name: SchemaName,
+        catalog_name: CatalogName,
+        library_name: LibraryName,
+        location: String,
+        file_format: String,
+        is_listing: bool,
+        compression_type: String,
+    ) -> Self {
+        Self {
+            name,
+            catalog_name,
+            schema_name,
+            library_name,
+            location,
+            file_format,
+            is_listing,
+            compression_type,
+        }
     }
 
-    pub async fn create_catalog(
+    pub async fn create_table(
         self,
         manager: Arc<ExomeCatalogManager>,
     ) -> Result<RecordBatch, DataFusionError> {
-        let changes = vec![Change::CreateCatalog(CreateCatalog::new(
-            self.name.clone(),
-            self.library_name.clone(),
+        eprintln!(
+            "CreateTableExec::create_table: name: {}, catalog_name: {}, file_format: {}",
+            self.name, self.catalog_name, self.file_format
+        );
+        let changes = vec![Change::CreateTable(CreateTable::new(
+            self.name,
+            self.schema_name,
+            self.catalog_name,
+            self.library_name,
+            self.location,
+            self.file_format,
+            self.is_listing,
+            self.compression_type,
         ))];
 
         manager
@@ -55,7 +93,7 @@ impl CreateCatalogExec {
     }
 }
 
-impl DisplayAs for CreateCatalogExec {
+impl DisplayAs for CreateTableExec {
     fn fmt_as(
         &self,
         _t: datafusion::physical_plan::DisplayFormatType,
@@ -65,7 +103,7 @@ impl DisplayAs for CreateCatalogExec {
     }
 }
 
-impl ExecutionPlan for CreateCatalogExec {
+impl ExecutionPlan for CreateTableExec {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -90,9 +128,15 @@ impl ExecutionPlan for CreateCatalogExec {
         self: std::sync::Arc<Self>,
         _children: Vec<std::sync::Arc<dyn ExecutionPlan>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn ExecutionPlan>> {
-        Ok(Arc::new(CreateCatalogExec {
+        Ok(Arc::new(CreateTableExec {
             name: self.name.clone(),
+            schema_name: self.schema_name.clone(),
+            catalog_name: self.catalog_name.clone(),
             library_name: self.library_name.clone(),
+            location: self.location.clone(),
+            file_format: self.file_format.clone(),
+            is_listing: self.is_listing,
+            compression_type: self.compression_type.clone(),
         }))
     }
 
@@ -120,7 +164,7 @@ impl ExecutionPlan for CreateCatalogExec {
         };
 
         let this = self.clone();
-        let stream = stream::once(this.create_catalog(exome_catalog_manager));
+        let stream = stream::once(this.create_table(exome_catalog_manager));
 
         Ok(Box::pin(RecordBatchStreamAdapter::new(
             CHANGE_SCHEMA.clone(),

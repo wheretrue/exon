@@ -24,11 +24,16 @@ use datafusion::{
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
 };
 
-use crate::exome::logical_plan::LogicalPlan;
+use crate::{
+    exome::logical_plan::LogicalPlan,
+    exome_catalog_manager::{CatalogName, LibraryName, SchemaName, TableName},
+};
 
 pub enum ExtensionType {
     CreateExomeCatalog,
+    CreateExomeSchema,
     DropExomeCatalog,
+    CreateExomeTable,
 }
 
 impl FromStr for ExtensionType {
@@ -37,7 +42,9 @@ impl FromStr for ExtensionType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "CreateExomeCatalog" => Ok(ExtensionType::CreateExomeCatalog),
+            "CreateExomeSchema" => Ok(ExtensionType::CreateExomeSchema),
             "DropExomeCatalog" => Ok(ExtensionType::DropExomeCatalog),
+            "CreateExomeTable" => Ok(ExtensionType::CreateExomeTable),
             _ => Err(()),
         }
     }
@@ -74,6 +81,9 @@ impl Default for ExomeExtensionPlanner {
 }
 
 #[async_trait]
+/// ExtensionPlanner for Exome
+///
+/// This is responsible for mediating between the Exome logical plan and physical plan.
 impl ExtensionPlanner for ExomeExtensionPlanner {
     async fn plan_extension(
         &self,
@@ -99,7 +109,39 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
 
                 let physical_plan = crate::exome::physical_plan::CreateCatalogExec::new(
                     create_catalog_logical_plan.name.clone(),
-                    "00000000-0000-0000-0000-000000000000".to_string(),
+                    "example_library".to_string(),
+                );
+
+                return Ok(Some(Arc::new(physical_plan)));
+            }
+            ExtensionType::CreateExomeTable => {
+                let create_table_logical_plan = node
+                    .as_any()
+                    .downcast_ref::<crate::exome::logical_plan::CreateExomeTable>()
+                    .unwrap();
+
+                let physical_plan = crate::exome::physical_plan::CreateTableExec::new(
+                    TableName(create_table_logical_plan.name.clone()),
+                    SchemaName(create_table_logical_plan.schema_name.clone()),
+                    CatalogName(create_table_logical_plan.catalog_name.clone()),
+                    LibraryName("example_library".to_string()),
+                    create_table_logical_plan.location.clone(),
+                    create_table_logical_plan.file_format.clone(),
+                    create_table_logical_plan.is_listing,
+                    create_table_logical_plan.compression_type.clone(),
+                );
+
+                return Ok(Some(Arc::new(physical_plan)));
+            }
+            ExtensionType::CreateExomeSchema => {
+                let create_schema_logical_plan = node
+                    .as_any()
+                    .downcast_ref::<crate::exome::logical_plan::CreateExomeSchema>()
+                    .unwrap();
+
+                let physical_plan = crate::exome::physical_plan::CreateSchemaExec::new(
+                    SchemaName(create_schema_logical_plan.name.clone()),
+                    CatalogName(create_schema_logical_plan.catalog_name.clone()),
                 );
 
                 return Ok(Some(Arc::new(physical_plan)));
@@ -112,7 +154,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
 
                 let physical_plan = crate::exome::physical_plan::DropCatalogExec::new(
                     drop_catalog_logical_plan.name.clone(),
-                    "00000000-0000-0000-0000-000000000000".to_string(),
+                    "public".to_string(),
                 );
 
                 return Ok(Some(Arc::new(physical_plan)));

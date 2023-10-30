@@ -118,10 +118,12 @@ pub mod streaming_bgzf;
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, sync::Arc};
+    use std::sync::Arc;
+
+    #[allow(unused_imports)]
+    use datafusion::datasource::listing::ListingTableUrl;
 
     use datafusion::{
-        datasource::listing::ListingTableUrl,
         logical_expr::Operator,
         physical_plan::{expressions::BinaryExpr, PhysicalExpr},
     };
@@ -157,6 +159,8 @@ mod tests {
     pub fn test_fixture_table_url(
         relative_path: &str,
     ) -> Result<ListingTableUrl, datafusion::error::DataFusionError> {
+        use std::path::PathBuf;
+
         let cwd = std::env::current_dir().unwrap().join("exon");
 
         let start_directory = std::env::var("CARGO_MANIFEST_DIR")

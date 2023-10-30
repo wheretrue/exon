@@ -14,17 +14,19 @@
 
 use datafusion::error::DataFusionError;
 
+use crate::exome_catalog_manager::{CatalogName, LibraryName, OrganizationName};
+
 #[async_trait::async_trait]
 pub trait ExonClient {
     async fn register_library(
         &mut self,
-        organization_name: String,
-        library_name: String,
+        organization_name: OrganizationName,
+        library_name: LibraryName,
     ) -> Result<(), DataFusionError>;
 
     async fn create_catalog(
         &mut self,
-        catalog_name: String,
-        library_id: String,
+        catalog_name: CatalogName,
+        library_name: LibraryName,
     ) -> Result<(), DataFusionError>;
 }
