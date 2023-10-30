@@ -43,10 +43,6 @@ impl CreateSchemaExec {
         self,
         manager: Arc<ExomeCatalogManager>,
     ) -> Result<RecordBatch, DataFusionError> {
-        eprintln!(
-            "CreateSchemaExec::create_schema: name: {}, catalog_name: {}",
-            self.name, self.catalog_name
-        );
         let changes = vec![Change::CreateSchema(CreateSchema::new(
             self.name,
             self.catalog_name,

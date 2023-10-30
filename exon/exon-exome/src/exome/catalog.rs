@@ -270,11 +270,6 @@ impl ExomeCatalogClient {
         library_name: LibraryName,
         organization_name: OrganizationName,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        eprintln!(
-            "Creating catalog {} for library {} in organization {}",
-            name, library_name, organization_name,
-        );
-
         let request = self.make_request(proto::CreateCatalogRequest {
             name: name.to_string(),
             library_name: library_name.to_string(),
@@ -299,10 +294,6 @@ impl ExomeCatalogClient {
         is_listing: bool,
         compression_type: String,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        eprintln!(
-            "CreateTable: name: {}, schema_name: {}, catalog_name: {}, file_format: {}",
-            name, schema_name, catalog_name, file_format
-        );
         let request = self.make_request(proto::CreateTableRequest {
             name: name.to_string(),
             schema_name: schema_name.to_string(),

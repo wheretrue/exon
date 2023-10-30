@@ -95,8 +95,11 @@ impl ExomeSession {
                 }
                 DdlStatement::CreateExternalTable(create_external_table) => {
                     let create_exome_table = CreateExomeTable::try_from(create_external_table)
-                        .map_err(|_| {
-                            DataFusionError::Execution("Error creating table".to_string())
+                        .map_err(|e| {
+                            DataFusionError::Execution(format!(
+                                "Error creating external table {}",
+                                e
+                            ))
                         })?;
 
                     #[allow(clippy::infallible_destructuring_match)]

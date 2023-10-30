@@ -55,8 +55,6 @@ pub async fn register_catalog(
                 DataFusionError::Execution(format!("Error creating schema for catalog {}", e))
             })?;
 
-        tracing::info!("Registering schema {:#?}", schema);
-
         memory_catalog
             .register_schema(&schema_name, Arc::new(schema))
             .map_err(|e| {
