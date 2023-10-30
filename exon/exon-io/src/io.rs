@@ -102,7 +102,6 @@ impl CredentialProvider for AwsCredentialAdapter {
 pub async fn build_s3_object_store(uri: &Url) -> std::io::Result<Arc<dyn ObjectStore>> {
     use aws_config::meta::region::RegionProviderChain;
 
-    // https://github.com/delta-io/delta-rs/issues/79
     let region_provider = RegionProviderChain::default_provider().or_else(DEFAULT_REGION);
 
     let credentials_provider = DefaultCredentialsChain::builder()
