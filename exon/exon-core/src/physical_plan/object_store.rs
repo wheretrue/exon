@@ -18,7 +18,6 @@ use arrow::{
     array::{Array, ArrayRef, AsArray, StringBuilder},
     compute::{and, cast, prep_null_mask_filter},
     datatypes::{DataType, Field, Fields, Schema},
-    ipc::List,
     record_batch::RecordBatch,
 };
 use bytes::Bytes;
@@ -182,17 +181,17 @@ fn parse_partition_key_values(
 
 pub(crate) async fn list_all_files<'a>(
     path: &'a ListingTableUrl,
-    ctx: &'a SessionState,
+    _ctx: &'a SessionState,
     store: &'a dyn ObjectStore,
     file_extension: &'a str,
 ) -> Result<BoxStream<'a, Result<ObjectMeta>>> {
     // If the prefix is a file, use a head request, otherwise list
     let is_dir = path.as_str().ends_with('/');
     let list = match is_dir {
-        true => futures::stream::once(store.list(Some(&path.prefix())))
+        true => futures::stream::once(store.list(Some(path.prefix())))
             .try_flatten()
             .boxed(),
-        false => futures::stream::once(store.head(&path.prefix())).boxed(),
+        false => futures::stream::once(store.head(path.prefix())).boxed(),
     };
     Ok(list
         .try_filter(move |meta| {
@@ -245,7 +244,7 @@ pub async fn pruned_partition_list<'a>(
             let files = match partition.files {
                 Some(files) => files,
                 None => {
-                    let s = store.clone().list(Some(&partition.path)).await?;
+                    let s = store.list(Some(&partition.path)).await?;
                     s.try_collect().await?
                 }
             };

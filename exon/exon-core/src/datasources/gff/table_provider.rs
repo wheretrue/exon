@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, net::AddrParseError, sync::Arc};
+use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
@@ -32,7 +32,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_gff::GFFSchemaBuilder;
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 
 use crate::{
     datasources::ExonFileType,
