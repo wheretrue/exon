@@ -64,6 +64,9 @@ pub const DEFAULT_BATCH_SIZE: usize = 8192;
 /// File types.
 mod exon_file_type;
 
+/// Hive partition.
+mod hive_partition;
+
 pub use self::exon_file_type::infer_file_type_and_compression;
 pub use self::exon_file_type::ExonFileType;
 
