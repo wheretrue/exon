@@ -17,7 +17,7 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::{FileCompressionType, ToDFSchema},
+    common::FileCompressionType,
     datasource::{
         listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
@@ -26,9 +26,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    optimizer::utils::conjunction,
-    physical_expr::create_physical_expr,
-    physical_plan::{empty::EmptyExec, ExecutionPlan, PhysicalExpr},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use exon_gff::GFFSchemaBuilder;
@@ -99,7 +97,7 @@ impl ListingGFFTableOptions {
         }
     }
 
-    /// Infer the schema for the table
+    /// Infer the base schema for the table from the file schema
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
         let schema = GFFSchemaBuilder::default().build();
 
@@ -109,7 +107,6 @@ impl ListingGFFTableOptions {
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
-        _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
         let scan = GFFScan::new(conf.clone(), self.file_compression_type);
 
@@ -222,24 +219,7 @@ impl TableProvider for ListingGFFTable {
         .limit_option(limit)
         .build();
 
-        let filters = if let Some(expr) = conjunction(filters.to_vec()) {
-            let table_df_schema = self.table_schema.as_ref().clone().to_dfschema()?;
-            let filters = create_physical_expr(
-                &expr,
-                &table_df_schema,
-                &self.table_schema,
-                state.execution_props(),
-            )?;
-            Some(filters)
-        } else {
-            None
-        };
-
-        let plan = self
-            .options
-            .create_physical_plan(file_scan_config, filters.as_ref())
-            .await?;
-
+        let plan = self.options.create_physical_plan(file_scan_config).await?;
         Ok(plan)
     }
 }
