@@ -7,7 +7,7 @@ services:
     image: public.ecr.aws/localstack/localstack:latest
     container_name: localstack
     ports:
-    - "4566:4566"
+      - '4566:4566'
     environment:
       AWS_DEFAULT_REGION: us-west-2
       AWS_ACCESS_KEY_ID: test

@@ -1,0 +1,25 @@
+name: Mirror LocalStack Docker image to GitHub Container Registry
+
+on:
+  push:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull LocalStack image from Docker Hub
+        run: docker pull localstack/localstack
+
+      - name: Tag LocalStack image for GitHub Container Registry
+        run: docker tag localstack/localstack ghcr.io/${{ github.repository }}/localstack
+
+      - name: Push LocalStack image to GitHub Container Registry
+        run: docker push ghcr.io/${{ github.repository }}/localstack
