@@ -4,7 +4,7 @@ version: '3.7'
 
 services:
   localstack:
-    image: public.ecr.aws/localstack/localstack:latest
+    image: ghcr.io/wheretrue/exon/localstack:latest
     container_name: localstack
     ports:
       - '4566:4566'

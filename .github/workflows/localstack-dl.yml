@@ -1,7 +1,7 @@
 name: Mirror LocalStack Docker image to GitHub Container Registry
 
 on:
-  push:
+  workflow_dispatch:
 
 jobs:
   mirror:
