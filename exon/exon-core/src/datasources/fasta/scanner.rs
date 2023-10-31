@@ -128,13 +128,10 @@ impl ExecutionPlan for FASTAScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(batch_size)
-            .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity);
-
-        if let Some(projection) = &self.base_config.projection {
-            config = config.with_projection(projection.clone());
-        }
+            .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity)
+            .with_projection(self.base_config.file_projection());
 
         let opener = FASTAOpener::new(Arc::new(config), self.file_compression_type);
 

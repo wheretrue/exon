@@ -119,10 +119,9 @@ impl ExecutionPlan for FASTQScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = FASTQConfig::new(object_store).with_batch_size(batch_size);
-        if let Some(projections) = &self.base_config.projection {
-            config = config.with_projections(projections.clone());
-        }
+        let config = FASTQConfig::new(object_store)
+            .with_batch_size(batch_size)
+            .with_projection(self.base_config.file_projection());
 
         let config = Arc::new(config);
 

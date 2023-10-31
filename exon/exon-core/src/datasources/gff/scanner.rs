@@ -118,13 +118,10 @@ impl ExecutionPlan for GFFScan {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let mut config = GFFConfig::new(object_store)
+        let config = GFFConfig::new(object_store)
             .with_schema(self.base_config.file_schema.clone())
-            .with_batch_size(context.session_config().batch_size());
-
-        if let Some(projection) = &self.base_config.projection {
-            config = config.with_projection(projection.clone());
-        }
+            .with_batch_size(context.session_config().batch_size())
+            .with_projection(self.base_config.file_projection());
 
         let opener = GFFOpener::new(Arc::new(config), self.file_compression_type);
 

@@ -20,10 +20,27 @@ use crate::physical_optimizer::file_repartitioner::regroup_files_by_size;
 pub trait ExonFileScanConfig {
     /// Repartition the file groups into whole partitions.
     fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>>;
+
+    /// Get the file schema projection.
+    fn file_projection(&self) -> Vec<usize>;
 }
 
 impl ExonFileScanConfig for FileScanConfig {
     fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>> {
         Some(regroup_files_by_size(&self.file_groups, target_partitions))
+    }
+
+    fn file_projection(&self) -> Vec<usize> {
+        let n_file_schema_fields = self.file_schema.fields().len();
+
+        self.projection
+            .as_ref()
+            .map(|p| {
+                p.iter()
+                    .filter(|f| **f < n_file_schema_fields)
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| (0..n_file_schema_fields).collect())
     }
 }
