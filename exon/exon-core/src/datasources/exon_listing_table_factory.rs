@@ -177,7 +177,8 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA => {
-                let options = ListingFASTATableOptions::new(file_compression_type);
+                let options = ListingFASTATableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
                 let schema = options.infer_schema().await?;
 
                 let config = ListingFASTATableConfig::new(table_path).with_options(options);
@@ -186,7 +187,8 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTQ => {
-                let options = ListingFASTQTableOptions::new(file_compression_type);
+                let options = ListingFASTQTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
                 let schema = options.infer_schema().await?;
 
                 let config = ListingFASTQTableConfig::new(table_path).with_options(options);

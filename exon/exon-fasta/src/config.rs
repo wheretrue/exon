@@ -55,7 +55,14 @@ impl FASTAConfig {
 
     /// Create a new FASTA configuration with a given projection.
     pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
-        self.projection = Some(projection);
+        // Only include fields that are in the file schema.
+        let file_projection = projection
+            .iter()
+            .filter(|f| **f < self.file_schema.fields().len())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        self.projection = Some(file_projection);
         self
     }
 
@@ -71,18 +78,40 @@ impl FASTAConfig {
 
 impl Default for FASTAConfig {
     fn default() -> Self {
+        let file_schema = FASTASchemaBuilder::default().build();
+
         Self::new(
             Arc::new(object_store::local::LocalFileSystem::new()),
-            Arc::new(schema()),
+            file_schema,
         )
     }
 }
 
-/// FASTA Schema
-pub fn schema() -> Schema {
-    Schema::new(vec![
-        Field::new("id", DataType::Utf8, false),
-        Field::new("description", DataType::Utf8, true),
-        Field::new("sequence", DataType::Utf8, false),
-    ])
+pub struct FASTASchemaBuilder {
+    fields: Vec<Field>,
+}
+
+impl FASTASchemaBuilder {
+    /// Extend the schema with the given fields.
+    pub fn extend(mut self, fields: Vec<Field>) -> Self {
+        self.fields.extend(fields);
+        self
+    }
+
+    /// Build the schema.
+    pub fn build(self) -> SchemaRef {
+        Arc::new(Schema::new(self.fields))
+    }
+}
+
+impl Default for FASTASchemaBuilder {
+    fn default() -> Self {
+        let fields = vec![
+            Field::new("id", DataType::Utf8, false),
+            Field::new("description", DataType::Utf8, true),
+            Field::new("sequence", DataType::Utf8, false),
+        ];
+
+        Self { fields }
+    }
 }

@@ -7,61 +7,55 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - name: run tests
-      run: |
-        cargo test --package exon --package exon-bam --test sqllogictests --all-features
+      - name: run tests
+        run: |
+          cargo test --package exon --package exon-bam --test sqllogictests --all-features
 
   linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    # - name: Cache Exon
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: |
-    #       ~/.cargo/bin/
-    #       ~/.cargo/registry/index/
-    #       ~/.cargo/registry/cache/
-    #       ~/.cargo/git/db/
-    #       target/
-    #     key: ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
-    #     restore-keys: |
-    #       ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock') }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    - name: Install aws and awslocal
-      run: |
-        pip install awscli
-        pip install awscli-local
+      - name: Install aws and awslocal
+        run: |
+          pip install awscli
+          pip install awscli-local
 
-    - name: Run clippy
-      run: |
-        cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run clippy
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
 
-    - name: Run tests and sqllogictests
-      env:
-        AWS_DEFAULT_REGION: us-west-2
-        AWS_ACCESS_KEY_ID: test
-        AWS_SECRET_ACCESS_KEY: test
-        AWS_ENDPOINT_URL: http://localhost:4566
-        AWS_ALLOW_HTTP: true
-      run: |
-        docker compose up -d
-        sleep 5
-        aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
-        awslocal s3api put-object --bucket test-bucket --key test.fasta --body ./exon/exon-core/test-data/datasources/fasta/test.fasta
+      - name: Run tests and sqllogictests
+        env:
+          AWS_DEFAULT_REGION: us-west-2
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ALLOW_HTTP: true
+        run: |
+          docker compose up -d
+          sleep 5
+          aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
+          awslocal s3api put-object --bucket test-bucket --key test.fasta --body ./exon/exon-core/test-data/datasources/fasta/test.fasta
 
-        cargo test --package exon --package exon-bam --test sqllogictests --all-features
+          cargo test --package exon --package exon-bam --test sqllogictests --all-features

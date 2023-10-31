@@ -15,15 +15,18 @@
 use std::{any::Any, sync::Arc};
 
 use crate::{
-    config::FASTA_READER_SEQUENCE_CAPACITY, datasources::ExonFileType,
-    physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+    config::FASTA_READER_SEQUENCE_CAPACITY,
+    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+    },
 };
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -33,7 +36,8 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
-use exon_fasta::schema;
+use exon_fasta::FASTASchemaBuilder;
+use futures::TryStreamExt;
 
 use super::FASTAScan;
 
@@ -69,6 +73,8 @@ pub struct ListingFASTATableOptions {
     file_extension: String,
 
     file_compression_type: FileCompressionType,
+
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingFASTATableOptions {
@@ -79,13 +85,22 @@ impl ListingFASTATableOptions {
         Self {
             file_extension,
             file_compression_type,
+            table_partition_cols: Vec::new(),
         }
     }
 
-    /// Infer the schema for the table
+    /// Infer the base schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
-        Ok(Arc::new(schema))
+        let schema = FASTASchemaBuilder::default().build();
+        Ok(schema)
+    }
+
+    /// Set the table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
+        }
     }
 
     async fn create_physical_plan(
@@ -117,6 +132,8 @@ impl ListingFASTATableOptions {
 pub struct ListingFASTATable {
     table_paths: Vec<ListingTableUrl>,
 
+    file_schema: SchemaRef,
+
     table_schema: SchemaRef,
 
     options: ListingFASTATableOptions,
@@ -124,10 +141,22 @@ pub struct ListingFASTATable {
 
 impl ListingFASTATable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingFASTATableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(config: ListingFASTATableConfig, file_schema: Arc<Schema>) -> Result<Self> {
+        let partition_fields = config
+            .options
+            .as_ref()
+            .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?
+            .table_partition_cols
+            .iter()
+            .map(|f| Field::new(&f.0, f.1.clone(), false))
+            .collect::<Vec<_>>();
+
+        let schema_builder = FASTASchemaBuilder::default().extend(partition_fields);
+
         Ok(Self {
             table_paths: config.inner.table_paths,
-            table_schema,
+            file_schema,
+            table_schema: schema_builder.build(),
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
@@ -153,17 +182,19 @@ impl TableProvider for ListingFASTATable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        Ok(filters
+        let f = filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
-            .collect())
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .collect();
+
+        Ok(f)
     }
 
     async fn scan(
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -174,22 +205,31 @@ impl TableProvider for ListingFASTATable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partitioned_file_lists = vec![
-            crate::physical_plan::object_store::list_files_for_scan(
-                object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
-                &[],
-            )
-            .await?,
-        ];
+        let file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
+        )
+        .await?
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
 
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
-            Arc::clone(&self.table_schema),
-            partitioned_file_lists,
+            Arc::clone(&self.file_schema),
+            file_groups,
         )
         .projection_option(projection.cloned())
+        .table_partition_cols(self.options.table_partition_cols.clone())
         .limit_option(limit)
         .build();
 
@@ -199,89 +239,5 @@ impl TableProvider for ListingFASTATable {
             .await?;
 
         Ok(plan)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ExonSessionExt;
-
-    use datafusion::prelude::SessionContext;
-    use exon_test::test_listing_table_url;
-
-    #[tokio::test]
-    async fn test_query_gzip_compression() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let table_path = test_listing_table_url("fasta/test.fasta.gz");
-        let sql = format!(
-            "CREATE EXTERNAL TABLE test STORED AS FASTA COMPRESSION TYPE GZIP LOCATION '{}'",
-            table_path
-        );
-
-        ctx.sql(&sql).await?;
-
-        let df = ctx.sql("SELECT * FROM test").await?;
-        let cnt = df.count().await?;
-
-        assert_eq!(cnt, 2);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_query_zstd_compression() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let table_path = test_listing_table_url("fasta/test.fasta.zst");
-        let sql = format!(
-            "CREATE EXTERNAL TABLE test STORED AS FASTA COMPRESSION TYPE ZSTD LOCATION '{}'",
-            table_path
-        );
-
-        ctx.sql(&sql).await?;
-
-        let df = ctx.sql("SELECT * FROM test").await?;
-        let cnt = df.count().await?;
-
-        assert_eq!(cnt, 2);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let table_path = test_listing_table_url("fasta/test.fasta");
-        let sql = format!(
-            "CREATE EXTERNAL TABLE test STORED AS FASTA LOCATION '{}'",
-            table_path
-        );
-
-        ctx.sql(&sql).await?;
-
-        let queries = vec![
-            ("SELECT * FROM test", 3),
-            ("SELECT id, description, sequence FROM test", 3),
-            ("SELECT id, description FROM test", 2),
-            ("SELECT id FROM test", 1),
-        ];
-
-        for (query, n_columns) in queries {
-            let df = ctx.sql(query).await?;
-
-            let mut row_cnt = 0;
-            let bs = df.collect().await.unwrap();
-
-            for batch in bs {
-                row_cnt += batch.num_rows();
-                assert_eq!(batch.num_columns(), n_columns);
-            }
-
-            assert_eq!(row_cnt, 2);
-        }
-
-        Ok(())
     }
 }

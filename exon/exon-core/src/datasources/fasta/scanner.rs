@@ -55,10 +55,7 @@ impl FASTAScan {
         file_compression_type: FileCompressionType,
         fasta_sequence_buffer_capacity: usize,
     ) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, _, _) = base_config.project();
 
         Self {
             base_config,
@@ -135,9 +132,8 @@ impl ExecutionPlan for FASTAScan {
             .with_batch_size(batch_size)
             .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity);
 
-        match &self.base_config.projection {
-            Some(p) => config = config.with_projection(p.clone()),
-            None => (),
+        if let Some(projection) = &self.base_config.projection {
+            config = config.with_projection(projection.clone());
         }
 
         let opener = FASTAOpener::new(Arc::new(config), self.file_compression_type);

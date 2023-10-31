@@ -17,25 +17,23 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::{FileCompressionType, ToDFSchema},
+    common::FileCompressionType,
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
-    logical_expr::{BinaryExpr, Operator, TableProviderFilterPushDown, TableType},
-    optimizer::utils::conjunction,
-    physical_expr::create_physical_expr,
-    physical_plan::{empty::EmptyExec, ExecutionPlan, PhysicalExpr},
+    logical_expr::{TableProviderFilterPushDown, TableType},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use exon_gff::GFFSchemaBuilder;
-use futures::StreamExt;
+use futures::TryStreamExt;
 
 use crate::{
-    datasources::ExonFileType,
+    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
@@ -99,7 +97,7 @@ impl ListingGFFTableOptions {
         }
     }
 
-    /// Infer the schema for the table
+    /// Infer the base schema for the table from the file schema
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
         let schema = GFFSchemaBuilder::default().build();
 
@@ -109,7 +107,6 @@ impl ListingGFFTableOptions {
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
-        _filters: Option<&Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
         let scan = GFFScan::new(conf.clone(), self.file_compression_type);
 
@@ -175,30 +172,7 @@ impl TableProvider for ListingGFFTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| {
-                if let Expr::BinaryExpr(BinaryExpr { left, op, right }) = f {
-                    if *op == Operator::Eq {
-                        if let Expr::Column(c) = &**left {
-                            if let Expr::Literal(_) = &**right {
-                                let name = &c.name;
-
-                                if self
-                                    .options
-                                    .table_partition_cols
-                                    .iter()
-                                    .any(|(n, _)| n == name)
-                                {
-                                    return TableProviderFilterPushDown::Exact;
-                                } else {
-                                    return TableProviderFilterPushDown::Unsupported;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                TableProviderFilterPushDown::Unsupported
-            })
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
             .collect())
     }
 
@@ -217,7 +191,7 @@ impl TableProvider for ListingGFFTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partition_stream = pruned_partition_list(
+        let file_list = pruned_partition_list(
             state,
             &object_store,
             &self.table_paths[0],
@@ -225,83 +199,27 @@ impl TableProvider for ListingGFFTable {
             self.options.file_extension.as_str(),
             &self.options.table_partition_cols,
         )
+        .await?
+        .try_collect::<Vec<_>>()
         .await?;
 
-        // collect and group the partitioned file lists
-        let partitioned_file_list = partition_stream.collect::<Vec<_>>().await;
-
-        // Create a Vec<PartitionedFile> from the partitioned file lists
-        let file_list = partitioned_file_list
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
 
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
             Arc::clone(&self.file_schema),
-            vec![file_list],
+            file_groups,
         )
         .projection_option(projection.cloned())
         .table_partition_cols(self.options.table_partition_cols.clone())
         .limit_option(limit)
         .build();
 
-        let filters = if let Some(expr) = conjunction(filters.to_vec()) {
-            let table_df_schema = self.table_schema.as_ref().clone().to_dfschema()?;
-            let filters = create_physical_expr(
-                &expr,
-                &table_df_schema,
-                &self.table_schema,
-                state.execution_props(),
-            )?;
-            Some(filters)
-        } else {
-            None
-        };
-
-        let plan = self
-            .options
-            .create_physical_plan(file_scan_config, filters.as_ref())
-            .await?;
-
+        let plan = self.options.create_physical_plan(file_scan_config).await?;
         Ok(plan)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use arrow::datatypes::DataType;
-//     use datafusion::{common::FileCompressionType, prelude::SessionContext};
-//     use exon_test::test_listing_table_url;
-
-//     use crate::datasources::{ExonFileType, ExonListingTableFactory};
-
-//     #[tokio::test]
-//     async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
-//         let ctx = SessionContext::new();
-//         let session_state = ctx.state();
-
-//         let table_path = test_listing_table_url("gff");
-//         let table = ExonListingTableFactory::new()
-//             .create_from_file_type(
-//                 &session_state,
-//                 ExonFileType::GFF,
-//                 FileCompressionType::UNCOMPRESSED,
-//                 table_path.to_string(),
-//                 vec![("sample".to_string(), DataType::Utf8)],
-//             )
-//             .await?;
-
-//         let df = ctx.read_table(table).unwrap();
-
-//         let mut row_cnt = 0;
-//         let bs = df.collect().await.unwrap();
-//         for batch in bs {
-//             row_cnt += batch.num_rows();
-//         }
-
-//         assert_eq!(row_cnt, 5000);
-
-//         Ok(())
-//     }
-// }

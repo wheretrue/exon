@@ -4,10 +4,10 @@ version: '3.7'
 
 services:
   localstack:
-    image: public.ecr.aws/localstack/localstack:latest
+    image: ghcr.io/wheretrue/exon/localstack:latest
     container_name: localstack
     ports:
-    - "4566:4566"
+      - '4566:4566'
     environment:
       AWS_DEFAULT_REGION: us-west-2
       AWS_ACCESS_KEY_ID: test
