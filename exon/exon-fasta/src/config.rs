@@ -56,6 +56,8 @@ impl FASTAConfig {
     /// Create a new FASTA configuration with a given projection.
     pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
         // Only include fields that are in the file schema.
+        // TODO: make this cleaner, i.e. projection should probably come
+        // pre-filtered.
         let file_projection = projection
             .iter()
             .filter(|f| **f < self.file_schema.fields().len())

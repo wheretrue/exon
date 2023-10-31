@@ -29,7 +29,7 @@ pub struct FASTQConfig {
     pub object_store: Arc<dyn ObjectStore>,
 
     /// Any projections to apply to the data.
-    pub projections: Option<Vec<usize>>,
+    pub projection: Option<Vec<usize>>,
 }
 
 impl FASTQConfig {
@@ -38,8 +38,8 @@ impl FASTQConfig {
         Self {
             batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
             object_store,
-            file_schema: Arc::new(schema()),
-            projections: None,
+            file_schema: FASTQSchemaBuilder::default().build(),
+            projection: None,
         }
     }
 
@@ -50,17 +50,43 @@ impl FASTQConfig {
     }
 
     /// Set the projections.
-    pub fn with_projections(mut self, projections: Vec<usize>) -> Self {
-        self.projections = Some(projections);
+    pub fn with_projections(mut self, projection: Vec<usize>) -> Self {
+        let file_projection = projection
+            .iter()
+            .filter(|f| **f < self.file_schema.fields().len())
+            .cloned()
+            .collect::<Vec<_>>();
+        self.projection = Some(file_projection);
         self
     }
 }
 
-pub fn schema() -> Schema {
-    Schema::new(vec![
-        Field::new("name", DataType::Utf8, false),
-        Field::new("description", DataType::Utf8, true),
-        Field::new("sequence", DataType::Utf8, false),
-        Field::new("quality_scores", DataType::Utf8, false),
-    ])
+pub struct FASTQSchemaBuilder {
+    fields: Vec<Field>,
+}
+
+impl FASTQSchemaBuilder {
+    /// Extend the schema with the given fields.
+    pub fn extend(mut self, fields: Vec<Field>) -> Self {
+        self.fields.extend(fields);
+        self
+    }
+
+    /// Build the schema.
+    pub fn build(self) -> SchemaRef {
+        Arc::new(Schema::new(self.fields))
+    }
+}
+
+impl Default for FASTQSchemaBuilder {
+    fn default() -> Self {
+        let fields = vec![
+            Field::new("name", DataType::Utf8, false),
+            Field::new("description", DataType::Utf8, true),
+            Field::new("sequence", DataType::Utf8, false),
+            Field::new("quality_scores", DataType::Utf8, false),
+        ];
+
+        Self { fields }
+    }
 }

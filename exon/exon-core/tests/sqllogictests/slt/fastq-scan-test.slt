@@ -35,3 +35,12 @@ SEQ_ID2 NULL !''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65 GATTTG
 
 statement ok
 DROP TABLE fastq_table;
+
+statement ok
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq-partition';
+
+query T
+SELECT name, sample FROM fastq_table WHERE sample = '1' LIMIT 2;
+----
+SEQ_ID 1
+SEQ_ID2 1

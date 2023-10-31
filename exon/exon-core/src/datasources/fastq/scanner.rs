@@ -47,10 +47,7 @@ pub struct FASTQScan {
 impl FASTQScan {
     /// Create a new FASTQ scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Self {
             base_config,
