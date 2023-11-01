@@ -17,8 +17,10 @@ use std::{sync::Arc, task::Poll};
 use bytes::{Buf, Bytes};
 
 use datafusion::{
-    common::FileCompressionType,
-    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
     error::DataFusionError,
 };
 use futures::{ready, StreamExt, TryStreamExt};
@@ -98,9 +100,9 @@ impl FileOpener for HMMDomTabOpener {
 mod test {
     use std::sync::Arc;
 
-    use datafusion::{
-        common::FileCompressionType,
-        datasource::physical_plan::{FileMeta, FileOpener},
+    use datafusion::datasource::{
+        file_format::file_compression_type::FileCompressionType,
+        physical_plan::{FileMeta, FileOpener},
     };
     use exon_test::test_listing_table_dir;
     use futures::StreamExt;

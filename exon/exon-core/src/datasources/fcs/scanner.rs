@@ -16,8 +16,10 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    common::FileCompressionType,
-    datasource::physical_plan::{FileScanConfig, FileStream},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType,
+        physical_plan::{FileScanConfig, FileStream},
+    },
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
         SendableRecordBatchStream, Statistics,
@@ -148,7 +150,10 @@ impl ExecutionPlan for FCSScan {
 mod tests {
     use crate::datasources::ExonListingTableFactory;
 
-    use datafusion::{common::FileCompressionType, prelude::SessionContext};
+    use datafusion::{
+        datasource::file_format::file_compression_type::FileCompressionType,
+        prelude::SessionContext,
+    };
 
     use exon_test::test_listing_table_url;
 

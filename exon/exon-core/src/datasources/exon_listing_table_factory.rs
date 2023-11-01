@@ -17,8 +17,10 @@ use std::{str::FromStr, sync::Arc};
 use arrow::datatypes::{DataType, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
-    datasource::{listing::ListingTableUrl, provider::TableProviderFactory, TableProvider},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        provider::TableProviderFactory, TableProvider,
+    },
     execution::context::SessionState,
     logical_expr::CreateExternalTable,
 };
@@ -312,7 +314,7 @@ mod tests {
 
         let session_config = SessionConfig::from_env().unwrap();
         let runtime_env = create_runtime_env().unwrap();
-        let ctx = SessionContext::with_config_rt(session_config.clone(), Arc::new(runtime_env));
+        let ctx = SessionContext::new_with_config_rt(session_config.clone(), Arc::new(runtime_env));
 
         ctx.register_catalog("exon", Arc::new(mem_catalog));
         ctx.refresh_catalogs().await.unwrap();

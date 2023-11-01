@@ -14,7 +14,7 @@
 
 use clap::{Parser, Subcommand};
 use datafusion::{
-    common::FileCompressionType,
+    datasource::file_format::file_compression_type::FileCompressionType,
     prelude::{col, lit, SessionContext},
 };
 use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};

@@ -16,7 +16,8 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::{
-    catalog::schema::SchemaProvider, common::FileCompressionType, datasource::TableProvider,
+    catalog::schema::SchemaProvider,
+    datasource::{file_format::file_compression_type::FileCompressionType, TableProvider},
     prelude::SessionContext,
 };
 use exon::{

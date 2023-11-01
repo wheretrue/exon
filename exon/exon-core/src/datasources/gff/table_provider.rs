@@ -17,8 +17,8 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
     datasource::{
+        file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,

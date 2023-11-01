@@ -17,8 +17,8 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
     datasource::{
+        file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
@@ -232,7 +232,10 @@ impl TableProvider for ListingFASTQTable {
 
 #[cfg(test)]
 mod tests {
-    use datafusion::{common::FileCompressionType, prelude::SessionContext};
+    use datafusion::{
+        datasource::file_format::file_compression_type::FileCompressionType,
+        prelude::SessionContext,
+    };
     use exon_test::test_listing_table_url;
 
     use crate::datasources::{ExonFileType, ExonListingTableFactory};
