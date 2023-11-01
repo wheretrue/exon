@@ -14,7 +14,7 @@
 
 use std::{any::Any, str::FromStr, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
@@ -34,7 +34,9 @@ use noodles::{bgzf, core::Region, vcf};
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
-use crate::datasources::{indexed_file_utils::IndexedFile, ExonFileType};
+use crate::datasources::{
+    hive_partition::filter_matches_partition_cols, indexed_file_utils::IndexedFile, ExonFileType,
+};
 
 use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
 
@@ -94,6 +96,9 @@ pub struct ListingVCFTableOptions {
 
     /// The file compression type
     file_compression_type: FileCompressionType,
+
+    /// A list of table partition columns
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingVCFTableOptions {
@@ -105,6 +110,15 @@ impl ListingVCFTableOptions {
             file_extension,
             file_compression_type,
             indexed,
+            table_partition_cols: Vec::new(),
+        }
+    }
+
+    /// Set the table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
         }
     }
 
@@ -257,17 +271,16 @@ impl TableProvider for ListingVCFTable {
 
         Ok(filters
             .iter()
-            .map(|f| match f {
-                Expr::ScalarUDF(s) if s.fun.name.as_str() == "vcf_region_filter" => {
-                    if s.args.len() == 2 || s.args.len() == 3 {
-                        tracing::debug!("Pushing down region filter");
-                        TableProviderFilterPushDown::Exact
-                    } else {
-                        tracing::debug!("Unsupported number of arguments for region filter");
-                        TableProviderFilterPushDown::Unsupported
+            .map(|f| {
+                if let Expr::ScalarUDF(s) = f {
+                    if s.fun.name.as_str() == "vcf_region_filter"
+                        && (s.args.len() == 2 || s.args.len() == 3)
+                    {
+                        return TableProviderFilterPushDown::Exact;
                     }
                 }
-                _ => TableProviderFilterPushDown::Unsupported,
+
+                filter_matches_partition_cols(f, &self.options.table_partition_cols)
             })
             .collect())
     }
