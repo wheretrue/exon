@@ -50,7 +50,7 @@ impl FASTQConfig {
     }
 
     /// Set the projections.
-    pub fn with_projections(mut self, projection: Vec<usize>) -> Self {
+    pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
         let file_projection = projection
             .iter()
             .filter(|f| **f < self.file_schema.fields().len())
