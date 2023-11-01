@@ -136,12 +136,10 @@ impl ExecutionPlan for VCFScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size);
+        let config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_batch_size(batch_size)
+            .with_projection(self.base_config().file_projection());
 
-        if let Some(projections) = &self.base_config.projection {
-            config = config.with_projection(projections.clone());
-        }
         tracing::trace!("VCF starting scan with config: {:#?}", config);
 
         let opener = VCFOpener::new(Arc::new(config), self.file_compression_type);

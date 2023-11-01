@@ -207,6 +207,34 @@ async fn list_files_for_scan(
     Ok(new_list)
 }
 
+pub(crate) async fn augment_partitioned_file_with_byte_range(
+    object_store: Arc<dyn ObjectStore>,
+    partitioned_file: &PartitionedFile,
+    region: &Region,
+    indexed_file: &IndexedFile,
+) -> Result<Vec<PartitionedFile>> {
+    let mut new_partition_files = vec![];
+
+    let byte_ranges = indexed_file
+        .get_byte_range_for_file(object_store.clone(), &partitioned_file.object_meta, region)
+        .await?;
+
+    for byte_range in byte_ranges {
+        let mut new_partition_file = partitioned_file.clone();
+
+        let start = u64::from(byte_range.start());
+        let end = u64::from(byte_range.end());
+
+        new_partition_file.range = Some(FileRange {
+            start: start as i64,
+            end: end as i64,
+        });
+        new_partition_files.push(new_partition_file);
+    }
+
+    Ok(new_partition_files)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

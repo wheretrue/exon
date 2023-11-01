@@ -58,7 +58,7 @@ pub(crate) async fn list_all_files<'a>(
         .try_filter(move |meta| {
             let path = &meta.location;
             let extension_match = path.as_ref().ends_with(file_extension);
-            // let glob_match = path.scontains(path); // TODO Fix this
+            // let glob_match = path.contains(path); // TODO Fix this
             futures::future::ready(extension_match)
         })
         .map_err(DataFusionError::ObjectStore)

@@ -45,10 +45,7 @@ pub struct IndexedVCFScanner {
 impl IndexedVCFScanner {
     /// Create a new VCF scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Result<Self> {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p)?),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Ok(Self {
             base_config,
@@ -132,12 +129,9 @@ impl ExecutionPlan for IndexedVCFScanner {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size);
-
-        if let Some(projections) = &self.base_config.projection {
-            config = config.with_projection(projections.clone());
-        }
+        let config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_batch_size(batch_size)
+            .with_projection(self.base_config().file_projection());
 
         let opener = IndexedVCFOpener::new(Arc::new(config), self.region.clone());
 
