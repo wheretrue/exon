@@ -127,7 +127,7 @@ impl ListingBCFTableOptions {
             .with_parse_formats(true)
             .with_parse_info(true);
 
-        let schema = schema_builder.build()?;
+        let (schema, ..) = schema_builder.build()?;
 
         Ok(Arc::new(schema))
     }

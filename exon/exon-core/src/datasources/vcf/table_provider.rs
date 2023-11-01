@@ -14,7 +14,7 @@
 
 use std::{any::Any, str::FromStr, sync::Arc};
 
-use arrow::datatypes::{DataType, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
@@ -132,7 +132,7 @@ impl ListingVCFTableOptions {
         state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
-    ) -> datafusion::error::Result<SchemaRef> {
+    ) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
         let get_result = store.get(&objects[0].location).await?;
 
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
@@ -152,9 +152,16 @@ impl ListingVCFTableOptions {
             .map(|s| s.vcf_parse_formats)
             .unwrap_or(false);
 
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|f| Field::new(&f.0, f.1.clone(), false))
+            .collect::<Vec<_>>();
+
         let mut builder = VCFSchemaBuilder::default()
             .with_parse_info(vcf_parse_info)
-            .with_parse_formats(vcf_parse_formats);
+            .with_parse_formats(vcf_parse_formats)
+            .with_partition_fields(partition_fields);
 
         let header = match self.file_compression_type {
             FileCompressionType::GZIP => {
@@ -176,9 +183,9 @@ impl ListingVCFTableOptions {
 
         builder = builder.with_header(header);
 
-        let schema = builder.build()?;
+        let (schema, file_projection) = builder.build()?;
 
-        Ok(Arc::new(schema))
+        Ok((Arc::new(schema), file_projection))
     }
 
     /// Infer the schema of the files in the table
@@ -186,7 +193,7 @@ impl ListingVCFTableOptions {
         &'a self,
         state: &SessionState,
         table_path: &'a ListingTableUrl,
-    ) -> Result<SchemaRef> {
+    ) -> Result<(SchemaRef, Vec<usize>)> {
         let store = state.runtime_env().object_store(table_path)?;
 
         let files = exon_common::object_store_files_from_table_path(
@@ -233,6 +240,8 @@ impl ListingVCFTableOptions {
 pub struct ListingVCFTable {
     table_paths: Vec<ListingTableUrl>,
 
+    file_projection: Vec<usize>,
+
     table_schema: SchemaRef,
 
     options: ListingVCFTableOptions,
@@ -240,14 +249,25 @@ pub struct ListingVCFTable {
 
 impl ListingVCFTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: VCFListingTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: VCFListingTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
+    }
+
+    /// File Schema
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = &self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -350,13 +370,13 @@ impl TableProvider for ListingVCFTable {
 
             let file_scan_config = FileScanConfig {
                 object_store_url,
-                file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                file_schema: self.file_schema()?,
                 file_groups,
                 statistics: Statistics::default(),
                 projection: projection.cloned(),
                 limit,
                 output_ordering: Vec::new(),
-                table_partition_cols: Vec::new(),
+                table_partition_cols: self.options.table_partition_cols.clone(),
                 infinite_source: false,
             };
 
@@ -391,13 +411,13 @@ impl TableProvider for ListingVCFTable {
 
                 let file_scan_config = FileScanConfig {
                     object_store_url: object_store_url.clone(),
-                    file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                    file_schema: self.file_schema()?,
                     file_groups: vec![file_byte_range],
                     statistics: Statistics::default(),
                     projection: projection.cloned(),
                     limit,
                     output_ordering: Vec::new(),
-                    table_partition_cols: Vec::new(),
+                    table_partition_cols: self.options.table_partition_cols.clone(),
                     infinite_source: false,
                 };
 

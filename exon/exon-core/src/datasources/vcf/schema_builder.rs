@@ -29,6 +29,9 @@ pub struct VCFSchemaBuilder {
     /// The fields of the schema.
     fields: Vec<arrow::datatypes::Field>,
 
+    /// The partition fields to potentially include.
+    partition_fields: Vec<arrow::datatypes::Field>,
+
     /// The header to use for schema inference.
     header: Option<Header>,
 
@@ -55,6 +58,18 @@ impl VCFSchemaBuilder {
     /// Set the parse_formats flag.
     pub fn with_parse_formats(mut self, parse_formats: bool) -> Self {
         self.parse_formats = parse_formats;
+        self
+    }
+
+    /// Add a partition field to the schema builder.
+    pub fn with_partition_field(mut self, field: arrow::datatypes::Field) -> Self {
+        self.partition_fields.push(field);
+        self
+    }
+
+    /// Add multiple partition fields to the schema builder.
+    pub fn with_partition_fields(mut self, fields: Vec<arrow::datatypes::Field>) -> Self {
+        self.partition_fields.extend(fields);
         self
     }
 }
@@ -97,6 +112,7 @@ impl Default for VCFSchemaBuilder {
                 Field::new("info", arrow::datatypes::DataType::Utf8, true),
                 Field::new("formats", arrow::datatypes::DataType::Utf8, true),
             ],
+            partition_fields: Vec::new(),
             parse_info: false,
             parse_formats: false,
             header: None,
@@ -113,10 +129,23 @@ impl VCFSchemaBuilder {
     }
 
     /// Builds the schema.
-    pub fn build(&mut self) -> Result<arrow::datatypes::Schema> {
+    pub fn build(&mut self) -> Result<(arrow::datatypes::Schema, Vec<usize>)> {
         // If both parse_info and parse_formats are false, then we can just return the default schema
         if !self.parse_info && !self.parse_formats {
-            return Ok(arrow::datatypes::Schema::new(self.fields.clone()));
+            let file_field_partition = self
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(i, _)| i)
+                .collect::<Vec<_>>();
+
+            // Add the partition fields to the schema
+            self.fields.extend(self.partition_fields.clone());
+
+            return Ok((
+                arrow::datatypes::Schema::new(self.fields.clone()),
+                file_field_partition,
+            ));
         }
 
         // Make sure we have a header to parse
@@ -140,7 +169,20 @@ impl VCFSchemaBuilder {
             self.fields[8] = format_field;
         }
 
-        Ok(arrow::datatypes::Schema::new(self.fields.clone()))
+        let file_field_projection = self
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
+
+        // Add the partition fields to the schema
+        self.fields.extend(self.partition_fields.clone());
+
+        Ok((
+            arrow::datatypes::Schema::new(self.fields.clone()),
+            file_field_projection,
+        ))
     }
 }
 
@@ -337,7 +379,7 @@ mod tests {
 
         let header = header_builder.build();
 
-        let schema = VCFSchemaBuilder::default()
+        let (schema, ..) = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_formats(true)
             .build()?;
@@ -485,7 +527,7 @@ mod tests {
         }
 
         let header = header.build();
-        let schema = VCFSchemaBuilder::default()
+        let (schema, ..) = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_info(true)
             .build()
@@ -502,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_default_header_to_schema() {
-        let schema = super::VCFSchemaBuilder::default().build().unwrap();
+        let (schema, ..) = super::VCFSchemaBuilder::default().build().unwrap();
 
         assert_eq!(schema.fields().len(), 9);
 
