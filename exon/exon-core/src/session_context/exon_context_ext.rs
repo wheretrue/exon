@@ -16,8 +16,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
-    datasource::{listing::ListingTableUrl, TableProvider},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        TableProvider,
+    },
     error::{DataFusionError, Result},
     execution::{context::SessionState, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
@@ -94,7 +96,7 @@ pub trait ExonSessionExt {
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let round_robin_optimizer = ExonRoundRobin::default();
 
-        let mut state = SessionState::with_config_rt(config, runtime)
+        let mut state = SessionState::new_with_config_rt(config, runtime)
             .with_physical_optimizer_rules(vec![Arc::new(round_robin_optimizer)]);
 
         let sources = vec![
@@ -121,7 +123,7 @@ pub trait ExonSessionExt {
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
 
-        let ctx = SessionContext::with_state(state);
+        let ctx = SessionContext::new_with_state(state);
 
         // Register the mass spec UDFs
         #[cfg(feature = "mzml")]

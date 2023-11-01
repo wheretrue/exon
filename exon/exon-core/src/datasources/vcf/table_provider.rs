@@ -17,8 +17,8 @@ use std::{any::Any, str::FromStr, sync::Arc};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::FileCompressionType,
     datasource::{
+        file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
@@ -446,6 +446,7 @@ mod tests {
 
     use arrow::datatypes::DataType;
     use datafusion::{
+        datasource::file_format::file_compression_type::FileCompressionType,
         physical_plan::{coalesce_partitions::CoalescePartitionsExec, filter::FilterExec},
         prelude::SessionContext,
     };
@@ -635,7 +636,7 @@ mod tests {
             .create_from_file_type(
                 &ctx.state(),
                 crate::datasources::ExonFileType::VCF,
-                datafusion::common::FileCompressionType::UNCOMPRESSED,
+                FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
                 Vec::new(),
             )

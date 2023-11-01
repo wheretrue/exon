@@ -14,7 +14,9 @@
 
 use std::{fmt::Display, str::FromStr};
 
-use datafusion::{common::FileCompressionType, error::DataFusionError};
+use datafusion::{
+    datasource::file_format::file_compression_type::FileCompressionType, error::DataFusionError,
+};
 
 /// The type of file.
 #[derive(Debug, Clone)]

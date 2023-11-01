@@ -16,8 +16,10 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    common::FileCompressionType,
-    datasource::physical_plan::{FileScanConfig, FileStream},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType,
+        physical_plan::{FileScanConfig, FileStream},
+    },
     error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,

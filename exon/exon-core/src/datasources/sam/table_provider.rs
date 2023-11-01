@@ -174,7 +174,10 @@ impl TableProvider for ListingSAMTable {
 mod tests {
     use crate::datasources::{ExonFileType, ExonListingTableFactory};
 
-    use datafusion::{common::FileCompressionType, prelude::SessionContext};
+    use datafusion::{
+        datasource::file_format::file_compression_type::FileCompressionType,
+        prelude::SessionContext,
+    };
     use exon_test::test_listing_table_url;
 
     #[tokio::test]

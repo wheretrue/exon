@@ -15,8 +15,10 @@
 use std::sync::Arc;
 
 use datafusion::{
-    common::FileCompressionType,
-    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType,
+        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
+    },
     error::DataFusionError,
 };
 use futures::{StreamExt, TryStreamExt};
