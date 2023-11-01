@@ -19,23 +19,28 @@ use async_trait::async_trait;
 use datafusion::{
     common::FileCompressionType,
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{expr::ScalarUDF, TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, project_schema, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, union::UnionExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf, core::Region, vcf};
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
-use crate::datasources::{
-    hive_partition::filter_matches_partition_cols, indexed_file_utils::IndexedFile, ExonFileType,
+use crate::{
+    datasources::{
+        hive_partition::filter_matches_partition_cols,
+        indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
+        ExonFileType,
+    },
+    physical_plan::object_store::pruned_partition_list,
 };
 
 use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
@@ -325,20 +330,28 @@ impl TableProvider for ListingVCFTable {
         }
 
         if regions.is_empty() {
-            let partitioned_file_lists = vec![
-                crate::physical_plan::object_store::list_files_for_scan(
-                    object_store,
-                    self.table_paths.clone(),
-                    &self.options.file_extension,
-                    &[],
-                )
-                .await?,
-            ];
+            let file_list = pruned_partition_list(
+                state,
+                &object_store,
+                &self.table_paths[0],
+                filters,
+                self.options.file_extension.as_str(),
+                &self.options.table_partition_cols,
+            )
+            .await?
+            .try_collect::<Vec<_>>()
+            .await?;
+
+            let inner_size = 1;
+            let file_groups: Vec<Vec<PartitionedFile>> = file_list
+                .chunks(inner_size)
+                .map(|chunk| chunk.to_vec())
+                .collect();
 
             let file_scan_config = FileScanConfig {
                 object_store_url,
                 file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-                file_groups: partitioned_file_lists,
+                file_groups,
                 statistics: Statistics::default(),
                 projection: projection.cloned(),
                 limit,
@@ -352,38 +365,52 @@ impl TableProvider for ListingVCFTable {
             return Ok(table);
         }
 
-        let partitioned_file_lists = IndexedFile::Vcf
-            .list_files_for_scan(self.table_paths.clone(), object_store, &regions)
-            .await?;
+        let mut file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
+        )
+        .await?;
 
-        let region = regions.get(0).unwrap();
-        let filtering_region = Arc::new(region.clone());
+        let mut execution_plans = Vec::new();
 
-        // if no files need to be read, return an `EmptyExec`
-        if (partitioned_file_lists.is_empty())
-            || (partitioned_file_lists.len() == 1 && partitioned_file_lists[0].is_empty())
-        {
-            let schema = self.schema();
-            let projected_schema = project_schema(&schema, projection)?;
-            return Ok(Arc::new(EmptyExec::new(false, projected_schema)));
+        while let Some(f) = file_list.next().await {
+            let f = f?;
+
+            for region in &regions {
+                let file_byte_range = augment_partitioned_file_with_byte_range(
+                    object_store.clone(),
+                    &f,
+                    region,
+                    &IndexedFile::Vcf,
+                )
+                .await?;
+
+                let file_scan_config = FileScanConfig {
+                    object_store_url: object_store_url.clone(),
+                    file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
+                    file_groups: vec![file_byte_range],
+                    statistics: Statistics::default(),
+                    projection: projection.cloned(),
+                    limit,
+                    output_ordering: Vec::new(),
+                    table_partition_cols: Vec::new(),
+                    infinite_source: false,
+                };
+
+                let table = self
+                    .options
+                    .create_physical_plan_with_region(file_scan_config, Arc::new(region.clone()))
+                    .await?;
+
+                execution_plans.push(table);
+            }
         }
 
-        let file_scan_config = FileScanConfig {
-            object_store_url,
-            file_schema: Arc::clone(&self.table_schema), // Actually should be file schema??
-            file_groups: partitioned_file_lists,
-            statistics: Statistics::default(),
-            projection: projection.cloned(),
-            limit,
-            output_ordering: Vec::new(),
-            table_partition_cols: Vec::new(),
-            infinite_source: false,
-        };
-
-        let table = self
-            .options
-            .create_physical_plan_with_region(file_scan_config, filtering_region)
-            .await?;
+        let table = Arc::new(UnionExec::new(execution_plans));
 
         return Ok(table);
     }

@@ -1,7 +1,7 @@
 control substitution on
 
 statement ok
-CREATE EXTERNAL TABLE indexed_vcf_table STORED AS INDEXED_VCF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf';
+CREATE EXTERNAL TABLE indexed_vcf_table STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf.gz'
 
 # If we try to select from a statement w/o a region filter we should get an error.
 statement error
