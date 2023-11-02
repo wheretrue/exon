@@ -115,11 +115,12 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::BED => {
-                let options = ListingBEDTableOptions::new(file_compression_type);
-                let schema = options.infer_schema().await?;
+                let options = ListingBEDTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema().await?;
 
                 let config = ListingBEDTableConfig::new(table_path).with_options(options);
-                let table = ListingBEDTable::try_new(config, schema)?;
+                let table = ListingBEDTable::try_new(config, Arc::new(schema), file_projection)?;
 
                 Ok(Arc::new(table))
             }

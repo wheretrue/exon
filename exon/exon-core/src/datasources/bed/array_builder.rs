@@ -21,21 +21,67 @@ use arrow::{
 
 use super::bed_record_builder::BEDRecord;
 
-pub fn schema() -> Schema {
-    Schema::new(vec![
-        Field::new("reference_sequence_name", DataType::Utf8, false),
-        Field::new("start", DataType::Int64, false),
-        Field::new("end", DataType::Int64, false),
-        Field::new("name", DataType::Utf8, true),
-        Field::new("score", DataType::Int64, true),
-        Field::new("strand", DataType::Utf8, true),
-        Field::new("thick_start", DataType::Int64, true),
-        Field::new("thick_end", DataType::Int64, true),
-        Field::new("color", DataType::Utf8, true),
-        Field::new("block_count", DataType::Int64, true),
-        Field::new("block_sizes", DataType::Utf8, true),
-        Field::new("block_starts", DataType::Utf8, true),
-    ])
+pub(crate) struct BEDSchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+}
+
+impl BEDSchemaBuilder {
+    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
+        Self {
+            file_fields,
+            partition_fields,
+        }
+    }
+
+    pub fn add_file_field(&mut self, field: Field) {
+        self.file_fields.push(field);
+    }
+
+    pub fn add_partition_field(&mut self, field: Field) {
+        self.partition_fields.push(field);
+    }
+
+    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
+        self.partition_fields.extend(fields);
+    }
+
+    pub fn n_file_fields(&self) -> usize {
+        self.file_fields.len()
+    }
+
+    /// Returns the schema and the projection indexes for the file's schema
+    pub fn build(self) -> (Schema, Vec<usize>) {
+        let mut fields = self.file_fields.clone();
+        fields.extend_from_slice(&self.partition_fields);
+
+        let schema = Schema::new(fields);
+
+        let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
+
+        (schema, projection)
+    }
+}
+
+impl Default for BEDSchemaBuilder {
+    fn default() -> Self {
+        let field_fields = vec![
+            Field::new("reference_sequence_name", DataType::Utf8, false),
+            Field::new("start", DataType::Int64, false),
+            Field::new("end", DataType::Int64, false),
+            Field::new("name", DataType::Utf8, true),
+            Field::new("score", DataType::Int64, true),
+            Field::new("strand", DataType::Utf8, true),
+            Field::new("thick_start", DataType::Int64, true),
+            Field::new("thick_end", DataType::Int64, true),
+            Field::new("color", DataType::Utf8, true),
+            Field::new("block_count", DataType::Int64, true),
+            Field::new("block_sizes", DataType::Utf8, true),
+            Field::new("block_starts", DataType::Utf8, true),
+        ];
+
+        Self::new(field_fields, vec![])
+    }
 }
 
 pub struct BEDArrayBuilder {

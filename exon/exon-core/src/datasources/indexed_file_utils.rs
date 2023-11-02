@@ -207,6 +207,7 @@ async fn list_files_for_scan(
     Ok(new_list)
 }
 
+/// Augment a partitioned file with the byte ranges that need to be read for a given region
 pub(crate) async fn augment_partitioned_file_with_byte_range(
     object_store: Arc<dyn ObjectStore>,
     partitioned_file: &PartitionedFile,
