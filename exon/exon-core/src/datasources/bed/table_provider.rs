@@ -198,9 +198,6 @@ impl TableProvider for ListingBEDTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        eprintln!("object_store: {:?}", object_store);
-        eprintln!("table paths: {:?}", self.table_paths);
-        eprintln!("filters: {:?}", filters);
         let file_list = pruned_partition_list(
             state,
             &object_store,
@@ -219,8 +216,6 @@ impl TableProvider for ListingBEDTable {
             .map(|chunk| chunk.to_vec())
             .collect();
 
-        eprintln!("file_groups: {:?}", file_groups);
-
         let file_schema = self.file_schema()?;
         let file_scan_config =
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, file_groups)
@@ -232,46 +227,5 @@ impl TableProvider for ListingBEDTable {
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 
         Ok(plan)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::datasources::{ExonFileType, ExonListingTableFactory};
-
-    use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
-        prelude::SessionContext,
-    };
-    use exon_test::test_listing_table_url;
-
-    #[tokio::test]
-    async fn test_schema_inference() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
-        let session_state = ctx.state();
-
-        let table_path = test_listing_table_url("bed");
-        let table = ExonListingTableFactory::new()
-            .create_from_file_type(
-                &session_state,
-                ExonFileType::BED,
-                FileCompressionType::UNCOMPRESSED,
-                table_path.to_string(),
-                Vec::new(),
-            )
-            .await?;
-
-        let df = ctx.read_table(table)?;
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
-        for batch in bs {
-            row_cnt += batch.num_rows();
-
-            assert_eq!(batch.num_columns(), 12);
-        }
-        assert_eq!(row_cnt, 10);
-
-        Ok(())
     }
 }

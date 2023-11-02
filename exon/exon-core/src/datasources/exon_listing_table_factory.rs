@@ -125,11 +125,12 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::GTF => {
-                let options = ListingGTFTableOptions::new(file_compression_type);
-                let schema = options.infer_schema().await?;
+                let options = ListingGTFTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema().await?;
 
                 let config = ListingGTFTableConfig::new(table_path).with_options(options);
-                let table = ListingGTFTable::try_new(config, schema)?;
+                let table = ListingGTFTable::try_new(config, Arc::new(schema), file_projection)?;
 
                 Ok(Arc::new(table))
             }
