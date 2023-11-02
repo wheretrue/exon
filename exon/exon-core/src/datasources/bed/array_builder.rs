@@ -34,20 +34,8 @@ impl BEDSchemaBuilder {
         }
     }
 
-    pub fn add_file_field(&mut self, field: Field) {
-        self.file_fields.push(field);
-    }
-
-    pub fn add_partition_field(&mut self, field: Field) {
-        self.partition_fields.push(field);
-    }
-
     pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
         self.partition_fields.extend(fields);
-    }
-
-    pub fn n_file_fields(&self) -> usize {
-        self.file_fields.len()
     }
 
     /// Returns the schema and the projection indexes for the file's schema
