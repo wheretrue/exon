@@ -34,35 +34,7 @@ use crate::{
     datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
 };
 
-use super::GTFScan;
-
-/// The schema for a GTF file
-pub fn schema() -> SchemaRef {
-    let attribute_key_field = Field::new("keys", DataType::Utf8, false);
-    let attribute_value_field = Field::new("values", DataType::Utf8, true);
-
-    let inner = Schema::new(vec![
-        // https://useast.ensembl.org/info/website/upload/gff.html
-        Field::new("seqname", DataType::Utf8, false),
-        Field::new("source", DataType::Utf8, true),
-        Field::new("type", DataType::Utf8, false),
-        Field::new("start", DataType::Int64, false),
-        Field::new("end", DataType::Int64, false),
-        Field::new("score", DataType::Float32, true),
-        Field::new("strand", DataType::Utf8, false),
-        Field::new("frame", DataType::Utf8, true),
-        Field::new_map(
-            "attributes",
-            "entries",
-            attribute_key_field,
-            attribute_value_field,
-            false,
-            true,
-        ),
-    ]);
-
-    inner.into()
-}
+use super::{config::GTFSchemaBuilder, GTFScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -93,9 +65,14 @@ impl ListingGTFTableConfig {
 #[derive(Debug, Clone)]
 /// Listing options for a GTF table
 pub struct ListingGTFTableOptions {
+    /// The file extension for the table including the compression type
     file_extension: String,
 
+    /// The compression type of the file
     file_compression_type: FileCompressionType,
+
+    /// The partition columns
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingGTFTableOptions {
@@ -106,14 +83,31 @@ impl ListingGTFTableOptions {
         Self {
             file_extension,
             file_compression_type,
+            table_partition_cols: Vec::new(),
+        }
+    }
+
+    /// Set the table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
         }
     }
 
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
+    pub async fn infer_schema(&self) -> datafusion::error::Result<(Schema, Vec<usize>)> {
+        let mut schema = GTFSchemaBuilder::default();
 
-        Ok(schema)
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
+            .collect::<Vec<_>>();
+
+        schema.add_partition_fields(partition_fields);
+
+        Ok(schema.build())
     }
 
     async fn create_physical_plan(
@@ -133,15 +127,22 @@ pub struct ListingGTFTable {
 
     table_schema: SchemaRef,
 
+    file_projection: Vec<usize>,
+
     options: ListingGTFTableOptions,
 }
 
 impl ListingGTFTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingGTFTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: ListingGTFTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,

@@ -106,38 +106,3 @@ where
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use exon_test::test_listing_table_dir;
-    use futures::StreamExt;
-    use object_store::{local::LocalFileSystem, ObjectStore};
-
-    use tokio_util::io::StreamReader;
-
-    #[tokio::test]
-    async fn test_streaming_batch_reader() {
-        let object_store = Arc::new(LocalFileSystem::new());
-
-        let config = Arc::new(super::GTFConfig::new(object_store.clone()));
-
-        let path = test_listing_table_dir("gtf", "test.gtf");
-        let reader = object_store.get(&path).await.unwrap();
-
-        let stream = reader.into_stream();
-        let buf_reader = StreamReader::new(stream);
-
-        let batch_reader = super::BatchReader::new(buf_reader, config);
-
-        let mut batch_stream = batch_reader.into_stream().boxed();
-
-        let mut n_rows = 0;
-        while let Some(batch) = batch_stream.next().await {
-            let batch = batch.unwrap();
-            n_rows += batch.num_rows();
-        }
-        assert_eq!(n_rows, 77);
-    }
-}

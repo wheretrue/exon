@@ -7,3 +7,21 @@ query T
 SELECT seqname, source, type, start, "end", score, strand, frame FROM gtf_table LIMIT 1;
 ----
 chr1 processed_transcript exon 11869 12227 NULL + NULL
+
+statement ok
+DROP TABLE gtf_table;
+
+statement ok
+CREATE EXTERNAL TABLE gtf_table STORED AS GTF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gtf-partition';
+
+query T
+SELECT seqname, source, type, start, "end", score, strand, frame, sample FROM gtf_table WHERE sample = '1' LIMIT 1;
+----
+chr1 processed_transcript exon 11869 12227 NULL + NULL 1
+
+
+query T
+SELECT sample, COUNT(*) cnt FROM gtf_table GROUP BY sample ORDER BY sample;
+----
+1 77
+2 77

@@ -49,10 +49,8 @@ pub struct GTFScan {
 impl GTFScan {
     /// Create a new GTF scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
+
         Self {
             base_config,
             projected_schema,
@@ -121,10 +119,9 @@ impl ExecutionPlan for GTFScan {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let config = GTFConfig::new(object_store)
-            .with_schema(self.base_config.file_schema.clone())
+        let config = GTFConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(context.session_config().batch_size())
-            .with_some_projection(self.base_config.projection.clone());
+            .with_some_projection(Some(self.base_config.file_projection()));
 
         let opener = GTFOpener::new(Arc::new(config), self.file_compression_type);
 

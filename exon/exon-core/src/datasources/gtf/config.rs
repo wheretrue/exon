@@ -14,12 +14,73 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use object_store::ObjectStore;
 
 use crate::datasources::DEFAULT_BATCH_SIZE;
 
-use super::table_provider::schema;
+pub(crate) struct GTFSchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+}
+
+impl GTFSchemaBuilder {
+    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
+        Self {
+            file_fields,
+            partition_fields,
+        }
+    }
+
+    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
+        self.partition_fields.extend(fields);
+    }
+
+    /// Returns the schema and the projection indexes for the file's schema
+    pub fn build(self) -> (Schema, Vec<usize>) {
+        let mut fields = self.file_fields.clone();
+        fields.extend_from_slice(&self.partition_fields);
+
+        let schema = Schema::new(fields);
+
+        let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
+
+        (schema, projection)
+    }
+}
+
+impl Default for GTFSchemaBuilder {
+    fn default() -> Self {
+        let file_fields = file_fields();
+        Self::new(file_fields, vec![])
+    }
+}
+
+/// The schema for a GTF file
+fn file_fields() -> Vec<Field> {
+    let attribute_key_field = Field::new("keys", DataType::Utf8, false);
+    let attribute_value_field = Field::new("values", DataType::Utf8, true);
+
+    vec![
+        // https://useast.ensembl.org/info/website/upload/gff.html
+        Field::new("seqname", DataType::Utf8, false),
+        Field::new("source", DataType::Utf8, true),
+        Field::new("type", DataType::Utf8, false),
+        Field::new("start", DataType::Int64, false),
+        Field::new("end", DataType::Int64, false),
+        Field::new("score", DataType::Float32, true),
+        Field::new("strand", DataType::Utf8, false),
+        Field::new("frame", DataType::Utf8, true),
+        Field::new_map(
+            "attributes",
+            "entries",
+            attribute_key_field,
+            attribute_value_field,
+            false,
+            true,
+        ),
+    ]
+}
 
 /// Configuration for a GTF data source.
 pub struct GTFConfig {
@@ -38,9 +99,7 @@ pub struct GTFConfig {
 
 impl GTFConfig {
     /// Create a new GTF configuration.
-    pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
-        let file_schema = schema();
-
+    pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
         Self {
             file_schema,
             object_store,

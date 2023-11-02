@@ -198,9 +198,6 @@ impl TableProvider for ListingBEDTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        eprintln!("object_store: {:?}", object_store);
-        eprintln!("table paths: {:?}", self.table_paths);
-        eprintln!("filters: {:?}", filters);
         let file_list = pruned_partition_list(
             state,
             &object_store,
