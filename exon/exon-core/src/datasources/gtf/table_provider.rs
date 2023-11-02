@@ -19,7 +19,7 @@ use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -29,9 +29,13 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use futures::TryStreamExt;
 
 use crate::{
-    datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+    },
 };
 
 use super::{config::GTFSchemaBuilder, GTFScan};
@@ -78,7 +82,7 @@ pub struct ListingGTFTableOptions {
 impl ListingGTFTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
-        let file_extension = ExonFileType::GFF.get_file_extension(file_compression_type);
+        let file_extension = ExonFileType::GTF.get_file_extension(file_compression_type);
 
         Self {
             file_extension,
@@ -148,6 +152,12 @@ impl ListingGTFTable {
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
     }
+
+    /// Get the file schema
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema))
+    }
 }
 
 #[async_trait]
@@ -170,7 +180,7 @@ impl TableProvider for ListingGTFTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
             .collect())
     }
 
@@ -178,7 +188,7 @@ impl TableProvider for ListingGTFTable {
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -189,24 +199,31 @@ impl TableProvider for ListingGTFTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partitioned_file_lists = vec![
-            crate::physical_plan::object_store::list_files_for_scan(
-                object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
-                &[],
-            )
-            .await?,
-        ];
-
-        let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            Arc::clone(&self.table_schema),
-            partitioned_file_lists,
+        let file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
         )
-        .projection_option(projection.cloned())
-        .limit_option(limit)
-        .build();
+        .await?
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        let file_schema = self.file_schema()?;
+        let file_scan_config =
+            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, file_groups)
+                .projection_option(projection.cloned())
+                .table_partition_cols(self.options.table_partition_cols.clone())
+                .limit_option(limit)
+                .build();
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 
