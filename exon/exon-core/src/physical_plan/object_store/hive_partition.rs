@@ -57,7 +57,11 @@ pub(crate) async fn list_all_files<'a>(
     Ok(list
         .try_filter(move |meta| {
             let path = &meta.location;
-            let extension_match = path.as_ref().ends_with(file_extension);
+            let extension_match = path
+                .as_ref()
+                .to_lowercase()
+                .ends_with(file_extension.to_lowercase().as_str());
+
             // let glob_match = path.contains(path); // TODO Fix this
             futures::future::ready(extension_match)
         })

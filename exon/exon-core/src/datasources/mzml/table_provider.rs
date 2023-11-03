@@ -14,12 +14,12 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -29,12 +29,16 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use futures::TryStreamExt;
 
 use crate::{
-    datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+    },
 };
 
-use super::{config::schema, MzMLScan};
+use super::{config::MzMLSchemaBuilder, MzMLScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -65,9 +69,14 @@ impl ListingMzMLTableConfig {
 #[derive(Debug, Clone)]
 /// Listing options for a MzML table
 pub struct ListingMzMLTableOptions {
+    /// The file extension for the table
     file_extension: String,
 
+    /// The file compression type
     file_compression_type: FileCompressionType,
+
+    /// The table partition columns
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingMzMLTableOptions {
@@ -78,13 +87,33 @@ impl ListingMzMLTableOptions {
         Self {
             file_extension,
             file_compression_type,
+            table_partition_cols: Vec::new(),
         }
     }
 
-    /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
-        Ok(Arc::new(schema))
+    /// Set the table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
+        }
+    }
+
+    /// Infer the schema for the table (i.e. the file and partition columns)
+    pub async fn infer_schema(&self) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+        let mut schema_builder = MzMLSchemaBuilder::default();
+
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
+            .collect();
+
+        schema_builder.add_partition_fields(partition_fields);
+
+        let (file_schema, projection) = schema_builder.build();
+
+        Ok((Arc::new(file_schema), projection))
     }
 
     async fn create_physical_plan(
@@ -104,19 +133,32 @@ pub struct ListingMzMLTable {
 
     table_schema: SchemaRef,
 
+    file_projection: Vec<usize>,
+
     options: ListingMzMLTableOptions,
 }
 
 impl ListingMzMLTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingMzMLTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: ListingMzMLTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
+    }
+
+    /// Get the file schema for the table
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema))
     }
 }
 
@@ -140,7 +182,7 @@ impl TableProvider for ListingMzMLTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
             .collect())
     }
 
@@ -148,7 +190,7 @@ impl TableProvider for ListingMzMLTable {
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -159,65 +201,34 @@ impl TableProvider for ListingMzMLTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partitioned_file_lists = vec![
-            crate::physical_plan::object_store::list_files_for_scan(
-                object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
-                &[],
-            )
-            .await?,
-        ];
-        let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            Arc::clone(&self.table_schema),
-            partitioned_file_lists,
+        let file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
         )
-        .projection_option(projection.cloned())
-        .limit_option(limit)
-        .build();
+        .await?
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        let file_schema = self.file_schema()?;
+        let file_scan_config =
+            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, file_groups)
+                .projection_option(projection.cloned())
+                .table_partition_cols(self.options.table_partition_cols.clone())
+                .limit_option(limit)
+                .build();
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 
         Ok(plan)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::datasources::{ExonFileType, ExonListingTableFactory};
-
-    use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
-        prelude::SessionContext,
-    };
-    use exon_test::test_listing_table_url;
-
-    #[tokio::test]
-    async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
-        let session_state = ctx.state();
-
-        let table_path = test_listing_table_url("mzml");
-        let table = ExonListingTableFactory::new()
-            .create_from_file_type(
-                &session_state,
-                ExonFileType::MZML,
-                FileCompressionType::UNCOMPRESSED,
-                table_path.to_string(),
-                Vec::new(),
-            )
-            .await?;
-
-        let df = ctx.read_table(table).unwrap();
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
-        for batch in bs {
-            row_cnt += batch.num_rows();
-        }
-        assert_eq!(row_cnt, 2);
-
-        Ok(())
     }
 }

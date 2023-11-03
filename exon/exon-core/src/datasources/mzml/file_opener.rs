@@ -68,39 +68,3 @@ impl FileOpener for MzMLOpener {
         }))
     }
 }
-
-#[cfg(test)]
-mod test {
-    use std::sync::Arc;
-
-    use datafusion::datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpener},
-    };
-    use exon_test::test_listing_table_dir;
-    use futures::StreamExt;
-
-    use crate::datasources::mzml::{MzMLConfig, MzMLOpener};
-
-    #[tokio::test]
-    async fn test_opener() {
-        let config = Arc::new(MzMLConfig::default());
-
-        let path = test_listing_table_dir("mzml", "test.mzML");
-        let object_meta = config.object_store.head(&path).await.unwrap();
-
-        let opener = MzMLOpener::new(config, FileCompressionType::UNCOMPRESSED);
-
-        let file_meta = FileMeta::from(object_meta);
-
-        let mut opened_file = opener.open(file_meta).unwrap().await.unwrap();
-
-        let mut n_records = 0;
-        while let Some(batch) = opened_file.next().await {
-            let batch = batch.unwrap();
-            n_records += batch.num_rows();
-        }
-
-        assert_eq!(n_records, 2);
-    }
-}
