@@ -13,7 +13,7 @@ version = "0.3.4-beta.11"
 [dependencies]
 arrow = {workspace = true}
 futures = {workspace = true}
-noodles = {version = "0.56", features = ["gff"]}
+noodles = {version = "0.57", features = ["gff"]}
 object_store = {workspace = true}
 tokio = {workspace = true}
 tokio-util = {workspace = true}

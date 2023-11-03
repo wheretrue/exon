@@ -2329,9 +2329,9 @@ dependencies = [
 
 [[package]]
 name = "noodles"
-version = "0.56.0"
+version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ba860dd272b95bc6758e9cf1ec9d13d159c928726b020432a88bd897ca75bbb"
+checksum = "c179db81c0e743149ac8f8bb8101e7077597964ea63f65fbf9355e83ccf56c81"
 dependencies = [
  "noodles-bam",
  "noodles-bcf",
@@ -2351,9 +2351,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-bam"
-version = "0.49.0"
+version = "0.49.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27efd2e9691c3cf6c894559089562f2dceebfd1f09fe1bc59e85235e16b77e1e"
+checksum = "d8716efcd05f547bb9e62a5c1b55f4b68b99e0bb362fd1d5f45e549028dfc2ee"
 dependencies = [
  "bit-vec",
  "byteorder",
@@ -2369,9 +2369,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-bcf"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94375177dd31eaab6a97a114581ff2aec70409d5e1ce76ce22085bb3d76b271d"
+checksum = "1fadf202f982d46f5161b8da5f936d7b64134640abef183230ddc3cb66783590"
 dependencies = [
  "byteorder",
  "futures",
@@ -2416,9 +2416,9 @@ checksum = "94fbe3192fe33acacabaedd387657f39b0fc606f1996d546db0dfe14703b843a"
 
 [[package]]
 name = "noodles-cram"
-version = "0.47.0"
+version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91136934a387be89869d66443bff6be4006fae31b7fdb1da32a99ac84d091085"
+checksum = "be766c9db7fab346e65bc93136547ee0284369233a098464ec1e77a160684f57"
 dependencies = [
  "async-compression",
  "bitflags 2.3.3",
@@ -2533,9 +2533,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-vcf"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82d34757c2d465c34dab54582b475ad53fd3ffb5b12943b7166876235db8a297"
+checksum = "6000206d1ec762d3c983fb189edde86a22c969de3bb90e4048c4916c492babfa"
 dependencies = [
  "futures",
  "indexmap 2.0.0",
