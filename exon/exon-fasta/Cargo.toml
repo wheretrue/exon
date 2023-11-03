@@ -14,7 +14,7 @@ version = "0.3.4-beta.11"
 arrow = {workspace = true}
 futures = {workspace = true}
 itertools = "0.11.0"
-noodles = {version = "0.56", features = ["core", "async", "fasta"]}
+noodles = {version = "0.57", features = ["core", "async", "fasta"]}
 object_store = {workspace = true}
 tokio = {workspace = true}
 tokio-util = {workspace = true}
