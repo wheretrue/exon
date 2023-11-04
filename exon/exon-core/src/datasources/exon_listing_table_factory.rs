@@ -102,8 +102,6 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let (schema, file_projection) = options.infer_schema().await?;
 
-                eprintln!("schema: {:?}", schema);
-
                 let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
                 let table = ListingHMMDomTabTable::try_new(config, schema, file_projection)?;
 

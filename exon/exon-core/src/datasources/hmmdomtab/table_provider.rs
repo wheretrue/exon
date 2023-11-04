@@ -218,13 +218,6 @@ impl TableProvider for ListingHMMDomTabTable {
             .map(|chunk| chunk.to_vec())
             .collect();
 
-        eprintln!(
-            "table partition cols: {:?}, projection: {:?}, n fields: {}",
-            self.options.table_partition_cols,
-            projection,
-            self.table_schema.fields().len()
-        );
-
         let file_schema = self.file_schema()?;
         let file_scan_config =
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, file_groups)

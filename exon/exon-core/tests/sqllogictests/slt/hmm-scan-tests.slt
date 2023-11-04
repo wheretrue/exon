@@ -12,10 +12,13 @@ statement ok
 DROP TABLE hmm_table;
 
 statement ok
-CREATE EXTERNAL TABLE hmm_table STORED AS HMMDOMTAB PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/hmmdomtab/';
+CREATE EXTERNAL TABLE hmm_table STORED AS HMMDOMTAB PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/hmmdomtab-partition/';
 
 query T
 SELECT sample, COUNT(*) cnt FROM hmm_table GROUP BY sample ORDER BY sample;
 ----
-1 1
-1 1
+1 100
+2 100
+
+statement ok
+DROP TABLE hmm_table;
