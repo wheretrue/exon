@@ -293,6 +293,7 @@ impl ExomeCatalogClient {
         file_format: String,
         is_listing: bool,
         compression_type: String,
+        table_partition_cols: Vec<String>,
     ) -> Result<String, Box<dyn std::error::Error>> {
         let request = self.make_request(proto::CreateTableRequest {
             name: name.to_string(),
@@ -303,7 +304,7 @@ impl ExomeCatalogClient {
             file_format,
             is_listing,
             compression_type,
-            table_partition_cols: "".to_string(),
+            partition_cols: table_partition_cols,
         })?;
 
         let mut client = self.catalog_service_client.clone();

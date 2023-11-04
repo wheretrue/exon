@@ -14,6 +14,7 @@
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use arrow::datatypes::DataType;
 use async_trait::async_trait;
 use datafusion::{
     catalog::schema::SchemaProvider,
@@ -115,7 +116,11 @@ impl SchemaProvider for Schema {
                 file_type,
                 file_compression_type,
                 proto_table.location.clone(),
-                Vec::new(),
+                proto_table
+                    .partition_cols
+                    .iter()
+                    .map(|s| (s.clone(), DataType::Utf8))
+                    .collect(),
             )
             .await
             .unwrap();

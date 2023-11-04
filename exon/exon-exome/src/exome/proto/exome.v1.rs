@@ -389,14 +389,15 @@ pub struct Table {
     pub updated_at: ::prost::alloc::string::String,
     #[prost(string, tag = "9")]
     pub compression_type: ::prost::alloc::string::String,
-    #[prost(string, tag = "10")]
-    pub table_partition_cols: ::prost::alloc::string::String,
+    /// string table_partition_cols = 10;
     #[prost(string, tag = "11")]
     pub catalog_name: ::prost::alloc::string::String,
     #[prost(string, tag = "12")]
     pub library_name: ::prost::alloc::string::String,
     #[prost(string, tag = "13")]
     pub organization_name: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "14")]
+    pub partition_cols: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -413,12 +414,13 @@ pub struct CreateTableRequest {
     pub is_listing: bool,
     #[prost(string, tag = "6")]
     pub compression_type: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
-    pub table_partition_cols: ::prost::alloc::string::String,
+    /// string table_partition_cols = 7;
     #[prost(string, tag = "8")]
     pub catalog_name: ::prost::alloc::string::String,
     #[prost(string, tag = "9")]
     pub library_name: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "10")]
+    pub partition_cols: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

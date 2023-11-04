@@ -94,6 +94,7 @@ pub struct CreateTable {
     file_format: String,
     is_listing: bool,
     compression_type: String,
+    partition_cols: Vec<String>,
 }
 
 impl CreateTable {
@@ -107,6 +108,7 @@ impl CreateTable {
         file_format: String,
         is_listing: bool,
         compression_type: String,
+        partition_cols: Vec<String>,
     ) -> Self {
         Self {
             name,
@@ -117,6 +119,7 @@ impl CreateTable {
             file_format,
             is_listing,
             compression_type,
+            partition_cols,
         }
     }
 }
@@ -177,6 +180,7 @@ impl ExomeCatalogManager {
                             create_table.file_format,
                             create_table.is_listing,
                             create_table.compression_type,
+                            create_table.partition_cols,
                         )
                         .await?;
                 }

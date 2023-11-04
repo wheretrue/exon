@@ -39,6 +39,7 @@ pub struct CreateTableExec {
     file_format: String,
     is_listing: bool,
     compression_type: String,
+    partition_cols: Vec<String>,
 }
 
 impl CreateTableExec {
@@ -52,6 +53,7 @@ impl CreateTableExec {
         file_format: String,
         is_listing: bool,
         compression_type: String,
+        partition_cols: Vec<String>,
     ) -> Self {
         Self {
             name,
@@ -62,6 +64,7 @@ impl CreateTableExec {
             file_format,
             is_listing,
             compression_type,
+            partition_cols,
         }
     }
 
@@ -78,6 +81,7 @@ impl CreateTableExec {
             self.file_format,
             self.is_listing,
             self.compression_type,
+            self.partition_cols,
         ))];
 
         manager
@@ -133,6 +137,7 @@ impl ExecutionPlan for CreateTableExec {
             file_format: self.file_format.clone(),
             is_listing: self.is_listing,
             compression_type: self.compression_type.clone(),
+            partition_cols: self.partition_cols.clone(),
         }))
     }
 
