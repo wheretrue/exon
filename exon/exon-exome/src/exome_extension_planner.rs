@@ -129,6 +129,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
                     create_table_logical_plan.file_format.clone(),
                     create_table_logical_plan.is_listing,
                     create_table_logical_plan.compression_type.clone(),
+                    create_table_logical_plan.partition_cols.clone(),
                 );
 
                 return Ok(Some(Arc::new(physical_plan)));

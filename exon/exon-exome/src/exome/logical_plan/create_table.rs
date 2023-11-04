@@ -33,6 +33,7 @@ pub struct CreateExomeTable {
     pub file_format: String,
     pub is_listing: bool,
     pub compression_type: String,
+    pub partition_cols: Vec<String>,
 
     pub if_not_exists: bool,
 }
@@ -95,6 +96,8 @@ impl TryFrom<CreateExternalTable> for CreateExomeTable {
         let location = value.location;
         let file_format = value.file_type;
 
+        let partition_cols = value.table_partition_cols;
+
         // TODO: how to get this?
         let is_listing = true;
 
@@ -122,6 +125,7 @@ impl TryFrom<CreateExternalTable> for CreateExomeTable {
             file_format,
             is_listing,
             compression_type,
+            partition_cols,
         })
     }
 }
