@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use object_store::ObjectStore;
 
 /// Configuration for a FCS datasource.
@@ -50,5 +50,40 @@ impl FCSConfig {
     pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
         self.projection = Some(projection);
         self
+    }
+}
+
+pub struct FCSSchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+}
+
+impl FCSSchemaBuilder {
+    pub fn new() -> Self {
+        Self {
+            file_fields: vec![],
+            partition_fields: vec![],
+        }
+    }
+
+    pub fn add_file_fields(&mut self, fields: Vec<Field>) {
+        self.file_fields.extend(fields)
+    }
+
+    /// Add fields to the schema builder.
+    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
+        self.partition_fields.extend(fields)
+    }
+
+    /// Add build the schema and projection.
+    pub fn build(self) -> (Schema, Vec<usize>) {
+        let mut fields = self.file_fields.clone();
+        fields.extend(self.partition_fields);
+
+        let schema = Schema::new(fields);
+
+        let projection = (0..self.file_fields.len()).collect();
+
+        (schema, projection)
     }
 }
