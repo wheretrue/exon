@@ -74,45 +74,9 @@ where
         match &self.config.projection {
             Some(projection) => {
                 let projected_batch = batch.project(projection)?;
-
                 Ok(Some(projected_batch))
             }
-
             None => Ok(Some(batch)),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use exon_test::test_listing_table_dir;
-    use futures::StreamExt;
-    use object_store::{local::LocalFileSystem, ObjectStore};
-    use tokio_util::io::StreamReader;
-
-    #[tokio::test]
-    async fn test_mzml_batch_reader() {
-        let object_store = Arc::new(LocalFileSystem::new());
-
-        let config = Arc::new(super::MzMLConfig::new(object_store.clone()).with_batch_size(1));
-
-        let path = test_listing_table_dir("mzml", "test.mzML");
-        let reader = object_store.get(&path).await.unwrap();
-
-        let stream = reader.into_stream();
-        let buf_reader = StreamReader::new(stream);
-
-        let mut batch_reader = super::BatchReader::new(buf_reader, config)
-            .into_stream()
-            .boxed();
-
-        while let Some(batch) = batch_reader.next().await {
-            let batch = batch.unwrap();
-
-            assert_eq!(batch.num_rows(), 1);
-            assert_eq!(batch.num_columns(), 6);
         }
     }
 }

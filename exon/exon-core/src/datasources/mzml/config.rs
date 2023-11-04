@@ -17,6 +17,37 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use object_store::ObjectStore;
 
+pub struct MzMLSchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+}
+
+impl MzMLSchemaBuilder {
+    pub fn add_partition_fields(&mut self, partition_fields: Vec<Field>) {
+        self.partition_fields.extend(partition_fields);
+    }
+
+    pub fn build(self) -> (Schema, Vec<usize>) {
+        let mut fields = self.file_fields.clone();
+        fields.extend(self.partition_fields);
+
+        let schema = Schema::new(fields);
+
+        let projection = (0..self.file_fields.len()).collect();
+
+        (schema, projection)
+    }
+}
+
+impl Default for MzMLSchemaBuilder {
+    fn default() -> Self {
+        Self {
+            file_fields: file_fields(),
+            partition_fields: vec![],
+        }
+    }
+}
+
 /// Configuration for a MzML data source.
 pub struct MzMLConfig {
     /// The number of rows to read at a time.
@@ -34,11 +65,11 @@ pub struct MzMLConfig {
 
 impl MzMLConfig {
     /// Create a new MzML configuration.
-    pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
+    pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: Arc<Schema>) -> Self {
         Self {
             object_store,
             batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
-            file_schema: Arc::new(schema()),
+            file_schema,
             projection: None,
         }
     }
@@ -56,18 +87,7 @@ impl MzMLConfig {
     }
 }
 
-impl Default for MzMLConfig {
-    fn default() -> Self {
-        Self {
-            object_store: Arc::new(object_store::local::LocalFileSystem::new()),
-            batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
-            file_schema: Arc::new(schema()),
-            projection: None,
-        }
-    }
-}
-
-pub fn schema() -> Schema {
+fn file_fields() -> Vec<Field> {
     let mz_fields = Fields::from(vec![Field::new(
         "mz",
         DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
@@ -151,12 +171,12 @@ pub fn schema() -> Schema {
     // A precursor list is a list of precursors
     let precursor_list = Field::new("precursor_list", DataType::List(Arc::new(precursor)), true);
 
-    Schema::new(vec![
+    vec![
         Field::new("id", DataType::Utf8, false),
         mz_field,
         intensity_field,
         wavelength_field,
         cv_params_field,
         precursor_list,
-    ])
+    ]
 }

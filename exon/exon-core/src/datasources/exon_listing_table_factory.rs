@@ -88,11 +88,12 @@ impl ExonListingTableFactory {
             }
             #[cfg(feature = "mzml")]
             ExonFileType::MZML => {
-                let options = ListingMzMLTableOptions::new(file_compression_type);
-                let schema = options.infer_schema().await?;
+                let options = ListingMzMLTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema().await?;
 
                 let config = ListingMzMLTableConfig::new(table_path).with_options(options);
-                let table = ListingMzMLTable::try_new(config, schema)?;
+                let table = ListingMzMLTable::try_new(config, schema, file_projection)?;
 
                 Ok(Arc::new(table))
             }
