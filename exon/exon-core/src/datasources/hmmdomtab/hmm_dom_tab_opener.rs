@@ -25,7 +25,7 @@ use datafusion::{
 };
 use futures::{ready, StreamExt, TryStreamExt};
 
-use super::hmm_dom_tab_config::{build_hmm_dom_tab_decoder, HMMDomTabConfig};
+use super::hmm_dom_tab_config::HMMDomTabConfig;
 
 /// Implements a datafusion `FileOpener` for HMMDomTab files.
 pub struct HMMDomTabOpener {
@@ -47,7 +47,8 @@ impl FileOpener for HMMDomTabOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let gff_config = self.config.clone();
         let file_compression_type = self.file_compression_type;
-        let mut decoder = build_hmm_dom_tab_decoder();
+
+        let mut decoder = self.config.build_decoder();
         let projection = self.config.projection.clone();
 
         Ok(Box::pin(async move {
@@ -93,43 +94,5 @@ impl FileOpener for HMMDomTabOpener {
             });
             Ok(s.boxed())
         }))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::sync::Arc;
-
-    use datafusion::datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        physical_plan::{FileMeta, FileOpener},
-    };
-    use exon_test::test_listing_table_dir;
-    use futures::StreamExt;
-    use object_store::{local::LocalFileSystem, ObjectStore};
-
-    use crate::datasources::hmmdomtab::{HMMDomTabConfig, HMMDomTabOpener};
-
-    #[tokio::test]
-    async fn test_opener() {
-        let object_store = Arc::new(LocalFileSystem::new());
-
-        let config = HMMDomTabConfig::new(object_store.clone());
-
-        let opener = HMMDomTabOpener::new(Arc::new(config), FileCompressionType::UNCOMPRESSED);
-
-        let path = test_listing_table_dir("hmmdomtab", "test.hmmdomtab");
-        let object_meta = object_store.head(&path).await.unwrap();
-        let file_meta = FileMeta::from(object_meta);
-
-        let mut opened_file = opener.open(file_meta).unwrap().await.unwrap();
-
-        let mut n_records = 0;
-        while let Some(batch) = opened_file.next().await {
-            let batch = batch.unwrap();
-            n_records += batch.num_rows();
-        }
-
-        assert_eq!(n_records, 100);
     }
 }

@@ -98,11 +98,14 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::HMMDOMTAB => {
-                let options = ListingHMMDomTabTableOptions::new(file_compression_type);
-                let schema = options.infer_schema().await?;
+                let options = ListingHMMDomTabTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema().await?;
+
+                eprintln!("schema: {:?}", schema);
 
                 let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
-                let table = ListingHMMDomTabTable::try_new(config, schema)?;
+                let table = ListingHMMDomTabTable::try_new(config, schema, file_projection)?;
 
                 Ok(Arc::new(table))
             }
