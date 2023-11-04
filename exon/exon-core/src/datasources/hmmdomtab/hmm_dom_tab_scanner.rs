@@ -49,10 +49,7 @@ pub struct HMMDomTabScan {
 impl HMMDomTabScan {
     /// Create a new HMMDomTab scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Self {
             projected_schema,
@@ -129,9 +126,9 @@ impl ExecutionPlan for HMMDomTabScan {
         let batch_size = context.session_config().batch_size();
 
         let config = Arc::new(
-            HMMDomTabConfig::new(object_store)
+            HMMDomTabConfig::new(object_store, self.base_config.file_schema.clone())
                 .with_batch_size(batch_size)
-                .with_some_projection(self.base_config.projection.clone()),
+                .with_some_projection(Some(self.base_config.file_projection())),
         );
 
         let opener = HMMDomTabOpener::new(config, self.file_compression_type);

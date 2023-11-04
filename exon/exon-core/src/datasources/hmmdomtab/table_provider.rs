@@ -14,12 +14,12 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -29,12 +29,16 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use futures::TryStreamExt;
 
 use crate::{
-    datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+    },
 };
 
-use super::{hmm_dom_tab_config::schema, HMMDomTabScan};
+use super::{hmm_dom_tab_config::HMMDomTabSchemaBuilder, HMMDomTabScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -65,9 +69,14 @@ impl ListingHMMDomTabTableConfig {
 #[derive(Debug, Clone)]
 /// Listing options for a HMM Dom Tab table
 pub struct ListingHMMDomTabTableOptions {
+    /// File extension for the table
     file_extension: String,
 
+    /// File compression type
     file_compression_type: FileCompressionType,
+
+    /// Partition columns for the table
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingHMMDomTabTableOptions {
@@ -78,13 +87,33 @@ impl ListingHMMDomTabTableOptions {
         Self {
             file_extension,
             file_compression_type,
+            table_partition_cols: Vec::new(),
+        }
+    }
+
+    /// Set the partition columns for the table
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
         }
     }
 
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
-        Ok(Arc::new(schema))
+    pub async fn infer_schema(&self) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+        let mut schema_builder = HMMDomTabSchemaBuilder::default();
+
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
+            .collect();
+
+        schema_builder.add_partition_fields(partition_fields);
+
+        let (file_schema, projection) = schema_builder.build();
+
+        Ok((Arc::new(file_schema), projection))
     }
 
     async fn create_physical_plan(
@@ -103,19 +132,32 @@ pub struct ListingHMMDomTabTable {
 
     table_schema: SchemaRef,
 
+    file_projection: Vec<usize>,
+
     options: ListingHMMDomTabTableOptions,
 }
 
 impl ListingHMMDomTabTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingHMMDomTabTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: ListingHMMDomTabTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
+    }
+
+    /// Get the file schema for the table
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema))
     }
 }
 
@@ -139,7 +181,7 @@ impl TableProvider for ListingHMMDomTabTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
             .collect())
     }
 
@@ -147,7 +189,7 @@ impl TableProvider for ListingHMMDomTabTable {
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -158,24 +200,31 @@ impl TableProvider for ListingHMMDomTabTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partitioned_file_lists = vec![
-            crate::physical_plan::object_store::list_files_for_scan(
-                object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
-                &[],
-            )
-            .await?,
-        ];
-
-        let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            Arc::clone(&self.table_schema),
-            partitioned_file_lists,
+        let file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
         )
-        .projection_option(projection.cloned())
-        .limit_option(limit)
-        .build();
+        .await?
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        let file_schema = self.file_schema()?;
+        let file_scan_config =
+            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, file_groups)
+                .projection_option(projection.cloned())
+                .table_partition_cols(self.options.table_partition_cols.clone())
+                .limit_option(limit)
+                .build();
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 
