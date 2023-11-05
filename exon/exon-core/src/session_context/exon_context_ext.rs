@@ -115,6 +115,8 @@ pub trait ExonSessionExt {
             "SAM",
             #[cfg(feature = "mzml")]
             "MZML",
+            #[cfg(feature = "fcs")]
+            "FCS",
         ];
 
         for source in sources {

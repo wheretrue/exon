@@ -44,7 +44,7 @@ exon-test = {path = "../exon-test", version = "0.3.4-beta.9"}
 sqllogictest = "0.17.2"
 
 [features]
-all = ["ffi", "genbank", "mzml"]
+all = ["ffi", "genbank", "mzml", "fcs"]
 fcs = ["dep:byteorder"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 fixtures = []

@@ -201,7 +201,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let schema = options.infer_schema().await?;
 
-                let config = ListingFASTQTableConfig::new(table_path).with_options(options);
+                let config: ListingFASTQTableConfig =
+                    ListingFASTQTableConfig::new(table_path).with_options(options);
                 let table = ListingFASTQTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
@@ -218,11 +219,13 @@ impl ExonListingTableFactory {
             }
             #[cfg(feature = "fcs")]
             ExonFileType::FCS => {
-                let options = ListingFCSTableOptions::new(file_compression_type);
-                let schema = options.infer_schema(state, &table_path).await?;
+                let options = ListingFCSTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols);
+
+                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingFCSTableConfig::new(table_path).with_options(options);
-                let table = ListingFCSTable::try_new(config, schema)?;
+                let table = ListingFCSTable::try_new(config, schema, file_projection)?;
 
                 Ok(Arc::new(table))
             }

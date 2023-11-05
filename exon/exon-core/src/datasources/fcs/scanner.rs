@@ -48,10 +48,7 @@ pub struct FCSScan {
 impl FCSScan {
     /// Create a new FCS scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Self {
             base_config,
@@ -129,11 +126,9 @@ impl ExecutionPlan for FCSScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = FCSConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size);
-        if let Some(projections) = &self.base_config.projection {
-            config = config.with_projection(projections.clone());
-        }
+        let config = FCSConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_batch_size(batch_size)
+            .with_projection(self.base_config.file_projection());
 
         let opener = FCSOpener::new(Arc::new(config), self.file_compression_type);
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
