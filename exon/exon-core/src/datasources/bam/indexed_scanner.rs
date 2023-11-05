@@ -47,10 +47,7 @@ pub struct IndexedBAMScan {
 impl IndexedBAMScan {
     /// Create a new BAM scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Self {
             base_config,
@@ -127,12 +124,9 @@ impl ExecutionPlan for IndexedBAMScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = BAMConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size);
-
-        if let Some(projection) = &self.base_config.projection {
-            config = config.with_some_projection(Some(projection.clone()));
-        }
+        let config = BAMConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_batch_size(batch_size)
+            .with_projection(self.base_config.file_projection());
 
         let opener = IndexedBAMOpener::new(Arc::new(config), self.region.clone());
 

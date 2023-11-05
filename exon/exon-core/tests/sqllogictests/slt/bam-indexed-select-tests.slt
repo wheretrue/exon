@@ -17,12 +17,23 @@ statement ok
 DROP TABLE bam;
 
 statement ok
-CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam-multifile/';
+CREATE EXTERNAL TABLE bam_multi STORED AS INDEXED_BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam-multifile/';
 
 query T
-SELECT COUNT(*) FROM bam WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
+SELECT COUNT(*) FROM bam_multi WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
 ----
 14
 
 statement ok
-DROP TABLE bam;
+DROP TABLE bam_multi;
+
+statement ok
+CREATE EXTERNAL TABLE bam_part STORED AS INDEXED_BAM PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam-partition/';
+
+query T
+SELECT sample, COUNT(reference) cnt FROM bam_part WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true AND sample = '2' GROUP BY sample;
+----
+2 7
+
+statement ok
+DROP TABLE bam_part;

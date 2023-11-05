@@ -1606,6 +1606,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "exon-sam"
+version = "0.1.0"
+
+[[package]]
 name = "exon-test"
 version = "0.3.4-beta.10"
 dependencies = [

@@ -14,21 +14,20 @@
 
 use std::{any::Any, str::FromStr, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{expr::ScalarUDF, TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan},
+    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
-use exon_bam::TagSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bam::lazy::Record, core::Region};
 use object_store::ObjectStore;
@@ -54,7 +53,7 @@ fn infer_region_from_scalar_udf(scalar_udf: &ScalarUDF) -> Option<Region> {
 }
 
 #[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
+/// Configuration for a BAM listing table
 pub struct ListingBAMTableConfig {
     inner: ListingTableConfig,
 
@@ -62,7 +61,7 @@ pub struct ListingBAMTableConfig {
 }
 
 impl ListingBAMTableConfig {
-    /// Create a new VCF listing table configuration
+    /// Create a new BAM listing table configuration
     pub fn new(table_path: ListingTableUrl) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
@@ -70,7 +69,7 @@ impl ListingBAMTableConfig {
         }
     }
 
-    /// Set the options for the VCF listing table
+    /// Set the options for the BAM listing table
     pub fn with_options(self, options: ListingBAMTableOptions) -> Self {
         Self {
             options: Some(options),
@@ -80,8 +79,12 @@ impl ListingBAMTableConfig {
 }
 
 use crate::{
-    datasources::{indexed_file_utils::IndexedFile, sam::schema},
-    physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+    datasources::{
+        hive_partition::filter_matches_partition_cols,
+        indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
+        sam::SAMSchemaBuilder,
+    },
+    physical_plan::object_store::pruned_partition_list,
 };
 
 use super::{indexed_scanner::IndexedBAMScan, BAMScan};
@@ -93,6 +96,8 @@ pub struct ListingBAMTableOptions {
 
     indexed: bool,
 
+    table_partition_cols: Vec<(String, DataType)>,
+
     tag_as_struct: bool,
 }
 
@@ -100,6 +105,7 @@ impl Default for ListingBAMTableOptions {
     fn default() -> Self {
         Self {
             file_extension: String::from("bam"),
+            table_partition_cols: Vec::new(),
             indexed: false,
             tag_as_struct: false,
         }
@@ -107,15 +113,31 @@ impl Default for ListingBAMTableOptions {
 }
 
 impl ListingBAMTableOptions {
+    /// Set the table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
+        }
+    }
+
     /// Infer the schema for the table
     pub async fn infer_schema(
         &self,
         state: &SessionState,
         table_path: &ListingTableUrl,
-    ) -> datafusion::error::Result<SchemaRef> {
+    ) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
         if !self.tag_as_struct {
-            let schema = schema();
-            return Ok(Arc::new(schema));
+            let partition_fields = self
+                .table_partition_cols
+                .iter()
+                .map(|f| Field::new(&f.0, f.1.clone(), false))
+                .collect::<Vec<_>>();
+
+            let builder = SAMSchemaBuilder::default().with_partition_fields(partition_fields);
+
+            let (schema, file_projection) = builder.build();
+            return Ok((Arc::new(schema), file_projection));
         }
 
         let store = state.runtime_env().object_store(table_path)?;
@@ -129,7 +151,7 @@ impl ListingBAMTableOptions {
         )
         .await;
 
-        let mut tag_schema_builder = TagSchemaBuilder::new();
+        let mut schema_builder = SAMSchemaBuilder::default();
 
         while let Some(f) = files.next().await {
             let f = f?;
@@ -150,17 +172,20 @@ impl ListingBAMTableOptions {
             let data = record.data();
             let data: noodles::sam::record::Data = data.try_into()?;
 
-            tag_schema_builder.add_tag_data(&data).map_err(|e| {
-                DataFusionError::Execution(format!(
-                    "Error adding tag data to schema builder: {}",
-                    e
-                ))
-            })?;
+            schema_builder = schema_builder.with_tags_data_type_from_data(&data)?;
         }
 
-        let schema = tag_schema_builder.build();
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|f| Field::new(&f.0, f.1.clone(), false))
+            .collect::<Vec<_>>();
 
-        Ok(Arc::new(schema))
+        schema_builder = schema_builder.with_partition_fields(partition_fields);
+
+        let (schema, file_projection) = schema_builder.build();
+
+        Ok((Arc::new(schema), file_projection))
     }
 
     /// Update the indexed flag
@@ -200,19 +225,33 @@ pub struct ListingBAMTable {
 
     table_schema: SchemaRef,
 
+    /// The file projection
+    file_projection: Vec<usize>,
+
     options: ListingBAMTableOptions,
 }
 
 impl ListingBAMTable {
     /// Create a new BAM listing table
-    pub fn try_new(config: ListingBAMTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: ListingBAMTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
+    }
+
+    /// File Schema
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = &self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -244,10 +283,10 @@ impl TableProvider for ListingBAMTable {
                         TableProviderFilterPushDown::Exact
                     } else {
                         tracing::debug!("Unsupported number of arguments for region filter");
-                        TableProviderFilterPushDown::Unsupported
+                        filter_matches_partition_cols(f, &self.options.table_partition_cols)
                     }
                 }
-                _ => TableProviderFilterPushDown::Unsupported,
+                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
             })
             .collect())
     }
@@ -278,74 +317,99 @@ impl TableProvider for ListingBAMTable {
             })
             .collect::<Vec<Region>>();
 
-        if regions.len() > 1 {
-            return Err(DataFusionError::Execution(
-                "Multiple regions are not supported yet".to_string(),
-            ));
-        }
-
         if regions.is_empty() && self.options.indexed {
             return Err(DataFusionError::Plan(
                 "INDEXED_BAM table type requires a region filter. See the 'bam_region_filter' function.".to_string(),
             ));
         }
 
-        let region = regions.get(0).cloned();
-
-        match region {
-            None => {
-                let partitioned_file_lists = vec![
-                    crate::physical_plan::object_store::list_files_for_scan(
-                        object_store,
-                        self.table_paths.clone(),
-                        &self.options.file_extension,
-                        &[],
-                    )
-                    .await?,
-                ];
-
-                let file_scan_config = FileScanConfigBuilder::new(
-                    object_store_url.clone(),
-                    Arc::clone(&self.table_schema),
-                    partitioned_file_lists,
-                )
-                .projection_option(projection.cloned())
-                .limit_option(limit)
-                .build();
-
-                let plan = self.options.create_physical_plan(file_scan_config).await?;
-
-                Ok(plan)
-            }
-            Some(region) => {
-                let regions = vec![region.clone()];
-                let partitioned_file_lists = IndexedFile::Bam
-                    .list_files_for_scan(self.table_paths.clone(), object_store, &regions)
-                    .await?;
-
-                if partitioned_file_lists.is_empty() || partitioned_file_lists[0].is_empty() {
-                    return Ok(Arc::new(EmptyExec::new(
-                        false,
-                        Arc::clone(&self.table_schema),
-                    )));
-                }
-
-                let file_scan_config = FileScanConfigBuilder::new(
-                    object_store_url.clone(),
-                    Arc::clone(&self.table_schema),
-                    partitioned_file_lists,
-                )
-                .projection_option(projection.cloned())
-                .limit_option(limit)
-                .build();
-
-                let plan = self
-                    .options
-                    .create_physical_plan_with_region(file_scan_config, Arc::new(region))
-                    .await?;
-
-                Ok(plan)
-            }
+        if regions.len() > 1 {
+            return Err(DataFusionError::Plan(
+                "Only one region filter is supported".to_string(),
+            ));
         }
+
+        if regions.is_empty() {
+            let file_list = pruned_partition_list(
+                state,
+                &object_store,
+                &self.table_paths[0],
+                filters,
+                self.options.file_extension.as_str(),
+                &self.options.table_partition_cols,
+            )
+            .await?
+            .try_collect::<Vec<_>>()
+            .await?;
+
+            let inner_size = 1;
+            let file_groups: Vec<Vec<PartitionedFile>> = file_list
+                .chunks(inner_size)
+                .map(|chunk| chunk.to_vec())
+                .collect();
+
+            let file_scan_config = FileScanConfig {
+                object_store_url,
+                file_schema: self.file_schema()?,
+                file_groups,
+                statistics: Statistics::default(),
+                projection: projection.cloned(),
+                limit,
+                output_ordering: Vec::new(),
+                table_partition_cols: self.options.table_partition_cols.clone(),
+                infinite_source: false,
+            };
+
+            let plan = self.options.create_physical_plan(file_scan_config).await?;
+
+            return Ok(plan);
+        }
+
+        let mut file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
+        )
+        .await?;
+
+        let mut byte_ranges = Vec::new();
+
+        let region = regions[0].clone();
+
+        while let Some(f) = file_list.next().await {
+            let f = f?;
+
+            let file_byte_range = augment_partitioned_file_with_byte_range(
+                object_store.clone(),
+                &f,
+                &region,
+                &IndexedFile::Bam,
+            )
+            .await?;
+
+            byte_ranges.extend(file_byte_range);
+        }
+
+        let file_scan_config = FileScanConfig {
+            object_store_url: object_store_url.clone(),
+            file_schema: self.file_schema()?,
+            file_groups: vec![byte_ranges],
+            statistics: Statistics::default(),
+            projection: projection.cloned(),
+            limit,
+            output_ordering: Vec::new(),
+            table_partition_cols: self.options.table_partition_cols.clone(),
+            infinite_source: false,
+        };
+
+        let table = self
+            .options
+            .create_physical_plan_with_region(file_scan_config, Arc::new(region.clone()))
+            .await?;
+
+        return Ok(table);
     }
 }

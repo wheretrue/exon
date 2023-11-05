@@ -23,7 +23,7 @@ mod scanner;
 /// Table provider for SAM files.
 pub mod table_provider;
 
-pub use self::array_builder::schema;
 pub use self::array_builder::SAMArrayBuilder;
+pub use self::array_builder::SAMSchemaBuilder;
 pub use self::config::SAMConfig;
 pub use self::file_opener::SAMOpener;

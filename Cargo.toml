@@ -11,6 +11,7 @@ members = [
   "exon/exon-io",
   "exon/exon-exome",
   "exon/exon-bam",
+  "exon/exon-sam",
   "exon/exon-fasta",
   "exon/exon-test",
   "exon/exon-common",

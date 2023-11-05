@@ -108,11 +108,12 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::BAM => {
-                let options = ListingBAMTableOptions::default();
-                let schema = options.infer_schema(state, &table_path).await?;
+                let options = ListingBAMTableOptions::default()
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(options);
-                let table = ListingBAMTable::try_new(config, schema)?;
+                let table = ListingBAMTable::try_new(config, schema, file_projection)?;
 
                 Ok(Arc::new(table))
             }
@@ -179,12 +180,16 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedBAM => {
-                let bam_options = ListingBAMTableOptions::default().with_indexed(true);
-                let schema = bam_options.infer_schema(state, &table_path).await?;
+                let bam_options = ListingBAMTableOptions::default()
+                    .with_indexed(true)
+                    .with_table_partition_cols(table_partition_cols);
+
+                let (schema, file_projection) =
+                    bam_options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
 
-                let table = ListingBAMTable::try_new(config, schema)?;
+                let table = ListingBAMTable::try_new(config, schema, file_projection)?;
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA => {
