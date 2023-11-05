@@ -24,6 +24,8 @@ use datafusion::{
 };
 use noodles::core::Region;
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::BCFConfig, file_opener::BCFOpener};
 
 #[derive(Debug)]
@@ -45,10 +47,7 @@ pub struct BCFScan {
 impl BCFScan {
     /// Create a new BCF scan.
     pub fn new(base_config: FileScanConfig) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Self {
             base_config,
@@ -67,7 +66,13 @@ impl BCFScan {
 
 impl DisplayAs for BCFScan {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "BCFScan")
+        let bcf_repr = format!(
+            "BCFScanExec: files={:?}, partitions={:?}",
+            self.base_config.file_groups,
+            self.base_config.file_projection(),
+        );
+
+        write!(f, "{}", bcf_repr)
     }
 }
 
@@ -112,7 +117,7 @@ impl ExecutionPlan for BCFScan {
 
         let config = BCFConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(batch_size)
-            .with_some_projection(self.base_config.projection.clone());
+            .with_some_projection(Some(self.base_config.file_projection()));
 
         let mut opener = BCFOpener::new(Arc::new(config));
 
