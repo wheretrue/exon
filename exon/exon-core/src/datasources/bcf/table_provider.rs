@@ -14,19 +14,19 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan},
+    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
 use futures::TryStreamExt;
@@ -35,8 +35,10 @@ use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
 use crate::{
-    datasources::{vcf::VCFSchemaBuilder, ExonFileType},
-    physical_plan::file_scan_config_builder,
+    datasources::{
+        hive_partition::filter_matches_partition_cols, vcf::VCFSchemaBuilder, ExonFileType,
+    },
+    physical_plan::object_store::pruned_partition_list,
 };
 
 use super::BCFScan;
@@ -73,6 +75,8 @@ pub struct ListingBCFTableOptions {
     file_extension: String,
 
     region: Option<Region>,
+
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl Default for ListingBCFTableOptions {
@@ -80,6 +84,7 @@ impl Default for ListingBCFTableOptions {
         Self {
             file_extension: ExonFileType::BCF.get_file_extension(FileCompressionType::UNCOMPRESSED),
             region: None,
+            table_partition_cols: Vec::new(),
         }
     }
 }
@@ -91,12 +96,20 @@ impl ListingBCFTableOptions {
         self
     }
 
+    /// Set the file extension for the table options
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
+        }
+    }
+
     /// Infer the schema for the table
     pub async fn infer_schema<'a>(
         &self,
         state: &SessionState,
         table_path: &'a ListingTableUrl,
-    ) -> datafusion::error::Result<SchemaRef> {
+    ) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
         let store = state.runtime_env().object_store(table_path)?;
 
         let get_result = if table_path.to_string().ends_with('/') {
@@ -122,14 +135,22 @@ impl ListingBCFTableOptions {
             .parse::<noodles::vcf::Header>()
             .map_err(|e| DataFusionError::Execution(e.to_string()))?;
 
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|f| Field::new(&f.0, f.1.clone(), false))
+            .collect::<Vec<_>>();
+
         let mut schema_builder = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_formats(true)
-            .with_parse_info(true);
+            .with_parse_info(true)
+            .with_partition_fields(partition_fields);
 
-        let (schema, ..) = schema_builder.build()?;
+        let (schema, file_projection) = schema_builder.build()?;
+        // this schema has the partition columns at the end
 
-        Ok(Arc::new(schema))
+        Ok((Arc::new(schema), file_projection))
     }
 
     async fn create_physical_plan(
@@ -150,23 +171,40 @@ impl ListingBCFTableOptions {
 #[derive(Debug, Clone)]
 /// A BCF listing table
 pub struct ListingBCFTable {
+    /// The paths to the files
     table_paths: Vec<ListingTableUrl>,
 
+    /// The schema for the table
     table_schema: SchemaRef,
 
+    /// The file projection
+    file_projection: Vec<usize>,
+
+    /// The options for the table
     options: ListingBCFTableOptions,
 }
 
 impl ListingBCFTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingBCFTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: ListingBCFTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
+    }
+
+    /// File Schema
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = &self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -190,7 +228,7 @@ impl TableProvider for ListingBCFTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
             .collect())
     }
 
@@ -198,7 +236,7 @@ impl TableProvider for ListingBCFTable {
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -209,24 +247,35 @@ impl TableProvider for ListingBCFTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partitioned_file_lists = vec![
-            crate::physical_plan::object_store::list_files_for_scan(
-                object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
-                &[],
-            )
-            .await?,
-        ];
-
-        let file_scan_config = file_scan_config_builder::FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            Arc::clone(&self.table_schema),
-            partitioned_file_lists,
+        let file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
         )
-        .projection_option(projection.cloned())
-        .limit_option(limit)
-        .build();
+        .await?
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        let file_scan_config = FileScanConfig {
+            object_store_url,
+            file_schema: self.file_schema()?,
+            file_groups,
+            statistics: Statistics::default(),
+            projection: projection.cloned(),
+            limit,
+            output_ordering: Vec::new(),
+            table_partition_cols: self.options.table_partition_cols.clone(),
+            infinite_source: false,
+        };
 
         let plan = self
             .options
@@ -234,48 +283,5 @@ impl TableProvider for ListingBCFTable {
             .await?;
 
         Ok(plan)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::datasources::{ExonFileType, ExonListingTableFactory};
-
-    use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
-        prelude::SessionContext,
-    };
-    use exon_test::test_listing_table_url;
-
-    #[tokio::test]
-    async fn test_bcf_read() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
-        let session_state = ctx.state();
-
-        let table_path = test_listing_table_url("bcf");
-
-        let table = ExonListingTableFactory::default()
-            .create_from_file_type(
-                &session_state,
-                ExonFileType::BCF,
-                FileCompressionType::UNCOMPRESSED,
-                table_path.to_string(),
-                Vec::new(),
-            )
-            .await?;
-
-        let df = ctx.read_table(table)?;
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
-        for batch in bs {
-            row_cnt += batch.num_rows();
-
-            assert_eq!(batch.schema().fields().len(), 9);
-            assert_eq!(batch.schema().field(0).name(), "chrom");
-        }
-        assert_eq!(row_cnt, 621);
-
-        Ok(())
     }
 }

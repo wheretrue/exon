@@ -147,11 +147,12 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::BCF => {
-                let options = ListingBCFTableOptions::default();
-                let schema = options.infer_schema(state, &table_path).await?;
+                let options = ListingBCFTableOptions::default()
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBCFTableConfig::new(table_path).with_options(options);
-                let table = ListingBCFTable::try_new(config, schema)?;
+                let table = ListingBCFTable::try_new(config, schema, file_projection)?;
 
                 Ok(Arc::new(table))
             }
