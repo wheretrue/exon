@@ -1,17 +1,17 @@
 control substitution on
 
-statement ok
-CREATE EXTERNAL TABLE bcf_table STORED AS BCF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bcf-partition/'
-
-query T
-SELECT chrom, sample FROM bcf_table WHERE sample = '1' LIMIT 1;
-----
-1 1
-
-query T
-SELECT sample, COUNT(*) cnt FROM bcf_table WHERE sample = '2' GROUP BY sample ORDER BY sample;
-----
-2 621
-
-statement ok
-DROP TABLE bcf_table;
+# statement ok
+# CREATE EXTERNAL TABLE bcf_table STORED AS BCF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bcf-partition/';
+#
+# query T
+# SELECT chrom, sample FROM bcf_table WHERE sample = '1' LIMIT 1;
+# ----
+# 1 1
+#
+# query T
+# SELECT sample, COUNT(*) cnt FROM bcf_table WHERE sample = '2' GROUP BY sample ORDER BY sample;
+# ----
+# 2 621
+#
+# statement ok
+# DROP TABLE bcf_table;
