@@ -12,37 +12,322 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use arrow::{
     array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, StructBuilder},
     datatypes::{DataType, Field, Fields, Schema},
     error::ArrowError,
 };
+use datafusion::error::Result;
+use noodles::sam::record::{
+    data::field::{value::Array, Value},
+    Data,
+};
 use noodles::sam::{alignment::Record, Header};
 
-/// Create the schema for the SAM/BAM file.
-pub fn schema() -> Schema {
-    let tag_struct = DataType::Struct(Fields::from(vec![
-        Field::new("tag", DataType::Utf8, false),
-        Field::new("value", DataType::Utf8, true), // Assuming VALUE as a string for simplicity.
-    ]));
+macro_rules! datafusion_error {
+    ($tag:expr, $field_type:expr, $expected_type:expr) => {
+        Err(datafusion::error::DataFusionError::Execution(
+            format!(
+                "tag {} has conflicting types: {:?} and {:?}",
+                $tag, $field_type, $expected_type,
+            )
+            .into(),
+        ))
+    };
+}
 
-    let tag_struct_list = DataType::List(Arc::new(Field::new("item", tag_struct, true)));
+/// Builds a schema for the BAM file.
+pub struct SAMSchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+    tags_data_type: Option<DataType>,
+}
 
-    Schema::new(vec![
-        Field::new("name", DataType::Utf8, false),
-        Field::new("flag", DataType::Int32, false),
-        Field::new("reference", DataType::Utf8, true),
-        Field::new("start", DataType::Int32, true),
-        Field::new("end", DataType::Int32, true),
-        Field::new("mapping_quality", DataType::Utf8, true),
-        Field::new("cigar", DataType::Utf8, false),
-        Field::new("mate_reference", DataType::Utf8, true),
-        Field::new("sequence", DataType::Utf8, false),
-        Field::new("quality_score", DataType::Utf8, false),
-        Field::new("tags", tag_struct_list, false),
-    ])
+impl SAMSchemaBuilder {
+    /// Creates a new SAM schema builder.
+    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
+        Self {
+            file_fields,
+            partition_fields,
+            tags_data_type: None,
+        }
+    }
+
+    /// Set the partition fields.
+    pub fn with_partition_fields(self, partition_fields: Vec<Field>) -> Self {
+        Self {
+            partition_fields,
+            ..self
+        }
+    }
+
+    /// Sets the data type for the tags field.
+    pub fn with_tags_data_type(self, tags_data_type: DataType) -> Self {
+        Self {
+            tags_data_type: Some(tags_data_type),
+            ..self
+        }
+    }
+
+    /// Sets the data type for the tags field from the data.
+    pub fn with_tags_data_type_from_data(self, data: &Data) -> Result<Self> {
+        let mut fields = HashMap::new();
+
+        for (tag, value) in data.iter() {
+            match value {
+                Value::Character(_) | Value::String(_) | Value::Hex(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::Utf8, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::Utf8 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::Utf8
+                        );
+                    }
+                }
+                Value::Int8(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::Int8, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::Int8 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::Int8
+                        );
+                    }
+                }
+                Value::Int16(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::Int16, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::Int16 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::Int16
+                        );
+                    }
+                }
+                Value::Int32(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::Int32, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::Int32 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::Int32
+                        );
+                    }
+                }
+                Value::UInt8(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::UInt8, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::UInt8 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::UInt8
+                        );
+                    }
+                }
+                Value::UInt16(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::UInt16, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::UInt16 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::UInt16
+                        );
+                    }
+                }
+                Value::UInt32(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::UInt32, false)
+                    });
+                    if field.data_type() != &arrow::datatypes::DataType::UInt32 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::UInt16
+                        );
+                    }
+                }
+                Value::Float(_) => {
+                    let field = fields.entry(tag).or_insert_with(|| {
+                        Field::new(tag.to_string(), arrow::datatypes::DataType::Float32, false)
+                    });
+
+                    if field.data_type() != &arrow::datatypes::DataType::Float32 {
+                        return datafusion_error!(
+                            tag,
+                            field.data_type(),
+                            arrow::datatypes::DataType::Float32
+                        );
+                    }
+                }
+                Value::Array(array) => {
+                    match array {
+                        Array::Int32(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag.to_string(),
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::Int32,
+                                        true,
+                                    ))),
+                                    false,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::Int32, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return datafusion_error!(tag, field.data_type(), expected_type);
+                            }
+                        }
+                        Array::Int16(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag.to_string(),
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::Int16,
+                                        true,
+                                    ))),
+                                    false,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::Int16, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return datafusion_error!(tag, field.data_type(), expected_type);
+                            }
+                        }
+                        Array::Int8(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag.to_string(),
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::Int8,
+                                        true,
+                                    ))),
+                                    false,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::Int8, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return datafusion_error!(tag, field.data_type(), expected_type);
+                            }
+                        }
+                        Array::Float(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag.to_string(),
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::Float32,
+                                        true,
+                                    ))),
+                                    false,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::Float32, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return datafusion_error!(tag, field.data_type(), expected_type);
+                            }
+                        }
+                        _ => {
+                            return Err(datafusion::error::DataFusionError::Execution(format!(
+                                "tag {} has unsupported array type",
+                                tag
+                            )))
+                        }
+                    }
+                }
+            }
+        }
+
+        let data_type = DataType::Struct(Fields::from(
+            fields
+                .into_iter()
+                .map(|(tag, field)| {
+                    let data_type = field.data_type().clone();
+                    Field::new(tag.to_string(), data_type, false)
+                })
+                .collect::<Vec<_>>(),
+        ));
+
+        Ok(self.with_tags_data_type(data_type))
+    }
+
+    /// Builds a schema for the BAM file.
+    pub fn build(self) -> (Schema, Vec<usize>) {
+        let mut fields = self.file_fields;
+
+        if let Some(tags_data_type) = self.tags_data_type.clone() {
+            let tags_field = Field::new("tags", tags_data_type, true);
+            fields.push(tags_field);
+        }
+
+        let file_projection = (0..fields.len()).collect::<Vec<_>>();
+
+        fields.extend_from_slice(&self.partition_fields);
+        (Schema::new(fields), file_projection)
+    }
+}
+
+impl Default for SAMSchemaBuilder {
+    fn default() -> Self {
+        let tags_data_type = DataType::List(Arc::new(Field::new(
+            "item",
+            DataType::Struct(Fields::from(vec![
+                Field::new("tag", DataType::Utf8, false),
+                Field::new("value", DataType::Utf8, true),
+            ])),
+            true,
+        )));
+
+        Self::new(
+            vec![
+                Field::new("name", DataType::Utf8, false),
+                Field::new("flag", DataType::Int32, false),
+                Field::new("reference", DataType::Utf8, true),
+                Field::new("start", DataType::Int32, true),
+                Field::new("end", DataType::Int32, true),
+                Field::new("mapping_quality", DataType::Utf8, true),
+                Field::new("cigar", DataType::Utf8, false),
+                Field::new("mate_reference", DataType::Utf8, true),
+                Field::new("sequence", DataType::Utf8, false),
+                Field::new("quality_score", DataType::Utf8, false),
+            ],
+            vec![],
+        )
+        .with_tags_data_type(tags_data_type)
+    }
 }
 
 /// Builds an vector of arrays from a SAM file.

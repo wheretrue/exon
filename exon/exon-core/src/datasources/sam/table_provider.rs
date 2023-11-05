@@ -31,7 +31,7 @@ use datafusion::{
 
 use crate::physical_plan::file_scan_config_builder::FileScanConfigBuilder;
 
-use super::{array_builder::schema, scanner::SAMScan};
+use super::{scanner::SAMScan, SAMSchemaBuilder};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -68,7 +68,7 @@ pub struct ListingSAMTableOptions {
 impl ListingSAMTableOptions {
     /// Infer the schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = schema();
+        let (schema, ..) = SAMSchemaBuilder::default().build();
 
         Ok(Arc::new(schema))
     }
