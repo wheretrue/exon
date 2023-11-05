@@ -14,6 +14,8 @@
 
 use std::{any::Any, sync::Arc};
 
+use crate::datasources::ExonFileScanConfig;
+
 use super::{config::SAMConfig, file_opener::SAMOpener};
 use arrow::datatypes::SchemaRef;
 use datafusion::{
@@ -24,7 +26,7 @@ use datafusion::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for SAM files.
 pub struct SAMScan {
     /// The base configuration for the file scan.
@@ -38,11 +40,9 @@ pub struct SAMScan {
 }
 
 impl SAMScan {
+    /// Create a new SAM scan.
     pub fn new(base_config: FileScanConfig) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Self {
             base_config,
@@ -50,11 +50,37 @@ impl SAMScan {
             metrics: ExecutionPlanMetricsSet::new(),
         }
     }
+
+    /// Return the repartitioned scan.
+    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+        if target_partitions == 1 {
+            return self.clone();
+        }
+
+        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            tracing::info!(
+                "Repartitioned {} file groups into {}",
+                self.base_config.file_groups.len(),
+                repartitioned_file_groups.len()
+            );
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        new_plan
+    }
 }
 
 impl DisplayAs for SAMScan {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "SAMScan")
+        let repr = format!(
+            "SAMScan: files={:?}, file_projection={:?}",
+            self.base_config.file_groups,
+            self.base_config.file_projection(),
+        );
+        write!(f, "{}", repr)
     }
 }
 
@@ -97,12 +123,9 @@ impl ExecutionPlan for SAMScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let mut config = SAMConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size);
-
-        if let Some(projection) = &self.base_config.projection {
-            config = config.with_projection(projection.clone());
-        }
+        let config = SAMConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_batch_size(batch_size)
+            .with_projection(self.base_config.file_projection());
 
         let config = Arc::new(config);
 

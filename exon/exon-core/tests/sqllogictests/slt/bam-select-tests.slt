@@ -25,3 +25,14 @@ SELECT tags FROM bam LIMIT 1;
 
 statement ok
 DROP TABLE bam;
+
+statement ok
+CREATE EXTERNAL TABLE bam STORED AS BAM PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam-partition';
+
+query T
+SELECT name, sample FROM bam WHERE sample = '2' LIMIT 1;
+----
+READ_ID 2
+
+statement ok
+DROP TABLE bam;

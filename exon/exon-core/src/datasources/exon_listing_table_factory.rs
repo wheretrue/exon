@@ -78,11 +78,12 @@ impl ExonListingTableFactory {
 
         match file_type {
             ExonFileType::SAM => {
-                let options = ListingSAMTableOptions::default();
-                let schema = options.infer_schema().await?;
+                let options = ListingSAMTableOptions::default()
+                    .with_table_partition_cols(table_partition_cols);
+                let (schema, file_projection) = options.infer_schema().await?;
 
                 let config = ListingSAMTableConfig::new(table_path).with_options(options);
-                let table = ListingSAMTable::try_new(config, schema)?;
+                let table = ListingSAMTable::try_new(config, schema, file_projection)?;
 
                 Ok(Arc::new(table))
             }
