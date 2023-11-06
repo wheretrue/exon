@@ -1,11 +1,11 @@
 [package]
-name = "exon-sam"
-version = "0.1.0"
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
+name = "exon-sam"
 readme.workspace = true
 repository.workspace = true
+version = "0.3.8-beta.2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
