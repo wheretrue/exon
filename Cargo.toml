@@ -26,6 +26,11 @@ resolver = "2"
 arrow = {version = "47"}
 async-trait = "0.1.74"
 datafusion = {version = "32", features = ["compression"]}
+exon-bam = {path = "exon/exon-bam"}
+exon-common = {path = "exon/exon-common"}
+exon-fasta = {path = "exon/exon-fasta"}
+exon-gff = {path = "exon/exon-gff"}
+exon-io = {path = "exon/exon-io"}
 futures = "0.3.29"
 object_store = {version = "0.7.1"}
 tokio = {version = "1", features = ["io-util"]}
