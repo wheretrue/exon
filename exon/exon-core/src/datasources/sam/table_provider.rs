@@ -14,22 +14,26 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
         physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan},
+    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
+use futures::TryStreamExt;
 
-use crate::physical_plan::file_scan_config_builder::FileScanConfigBuilder;
+use crate::{
+    datasources::hive_partition::filter_matches_partition_cols,
+    physical_plan::object_store::pruned_partition_list,
+};
 
 use super::{scanner::SAMScan, SAMSchemaBuilder};
 
@@ -62,15 +66,35 @@ impl ListingSAMTableConfig {
 #[derive(Debug, Clone, Default)]
 /// Listing options for a SAM table
 pub struct ListingSAMTableOptions {
+    /// The file extension for the SAM file
     file_extension: String,
+
+    /// The table partition columns
+    table_partition_cols: Vec<(String, DataType)>,
 }
 
 impl ListingSAMTableOptions {
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let (schema, ..) = SAMSchemaBuilder::default().build();
+    pub async fn infer_schema(&self) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|f| Field::new(&f.0, f.1.clone(), false))
+            .collect::<Vec<_>>();
 
-        Ok(Arc::new(schema))
+        let builder = SAMSchemaBuilder::default().with_partition_fields(partition_fields.clone());
+
+        let (schema, file_projection) = builder.build();
+
+        Ok((Arc::new(schema), file_projection))
+    }
+
+    /// Add table partition columns
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+        Self {
+            table_partition_cols,
+            ..self
+        }
     }
 
     async fn create_physical_plan(
@@ -90,19 +114,32 @@ pub struct ListingSAMTable {
 
     table_schema: SchemaRef,
 
+    file_projection: Vec<usize>,
+
     options: ListingSAMTableOptions,
 }
 
 impl ListingSAMTable {
     /// Create a new SAM listing table
-    pub fn try_new(config: ListingSAMTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
+    pub fn try_new(
+        config: ListingSAMTableConfig,
+        table_schema: Arc<Schema>,
+        file_projection: Vec<usize>,
+    ) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
+            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
+    }
+
+    /// File Schema
+    pub fn file_schema(&self) -> Result<SchemaRef> {
+        let file_schema = &self.table_schema.project(&self.file_projection)?;
+        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -126,7 +163,7 @@ impl TableProvider for ListingSAMTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|_f| TableProviderFilterPushDown::Unsupported)
+            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
             .collect())
     }
 
@@ -134,7 +171,7 @@ impl TableProvider for ListingSAMTable {
         &self,
         state: &SessionState,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
@@ -145,24 +182,35 @@ impl TableProvider for ListingSAMTable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let partitioned_file_lists = vec![
-            crate::physical_plan::object_store::list_files_for_scan(
-                object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
-                &[],
-            )
-            .await?,
-        ];
-
-        let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            Arc::clone(&self.table_schema),
-            partitioned_file_lists,
+        let file_list = pruned_partition_list(
+            state,
+            &object_store,
+            &self.table_paths[0],
+            filters,
+            self.options.file_extension.as_str(),
+            &self.options.table_partition_cols,
         )
-        .projection_option(projection.cloned())
-        .limit_option(limit)
-        .build();
+        .await?
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        let inner_size = 1;
+        let file_groups: Vec<Vec<PartitionedFile>> = file_list
+            .chunks(inner_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        let file_scan_config = FileScanConfig {
+            object_store_url,
+            file_schema: self.file_schema()?,
+            file_groups,
+            statistics: Statistics::default(),
+            projection: projection.cloned(),
+            limit,
+            output_ordering: Vec::new(),
+            table_partition_cols: self.options.table_partition_cols.clone(),
+            infinite_source: false,
+        };
 
         let plan = self.options.create_physical_plan(file_scan_config).await?;
 

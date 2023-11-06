@@ -20,3 +20,15 @@ SELECT quality_score FROM sam LIMIT 1;
 
 statement ok
 DROP TABLE sam;
+
+statement ok
+CREATE EXTERNAL TABLE sam STORED AS SAM PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/sam-partition/';
+
+query T
+SELECT sample, COUNT(name) AS cnt FROM sam GROUP BY sample ORDER BY sample ASC;
+----
+1 1
+2 1
+
+statement ok
+DROP TABLE sam;

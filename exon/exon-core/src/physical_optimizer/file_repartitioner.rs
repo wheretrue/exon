@@ -34,6 +34,7 @@ use crate::datasources::{
     gff::GFFScan,
     gtf::GTFScan,
     hmmdomtab::HMMDomTabScan,
+    sam::SAMScan,
     vcf::{IndexedVCFScanner, VCFScan},
 };
 
@@ -144,6 +145,13 @@ fn optimize_file_partitions(
 
     if let Some(indexed_bam_scan) = new_plan.as_any().downcast_ref::<IndexedBAMScan>() {
         let new_scan = indexed_bam_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
+
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
+    }
+
+    if let Some(sam_scan) = new_plan.as_any().downcast_ref::<SAMScan>() {
+        let new_scan = sam_scan.get_repartitioned(target_partitions);
         let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
         return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
