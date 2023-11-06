@@ -6,7 +6,7 @@ keywords = ["exon", "bioinformatics", "rust"]
 license = {workspace = true}
 name = "exon-benchmarks"
 readme = "README.md"
-version = "0.3.8-beta.2"
+version.workspace = true
 
 [dependencies]
 clap = {version = "4.4.7", features = ["derive"]}
