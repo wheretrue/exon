@@ -26,7 +26,7 @@ First bump the versions of the crates:
 
 ```console
 # Use all to bump all crates together
-<!-- cargo workspaces version [major|minor|patch|...] --all -->
+cargo workspaces version [major|minor|patch|...] --all
 ```
 
 Then publish the crates:
