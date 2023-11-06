@@ -29,3 +29,19 @@ PL  0,3,35
 
 statement ok
 DROP TABLE vcf_table;
+
+statement ok
+CREATE EXTERNAL TABLE vcf_table STORED AS VCF COMPRESSION TYPE GZIP PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf-partition/';
+
+query T
+SELECT sample, chrom FROM vcf_table WHERE sample = '2' LIMIT 1;
+----
+2 1
+
+query T
+SELECT sample, COUNT(chrom) FROM vcf_table WHERE sample = '2' GROUP BY sample ORDER BY sample;
+----
+2  621
+
+statement ok
+DROP TABLE vcf_table;

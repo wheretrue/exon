@@ -50,10 +50,7 @@ impl VCFScan {
         base_config: FileScanConfig,
         file_compression_type: FileCompressionType,
     ) -> Result<Self> {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p)?),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, ..) = base_config.project();
 
         Ok(Self {
             base_config,
