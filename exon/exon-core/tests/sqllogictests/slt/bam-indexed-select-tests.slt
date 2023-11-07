@@ -35,5 +35,11 @@ SELECT sample, COUNT(reference) cnt FROM bam_part WHERE bam_region_filter('chr1:
 ----
 2 7
 
+query T
+SELECT sample, COUNT(reference) cnt FROM bam_part WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true GROUP BY sample;
+----
+1 7
+2 7
+
 statement ok
 DROP TABLE bam_part;
