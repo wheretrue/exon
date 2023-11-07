@@ -26,7 +26,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{expr::ScalarUDF, TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, union::UnionExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
 use futures::{StreamExt, TryStreamExt};
@@ -395,7 +395,7 @@ impl TableProvider for ListingVCFTable {
         )
         .await?;
 
-        let mut execution_plans = Vec::new();
+        let mut file_partitions = Vec::new();
 
         while let Some(f) = file_list.next().await {
             let f = f?;
@@ -409,28 +409,26 @@ impl TableProvider for ListingVCFTable {
                 )
                 .await?;
 
-                let file_scan_config = FileScanConfig {
-                    object_store_url: object_store_url.clone(),
-                    file_schema: self.file_schema()?,
-                    file_groups: vec![file_byte_range],
-                    statistics: Statistics::default(),
-                    projection: projection.cloned(),
-                    limit,
-                    output_ordering: Vec::new(),
-                    table_partition_cols: self.options.table_partition_cols.clone(),
-                    infinite_source: false,
-                };
-
-                let table = self
-                    .options
-                    .create_physical_plan_with_region(file_scan_config, Arc::new(region.clone()))
-                    .await?;
-
-                execution_plans.push(table);
+                file_partitions.extend(file_byte_range);
             }
         }
 
-        let table = Arc::new(UnionExec::new(execution_plans));
+        let file_scan_config = FileScanConfig {
+            object_store_url: object_store_url.clone(),
+            file_schema: self.file_schema()?,
+            file_groups: vec![file_partitions],
+            statistics: Statistics::default(),
+            projection: projection.cloned(),
+            limit,
+            output_ordering: Vec::new(),
+            table_partition_cols: self.options.table_partition_cols.clone(),
+            infinite_source: false,
+        };
+
+        let table = self
+            .options
+            .create_physical_plan_with_region(file_scan_config, Arc::new(regions[0].clone()))
+            .await?;
 
         return Ok(table);
     }
