@@ -16,13 +16,15 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    config::ConfigOptions,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
     },
+    error::Result,
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream, Statistics,
+        coalesce_partitions::CoalescePartitionsExec, metrics::ExecutionPlanMetricsSet, DisplayAs,
+        DisplayFormatType, ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
 use exon_fasta::FASTAConfig;
@@ -69,25 +71,38 @@ impl FASTAScan {
     }
 
     /// Get a new FASTAScan with the file groups repartitioned.
-    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+    pub fn repartitioned(
+        &self,
+        target_partitions: usize,
+        _config: &ConfigOptions,
+    ) -> Result<Option<Arc<dyn ExecutionPlan>>> {
         if target_partitions == 1 {
-            return self.clone();
+            return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
-        let mut new_plan = self.clone();
-        if let Some(repartitioned_file_groups) = file_groups {
-            new_plan.base_config.file_groups = repartitioned_file_groups;
-        }
+        match file_groups {
+            Some(file_groups) => {
+                let mut new_plan = self.clone();
+                new_plan.base_config.file_groups = file_groups;
 
-        new_plan
+                let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_plan));
+
+                Ok(Some(Arc::new(coalesce_partition_exec)))
+            }
+            None => {
+                eprintln!("Unable to repartition FASTA files");
+                Ok(None)
+            }
+        }
     }
 }
 
 impl DisplayAs for FASTAScan {
-    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "FASTAScan")
+    fn fmt_as(&self, t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "FASTAScan")?;
+        self.base_config.fmt_as(t, f)
     }
 }
 
@@ -101,7 +116,7 @@ impl ExecutionPlan for FASTAScan {
     }
 
     fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::RoundRobinBatch(self.base_config.file_groups.len())
+        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
     }
 
     fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {

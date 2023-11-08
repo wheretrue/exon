@@ -18,6 +18,12 @@ DROP TABLE indexed_vcf_table;
 statement ok
 CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF PARTITIONED BY (sample) COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf-partition';
 
+# Test that zero rows are returned when the region filter does not match any rows.
+query T
+SELECT COUNT(*) FROM vcf_table WHERE vcf_region_filter('a', chrom) = true;
+----
+0
+
 query T
 SELECT chrom, sample, COUNT(*) AS cnt FROM vcf_table WHERE vcf_region_filter('1', chrom) = true AND sample = '1' GROUP BY chrom, sample ORDER BY chrom, sample;
 ----

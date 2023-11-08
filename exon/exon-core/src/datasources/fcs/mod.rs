@@ -22,3 +22,4 @@ mod scanner;
 
 /// Table provider for FCS files.
 pub mod table_provider;
+pub use scanner::FCSScan;

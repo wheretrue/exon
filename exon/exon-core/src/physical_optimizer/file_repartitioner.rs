@@ -38,6 +38,9 @@ use crate::datasources::{
     vcf::{IndexedVCFScanner, VCFScan},
 };
 
+#[cfg(feature = "fcs")]
+use crate::datasources::fcs::FCSScan;
+
 #[cfg(feature = "genbank")]
 use crate::datasources::genbank::GenbankScan;
 
@@ -80,6 +83,7 @@ pub(crate) fn regroup_files_by_size(
 fn optimize_file_partitions(
     plan: Arc<dyn ExecutionPlan>,
     target_partitions: usize,
+    config: &datafusion::config::ConfigOptions,
 ) -> Result<Transformed<Arc<dyn ExecutionPlan>>> {
     if target_partitions == 1 {
         return Ok(Transformed::No(plan));
@@ -92,7 +96,8 @@ fn optimize_file_partitions(
             .children()
             .iter()
             .map(|child| {
-                optimize_file_partitions(child.clone(), target_partitions).map(Transformed::into)
+                optimize_file_partitions(child.clone(), target_partitions, config)
+                    .map(Transformed::into)
             })
             .collect::<Result<_>>()?;
 
@@ -109,10 +114,14 @@ fn optimize_file_partitions(
     }
 
     if let Some(fasta_scan) = new_plan.as_any().downcast_ref::<FASTAScan>() {
-        let new_scan = fasta_scan.get_repartitioned(target_partitions);
-        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
-
-        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
+        match fasta_scan.repartitioned(target_partitions, &config)? {
+            Some(new_scan) => {
+                return Ok(Transformed::Yes(new_scan));
+            }
+            None => {
+                return Ok(Transformed::No(new_plan));
+            }
+        }
     }
 
     if let Some(fastq_scan) = new_plan.as_any().downcast_ref::<FASTQScan>() {
@@ -157,13 +166,13 @@ fn optimize_file_partitions(
         return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
-    // TODO: Add FCS support
-    // #[cfg(feature = "fcs")]
-    // if let Some(fcs_scan) = new_plan.as_any().downcast_ref::<FCSScan>() {
-    //     let new_scan = fcs_scan.get_repartitioned(target_partitions);
+    #[cfg(feature = "fcs")]
+    if let Some(fcs_scan) = new_plan.as_any().downcast_ref::<FCSScan>() {
+        let new_scan = fcs_scan.get_repartitioned(target_partitions);
+        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
-    //     return Ok(Transformed::Yes(Arc::new(new_scan)));
-    // }
+        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
+    }
 
     #[cfg(feature = "genbank")]
     if let Some(genbank_scan) = new_plan.as_any().downcast_ref::<GenbankScan>() {
@@ -225,7 +234,7 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
         let plan = if !repartition_file_scans || target_partitions == 1 {
             Transformed::No(plan)
         } else {
-            optimize_file_partitions(plan, target_partitions)?
+            optimize_file_partitions(plan, target_partitions, config)?
         };
 
         let (plan, _transformed) = plan.into_pair();

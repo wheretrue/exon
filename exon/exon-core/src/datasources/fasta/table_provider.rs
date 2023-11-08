@@ -117,6 +117,9 @@ impl ListingFASTATableOptions {
             .map(|s| s.fasta_sequence_buffer_capacity)
             .unwrap_or(FASTA_READER_SEQUENCE_CAPACITY);
 
+        let config_options = state.config_options();
+        config_options.execution.target_partitions;
+
         let scan = FASTAScan::new(
             conf.clone(),
             self.file_compression_type,

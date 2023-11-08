@@ -84,7 +84,8 @@ impl IndexedVCFScanner {
 
 impl DisplayAs for IndexedVCFScanner {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "IndexedVCFScanner")
+        let repr = format!("IndexedVCFScanner: {}", self.base_config.file_groups.len());
+        write!(f, "{}", repr)
     }
 }
 
@@ -100,7 +101,7 @@ impl ExecutionPlan for IndexedVCFScanner {
     }
 
     fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
+        Partitioning::RoundRobinBatch(self.base_config.file_groups.len())
     }
 
     fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
