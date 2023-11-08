@@ -96,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::INFO)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
@@ -202,28 +202,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::FASTAScanParallel { path, workers }) => {
             let exon_config = new_exon_config().with_target_partitions(*workers);
             let ctx = SessionContext::with_config_exon(exon_config);
+            let compression = None;
+            let df = ctx.read_fasta(path, compression).await.unwrap();
 
-            ctx.sql(
-                format!(
-                    "CREATE EXTERNAL TABLE fasta_file STORED AS FASTA LOCATION '{}';",
-                    path
-                )
-                .as_str(),
-            )
-            .await?;
-
-            let df = ctx
-                .sql("SELECT COUNT(*) cnt FROM fasta_file WHERE sequence ILIKE 'M%'")
-                .await?;
-
-            let plan = df.create_physical_plan().await?;
-            eprintln!("Plan: {:#?}", plan);
-
-            let count = ctx
-                .sql("SELECT * FROM fasta_file WHERE sequence ILIKE 'M%'")
-                .await?
+            let count = df
+                .filter(col("sequence").ilike(lit("M%")))
+                .unwrap()
                 .count()
-                .await?;
+                .await
+                .unwrap();
 
             assert_eq!(count, 4_437_864);
 

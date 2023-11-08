@@ -84,7 +84,7 @@ where
             self.header.clone(),
         )?;
 
-        for i in 0..self.config.batch_size {
+        for _ in 0..self.config.batch_size {
             let record = self.read_record().await?;
 
             match record {
@@ -92,21 +92,17 @@ where
                     record_batch.append(&record)?;
                 }
                 None => {
-                    tracing::debug!("Reached end of batch on record {}", i);
                     break;
                 }
             }
         }
 
         if record_batch.is_empty() {
-            tracing::debug!("Empty Batch");
             return Ok(None);
         }
 
         let schema = self.config.projected_schema();
         let batch = RecordBatch::try_new(schema, record_batch.finish())?;
-
-        tracing::debug!("Finished batch with {} records", batch.num_rows());
 
         Ok(Some(batch))
     }
