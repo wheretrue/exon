@@ -102,7 +102,7 @@ impl ExecutionPlan for IndexedVCFScanner {
     }
 
     fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::RoundRobinBatch(self.base_config.file_groups.len())
+        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
     }
 
     fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
