@@ -19,7 +19,7 @@ use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
+        listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -208,16 +208,10 @@ impl TableProvider for ListingFASTQTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let inner_size = 1;
-        let file_groups: Vec<Vec<PartitionedFile>> = file_list
-            .chunks(inner_size)
-            .map(|chunk| chunk.to_vec())
-            .collect();
-
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
             self.file_schema.clone(),
-            file_groups,
+            vec![file_list],
         )
         .projection_option(projection.cloned())
         .table_partition_cols(self.options.table_partition_cols.clone())

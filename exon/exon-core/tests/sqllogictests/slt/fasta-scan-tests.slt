@@ -56,3 +56,8 @@ a description ATCG 1
 a description ATCG 2
 b description2 ATCG 1
 b description2 ATCG 2
+
+query T
+SELECT COUNT(*) FROM fasta_table WHERE sample = '4';
+----
+0

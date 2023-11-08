@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod reader;
+use std::sync::Arc;
 
-mod array_builder;
-mod batch_reader;
-mod config;
-mod file_opener;
-mod scanner;
+use datafusion::error::Result;
+use datafusion::{config::ConfigOptions, physical_plan::ExecutionPlan};
 
-/// Table provider for FCS files.
-pub mod table_provider;
-pub use scanner::FCSScan;
+pub trait Repartitionable {
+    fn repartitioned(
+        &self,
+        _target_partitions: usize,
+        _config: &ConfigOptions,
+    ) -> Result<Option<Arc<dyn ExecutionPlan>>> {
+        Ok(None)
+    }
+}

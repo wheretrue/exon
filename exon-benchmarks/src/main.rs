@@ -96,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::INFO)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
@@ -211,6 +211,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .count()
                 .await
                 .unwrap();
+
+            assert_eq!(count, 4_437_864);
 
             eprintln!("Count: {count}");
         }
