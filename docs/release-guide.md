@@ -22,11 +22,12 @@ Therefore, to release the packages you must first release the undepended crates,
 
 ## Release Steps
 
-First bump the versions of the crates:
+First, bump the version in `Cargo.toml`, and bump the version of and inter-crate dependencies.
+
+Commit the changes, and tag the commit with the version number.
 
 ```console
-# Use all to bump all crates together
-cargo workspaces version [major|minor|patch|...] --all
+git tag -a v0.1.0 -m "Release v0.1.0"
 ```
 
 Then publish the crates:
