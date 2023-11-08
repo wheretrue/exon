@@ -23,13 +23,13 @@ use datafusion::{
     },
     error::Result,
     physical_plan::{
-        coalesce_partitions::CoalescePartitionsExec, metrics::ExecutionPlanMetricsSet, DisplayAs,
-        DisplayFormatType, ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
 use exon_fasta::FASTAConfig;
 
-use crate::datasources::ExonFileScanConfig;
+use crate::{datasources::ExonFileScanConfig, repartitionable::Repartitionable};
 
 use super::file_opener::FASTAOpener;
 
@@ -70,16 +70,19 @@ impl FASTAScan {
         }
     }
 
-    /// Get a new FASTAScan with the file groups repartitioned.
-    pub fn repartitioned(
+    /// Set the base configuration for the scan.
+    pub fn with_base_config(mut self, base_config: FileScanConfig) -> Self {
+        self.base_config = base_config;
+        self
+    }
+}
+
+impl Repartitionable for FASTAScan {
+    fn repartitioned(
         &self,
         target_partitions: usize,
         _config: &ConfigOptions,
     ) -> Result<Option<Arc<dyn ExecutionPlan>>> {
-        if target_partitions == 1 {
-            return Ok(None);
-        }
-
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
         match file_groups {
@@ -87,14 +90,9 @@ impl FASTAScan {
                 let mut new_plan = self.clone();
                 new_plan.base_config.file_groups = file_groups;
 
-                let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_plan));
-
-                Ok(Some(Arc::new(coalesce_partition_exec)))
+                Ok(Some(Arc::new(new_plan)))
             }
-            None => {
-                eprintln!("Unable to repartition FASTA files");
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 }

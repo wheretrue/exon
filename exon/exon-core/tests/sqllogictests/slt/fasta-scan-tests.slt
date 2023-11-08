@@ -50,11 +50,6 @@ statement ok
 CREATE EXTERNAL TABLE fasta_table STORED AS FASTA PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta-partition/';
 
 query T
-EXPLAIN ANALYZE SELECT * FROM fasta_table;
-----
-Plan with Metrics FASTAScan: files=2, metrics=[]
-
-query T
 SELECT id, description, sequence, sample FROM fasta_table ORDER BY id ASC, sample ASC;
 ----
 a description ATCG 1
@@ -63,3 +58,6 @@ b description2 ATCG 1
 b description2 ATCG 2
 
 query T
+SELECT COUNT(*) FROM fasta_table WHERE sample = '4';
+----
+0

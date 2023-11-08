@@ -20,22 +20,26 @@ use datafusion::{
     error::Result,
     physical_optimizer::PhysicalOptimizerRule,
     physical_plan::{
-        coalesce_partitions::CoalescePartitionsExec, with_new_children_if_necessary, ExecutionPlan,
+        coalesce_partitions::CoalescePartitionsExec, repartition::RepartitionExec,
+        with_new_children_if_necessary, ExecutionPlan, Partitioning,
     },
 };
 
 use itertools::Itertools;
 
-use crate::datasources::{
-    bam::{BAMScan, IndexedBAMScan},
-    bed::BEDScan,
-    fasta::FASTAScan,
-    fastq::FASTQScan,
-    gff::GFFScan,
-    gtf::GTFScan,
-    hmmdomtab::HMMDomTabScan,
-    sam::SAMScan,
-    vcf::{IndexedVCFScanner, VCFScan},
+use crate::{
+    datasources::{
+        bam::{BAMScan, IndexedBAMScan},
+        bed::BEDScan,
+        fasta::FASTAScan,
+        fastq::FASTQScan,
+        gff::GFFScan,
+        gtf::GTFScan,
+        hmmdomtab::HMMDomTabScan,
+        sam::SAMScan,
+        vcf::{IndexedVCFScanner, VCFScan},
+    },
+    repartitionable::Repartitionable,
 };
 
 #[cfg(feature = "fcs")]
@@ -80,6 +84,17 @@ pub(crate) fn regroup_files_by_size(
     new_file_groups
 }
 
+macro_rules! transform_plan {
+    ($new_scan:expr, $target_partitions:expr, $config:expr) => {{
+        let partitioning = Partitioning::RoundRobinBatch($target_partitions);
+
+        let repartition = RepartitionExec::try_new($new_scan.clone(), partitioning)?;
+        let coalesce_partitions = CoalescePartitionsExec::new(Arc::new(repartition));
+
+        Ok(Transformed::Yes(Arc::new(coalesce_partitions)))
+    }};
+}
+
 fn optimize_file_partitions(
     plan: Arc<dyn ExecutionPlan>,
     target_partitions: usize,
@@ -113,10 +128,21 @@ fn optimize_file_partitions(
         return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
     }
 
-    if let Some(fasta_scan) = new_plan.as_any().downcast_ref::<FASTAScan>() {
-        match fasta_scan.repartitioned(target_partitions, &config)? {
+    if let Some(scan) = new_plan.as_any().downcast_ref::<FASTAScan>() {
+        match scan.repartitioned(target_partitions, config)? {
             Some(new_scan) => {
-                return Ok(Transformed::Yes(new_scan));
+                return transform_plan!(new_scan, target_partitions, config);
+            }
+            None => {
+                return Ok(Transformed::No(new_plan));
+            }
+        }
+    }
+
+    if let Some(indexed_vcf_scan) = new_plan.as_any().downcast_ref::<IndexedVCFScanner>() {
+        match indexed_vcf_scan.repartitioned(target_partitions, config)? {
+            Some(new_scan) => {
+                return transform_plan!(new_scan, target_partitions, config);
             }
             None => {
                 return Ok(Transformed::No(new_plan));
@@ -133,13 +159,6 @@ fn optimize_file_partitions(
 
     if let Some(vcf_scan) = new_plan.as_any().downcast_ref::<VCFScan>() {
         let new_scan = vcf_scan.get_repartitioned(target_partitions);
-        let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
-
-        return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
-    }
-
-    if let Some(indexed_vcf_scan) = new_plan.as_any().downcast_ref::<IndexedVCFScanner>() {
-        let new_scan = indexed_vcf_scan.get_repartitioned(target_partitions);
         let coalesce_partition_exec = CoalescePartitionsExec::new(Arc::new(new_scan));
 
         return Ok(Transformed::Yes(Arc::new(coalesce_partition_exec)));
@@ -248,84 +267,5 @@ impl PhysicalOptimizerRule for ExonRoundRobin {
 
     fn schema_check(&self) -> bool {
         true
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use datafusion::{
-        physical_plan::{coalesce_partitions::CoalescePartitionsExec, joins::HashJoinExec},
-        prelude::SessionContext,
-    };
-    use exon_test::test_path;
-
-    use crate::{datasources::fasta::FASTAScan, ExonSessionExt};
-
-    #[tokio::test]
-    async fn test_regroup_file_partitions() {
-        let ctx = SessionContext::new_exon();
-
-        let test_path = test_path("repartition-test", "test.fasta")
-            .parent()
-            .unwrap()
-            .to_owned();
-
-        ctx.register_exon_table("test_fasta", test_path.to_str().unwrap(), "fasta")
-            .await
-            .unwrap();
-
-        let df = ctx.sql("SELECT * FROM test_fasta").await.unwrap();
-
-        let plan = df.logical_plan();
-
-        let plan = ctx.state().create_physical_plan(plan).await.unwrap();
-
-        let scan = plan
-            .as_any()
-            .downcast_ref::<CoalescePartitionsExec>()
-            .unwrap()
-            .input()
-            .as_any()
-            .downcast_ref::<FASTAScan>()
-            .unwrap();
-
-        // Assert we have two file groups vs the default one
-        assert_eq!(scan.base_config.file_groups.len(), 2);
-
-        // Test a subquery
-        let df = ctx
-            .sql("SELECT * FROM test_fasta JOIN (SELECT * FROM test_fasta) AS t2 ON t2.id = test_fasta.id")
-            .await
-            .unwrap();
-
-        let plan = df.logical_plan();
-        let plan = ctx.state().create_physical_plan(plan).await.unwrap();
-
-        let hash_join_exec = plan.as_any().downcast_ref::<HashJoinExec>().unwrap();
-
-        let left_fasta = hash_join_exec
-            .left()
-            .as_any()
-            .downcast_ref::<CoalescePartitionsExec>()
-            .unwrap()
-            .input()
-            .as_any()
-            .downcast_ref::<FASTAScan>()
-            .unwrap();
-
-        assert_eq!(left_fasta.base_config.file_groups.len(), 2);
-
-        let right_fasta = hash_join_exec
-            .right()
-            .as_any()
-            .downcast_ref::<CoalescePartitionsExec>()
-            .unwrap()
-            .input()
-            .as_any()
-            .downcast_ref::<FASTAScan>()
-            .unwrap();
-
-        // Assert we have two file groups vs the default one
-        assert_eq!(right_fasta.base_config.file_groups.len(), 2);
     }
 }

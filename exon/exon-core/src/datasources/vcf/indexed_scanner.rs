@@ -25,7 +25,7 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::datasources::ExonFileScanConfig;
+use crate::{datasources::ExonFileScanConfig, repartitionable::Repartitionable};
 
 use super::{config::VCFConfig, file_opener::indexed_file_opener::IndexedVCFOpener};
 
@@ -59,13 +59,14 @@ impl IndexedVCFScanner {
     pub fn base_config(&self) -> &FileScanConfig {
         &self.base_config
     }
+}
 
-    /// Return the repartitioned scan.
-    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
-        if target_partitions == 1 {
-            return self.clone();
-        }
-
+impl Repartitionable for IndexedVCFScanner {
+    fn repartitioned(
+        &self,
+        target_partitions: usize,
+        _config: &datafusion::config::ConfigOptions,
+    ) -> Result<Option<Arc<dyn ExecutionPlan>>> {
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
         let mut new_plan = self.clone();
@@ -78,7 +79,7 @@ impl IndexedVCFScanner {
             new_plan.base_config.file_groups = repartitioned_file_groups;
         }
 
-        new_plan
+        Ok(Some(Arc::new(new_plan)))
     }
 }
 

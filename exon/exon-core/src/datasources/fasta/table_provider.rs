@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, sync::Arc};
+use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crate::{
     config::FASTA_READER_SEQUENCE_CAPACITY,
@@ -26,7 +26,7 @@ use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
+        listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -116,9 +116,6 @@ impl ListingFASTATableOptions {
             .as_ref()
             .map(|s| s.fasta_sequence_buffer_capacity)
             .unwrap_or(FASTA_READER_SEQUENCE_CAPACITY);
-
-        let config_options = state.config_options();
-        config_options.execution.target_partitions;
 
         let scan = FASTAScan::new(
             conf.clone(),
@@ -220,16 +217,10 @@ impl TableProvider for ListingFASTATable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let inner_size = 1;
-        let file_groups: Vec<Vec<PartitionedFile>> = file_list
-            .chunks(inner_size)
-            .map(|chunk| chunk.to_vec())
-            .collect();
-
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
             Arc::clone(&self.file_schema),
-            file_groups,
+            vec![file_list],
         )
         .projection_option(projection.cloned())
         .table_partition_cols(self.options.table_partition_cols.clone())

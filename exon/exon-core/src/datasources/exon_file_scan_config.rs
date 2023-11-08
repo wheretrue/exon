@@ -27,6 +27,10 @@ pub trait ExonFileScanConfig {
 
 impl ExonFileScanConfig for FileScanConfig {
     fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>> {
+        if self.file_groups.is_empty() {
+            return None;
+        }
+
         Some(regroup_files_by_size(&self.file_groups, target_partitions))
     }
 

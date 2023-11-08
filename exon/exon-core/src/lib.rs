@@ -116,6 +116,8 @@ pub mod error;
 /// Utilities for working with stream bgzf files.
 pub mod streaming_bgzf;
 
+mod repartitionable;
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

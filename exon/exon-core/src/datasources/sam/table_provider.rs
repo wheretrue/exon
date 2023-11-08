@@ -18,7 +18,7 @@ use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl, PartitionedFile},
+        listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -194,16 +194,10 @@ impl TableProvider for ListingSAMTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let inner_size = 1;
-        let file_groups: Vec<Vec<PartitionedFile>> = file_list
-            .chunks(inner_size)
-            .map(|chunk| chunk.to_vec())
-            .collect();
-
         let file_scan_config = FileScanConfig {
             object_store_url,
             file_schema: self.file_schema()?,
-            file_groups,
+            file_groups: vec![file_list],
             statistics: Statistics::default(),
             projection: projection.cloned(),
             limit,

@@ -219,9 +219,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let plan = df.create_physical_plan().await?;
             eprintln!("Plan: {:#?}", plan);
 
-            // assert_eq!(count, 4_437_864);
+            let count = ctx
+                .sql("SELECT * FROM fasta_file WHERE sequence ILIKE 'M%'")
+                .await?
+                .count()
+                .await?;
 
-            // eprintln!("Count: {count}");
+            assert_eq!(count, 4_437_864);
+
+            eprintln!("Count: {count}");
         }
         Some(Commands::MzMLScan { path, compression }) => {
             let path = path.as_str();
