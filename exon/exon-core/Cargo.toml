@@ -41,7 +41,7 @@ url = {workspace = true}
 
 [dev-dependencies]
 exon-test = {path = "../exon-test"}
-sqllogictest = "0.17.2"
+sqllogictest = "0.18.0"
 
 [features]
 all = ["ffi", "genbank", "mzml", "fcs"]
