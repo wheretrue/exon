@@ -29,7 +29,8 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
-use exon_gff::GFFSchemaBuilder;
+use exon_common::TableSchema;
+use exon_gff::new_gff_schema_builder;
 use futures::TryStreamExt;
 
 use crate::{
@@ -98,10 +99,18 @@ impl ListingGFFTableOptions {
     }
 
     /// Infer the base schema for the table from the file schema
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = GFFSchemaBuilder::default().build();
+    pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
+        let schema = new_gff_schema_builder();
 
-        Ok(schema)
+        let table_partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
+            .collect::<Vec<_>>();
+
+        let schema = schema.add_partition_fields(table_partition_fields);
+
+        Ok(schema.build())
     }
 
     async fn create_physical_plan(
@@ -119,31 +128,17 @@ impl ListingGFFTableOptions {
 pub struct ListingGFFTable {
     table_paths: Vec<ListingTableUrl>,
 
-    file_schema: SchemaRef,
-
-    table_schema: SchemaRef,
+    table_schema: TableSchema,
 
     options: ListingGFFTableOptions,
 }
 
 impl ListingGFFTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingGFFTableConfig, file_schema: Arc<Schema>) -> Result<Self> {
-        let fields = config
-            .options
-            .as_ref()
-            .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
-        let schema_builder = GFFSchemaBuilder::default().extend(fields);
-
+    pub fn try_new(config: ListingGFFTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
-            file_schema,
-            table_schema: schema_builder.build(),
+            table_schema,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
@@ -159,7 +154,7 @@ impl TableProvider for ListingGFFTable {
 
     fn schema(&self) -> SchemaRef {
         // Listing tables return the file schema with the addition of the partition columns
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -205,7 +200,7 @@ impl TableProvider for ListingGFFTable {
 
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
-            Arc::clone(&self.file_schema),
+            self.table_schema.file_schema()?,
             vec![file_list],
         )
         .projection_option(projection.cloned())

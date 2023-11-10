@@ -28,10 +28,11 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use crate::{
-    datasources::{hive_partition::filter_matches_partition_cols, TableSchema},
+    datasources::hive_partition::filter_matches_partition_cols,
     physical_plan::object_store::pruned_partition_list,
 };
 

@@ -120,8 +120,7 @@ impl ExecutionPlan for GFFScan {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let config = GFFConfig::new(object_store)
-            .with_schema(self.base_config.file_schema.clone())
+        let config = GFFConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(context.session_config().batch_size())
             .with_projection(self.base_config.file_projection());
 

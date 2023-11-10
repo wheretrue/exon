@@ -15,3 +15,7 @@
 mod object_store_files_from_table_path;
 
 pub use object_store_files_from_table_path::object_store_files_from_table_path;
+
+mod table_schema;
+pub use table_schema::TableSchema;
+pub use table_schema::TableSchemaBuilder;

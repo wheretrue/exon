@@ -1533,6 +1533,8 @@ dependencies = [
 name = "exon-common"
 version = "0.3.9"
 dependencies = [
+ "arrow",
+ "datafusion",
  "futures",
  "glob",
  "object_store",
@@ -1571,6 +1573,7 @@ name = "exon-fasta"
 version = "0.3.9"
 dependencies = [
  "arrow",
+ "exon-common",
  "exon-test",
  "futures",
  "itertools 0.11.0",
@@ -1585,6 +1588,7 @@ name = "exon-gff"
 version = "0.3.9"
 dependencies = [
  "arrow",
+ "exon-common",
  "exon-test",
  "futures",
  "noodles",

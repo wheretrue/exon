@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{Field, Fields};
+use arrow::datatypes::{Field, Fields, Schema};
 use datafusion::error::Result;
 use noodles::vcf::{
     header::{
@@ -23,6 +23,8 @@ use noodles::vcf::{
     },
     Header,
 };
+
+use exon_common::TableSchema;
 
 /// A builder for an arrow schema from a VCF header.
 pub struct VCFSchemaBuilder {
@@ -129,7 +131,7 @@ impl VCFSchemaBuilder {
     }
 
     /// Builds the schema.
-    pub fn build(&mut self) -> Result<(arrow::datatypes::Schema, Vec<usize>)> {
+    pub fn build(&mut self) -> Result<TableSchema> {
         // If both parse_info and parse_formats are false, then we can just return the default schema
         if !self.parse_info && !self.parse_formats {
             let file_field_partition = self
@@ -142,10 +144,10 @@ impl VCFSchemaBuilder {
             // Add the partition fields to the schema
             self.fields.extend(self.partition_fields.clone());
 
-            return Ok((
-                arrow::datatypes::Schema::new(self.fields.clone()),
-                file_field_partition,
-            ));
+            let table_schema = Arc::new(Schema::new(self.fields.clone()));
+            let table_schema = TableSchema::new(table_schema, file_field_partition);
+
+            return Ok(table_schema);
         }
 
         // Make sure we have a header to parse
@@ -179,10 +181,10 @@ impl VCFSchemaBuilder {
         // Add the partition fields to the schema
         self.fields.extend(self.partition_fields.clone());
 
-        Ok((
-            arrow::datatypes::Schema::new(self.fields.clone()),
-            file_field_projection,
-        ))
+        let schema = arrow::datatypes::Schema::new(self.fields.clone());
+        let table_schema = TableSchema::new(Arc::new(schema), file_field_projection);
+
+        Ok(table_schema)
     }
 }
 
@@ -379,12 +381,13 @@ mod tests {
 
         let header = header_builder.build();
 
-        let (schema, ..) = VCFSchemaBuilder::default()
+        let table_schema = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_formats(true)
             .build()?;
 
-        let info_field = schema.field(8);
+        let ts = table_schema.table_schema();
+        let info_field = ts.field(8);
 
         let inner_struct =
             &arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(expected_fields));
@@ -527,13 +530,14 @@ mod tests {
         }
 
         let header = header.build();
-        let (schema, ..) = VCFSchemaBuilder::default()
+        let table_schema = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_info(true)
             .build()
             .unwrap();
 
-        let info_field = schema.field(7);
+        let ts = table_schema.table_schema();
+        let info_field = ts.field(7);
 
         assert_eq!(info_field.name(), "info");
         assert_eq!(
@@ -544,7 +548,9 @@ mod tests {
 
     #[test]
     fn test_default_header_to_schema() {
-        let (schema, ..) = super::VCFSchemaBuilder::default().build().unwrap();
+        let table_schema = super::VCFSchemaBuilder::default().build().unwrap();
+
+        let schema = table_schema.table_schema();
 
         assert_eq!(schema.fields().len(), 9);
 

@@ -29,6 +29,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use crate::{
@@ -100,7 +101,7 @@ impl ListingMzMLTableOptions {
     }
 
     /// Infer the schema for the table (i.e. the file and partition columns)
-    pub async fn infer_schema(&self) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+    pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = MzMLSchemaBuilder::default();
 
         let partition_fields = self
@@ -111,9 +112,9 @@ impl ListingMzMLTableOptions {
 
         schema_builder.add_partition_fields(partition_fields);
 
-        let (file_schema, projection) = schema_builder.build();
+        let table_schema = schema_builder.build();
 
-        Ok((Arc::new(file_schema), projection))
+        Ok(table_schema)
     }
 
     async fn create_physical_plan(
@@ -131,34 +132,21 @@ impl ListingMzMLTableOptions {
 pub struct ListingMzMLTable {
     table_paths: Vec<ListingTableUrl>,
 
-    table_schema: SchemaRef,
-
-    file_projection: Vec<usize>,
+    table_schema: TableSchema,
 
     options: ListingMzMLTableOptions,
 }
 
 impl ListingMzMLTable {
     /// Create a new VCF listing table
-    pub fn try_new(
-        config: ListingMzMLTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: ListingMzMLTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// Get the file schema for the table
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema))
     }
 }
 
@@ -169,7 +157,7 @@ impl TableProvider for ListingMzMLTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -213,7 +201,7 @@ impl TableProvider for ListingMzMLTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let file_schema = self.file_schema()?;
+        let file_schema = self.table_schema.file_schema()?;
         let file_scan_config =
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())

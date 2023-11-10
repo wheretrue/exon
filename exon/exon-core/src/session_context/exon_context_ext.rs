@@ -414,17 +414,13 @@ impl ExonSessionExt for SessionContext {
 
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let (resolved_schema, file_projection) = vcf_table_options
+        let table_schema = vcf_table_options
             .infer_schema(&self.state(), &table_path)
             .await?;
 
         let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
 
-        let provider = Arc::new(ListingVCFTable::try_new(
-            config,
-            resolved_schema,
-            file_projection,
-        )?);
+        let provider = Arc::new(ListingVCFTable::try_new(config, table_schema)?);
         self.register_table(table_name, provider)
     }
 
@@ -488,10 +484,10 @@ impl ExonSessionExt for SessionContext {
 
         let options = ListingBCFTableOptions::default().with_region(region);
 
-        let (schema, file_projection) = options.infer_schema(&state, &listing_url).await?;
+        let schema = options.infer_schema(&state, &listing_url).await?;
         let config = ListingBCFTableConfig::new(listing_url).with_options(options);
 
-        let table = ListingBCFTable::try_new(config, schema, file_projection)?;
+        let table = ListingBCFTable::try_new(config, schema)?;
 
         let df = self.read_table(Arc::new(table))?;
 

@@ -14,7 +14,8 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, SchemaRef};
+use exon_common::TableSchemaBuilder;
 use object_store::ObjectStore;
 
 /// Configuration for a FASTA data source.
@@ -78,42 +79,10 @@ impl FASTAConfig {
     }
 }
 
-impl Default for FASTAConfig {
-    fn default() -> Self {
-        let file_schema = FASTASchemaBuilder::default().build();
-
-        Self::new(
-            Arc::new(object_store::local::LocalFileSystem::new()),
-            file_schema,
-        )
-    }
-}
-
-pub struct FASTASchemaBuilder {
-    fields: Vec<Field>,
-}
-
-impl FASTASchemaBuilder {
-    /// Extend the schema with the given fields.
-    pub fn extend(mut self, fields: Vec<Field>) -> Self {
-        self.fields.extend(fields);
-        self
-    }
-
-    /// Build the schema.
-    pub fn build(self) -> SchemaRef {
-        Arc::new(Schema::new(self.fields))
-    }
-}
-
-impl Default for FASTASchemaBuilder {
-    fn default() -> Self {
-        let fields = vec![
-            Field::new("id", DataType::Utf8, false),
-            Field::new("description", DataType::Utf8, true),
-            Field::new("sequence", DataType::Utf8, false),
-        ];
-
-        Self { fields }
-    }
+pub fn new_fasta_schema_builder() -> TableSchemaBuilder {
+    TableSchemaBuilder::new_with_field_fields(vec![
+        Field::new("id", DataType::Utf8, false),
+        Field::new("description", DataType::Utf8, true),
+        Field::new("sequence", DataType::Utf8, false),
+    ])
 }

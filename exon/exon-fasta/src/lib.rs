@@ -18,5 +18,5 @@ mod config;
 
 pub use array_builder::FASTAArrayBuilder;
 pub use batch_reader::BatchReader;
+pub use config::new_fasta_schema_builder;
 pub use config::FASTAConfig;
-pub use config::FASTASchemaBuilder;

@@ -36,7 +36,8 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
-use exon_fasta::FASTASchemaBuilder;
+use exon_common::TableSchema;
+use exon_fasta::new_fasta_schema_builder;
 use futures::TryStreamExt;
 
 use super::FASTAScan;
@@ -90,9 +91,16 @@ impl ListingFASTATableOptions {
     }
 
     /// Infer the base schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = FASTASchemaBuilder::default().build();
-        Ok(schema)
+    pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
+        let partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
+            .collect::<Vec<_>>();
+
+        let builder = new_fasta_schema_builder().add_partition_fields(partition_fields);
+
+        Ok(builder.build())
     }
 
     /// Set the table partition columns
@@ -132,31 +140,17 @@ impl ListingFASTATableOptions {
 pub struct ListingFASTATable {
     table_paths: Vec<ListingTableUrl>,
 
-    file_schema: SchemaRef,
-
-    table_schema: SchemaRef,
+    table_schema: TableSchema,
 
     options: ListingFASTATableOptions,
 }
 
 impl ListingFASTATable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingFASTATableConfig, file_schema: Arc<Schema>) -> Result<Self> {
-        let partition_fields = config
-            .options
-            .as_ref()
-            .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
-        let schema_builder = FASTASchemaBuilder::default().extend(partition_fields);
-
+    pub fn try_new(config: ListingFASTATableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
-            file_schema,
-            table_schema: schema_builder.build(),
+            table_schema,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
@@ -171,7 +165,7 @@ impl TableProvider for ListingFASTATable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -219,7 +213,7 @@ impl TableProvider for ListingFASTATable {
 
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
-            Arc::clone(&self.file_schema),
+            Arc::clone(&self.table_schema.file_schema()?),
             vec![file_list],
         )
         .projection_option(projection.cloned())

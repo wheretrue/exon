@@ -29,6 +29,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use crate::{
@@ -38,7 +39,7 @@ use crate::{
     },
 };
 
-use super::{config::GTFSchemaBuilder, GTFScan};
+use super::{config::new_gtf_schema_builder, GTFScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -100,8 +101,8 @@ impl ListingGTFTableOptions {
     }
 
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<(Schema, Vec<usize>)> {
-        let mut schema = GTFSchemaBuilder::default();
+    pub fn infer_schema(&self) -> TableSchema {
+        // let mut schema = GTFSchemaBuilder::default();
 
         let partition_fields = self
             .table_partition_cols
@@ -109,9 +110,9 @@ impl ListingGTFTableOptions {
             .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
             .collect::<Vec<_>>();
 
-        schema.add_partition_fields(partition_fields);
+        let builder = new_gtf_schema_builder().add_partition_fields(partition_fields);
 
-        Ok(schema.build())
+        builder.build()
     }
 
     async fn create_physical_plan(
@@ -129,34 +130,21 @@ impl ListingGTFTableOptions {
 pub struct ListingGTFTable {
     table_paths: Vec<ListingTableUrl>,
 
-    table_schema: SchemaRef,
-
-    file_projection: Vec<usize>,
+    table_schema: TableSchema,
 
     options: ListingGTFTableOptions,
 }
 
 impl ListingGTFTable {
     /// Create a new VCF listing table
-    pub fn try_new(
-        config: ListingGTFTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: ListingGTFTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// Get the file schema
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema))
     }
 }
 
@@ -167,7 +155,7 @@ impl TableProvider for ListingGTFTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -211,7 +199,7 @@ impl TableProvider for ListingGTFTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let file_schema = self.file_schema()?;
+        let file_schema = self.table_schema.file_schema()?;
         let file_scan_config =
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())

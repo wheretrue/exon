@@ -28,6 +28,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bam::lazy::Record, core::Region};
 use object_store::ObjectStore;
@@ -83,7 +84,6 @@ use crate::{
         hive_partition::filter_matches_partition_cols,
         indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
         sam::SAMSchemaBuilder,
-        TableSchema,
     },
     physical_plan::object_store::pruned_partition_list,
 };

@@ -35,6 +35,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use super::{array_builder::BEDSchemaBuilder, BEDScan};
@@ -99,7 +100,7 @@ impl ListingBEDTableOptions {
     }
 
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<(Schema, Vec<usize>)> {
+    pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = BEDSchemaBuilder::default();
 
         let partition_fields = self
@@ -128,34 +129,21 @@ impl ListingBEDTableOptions {
 pub struct ListingBEDTable {
     table_paths: Vec<ListingTableUrl>,
 
-    table_schema: SchemaRef,
-
-    file_projection: Vec<usize>,
+    table_schema: TableSchema,
 
     options: ListingBEDTableOptions,
 }
 
 impl ListingBEDTable {
     /// Create a new VCF listing table
-    pub fn try_new(
-        config: ListingBEDTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: ListingBEDTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// Return the file_schema for the table
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = &self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -166,7 +154,7 @@ impl TableProvider for ListingBEDTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -210,7 +198,7 @@ impl TableProvider for ListingBEDTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let file_schema = self.file_schema()?;
+        let file_schema = self.table_schema.file_schema()?;
         let file_scan_config =
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())

@@ -29,6 +29,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf, core::Region, vcf};
 use object_store::{ObjectMeta, ObjectStore};
@@ -132,7 +133,7 @@ impl ListingVCFTableOptions {
         state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
-    ) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+    ) -> datafusion::error::Result<TableSchema> {
         let get_result = store.get(&objects[0].location).await?;
 
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
@@ -183,9 +184,9 @@ impl ListingVCFTableOptions {
 
         builder = builder.with_header(header);
 
-        let (schema, file_projection) = builder.build()?;
+        let table_schema = builder.build()?;
 
-        Ok((Arc::new(schema), file_projection))
+        Ok(table_schema)
     }
 
     /// Infer the schema of the files in the table
@@ -193,7 +194,7 @@ impl ListingVCFTableOptions {
         &'a self,
         state: &SessionState,
         table_path: &'a ListingTableUrl,
-    ) -> Result<(SchemaRef, Vec<usize>)> {
+    ) -> Result<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
 
         let files = exon_common::object_store_files_from_table_path(
@@ -240,34 +241,21 @@ impl ListingVCFTableOptions {
 pub struct ListingVCFTable {
     table_paths: Vec<ListingTableUrl>,
 
-    file_projection: Vec<usize>,
-
-    table_schema: SchemaRef,
+    table_schema: TableSchema,
 
     options: ListingVCFTableOptions,
 }
 
 impl ListingVCFTable {
     /// Create a new VCF listing table
-    pub fn try_new(
-        config: VCFListingTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: VCFListingTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// File Schema
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = &self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -278,7 +266,7 @@ impl TableProvider for ListingVCFTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -364,7 +352,7 @@ impl TableProvider for ListingVCFTable {
 
             let file_scan_config = FileScanConfig {
                 object_store_url,
-                file_schema: self.file_schema()?,
+                file_schema: self.table_schema.file_schema()?,
                 file_groups: vec![file_list],
                 statistics: Statistics::default(),
                 projection: projection.cloned(),
@@ -409,7 +397,7 @@ impl TableProvider for ListingVCFTable {
 
         let file_scan_config = FileScanConfig {
             object_store_url: object_store_url.clone(),
-            file_schema: self.file_schema()?,
+            file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_partitions],
             statistics: Statistics::default(),
             projection: projection.cloned(),

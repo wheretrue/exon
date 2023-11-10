@@ -29,6 +29,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use crate::{
@@ -38,7 +39,7 @@ use crate::{
     },
 };
 
-use super::{config::FASTQSchemaBuilder, FASTQScan};
+use super::{config::new_fastq_schema_builder, FASTQScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -100,10 +101,15 @@ impl ListingFASTQTableOptions {
     }
 
     /// Infer the schema for the underlying files
-    pub async fn infer_schema(&self) -> datafusion::error::Result<SchemaRef> {
-        let schema = FASTQSchemaBuilder::default().build();
+    pub fn infer_schema(&self) -> TableSchema {
+        let table_partition_fields = self
+            .table_partition_cols
+            .iter()
+            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
+            .collect::<Vec<_>>();
 
-        Ok(schema)
+        let builder = new_fastq_schema_builder().add_partition_fields(table_partition_fields);
+        builder.build()
     }
 
     async fn create_physical_plan(
@@ -122,11 +128,8 @@ pub struct ListingFASTQTable {
     /// A list of paths to the files in the table
     table_paths: Vec<ListingTableUrl>,
 
-    /// The schema for the underlying files
-    file_schema: SchemaRef,
-
     /// The schema for the table
-    table_schema: SchemaRef,
+    table_schema: TableSchema,
 
     /// The options for the table
     options: ListingFASTQTableOptions,
@@ -134,22 +137,10 @@ pub struct ListingFASTQTable {
 
 impl ListingFASTQTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingFASTQTableConfig, file_schema: Arc<Schema>) -> Result<Self> {
-        let partition_fields = config
-            .options
-            .as_ref()
-            .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
-        let schema_builder = FASTQSchemaBuilder::default().extend(partition_fields);
-
+    pub fn try_new(config: ListingFASTQTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
-            file_schema,
-            table_schema: schema_builder.build(),
+            table_schema,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
@@ -164,7 +155,7 @@ impl TableProvider for ListingFASTQTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -210,7 +201,7 @@ impl TableProvider for ListingFASTQTable {
 
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
-            self.file_schema.clone(),
+            self.table_schema.file_schema()?,
             vec![file_list],
         )
         .projection_option(projection.cloned())

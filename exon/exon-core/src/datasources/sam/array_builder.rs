@@ -20,13 +20,12 @@ use arrow::{
     error::ArrowError,
 };
 use datafusion::error::Result;
+use exon_common::TableSchema;
 use noodles::sam::record::{
     data::field::{value::Array, Value},
     Data,
 };
 use noodles::sam::{alignment::Record, Header};
-
-use crate::datasources::TableSchema;
 
 macro_rules! datafusion_error {
     ($tag:expr, $field_type:expr, $expected_type:expr) => {
