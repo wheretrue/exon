@@ -14,7 +14,8 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, SchemaRef};
+use exon_common::TableSchemaBuilder;
 use object_store::ObjectStore;
 
 /// Configuration for a FASTQ datasource.
@@ -38,7 +39,7 @@ impl FASTQConfig {
         Self {
             batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
             object_store,
-            file_schema: FASTQSchemaBuilder::default().build(),
+            file_schema: new_fastq_schema_builder().build().file_schema().unwrap(),
             projection: None,
         }
     }
@@ -61,32 +62,13 @@ impl FASTQConfig {
     }
 }
 
-pub struct FASTQSchemaBuilder {
-    fields: Vec<Field>,
-}
+pub fn new_fastq_schema_builder() -> TableSchemaBuilder {
+    let fields = vec![
+        Field::new("name", DataType::Utf8, false),
+        Field::new("description", DataType::Utf8, true),
+        Field::new("sequence", DataType::Utf8, false),
+        Field::new("quality_scores", DataType::Utf8, false),
+    ];
 
-impl FASTQSchemaBuilder {
-    /// Extend the schema with the given fields.
-    pub fn extend(mut self, fields: Vec<Field>) -> Self {
-        self.fields.extend(fields);
-        self
-    }
-
-    /// Build the schema.
-    pub fn build(self) -> SchemaRef {
-        Arc::new(Schema::new(self.fields))
-    }
-}
-
-impl Default for FASTQSchemaBuilder {
-    fn default() -> Self {
-        let fields = vec![
-            Field::new("name", DataType::Utf8, false),
-            Field::new("description", DataType::Utf8, true),
-            Field::new("sequence", DataType::Utf8, false),
-            Field::new("quality_scores", DataType::Utf8, false),
-        ];
-
-        Self { fields }
-    }
+    TableSchemaBuilder::new_with_field_fields(fields)
 }

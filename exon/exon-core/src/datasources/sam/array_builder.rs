@@ -20,6 +20,7 @@ use arrow::{
     error::ArrowError,
 };
 use datafusion::error::Result;
+use exon_common::TableSchema;
 use noodles::sam::record::{
     data::field::{value::Array, Value},
     Data,
@@ -285,7 +286,7 @@ impl SAMSchemaBuilder {
     }
 
     /// Builds a schema for the BAM file.
-    pub fn build(self) -> (Schema, Vec<usize>) {
+    pub fn build(self) -> TableSchema {
         let mut fields = self.file_fields;
 
         if let Some(tags_data_type) = self.tags_data_type.clone() {
@@ -296,7 +297,10 @@ impl SAMSchemaBuilder {
         let file_projection = (0..fields.len()).collect::<Vec<_>>();
 
         fields.extend_from_slice(&self.partition_fields);
-        (Schema::new(fields), file_projection)
+
+        let file_schema = Schema::new(fields);
+
+        TableSchema::new(Arc::new(file_schema), file_projection)
     }
 }
 

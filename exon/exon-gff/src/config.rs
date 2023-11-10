@@ -15,63 +15,8 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use exon_common::TableSchemaBuilder;
 use object_store::ObjectStore;
-
-pub struct GFFSchemaBuilder {
-    fields: Vec<Field>,
-}
-
-impl GFFSchemaBuilder {
-    pub fn new(fields: Vec<Field>) -> Self {
-        Self { fields }
-    }
-
-    pub fn append(mut self, field: Field) -> Self {
-        self.fields.push(field);
-        self
-    }
-
-    pub fn extend(mut self, fields: Vec<Field>) -> Self {
-        self.fields.extend(fields);
-        self
-    }
-
-    pub fn build(self) -> SchemaRef {
-        Arc::new(Schema::new(self.fields))
-    }
-}
-
-impl Default for GFFSchemaBuilder {
-    fn default() -> Self {
-        let attribute_key_field = Field::new("keys", DataType::Utf8, false);
-
-        // attribute_value_field is a list of strings
-        let value_field = Field::new("item", DataType::Utf8, true);
-        let attribute_value_field =
-            Field::new("values", DataType::List(Arc::new(value_field)), true);
-
-        let fields = vec![
-            Field::new("seqname", DataType::Utf8, false),
-            Field::new("source", DataType::Utf8, true),
-            Field::new("type", DataType::Utf8, false),
-            Field::new("start", DataType::Int64, false),
-            Field::new("end", DataType::Int64, false),
-            Field::new("score", DataType::Float32, true),
-            Field::new("strand", DataType::Utf8, false),
-            Field::new("phase", DataType::Utf8, true),
-            Field::new_map(
-                "attributes",
-                "entries",
-                attribute_key_field,
-                attribute_value_field,
-                false,
-                true,
-            ),
-        ];
-
-        Self::new(fields)
-    }
-}
 
 /// Configuration for a GFF data source.
 pub struct GFFConfig {
@@ -90,21 +35,13 @@ pub struct GFFConfig {
 
 impl GFFConfig {
     /// Create a new GFF configuration.
-    pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
-        let file_schema = GFFSchemaBuilder::default().build();
-
+    pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: Arc<Schema>) -> Self {
         Self {
             file_schema,
             object_store,
             batch_size: 8096,
             projection: None,
         }
-    }
-
-    /// Set the file schema.
-    pub fn with_schema(mut self, file_schema: SchemaRef) -> Self {
-        self.file_schema = file_schema;
-        self
     }
 
     /// Set the batch size.
@@ -124,4 +61,33 @@ impl GFFConfig {
         self.projection = Some(file_projection);
         self
     }
+}
+
+pub fn new_gff_schema_builder() -> TableSchemaBuilder {
+    let attribute_key_field = Field::new("keys", DataType::Utf8, false);
+
+    // attribute_value_field is a list of strings
+    let value_field = Field::new("item", DataType::Utf8, true);
+    let attribute_value_field = Field::new("values", DataType::List(Arc::new(value_field)), true);
+
+    let fields = vec![
+        Field::new("seqname", DataType::Utf8, false),
+        Field::new("source", DataType::Utf8, true),
+        Field::new("type", DataType::Utf8, false),
+        Field::new("start", DataType::Int64, false),
+        Field::new("end", DataType::Int64, false),
+        Field::new("score", DataType::Float32, true),
+        Field::new("strand", DataType::Utf8, false),
+        Field::new("phase", DataType::Utf8, true),
+        Field::new_map(
+            "attributes",
+            "entries",
+            attribute_key_field,
+            attribute_value_field,
+            false,
+            true,
+        ),
+    ];
+
+    TableSchemaBuilder::new_with_field_fields(fields)
 }

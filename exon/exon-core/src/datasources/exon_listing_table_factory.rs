@@ -80,10 +80,11 @@ impl ExonListingTableFactory {
             ExonFileType::SAM => {
                 let options = ListingSAMTableOptions::default()
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema().await?;
+
+                let table_schema = options.infer_schema()?;
 
                 let config = ListingSAMTableConfig::new(table_path).with_options(options);
-                let table = ListingSAMTable::try_new(config, schema, file_projection)?;
+                let table = ListingSAMTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
@@ -91,50 +92,50 @@ impl ExonListingTableFactory {
             ExonFileType::MZML => {
                 let options = ListingMzMLTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema().await?;
+                let schema = options.infer_schema().await?;
 
                 let config = ListingMzMLTableConfig::new(table_path).with_options(options);
-                let table = ListingMzMLTable::try_new(config, schema, file_projection)?;
+                let table = ListingMzMLTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
             }
             ExonFileType::HMMDOMTAB => {
                 let options = ListingHMMDomTabTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema().await?;
+                let table_schema = options.infer_schema().await?;
 
                 let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
-                let table = ListingHMMDomTabTable::try_new(config, schema, file_projection)?;
+                let table = ListingHMMDomTabTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
             ExonFileType::BAM => {
                 let options = ListingBAMTableOptions::default()
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(options);
-                let table = ListingBAMTable::try_new(config, schema, file_projection)?;
+                let table = ListingBAMTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
             ExonFileType::BED => {
                 let options = ListingBEDTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema().await?;
+                let table_schema = options.infer_schema()?;
 
                 let config = ListingBEDTableConfig::new(table_path).with_options(options);
-                let table = ListingBEDTable::try_new(config, Arc::new(schema), file_projection)?;
+                let table = ListingBEDTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
             ExonFileType::GTF => {
                 let options = ListingGTFTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema().await?;
+                let table_schema = options.infer_schema();
 
                 let config = ListingGTFTableConfig::new(table_path).with_options(options);
-                let table = ListingGTFTable::try_new(config, Arc::new(schema), file_projection)?;
+                let table = ListingGTFTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
@@ -151,33 +152,31 @@ impl ExonListingTableFactory {
             ExonFileType::BCF => {
                 let options = ListingBCFTableOptions::default()
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBCFTableConfig::new(table_path).with_options(options);
-                let table = ListingBCFTable::try_new(config, schema, file_projection)?;
+                let table = ListingBCFTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
             ExonFileType::VCF => {
                 let vcf_options = ListingVCFTableOptions::new(file_compression_type, false)
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) =
-                    vcf_options.infer_schema(state, &table_path).await?;
+                let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
                 let config = VCFListingTableConfig::new(table_path).with_options(vcf_options);
 
-                let table = ListingVCFTable::try_new(config, schema, file_projection)?;
+                let table = ListingVCFTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedVCF => {
                 let vcf_options = ListingVCFTableOptions::new(file_compression_type, true)
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) =
-                    vcf_options.infer_schema(state, &table_path).await?;
+                let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
                 let config = VCFListingTableConfig::new(table_path).with_options(vcf_options);
 
-                let table = ListingVCFTable::try_new(config, schema, file_projection)?;
+                let table = ListingVCFTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedBAM => {
@@ -185,12 +184,11 @@ impl ExonListingTableFactory {
                     .with_indexed(true)
                     .with_table_partition_cols(table_partition_cols);
 
-                let (schema, file_projection) =
-                    bam_options.infer_schema(state, &table_path).await?;
+                let table_schema = bam_options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
 
-                let table = ListingBAMTable::try_new(config, schema, file_projection)?;
+                let table = ListingBAMTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA => {
@@ -206,7 +204,7 @@ impl ExonListingTableFactory {
             ExonFileType::FASTQ => {
                 let options = ListingFASTQTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
-                let schema = options.infer_schema().await?;
+                let schema = options.infer_schema();
 
                 let config: ListingFASTQTableConfig =
                     ListingFASTQTableConfig::new(table_path).with_options(options);
@@ -229,10 +227,10 @@ impl ExonListingTableFactory {
                 let options = ListingFCSTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
 
-                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingFCSTableConfig::new(table_path).with_options(options);
-                let table = ListingFCSTable::try_new(config, schema, file_projection)?;
+                let table = ListingFCSTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }

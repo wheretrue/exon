@@ -18,6 +18,7 @@ use arrow::{
     csv::{reader::Decoder, ReaderBuilder},
     datatypes::{DataType, Field, Schema, SchemaRef},
 };
+use exon_common::TableSchema;
 use object_store::ObjectStore;
 
 use crate::datasources::DEFAULT_BATCH_SIZE;
@@ -32,15 +33,15 @@ impl HMMDomTabSchemaBuilder {
         self.partition_fields.extend(partition_fields);
     }
 
-    pub fn build(self) -> (Schema, Vec<usize>) {
+    pub fn build(self) -> TableSchema {
         let mut fields = self.file_fields.clone();
         fields.extend(self.partition_fields);
 
         let schema = Schema::new(fields);
 
-        let projection = (0..self.file_fields.len()).collect();
+        let projection: Vec<usize> = (0..self.file_fields.len()).collect();
 
-        (schema, projection)
+        TableSchema::new(Arc::new(schema.clone()), projection.clone())
     }
 }
 

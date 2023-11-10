@@ -28,6 +28,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bam::lazy::Record, core::Region};
 use object_store::ObjectStore;
@@ -126,7 +127,7 @@ impl ListingBAMTableOptions {
         &self,
         state: &SessionState,
         table_path: &ListingTableUrl,
-    ) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+    ) -> datafusion::error::Result<TableSchema> {
         if !self.tag_as_struct {
             let partition_fields = self
                 .table_partition_cols
@@ -135,9 +136,9 @@ impl ListingBAMTableOptions {
                 .collect::<Vec<_>>();
 
             let builder = SAMSchemaBuilder::default().with_partition_fields(partition_fields);
+            let table_schema = builder.build();
 
-            let (schema, file_projection) = builder.build();
-            return Ok((Arc::new(schema), file_projection));
+            return Ok(table_schema);
         }
 
         let store = state.runtime_env().object_store(table_path)?;
@@ -183,9 +184,9 @@ impl ListingBAMTableOptions {
 
         schema_builder = schema_builder.with_partition_fields(partition_fields);
 
-        let (schema, file_projection) = schema_builder.build();
+        let table_schema = schema_builder.build();
 
-        Ok((Arc::new(schema), file_projection))
+        Ok(table_schema)
     }
 
     /// Update the indexed flag
@@ -223,35 +224,21 @@ impl ListingBAMTableOptions {
 pub struct ListingBAMTable {
     table_paths: Vec<ListingTableUrl>,
 
-    table_schema: SchemaRef,
-
-    /// The file projection
-    file_projection: Vec<usize>,
+    table_schema: TableSchema,
 
     options: ListingBAMTableOptions,
 }
 
 impl ListingBAMTable {
     /// Create a new BAM listing table
-    pub fn try_new(
-        config: ListingBAMTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: ListingBAMTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// File Schema
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = &self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -262,7 +249,7 @@ impl TableProvider for ListingBAMTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -344,7 +331,7 @@ impl TableProvider for ListingBAMTable {
 
             let file_scan_config = FileScanConfig {
                 object_store_url,
-                file_schema: self.file_schema()?,
+                file_schema: self.table_schema.file_schema()?,
                 file_groups: vec![file_list],
                 statistics: Statistics::default(),
                 projection: projection.cloned(),
@@ -389,7 +376,7 @@ impl TableProvider for ListingBAMTable {
 
         let file_scan_config = FileScanConfig {
             object_store_url: object_store_url.clone(),
-            file_schema: self.file_schema()?,
+            file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_partition_with_ranges],
             statistics: Statistics::default(),
             projection: projection.cloned(),

@@ -17,6 +17,8 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use object_store::ObjectStore;
 
+use exon_common::TableSchema;
+
 pub struct MzMLSchemaBuilder {
     file_fields: Vec<Field>,
     partition_fields: Vec<Field>,
@@ -27,15 +29,15 @@ impl MzMLSchemaBuilder {
         self.partition_fields.extend(partition_fields);
     }
 
-    pub fn build(self) -> (Schema, Vec<usize>) {
+    pub fn build(self) -> TableSchema {
         let mut fields = self.file_fields.clone();
         fields.extend(self.partition_fields);
 
         let schema = Schema::new(fields);
 
-        let projection = (0..self.file_fields.len()).collect();
+        let projection: Vec<usize> = (0..self.file_fields.len()).collect();
 
-        (schema, projection)
+        TableSchema::new(Arc::new(schema.clone()), projection.clone())
     }
 }
 

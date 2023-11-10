@@ -29,6 +29,7 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_common::TableSchema;
 use futures::TryStreamExt;
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
@@ -106,7 +107,7 @@ impl ListingFCSTableOptions {
         &self,
         state: &SessionState,
         table_path: &ListingTableUrl,
-    ) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+    ) -> datafusion::error::Result<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
 
         let objects = exon_common::object_store_files_from_table_path(
@@ -123,7 +124,8 @@ impl ListingFCSTableOptions {
 
         let (schema_ref, projection) = self.infer_from_object_meta(&store, &objects).await?;
 
-        Ok((schema_ref, projection))
+        let table_schema = TableSchema::new(schema_ref, projection);
+        Ok(table_schema)
     }
 
     async fn infer_from_object_meta(
@@ -181,34 +183,21 @@ impl ListingFCSTableOptions {
 pub struct ListingFCSTable {
     table_paths: Vec<ListingTableUrl>,
 
-    table_schema: SchemaRef,
-
-    file_projection: Vec<usize>,
+    table_schema: TableSchema,
 
     options: ListingFCSTableOptions,
 }
 
 impl ListingFCSTable {
     /// Create a new FCS listing table
-    pub fn try_new(
-        config: ListingFCSTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: ListingFCSTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// Get the file schema for the table
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema))
     }
 }
 
@@ -219,7 +208,7 @@ impl TableProvider for ListingFCSTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -263,7 +252,7 @@ impl TableProvider for ListingFCSTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let file_schema = self.file_schema()?;
+        let file_schema = self.table_schema.file_schema()?;
         let file_scan_config =
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())

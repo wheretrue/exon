@@ -18,5 +18,5 @@ mod config;
 
 pub use array_builder::GFFArrayBuilder;
 pub use batch_reader::BatchReader;
+pub use config::new_gff_schema_builder;
 pub use config::GFFConfig;
-pub use config::GFFSchemaBuilder;

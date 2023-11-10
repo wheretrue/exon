@@ -14,46 +14,15 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, SchemaRef};
+use exon_common::TableSchemaBuilder;
 use object_store::ObjectStore;
 
 use crate::datasources::DEFAULT_BATCH_SIZE;
 
-pub(crate) struct GTFSchemaBuilder {
-    file_fields: Vec<Field>,
-    partition_fields: Vec<Field>,
-}
-
-impl GTFSchemaBuilder {
-    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
-        Self {
-            file_fields,
-            partition_fields,
-        }
-    }
-
-    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
-        self.partition_fields.extend(fields);
-    }
-
-    /// Returns the schema and the projection indexes for the file's schema
-    pub fn build(self) -> (Schema, Vec<usize>) {
-        let mut fields = self.file_fields.clone();
-        fields.extend_from_slice(&self.partition_fields);
-
-        let schema = Schema::new(fields);
-
-        let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
-
-        (schema, projection)
-    }
-}
-
-impl Default for GTFSchemaBuilder {
-    fn default() -> Self {
-        let file_fields = file_fields();
-        Self::new(file_fields, vec![])
-    }
+pub fn new_gtf_schema_builder() -> TableSchemaBuilder {
+    let file_fields = file_fields();
+    TableSchemaBuilder::new_with_field_fields(file_fields)
 }
 
 /// The schema for a GTF file

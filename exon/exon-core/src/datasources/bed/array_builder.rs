@@ -18,6 +18,7 @@ use arrow::{
     array::{ArrayBuilder, ArrayRef, GenericStringBuilder, Int64Builder},
     datatypes::{DataType, Field, Schema},
 };
+use exon_common::TableSchema;
 
 use super::bed_record_builder::BEDRecord;
 
@@ -39,7 +40,7 @@ impl BEDSchemaBuilder {
     }
 
     /// Returns the schema and the projection indexes for the file's schema
-    pub fn build(self) -> (Schema, Vec<usize>) {
+    pub fn build(self) -> TableSchema {
         let mut fields = self.file_fields.clone();
         fields.extend_from_slice(&self.partition_fields);
 
@@ -47,7 +48,7 @@ impl BEDSchemaBuilder {
 
         let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
 
-        (schema, projection)
+        TableSchema::new(Arc::new(schema), projection)
     }
 }
 
