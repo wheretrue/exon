@@ -10,5 +10,5 @@ version.workspace = true
 clap = {version = "4.4.7", features = ["derive"]}
 datafusion.workspace = true
 exon = {path = "../exon/exon-core", features = ["all"]}
-tokio = {version = "1.33.0", features = ["io-util"]}
+tokio = {version = "1.34.0", features = ["io-util"]}
 url = "2.4.1"
