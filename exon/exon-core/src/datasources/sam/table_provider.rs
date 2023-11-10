@@ -31,7 +31,7 @@ use datafusion::{
 use futures::TryStreamExt;
 
 use crate::{
-    datasources::hive_partition::filter_matches_partition_cols,
+    datasources::{hive_partition::filter_matches_partition_cols, TableSchema},
     physical_plan::object_store::pruned_partition_list,
 };
 
@@ -75,7 +75,7 @@ pub struct ListingSAMTableOptions {
 
 impl ListingSAMTableOptions {
     /// Infer the schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<(SchemaRef, Vec<usize>)> {
+    pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let partition_fields = self
             .table_partition_cols
             .iter()
@@ -84,9 +84,8 @@ impl ListingSAMTableOptions {
 
         let builder = SAMSchemaBuilder::default().with_partition_fields(partition_fields.clone());
 
-        let (schema, file_projection) = builder.build();
-
-        Ok((Arc::new(schema), file_projection))
+        let table_schema = builder.build();
+        Ok(table_schema)
     }
 
     /// Add table partition columns
@@ -112,34 +111,21 @@ impl ListingSAMTableOptions {
 pub struct ListingSAMTable {
     table_paths: Vec<ListingTableUrl>,
 
-    table_schema: SchemaRef,
-
-    file_projection: Vec<usize>,
+    table_schema: TableSchema,
 
     options: ListingSAMTableOptions,
 }
 
 impl ListingSAMTable {
     /// Create a new SAM listing table
-    pub fn try_new(
-        config: ListingSAMTableConfig,
-        table_schema: Arc<Schema>,
-        file_projection: Vec<usize>,
-    ) -> Result<Self> {
+    pub fn try_new(config: ListingSAMTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            file_projection,
             options: config
                 .options
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
-    }
-
-    /// File Schema
-    pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = &self.table_schema.project(&self.file_projection)?;
-        Ok(Arc::new(file_schema.clone()))
     }
 }
 
@@ -150,7 +136,7 @@ impl TableProvider for ListingSAMTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.table_schema)
+        Arc::clone(&self.table_schema.table_schema())
     }
 
     fn table_type(&self) -> TableType {
@@ -196,7 +182,7 @@ impl TableProvider for ListingSAMTable {
 
         let file_scan_config = FileScanConfig {
             object_store_url,
-            file_schema: self.file_schema()?,
+            file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_list],
             statistics: Statistics::default(),
             projection: projection.cloned(),

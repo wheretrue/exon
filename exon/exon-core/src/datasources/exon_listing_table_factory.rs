@@ -80,10 +80,11 @@ impl ExonListingTableFactory {
             ExonFileType::SAM => {
                 let options = ListingSAMTableOptions::default()
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema().await?;
+
+                let table_schema = options.infer_schema()?;
 
                 let config = ListingSAMTableConfig::new(table_path).with_options(options);
-                let table = ListingSAMTable::try_new(config, schema, file_projection)?;
+                let table = ListingSAMTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
@@ -111,10 +112,10 @@ impl ExonListingTableFactory {
             ExonFileType::BAM => {
                 let options = ListingBAMTableOptions::default()
                     .with_table_partition_cols(table_partition_cols);
-                let (schema, file_projection) = options.infer_schema(state, &table_path).await?;
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(options);
-                let table = ListingBAMTable::try_new(config, schema, file_projection)?;
+                let table = ListingBAMTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }
@@ -185,12 +186,11 @@ impl ExonListingTableFactory {
                     .with_indexed(true)
                     .with_table_partition_cols(table_partition_cols);
 
-                let (schema, file_projection) =
-                    bam_options.infer_schema(state, &table_path).await?;
+                let table_schema = bam_options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
 
-                let table = ListingBAMTable::try_new(config, schema, file_projection)?;
+                let table = ListingBAMTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA => {

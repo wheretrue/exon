@@ -78,3 +78,6 @@ mod exon_file_scan_config;
 pub use self::exon_file_scan_config::ExonFileScanConfig;
 
 pub(crate) mod indexed_file_utils;
+
+mod table_schema;
+pub use self::table_schema::TableSchema;
