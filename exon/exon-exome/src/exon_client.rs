@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::error::DataFusionError;
-
-use crate::exome_catalog_manager::{CatalogName, LibraryName, OrganizationName};
+use crate::{
+    error::ExomeError,
+    exome_catalog_manager::{CatalogName, LibraryName, OrganizationName},
+};
 
 #[async_trait::async_trait]
 pub trait ExonClient {
@@ -22,11 +23,11 @@ pub trait ExonClient {
         &mut self,
         organization_name: OrganizationName,
         library_name: LibraryName,
-    ) -> Result<(), DataFusionError>;
+    ) -> Result<(), ExomeError>;
 
     async fn create_catalog(
         &mut self,
         catalog_name: CatalogName,
         library_name: LibraryName,
-    ) -> Result<(), DataFusionError>;
+    ) -> Result<(), ExomeError>;
 }

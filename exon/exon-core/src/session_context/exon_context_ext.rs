@@ -32,6 +32,7 @@ use crate::{
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
     },
+    error::ExonError,
     new_exon_config,
     physical_optimizer::file_repartitioner::ExonRoundRobin,
     udfs::{
@@ -188,10 +189,7 @@ pub trait ExonSessionExt {
     }
 
     /// Infer the file type and compression, then read the file.
-    async fn read_inferred_exon_table(
-        &self,
-        table_path: &str,
-    ) -> Result<DataFrame, DataFusionError>;
+    async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError>;
 
     /// Read a SAM file.
     async fn read_sam(
@@ -383,10 +381,7 @@ impl ExonSessionExt for SessionContext {
         Ok(())
     }
 
-    async fn read_inferred_exon_table(
-        &self,
-        table_path: &str,
-    ) -> Result<DataFrame, DataFusionError> {
+    async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError> {
         let session_state = self.state();
 
         let (file_type, file_compress_type) =
@@ -402,7 +397,9 @@ impl ExonSessionExt for SessionContext {
             )
             .await?;
 
-        self.read_table(table)
+        let table = self.read_table(table)?;
+
+        Ok(table)
     }
 
     async fn register_vcf_file(

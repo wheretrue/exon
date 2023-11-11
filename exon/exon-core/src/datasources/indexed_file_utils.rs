@@ -14,13 +14,12 @@
 
 use std::sync::Arc;
 
-use datafusion::{
-    datasource::listing::{FileRange, PartitionedFile},
-    error::Result,
-};
+use datafusion::datasource::listing::{FileRange, PartitionedFile};
 use noodles::{core::Region, csi::index::reference_sequence::bin::Chunk};
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
+
+use datafusion::error::Result;
 
 pub enum IndexedFile {
     Vcf,
@@ -33,7 +32,7 @@ impl IndexedFile {
         object_store: Arc<dyn ObjectStore>,
         object_meta: &ObjectMeta,
         region: &Region,
-    ) -> std::io::Result<Vec<Chunk>> {
+    ) -> Result<Vec<Chunk>> {
         get_byte_range_for_file(object_store, object_meta, region, self).await
     }
 
@@ -51,7 +50,7 @@ pub async fn get_byte_range_for_file(
     object_meta: &ObjectMeta,
     region: &Region,
     indexed_file: &IndexedFile,
-) -> std::io::Result<Vec<Chunk>> {
+) -> Result<Vec<Chunk>> {
     let path = object_meta.location.clone().to_string() + indexed_file.index_file_extension();
     let path = Path::from(path);
 

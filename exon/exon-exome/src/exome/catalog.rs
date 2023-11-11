@@ -16,8 +16,9 @@ mod schema;
 
 pub use schema::Schema;
 
-use crate::exome_catalog_manager::{
-    CatalogName, LibraryName, OrganizationName, SchemaName, TableName,
+use crate::{
+    error::ExomeError,
+    exome_catalog_manager::{CatalogName, LibraryName, OrganizationName, SchemaName, TableName},
 };
 
 use super::proto::{self, health_client::HealthClient, HealthCheckRequest};
@@ -52,10 +53,16 @@ impl ExomeCatalogClient {
         url: String,
         organization_name: String,
         token: String,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> Result<Self, ExomeError> {
         let tls = tonic::transport::ClientTlsConfig::new();
 
-        let channel = tonic::transport::Channel::from_shared(url)?
+        let channel = tonic::transport::Channel::from_shared(url)
+            .map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    format!("Error creating channel: {}", e),
+                )
+            })?
             .tls_config(tls)?
             .connect()
             .await?;
@@ -95,8 +102,14 @@ impl ExomeCatalogClient {
         url: String,
         organization_name: String,
         token: String,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        let channel = tonic::transport::Channel::from_shared(url)?
+    ) -> Result<Self, ExomeError> {
+        let channel = tonic::transport::Channel::from_shared(url)
+            .map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    format!("Error creating channel: {}", e),
+                )
+            })?
             .connect()
             .await?;
 
@@ -117,7 +130,7 @@ impl ExomeCatalogClient {
     /// # Arguments
     ///
     /// * `request_body` - The request to make.
-    fn make_request<T>(&self, request_body: T) -> Result<tonic::Request<T>, tonic::Status> {
+    fn make_request<T>(&self, request_body: T) -> Result<tonic::Request<T>, ExomeError> {
         let mut request = tonic::Request::new(request_body);
 
         let metadata_value =
@@ -148,7 +161,7 @@ impl ExomeCatalogClient {
         &mut self,
         organization_name: OrganizationName,
         library_name: LibraryName,
-    ) -> Result<Vec<proto::Catalog>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<proto::Catalog>, ExomeError> {
         let request = self.make_request(proto::ListCatalogsRequest {
             organization_name: organization_name.to_string(),
             library_name: library_name.to_string(),
@@ -177,7 +190,7 @@ impl ExomeCatalogClient {
         organization_name: String,
         library_name: String,
         catalog_name: String,
-    ) -> Result<Vec<proto::Schema>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<proto::Schema>, ExomeError> {
         let request = self.make_request(proto::ListSchemasRequest {
             organization_name,
             library_name,
@@ -227,9 +240,14 @@ impl ExomeCatalogClient {
     /// # Returns
     ///
     /// An instance of ExomeCatalogClient on success, or a boxed error on failure.
-    pub async fn from_env() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn from_env() -> Result<Self, ExomeError> {
         let url = std::env::var("EXON_EXOME_URL")?;
-        let url = url::Url::parse(&url)?;
+        let url = url::Url::parse(&url).map_err(|e| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("Error parsing URL: {}", e),
+            )
+        })?;
 
         let token = std::env::var("EXON_EXOME_TOKEN")?;
         let organization_id = std::env::var("EXON_EXOME_ORGANIZATION_ID")?;
@@ -249,7 +267,7 @@ impl ExomeCatalogClient {
         schema_name: String,
         catalog_name: String,
         library_name: String,
-    ) -> Result<Vec<proto::Table>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<proto::Table>, ExomeError> {
         let request = self.make_request(proto::ListTablesRequest {
             schema_name,
             catalog_name,
@@ -269,7 +287,7 @@ impl ExomeCatalogClient {
         name: CatalogName,
         library_name: LibraryName,
         organization_name: OrganizationName,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<String, ExomeError> {
         let request = self.make_request(proto::CreateCatalogRequest {
             name: name.to_string(),
             library_name: library_name.to_string(),
@@ -294,7 +312,7 @@ impl ExomeCatalogClient {
         is_listing: bool,
         compression_type: String,
         table_partition_cols: Vec<String>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<String, ExomeError> {
         let request = self.make_request(proto::CreateTableRequest {
             name: name.to_string(),
             schema_name: schema_name.to_string(),
@@ -314,11 +332,7 @@ impl ExomeCatalogClient {
     }
 
     /// Delete a catalog.
-    pub async fn drop_catalog(
-        &self,
-        name: String,
-        library_name: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn drop_catalog(&self, name: String, library_name: String) -> Result<(), ExomeError> {
         let request = self.make_request(proto::DropCatalogRequest { name, library_name })?;
 
         let mut client = self.catalog_service_client.clone();
@@ -332,7 +346,7 @@ impl ExomeCatalogClient {
         name: SchemaName,
         catalog_name: CatalogName,
         library_name: LibraryName,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<String, ExomeError> {
         let request = self.make_request(proto::CreateSchemaRequest {
             name: name.to_string(),
             catalog_name: catalog_name.to_string(),

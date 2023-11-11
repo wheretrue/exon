@@ -26,7 +26,7 @@ use exon::{
     ExonRuntimeEnvExt,
 };
 
-use crate::exome::proto;
+use crate::{error::ExomeResult, exome::proto};
 
 use super::ExomeCatalogClient;
 
@@ -52,7 +52,7 @@ impl Schema {
         proto_schema: proto::Schema,
         session_context: Arc<SessionContext>,
         client: ExomeCatalogClient,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> ExomeResult<Self> {
         let mut s = Self {
             inner: proto_schema,
             exome_client: client,
@@ -65,7 +65,7 @@ impl Schema {
         Ok(s)
     }
 
-    pub async fn refresh(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn refresh(&mut self) -> ExomeResult<()> {
         let library_name = self.inner.library_name.clone();
         let catalog_name = self.inner.catalog_name.clone();
         let schema_name = self.inner.name.clone();

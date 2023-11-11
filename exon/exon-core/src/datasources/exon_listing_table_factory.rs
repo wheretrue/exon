@@ -25,7 +25,7 @@ use datafusion::{
     logical_expr::CreateExternalTable,
 };
 
-use crate::datasources::ExonFileType;
+use crate::{datasources::ExonFileType, error::ExonError};
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
@@ -260,10 +260,7 @@ impl TableProviderFactory for ExonListingTableFactory {
             .collect::<Vec<_>>();
 
         let file_type = ExonFileType::from_str(&cmd.file_type).map_err(|_| {
-            datafusion::error::DataFusionError::Execution(format!(
-                "Unsupported file type: {}",
-                &cmd.file_type,
-            ))
+            ExonError::ExecutionError(format!("Unsupported file type: {}", &cmd.file_type,))
         })?;
 
         self.create_from_file_type(

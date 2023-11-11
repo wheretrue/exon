@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{error::Error, fmt::Display};
+
+use arrow::error::ArrowError;
+use datafusion::error::DataFusionError;
+
 /// Error for an invalid region.
 pub mod invalid_region;
 
@@ -20,3 +25,84 @@ pub mod invalid_interval;
 
 /// Error for an invalid chromosome.
 pub mod invalid_chrom;
+
+/// Possible errors for Exon.
+#[derive(Debug)]
+pub enum ExonError {
+    /// Error from the DataFusion package.
+    DataFusionError(DataFusionError),
+
+    /// Error from the Arrow package.
+    ArrowError(ArrowError),
+
+    /// Execution error
+    ExecutionError(String),
+
+    /// Object store error
+    ObjectStoreError(object_store::Error),
+
+    /// Noodles error
+    NoodlesError(noodles::core::Error),
+
+    /// IO error
+    IOError(std::io::Error),
+}
+
+impl From<DataFusionError> for ExonError {
+    fn from(error: DataFusionError) -> Self {
+        ExonError::DataFusionError(error)
+    }
+}
+
+impl From<ArrowError> for ExonError {
+    fn from(error: ArrowError) -> Self {
+        ExonError::ArrowError(error)
+    }
+}
+
+impl From<noodles::core::Error> for ExonError {
+    fn from(error: noodles::core::Error) -> Self {
+        ExonError::NoodlesError(error)
+    }
+}
+
+impl From<std::io::Error> for ExonError {
+    fn from(error: std::io::Error) -> Self {
+        ExonError::IOError(error)
+    }
+}
+
+impl From<object_store::Error> for ExonError {
+    fn from(error: object_store::Error) -> Self {
+        ExonError::ObjectStoreError(error)
+    }
+}
+
+impl Display for ExonError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExonError::DataFusionError(error) => write!(f, "DataFusionError: {}", error),
+            ExonError::ArrowError(error) => write!(f, "ArrowError: {}", error),
+            ExonError::ExecutionError(error) => write!(f, "ExecutionError: {}", error),
+            ExonError::ObjectStoreError(error) => write!(f, "ObjectStoreError: {}", error),
+            ExonError::NoodlesError(error) => write!(f, "NoodlesError: {}", error),
+            _ => write!(f, "ExonError"),
+        }
+    }
+}
+
+impl Error for ExonError {}
+
+impl From<ExonError> for DataFusionError {
+    fn from(error: ExonError) -> Self {
+        match error {
+            ExonError::DataFusionError(error) => error,
+            ExonError::ArrowError(error) => DataFusionError::ArrowError(error),
+            ExonError::ExecutionError(error) => DataFusionError::Execution(error),
+            _ => DataFusionError::Execution(format!("ExonError: {}", error)),
+        }
+    }
+}
+
+/// Result type for Exon.
+pub type Result<T, E = ExonError> = std::result::Result<T, E>;
