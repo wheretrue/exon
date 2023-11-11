@@ -14,7 +14,7 @@
 
 use std::fmt;
 
-use crate::exome::ExomeCatalogClient;
+use crate::{error::ExomeResult, exome::ExomeCatalogClient};
 
 macro_rules! impl_display_for {
     ($($t:ty),+) => {
@@ -152,7 +152,7 @@ impl ExomeCatalogManager {
     pub async fn apply_changes(
         &self,
         change_set: impl IntoIterator<Item = Change>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> ExomeResult<()> {
         for change in change_set {
             match change {
                 Change::CreateCatalog(create_catalog) => {
