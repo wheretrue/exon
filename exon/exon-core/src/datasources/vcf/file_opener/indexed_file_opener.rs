@@ -31,6 +31,7 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::vcf::{indexed_async_batch_stream::IndexedAsyncBatchStream, VCFConfig},
+    error::ExonError,
     streaming_bgzf::AsyncBGZFReader,
 };
 
@@ -149,14 +150,8 @@ impl FileOpener for IndexedVCFOpener {
                         // reading from a block boundary.
                         if vp_start.uncompressed() > 0 {
                             let marginal_start_vp =
-                                VirtualPosition::try_from((0, vp_start.uncompressed())).map_err(
-                                    |e| {
-                                        std::io::Error::new(
-                                            std::io::ErrorKind::InvalidData,
-                                            format!("invalid virtual position: {e}"),
-                                        )
-                                    },
-                                )?;
+                                VirtualPosition::try_from((0, vp_start.uncompressed()))
+                                    .map_err(ExonError::from)?;
 
                             async_reader
                                 .scan_to_virtual_position(marginal_start_vp)

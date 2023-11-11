@@ -14,6 +14,7 @@
 
 use std::sync::Arc;
 
+use arrow::error::ArrowError;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
@@ -61,7 +62,9 @@ impl FileOpener for FASTAOpener {
 
             let stream_reader = StreamReader::new(new_reader);
 
-            let fasta_batch_reader = BatchReader::new(stream_reader, fasta_config).into_stream();
+            let fasta_batch_reader = BatchReader::new(stream_reader, fasta_config)
+                .into_stream()
+                .map_err(ArrowError::from);
 
             Ok(fasta_batch_reader.boxed())
         }))
