@@ -187,18 +187,6 @@ ExonDataFrame <- R6Class("ExonDataFrame",
             private$data_frame <- result
         },
         #' @description Convert the ExonDataFrame to an Arrow table.
-        #' @examples
-        #' session <- ExonRSessionContext$new()
-        #'
-        #' session$execute("CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION './file.fasta'")
-        #' arrow_table <- session$sql("SELECT * FROM fasta_table")$to_arrow()
-        #'
-        #' # Then arrow table can be converted to a data.frame or registered with duckdb, for example.
-        #' # E.g. assuming a duckdb connection con:
-        #' arrow::to_duckdb(arrow_table, table_name = "gene_annotations", con = con)
-        #'
-        #' # or dataframe
-        #' df <- data.frame(arrow_table)
         #'
         #' @return An Arrow table.
         to_arrow = function() {
