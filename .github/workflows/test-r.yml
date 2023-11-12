@@ -3,18 +3,17 @@ name: Test R
 on:
   push:
 
-
 jobs:
   test:
     runs-on: ubuntu-latest
     name: Test build
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: ./.github/actions/r_setup
-    - shell: Rscript {0}
-      working-directory: ./exon-r/exonr/
-      run: |
-        rextendr::document()
-        devtools::load_all()
-        devtools::test(stop_on_failure = TRUE)
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/r_setup
+      - shell: Rscript {0}
+        working-directory: ./exon-r/exonr/
+        run: |
+          rextendr::document()
+          devtools::load_all()
+          devtools::test(stop_on_failure = TRUE)

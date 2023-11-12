@@ -6,25 +6,6 @@
 \description{
 An ExonDataFrame is a data frame that is backed by an Exon engine.
 }
-\examples{
-
-## ------------------------------------------------
-## Method `ExonDataFrame$to_arrow`
-## ------------------------------------------------
-
-session <- ExonRSessionContext$new()
-
-session$execute("CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION './file.fasta'")
-arrow_table <- session$sql("SELECT * FROM fasta_table")$to_arrow()
-
-# Then arrow table can be converted to a data.frame or registered with duckdb, for example.
-# E.g. assuming a duckdb connection con:
-arrow::to_duckdb(arrow_table, table_name = "gene_annotations", con = con)
-
-# or dataframe
-df <- data.frame(arrow_table)
-
-}
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
@@ -62,25 +43,6 @@ Convert the ExonDataFrame to an Arrow table.
 \subsection{Returns}{
 An Arrow table.
 }
-\subsection{Examples}{
-\if{html}{\out{<div class="r example copy">}}
-\preformatted{session <- ExonRSessionContext$new()
-
-session$execute("CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION './file.fasta'")
-arrow_table <- session$sql("SELECT * FROM fasta_table")$to_arrow()
-
-# Then arrow table can be converted to a data.frame or registered with duckdb, for example.
-# E.g. assuming a duckdb connection con:
-arrow::to_duckdb(arrow_table, table_name = "gene_annotations", con = con)
-
-# or dataframe
-df <- data.frame(arrow_table)
-
-}
-\if{html}{\out{</div>}}
-
-}
-
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-ExonDataFrame-clone"></a>}}
