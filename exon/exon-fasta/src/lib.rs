@@ -15,8 +15,10 @@
 mod array_builder;
 mod batch_reader;
 mod config;
+mod error;
 
 pub use array_builder::FASTAArrayBuilder;
 pub use batch_reader::BatchReader;
 pub use config::new_fasta_schema_builder;
 pub use config::FASTAConfig;
+pub use error::ExonFastaError;

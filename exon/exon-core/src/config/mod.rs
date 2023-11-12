@@ -19,7 +19,7 @@ use datafusion::{
 };
 
 pub const BATCH_SIZE: usize = 8 * 1024;
-pub const FASTA_READER_SEQUENCE_CAPACITY: usize = 384;
+pub const FASTA_READER_SEQUENCE_CAPACITY: usize = 512;
 
 /// Create a new [`SessionConfig`] for the exon.
 pub fn new_exon_config() -> SessionConfig {

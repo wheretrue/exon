@@ -14,7 +14,7 @@
 
 use std::{str::FromStr, sync::Arc};
 
-use arrow::{error::ArrowError, error::Result as ArrowResult, record_batch::RecordBatch};
+use arrow::record_batch::RecordBatch;
 use futures::Stream;
 use noodles::fasta::{
     record::{Definition, Sequence},
@@ -22,6 +22,8 @@ use noodles::fasta::{
 };
 
 use tokio::io::AsyncBufRead;
+
+use crate::{error::ExonFastaResult, ExonFastaError};
 
 use super::{array_builder::FASTAArrayBuilder, config::FASTAConfig};
 
@@ -32,6 +34,9 @@ pub struct BatchReader<R> {
 
     /// The FASTA configuration.
     config: Arc<FASTAConfig>,
+
+    /// Internal buffer for the sequence.
+    sequence_buffer: Vec<u8>,
 }
 
 impl<R> BatchReader<R>
@@ -40,40 +45,37 @@ where
 {
     /// Creates a FASTA batch reader.
     pub fn new(inner: R, config: Arc<FASTAConfig>) -> Self {
+        let buffer_size = config.fasta_sequence_buffer_capacity;
+
         Self {
             reader: noodles::fasta::AsyncReader::new(inner),
             config,
+            sequence_buffer: Vec::with_capacity(buffer_size),
         }
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::fasta::Record>> {
-        let mut buf = String::new();
+    async fn read_record(&mut self) -> ExonFastaResult<Option<noodles::fasta::Record>> {
+        let mut buf = String::with_capacity(50); // 50 is somewhat arbitrary
+
         if self.reader.read_definition(&mut buf).await? == 0 {
             return Ok(None);
         }
-        let definition = Definition::from_str(&buf).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("invalid definition: {e}"),
-            )
-        })?;
+
+        let definition = Definition::from_str(&buf)?;
 
         // Allow for options?
-        let mut sequence = Vec::with_capacity(self.config.fasta_sequence_buffer_capacity);
-        if self.reader.read_sequence(&mut sequence).await? == 0 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "invalid record",
-            ));
+        // let mut sequence = Vec::with_capacity(self.config.fasta_sequence_buffer_capacity);
+        self.sequence_buffer.clear();
+        if self.reader.read_sequence(&mut self.sequence_buffer).await? == 0 {
+            return Err(ExonFastaError::ParseError("invalid sequence".to_string()));
         }
-        let sequence = Sequence::from(sequence);
-
+        let sequence = Sequence::from_iter(self.sequence_buffer.iter().copied());
         let record = Record::new(definition, sequence);
 
         Ok(Some(record))
     }
 
-    async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
+    async fn read_batch(&mut self) -> ExonFastaResult<Option<RecordBatch>> {
         let mut record_batch = FASTAArrayBuilder::with_capacity(self.config.batch_size);
 
         for _ in 0..self.config.batch_size {
@@ -100,12 +102,12 @@ where
     }
 
     /// Converts the reader into a stream of batches.
-    pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
+    pub fn into_stream(self) -> impl Stream<Item = ExonFastaResult<RecordBatch>> {
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),
                 Ok(None) => None,
-                Err(e) => Some((Err(ArrowError::ExternalError(Box::new(e))), reader)),
+                Err(e) => Some((Err(e), reader)),
             }
         })
     }

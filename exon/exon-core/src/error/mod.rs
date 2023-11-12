@@ -16,6 +16,7 @@ use std::{error::Error, fmt::Display};
 
 use arrow::error::ArrowError;
 use datafusion::error::DataFusionError;
+use noodles::bgzf::virtual_position::TryFromU64U16TupleError;
 
 /// Error for an invalid region.
 pub mod invalid_region;
@@ -75,6 +76,12 @@ impl From<std::io::Error> for ExonError {
 impl From<object_store::Error> for ExonError {
     fn from(error: object_store::Error) -> Self {
         ExonError::ObjectStoreError(error)
+    }
+}
+
+impl From<TryFromU64U16TupleError> for ExonError {
+    fn from(_error: TryFromU64U16TupleError) -> Self {
+        ExonError::ExecutionError("Error creating virtual position".to_string())
     }
 }
 

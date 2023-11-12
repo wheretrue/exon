@@ -40,3 +40,8 @@ lto = true
 [profile.profiling]
 debug = true
 inherits = "release"
+
+[profile.quick-bench]
+debug = true
+inherits = "release"
+lto = false
