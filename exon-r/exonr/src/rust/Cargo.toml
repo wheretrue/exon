@@ -8,9 +8,9 @@ crate-type = ['staticlib']
 name = 'exonr'
 
 [dependencies]
-arrow = {version = "46", features = ["ffi"]}
-datafusion = "31"
-exon = {version = "0.3.4-beta.3", features = ["all"]}
+arrow = {version = "47", features = ["ffi"]}
+datafusion = "32"
+exon = {version = "0.3.9", features = ["all"]}
 extendr-api = '*'
 tokio = {version = '1', features = ['rt']}
 url = "2.4.0"
