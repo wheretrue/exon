@@ -1,5 +1,5 @@
 test_that("reading a FASTA works", {
-    batch_reader <- read_fasta_file("../../../../exon/exon-core/test-data/datasources/fasta/test.fa")
+    batch_reader <- read_fasta_file("../../../../exon/exon-core/test-data/datasources/fasta/test.fasta")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
@@ -10,7 +10,7 @@ test_that("reading a FASTA works", {
 })
 
 test_that("reading a FASTQ works", {
-    batch_reader <- read_fastq_file("../../../../exon/exon-core/test-data/datasources/fastq/test.fq")
+    batch_reader <- read_fastq_file("../../../../exon/exon-core/test-data/datasources/fastq/test.fastq")
     df <- as.data.frame(batch_reader$read_table())
 
     # Check the column names are what's expected.
