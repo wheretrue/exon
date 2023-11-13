@@ -44,10 +44,8 @@ impl ExomeSession {
         url: String,
         organization_name: String,
         token: String,
-    ) -> Result<Self, DataFusionError> {
-        let client = ExomeCatalogClient::connect(url, organization_name, token)
-            .await
-            .map_err(|e| DataFusionError::Execution(format!("Error connecting to Exome {}", e)))?;
+    ) -> ExomeResult<Self> {
+        let client = ExomeCatalogClient::connect(url, organization_name, token).await?;
 
         let extension_manager = ExomeCatalogManager::new(client.clone());
 
@@ -210,10 +208,7 @@ impl ExonClient for ExomeSession {
             .client
             .clone()
             .get_catalogs(organization_name, library_name)
-            .await
-            .map_err(|e| {
-                DataFusionError::Execution(format!("Error getting catalogs for library {}", e))
-            })?;
+            .await?;
 
         for catalog in exome_catalogs {
             let catalog_name = catalog.name.clone();

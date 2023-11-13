@@ -38,14 +38,8 @@ pub struct LocalExomeSession {
 }
 
 impl LocalExomeSession {
-    pub async fn connect(
-        url: String,
-        organization_id: String,
-        token: String,
-    ) -> Result<Self, DataFusionError> {
-        let client = ExomeCatalogClient::connect(url, organization_id, token)
-            .await
-            .map_err(|e| DataFusionError::Execution(format!("Error connecting to Exome {}", e)))?;
+    pub async fn connect(url: String, organization_id: String, token: String) -> ExomeResult<Self> {
+        let client = ExomeCatalogClient::connect(url, organization_id, token).await?;
 
         let extension_manager = ExomeCatalogManager::new(client.clone());
 
@@ -138,14 +132,7 @@ impl ExonClient for LocalExomeSession {
             .get_extension::<ExomeCatalogManager>()
             .unwrap();
 
-        let exome_catalogs = manager
-            .client
-            .clone()
-            .get_catalogs(library_id)
-            .await
-            .map_err(|e| {
-                DataFusionError::Execution(format!("Error getting catalogs for library {}", e))
-            })?;
+        let exome_catalogs = manager.client.clone().get_catalogs(library_id).await?;
 
         for catalog in exome_catalogs {
             let catalog_name = catalog.name.clone();

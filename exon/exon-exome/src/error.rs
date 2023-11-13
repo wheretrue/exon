@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::env::VarError;
+use std::{env::VarError, error::Error};
 
 use datafusion::error::DataFusionError;
 
@@ -58,5 +58,7 @@ impl std::fmt::Display for ExomeError {
         }
     }
 }
+
+impl Error for ExomeError {}
 
 pub type ExomeResult<T> = std::result::Result<T, ExomeError>;
