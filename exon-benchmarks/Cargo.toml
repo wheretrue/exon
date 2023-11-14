@@ -15,4 +15,4 @@ exon = {path = "../exon/exon-core", features = ["all"]}
 noodles = {version = "0.57", features = ["core", "vcf", "bgzf"]}
 tokio = {version = "1", features = ["full"]}
 tracing = "0.1.40"
-tracing-subscriber = "0.3.17"
+tracing-subscriber = "0.3.18"
