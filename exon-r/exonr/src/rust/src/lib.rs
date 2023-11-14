@@ -102,17 +102,15 @@ impl RDataFrame {
 
         let runtime = Arc::new(Runtime::new().unwrap());
 
-        let stream = runtime
-            .block_on(async {
-                self.0.clone().execute_stream().await.map_err(|e| {
-                    Error::from(format!(
-                        "Error executing query: {}\n{}",
-                        "self.0.execute_stream().await",
-                        e.to_string()
-                    ))
-                })
+        let stream = runtime.block_on(async {
+            self.0.clone().execute_stream().await.map_err(|e| {
+                Error::from(format!(
+                    "Error executing query: {}\n{}",
+                    "self.0.execute_stream().await",
+                    e.to_string()
+                ))
             })
-            .unwrap();
+        })?;
 
         let dataset_record_batch_stream = DataFrameRecordBatchStream::new(stream, runtime);
 
