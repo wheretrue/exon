@@ -119,6 +119,19 @@ test_that("reading a mzml file works", {
     expect_equal(nrow(df), 2)
 })
 
+test_that("querying an exon session to a dataframe works", {
+    session <- ExonRSessionContext$new()
+    session$execute("CREATE EXTERNAL TABLE gene_annotations STORED AS GFF LOCATION '../../../../exon/exon-core/test-data/datasources/gff/test.gff'")
+
+    rdf <- session$sql("SELECT seqname, source, type, start, \"end\", score, strand, phase FROM gene_annotations")
+    arrow_obj <- rdf$to_arrow()
+
+    df <- data.frame(arrow_obj)
+
+    expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase"))
+    expect_equal(nrow(df), 5000)
+})
+
 test_that("querying an exon session works", {
     skip_if_not(requireNamespace("duckdb", quietly = TRUE))
 
