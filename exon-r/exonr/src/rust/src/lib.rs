@@ -95,28 +95,25 @@ impl RDataFrame {
         self.clone()
     }
 
-    pub fn to_arrow(&self, stream_ptr: &str) -> Result<()> {
+    pub fn to_arrow(&self, stream_ptr: &str) -> list::List {
         let stream_out_ptr_addr: usize = stream_ptr.parse().unwrap();
 
         let stream_out_ptr = stream_out_ptr_addr as *mut FFI_ArrowArrayStream;
 
         let runtime = Arc::new(Runtime::new().unwrap());
 
-        let stream = runtime.block_on(async {
-            self.0.clone().execute_stream().await.map_err(|e| {
-                Error::from(format!(
-                    "Error executing query: {}\n{}",
-                    "self.0.execute_stream().await",
-                    e.to_string()
-                ))
-            })
-        })?;
+        let stream = match runtime.block_on(async { self.0.clone().execute_stream().await }) {
+            Ok(stream) => stream,
+            Err(e) => {
+                return r_result_list::<(), Error>(Err(Error::Other("Error".to_string())));
+            }
+        };
 
         let dataset_record_batch_stream = DataFrameRecordBatchStream::new(stream, runtime);
 
         unsafe { export_reader_into_raw(Box::new(dataset_record_batch_stream), stream_out_ptr) }
 
-        Ok(())
+        r_result_list::<(), Error>(Ok(()))
     }
 }
 
@@ -146,40 +143,45 @@ impl ExonSessionContext {
         Ok(Self::default())
     }
 
-    fn sql(&mut self, query: &str) -> Result<RDataFrame> {
-        let df = self.runtime.block_on(self.ctx.sql(query)).map_err(|e| {
+    fn sql(&mut self, query: &str) -> list::List {
+        let df = match self.runtime.block_on(self.ctx.sql(query)).map_err(|e| {
             Error::from(format!(
                 "Error executing query: {}\n{}",
                 query,
                 e.to_string()
             ))
-        })?;
+        }) {
+            Ok(df) => df,
+            Err(e) => {
+                return r_result_list::<RDataFrame, Error>(Err(e));
+            }
+        };
 
         let rdf = RDataFrame::from(df);
 
-        Ok(rdf)
+        r_result_list::<RDataFrame, Error>(Ok(rdf))
     }
 
     /// Eagerly execute a query and return the results.
-    fn execute(&mut self, query: &str) -> Result<()> {
+    fn execute(&mut self, query: &str) -> list::List {
         self.runtime.block_on(async {
-            let df = self.ctx.sql(query).await.map_err(|e| {
+            let df = match self.ctx.sql(query).await.map_err(|e| {
                 Error::from(format!(
                     "Error executing query: {}\n{}",
                     query,
                     e.to_string()
                 ))
-            })?;
+            }) {
+                Ok(df) => df,
+                Err(e) => {
+                    return r_result_list::<(), Error>(Err(e));
+                }
+            };
 
-            df.collect().await.map_err(|e| {
-                Error::from(format!(
-                    "Error collecting results: {}\n{}",
-                    query,
-                    e.to_string()
-                ))
-            })?;
-
-            Ok::<(), Error>(())
+            match df.collect().await {
+                Ok(_) => r_result_list::<(), Error>(Ok(())),
+                Err(e) => r_result_list::<(), Error>(Err(Error::Other(e.to_string()))),
+            }
         })
     }
 }

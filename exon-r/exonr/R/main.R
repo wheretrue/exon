@@ -223,14 +223,21 @@ ExonRSessionContext <- R6Class("ExonRSessionContext",
         #' @description Execute an SQL query.
         #' @param query The SQL query to execute. Returns an ExonDataFrame.
         sql = function(query) {
-            df <- private$exon_session_context$sql(query)
+            result <- private$exon_session_context$sql(query)
+            if (!is.null(result$err)) {
+                stop(result$err)
+            }
 
-            return(ExonDataFrame$new(df))
+            return(ExonDataFrame$new(result$ok))
         },
         #' @description Execute an SQL query.
         #' @param query The SQL query to execute. Runs eagerly.
         execute = function(query) {
-            private$exon_session_context$execute(query)
+            result <- private$exon_session_context$execute(query)
+
+            if (!is.null(result$err)) {
+                stop(result$err)
+            }
         }
     ),
     private = list(
