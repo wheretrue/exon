@@ -14,11 +14,12 @@
 
 use std::sync::Arc;
 
-use arrow::error::Result as ArrowResult;
-use arrow::{error::ArrowError, record_batch::RecordBatch};
+use arrow::record_batch::RecordBatch;
 use noodles::fastq;
 
 use tokio::io::AsyncBufRead;
+
+use crate::error::ExonFastqResult;
 
 use super::{array_builder::FASTQArrayBuilder, FASTQConfig};
 
@@ -41,7 +42,7 @@ where
     }
 
     /// Stream built `RecordBatch`es from the underlying FASTQ reader.
-    pub fn into_stream(self) -> impl futures::Stream<Item = Result<RecordBatch, ArrowError>> {
+    pub fn into_stream(self) -> impl futures::Stream<Item = ExonFastqResult<RecordBatch>> {
         futures::stream::try_unfold(self, |mut reader| async move {
             match reader.read_batch(reader.config.batch_size).await? {
                 Some(batch) => Ok(Some((batch, reader))),
@@ -50,7 +51,7 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::fastq::Record>> {
+    async fn read_record(&mut self) -> ExonFastqResult<Option<noodles::fastq::Record>> {
         let mut record = fastq::Record::default();
 
         match self.reader.read_record(&mut record).await? {
@@ -59,7 +60,7 @@ where
         }
     }
 
-    async fn read_batch(&mut self, batch_size: usize) -> ArrowResult<Option<RecordBatch>> {
+    async fn read_batch(&mut self, batch_size: usize) -> ExonFastqResult<Option<RecordBatch>> {
         let mut array = FASTQArrayBuilder::create();
 
         for _ in 0..batch_size {

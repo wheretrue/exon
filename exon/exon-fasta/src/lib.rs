@@ -11,13 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//! Crate to support reading FASTA files into Arrow arrays.
+//!
+//! Part of the Exon project. See the [Exon documentation](https://www.wheretrue.dev/docs/exon/) for more information.
 
 mod array_builder;
 mod batch_reader;
 mod config;
 mod error;
 
-pub use array_builder::FASTAArrayBuilder;
 pub use batch_reader::BatchReader;
 pub use config::new_fasta_schema_builder;
 pub use config::FASTAConfig;

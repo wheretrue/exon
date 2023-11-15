@@ -37,7 +37,7 @@ impl FASTQConfig {
     /// Create a new FASTQ configuration.
     pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
         Self {
-            batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
+            batch_size: exon_common::DEFAULT_BATCH_SIZE,
             object_store,
             file_schema: new_fastq_schema_builder().build().file_schema().unwrap(),
             projection: None,

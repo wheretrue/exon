@@ -16,6 +16,7 @@ use std::{error::Error, fmt::Display};
 
 use arrow::error::ArrowError;
 
+/// An error returned when reading a FASTA file fails for some reason.
 #[derive(Debug)]
 pub enum ExonFastaError {
     InvalidDefinition(String),

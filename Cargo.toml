@@ -8,18 +8,19 @@ version = "0.3.9"
 
 [workspace]
 members = [
-  "exon/exon-core",
-  "exon/exon-io",
-  "exon/exon-exome",
-  "exon/exon-bam",
-  "exon/exon-sam",
-  "exon/exon-fasta",
-  "exon/exon-test",
-  "exon/exon-common",
-  "exon/exon-gff",
   "exon-benchmarks",
-  "exon-examples",
   "exon-cli",
+  "exon-examples",
+  "exon/exon-bam",
+  "exon/exon-common",
+  "exon/exon-core",
+  "exon/exon-exome",
+  "exon/exon-fasta",
+  "exon/exon-fastq",
+  "exon/exon-gff",
+  "exon/exon-io",
+  "exon/exon-sam",
+  "exon/exon-test",
 ]
 resolver = "2"
 

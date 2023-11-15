@@ -19,3 +19,5 @@ pub use object_store_files_from_table_path::object_store_files_from_table_path;
 mod table_schema;
 pub use table_schema::TableSchema;
 pub use table_schema::TableSchemaBuilder;
+
+pub const DEFAULT_BATCH_SIZE: usize = 8 * 1024;

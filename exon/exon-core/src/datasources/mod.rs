@@ -14,7 +14,7 @@
 
 //! Datasources module.
 //!
-//! This module contains the various datasources that are supported by Exon. Generally a user of this library should not need to use this module directly, but rather use the [`ExonSessionExt`][crate::context::ExonSessionExt] trait to load data.
+//! This module contains the various datasources that are supported by Exon. Generally a user of this library should not need to use this module directly, but rather use the [`ExonSessionExt`][crate::session_context::ExonSessionExt] trait to load data.
 
 /// BAM module.
 pub mod bam;
