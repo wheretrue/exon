@@ -16,6 +16,7 @@
 mod array_builder;
 mod batch_reader;
 mod config;
+mod error;
 
 pub use batch_reader::BatchReader;
 pub use config::new_fastq_schema_builder;

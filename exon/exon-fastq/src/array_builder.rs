@@ -14,11 +14,10 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayBuilder, ArrayRef, GenericStringBuilder},
-    error::ArrowError,
-};
+use arrow::array::{ArrayBuilder, ArrayRef, GenericStringBuilder};
 use noodles::fastq::Record;
+
+use crate::error::ExonFastqResult;
 
 /// A FASTQ record array builder.
 pub struct FASTQArrayBuilder {
@@ -47,24 +46,24 @@ impl FASTQArrayBuilder {
     }
 
     /// Appends a record.
-    pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
-        let name = std::str::from_utf8(record.name()).unwrap();
+    pub fn append(&mut self, record: &Record) -> ExonFastqResult<()> {
+        let name = std::str::from_utf8(record.name())?;
         self.names.append_value(name);
 
         let desc = record.description();
         if desc.is_empty() {
             self.descriptions.append_null();
         } else {
-            let desc_str = std::str::from_utf8(desc).unwrap();
+            let desc_str = std::str::from_utf8(desc)?;
             self.descriptions.append_value(desc_str);
         }
 
         let record_sequence = record.sequence();
-        let sequence = std::str::from_utf8(record_sequence).unwrap();
+        let sequence = std::str::from_utf8(record_sequence)?;
         self.sequences.append_value(sequence);
 
         let record_quality = record.quality_scores();
-        let quality = std::str::from_utf8(record_quality).unwrap();
+        let quality = std::str::from_utf8(record_quality)?;
         self.quality_scores.append_value(quality);
 
         Ok(())
