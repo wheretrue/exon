@@ -25,10 +25,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream, Statistics,
     },
 };
+use exon_fastq::FASTQConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::FASTQConfig, file_opener::FASTQOpener};
+use super::file_opener::FASTQOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for FASTQ files.

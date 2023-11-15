@@ -24,7 +24,7 @@
 //!
 //! To facilitate those methods, Exon implements a number of traits for DataFusion that serve as a good base for scientific data work. See the [`datasources`] module for more information.
 //!
-//! [`ExonSessionExt`]: context::ExonSessionExt
+//! [`ExonSessionExt`]: session_context::ExonSessionExt
 //! [`datasources`]: datasources
 //!
 //! # Examples

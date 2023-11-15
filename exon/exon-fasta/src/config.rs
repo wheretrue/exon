@@ -42,7 +42,7 @@ impl FASTAConfig {
         Self {
             object_store,
             file_schema,
-            batch_size: 8192,
+            batch_size: exon_common::DEFAULT_BATCH_SIZE,
             projection: None,
             fasta_sequence_buffer_capacity: 384, // TODO: have this us a param
         }
@@ -79,6 +79,7 @@ impl FASTAConfig {
     }
 }
 
+/// Create a new FASTA schema builder.
 pub fn new_fasta_schema_builder() -> TableSchemaBuilder {
     TableSchemaBuilder::new_with_field_fields(vec![
         Field::new("id", DataType::Utf8, false),

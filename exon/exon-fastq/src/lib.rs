@@ -11,16 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//! Crate to support reading FASTQ files.
 
-//! FASTQ data source.
-//!
-//! This module provides functionality for working with FASTQ files as a data source.
+mod array_builder;
+mod batch_reader;
+mod config;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for FASTQ files.
-pub mod table_provider;
-
-pub use self::file_opener::FASTQOpener;
-pub use self::scanner::FASTQScan;
+pub use batch_reader::BatchReader;
+pub use config::new_fastq_schema_builder;
+pub use config::FASTQConfig;

@@ -30,6 +30,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
+use exon_fastq::new_fastq_schema_builder;
 use futures::TryStreamExt;
 
 use crate::{
@@ -39,7 +40,7 @@ use crate::{
     },
 };
 
-use super::{config::new_fastq_schema_builder, FASTQScan};
+use super::FASTQScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table

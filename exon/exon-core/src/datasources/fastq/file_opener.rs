@@ -21,10 +21,9 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_fastq::{BatchReader, FASTQConfig};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::FASTQConfig};
 
 /// Implements a datafusion `FileOpener` for FASTQ files.
 pub struct FASTQOpener {
