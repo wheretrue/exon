@@ -13,7 +13,7 @@ version = {workspace = true}
 [dependencies]
 arrow = {workspace = true}
 futures = {workspace = true}
-itertools = "0.11.0"
+itertools = "0.12.0"
 noodles = {version = "0.59", features = ["core", "async", "bam", "sam", "bgzf"]}
 object_store = {workspace = true}
 tokio = {workspace = true}
