@@ -13,7 +13,7 @@ version.workspace = true
 arrow = {workspace = true}
 exon-common = {path = "../exon-common", version = "0.3.9"}
 futures = {workspace = true}
-noodles = {version = "0.57", features = ["core", "async", "fasta"]}
+noodles = {version = "0.59", features = ["core", "async", "fasta"]}
 object_store = {workspace = true}
 tokio = {workspace = true}
 tokio-util = {workspace = true}
