@@ -27,7 +27,7 @@ exon-io = {path = "../exon-io", version = "0.3.9"}
 flate2 = {version = "1.0.28", optional = true}
 futures = {workspace = true}
 gb-io = {version = "0.7.1", optional = true}
-itertools = "0.11.0"
+itertools = "0.12.0"
 noodles = {version = "0.59", features = ["bed", "tabix", "core", "async", "sam", "bcf", "vcf", "bgzf", "csi", "gtf"]}
 num_cpus = "1.16.0"
 object_store = {workspace = true, features = ["aws"]}
