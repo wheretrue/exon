@@ -18,6 +18,7 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 
 use datafusion::error::Result;
 
+/// A builder for `TableSchema`.
 pub struct TableSchemaBuilder {
     file_fields: Vec<Field>,
     partition_fields: Vec<Field>,

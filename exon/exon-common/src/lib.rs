@@ -11,13 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//! Common utilities for Exon.
 
 mod object_store_files_from_table_path;
 
-pub use object_store_files_from_table_path::object_store_files_from_table_path;
-
 mod table_schema;
+
+pub use object_store_files_from_table_path::object_store_files_from_table_path;
 pub use table_schema::TableSchema;
 pub use table_schema::TableSchemaBuilder;
 
+/// Default batch size for reading and writing.
 pub const DEFAULT_BATCH_SIZE: usize = 8 * 1024;

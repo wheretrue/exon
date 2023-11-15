@@ -17,6 +17,7 @@ use std::io::Result;
 use futures::{stream::BoxStream, StreamExt, TryStreamExt};
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 
+/// Returns a stream of object store files for a given table path.
 pub async fn object_store_files_from_table_path<'a>(
     store: &'a dyn ObjectStore,
     url: &'a url::Url,
