@@ -88,7 +88,6 @@ pub async fn get_byte_range_for_file(
             let header: noodles::sam::Header = header.parse().unwrap();
 
             let mut index_reader = noodles::bam::bai::Reader::new(cursor);
-            index_reader.read_header()?;
             let index = index_reader.read_index()?;
 
             let id = header.reference_sequences().get_index_of(region.name());
