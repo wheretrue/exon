@@ -21,7 +21,7 @@ use crate::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
 };
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -75,7 +75,7 @@ pub struct ListingFASTATableOptions {
 
     file_compression_type: FileCompressionType,
 
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingFASTATableOptions {
@@ -92,19 +92,14 @@ impl ListingFASTATableOptions {
 
     /// Infer the base schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
-            .collect::<Vec<_>>();
-
-        let builder = new_fasta_schema_builder().add_partition_fields(partition_fields);
+        let builder =
+            new_fasta_schema_builder().add_partition_fields(self.table_partition_cols.clone());
 
         Ok(builder.build())
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self

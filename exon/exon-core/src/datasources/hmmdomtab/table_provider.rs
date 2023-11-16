@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -77,7 +77,7 @@ pub struct ListingHMMDomTabTableOptions {
     file_compression_type: FileCompressionType,
 
     /// Partition columns for the table
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingHMMDomTabTableOptions {
@@ -93,7 +93,7 @@ impl ListingHMMDomTabTableOptions {
     }
 
     /// Set the partition columns for the table
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -103,14 +103,7 @@ impl ListingHMMDomTabTableOptions {
     /// Infer the schema for the table
     pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = HMMDomTabSchemaBuilder::default();
-
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
-            .collect();
-
-        schema_builder.add_partition_fields(partition_fields);
+        schema_builder.add_partition_fields(self.table_partition_cols.clone());
 
         let table_schema = schema_builder.build();
         Ok(table_schema)

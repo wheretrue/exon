@@ -14,7 +14,7 @@
 
 use std::{str::FromStr, sync::Arc};
 
-use arrow::datatypes::{DataType, SchemaRef};
+use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -72,7 +72,7 @@ impl ExonListingTableFactory {
         file_type: ExonFileType,
         file_compression_type: FileCompressionType,
         location: String,
-        table_partition_cols: Vec<(String, DataType)>,
+        table_partition_cols: Vec<Field>,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let table_path = ListingTableUrl::parse(&location)?;
 
@@ -252,8 +252,8 @@ impl TableProviderFactory for ExonListingTableFactory {
             .table_partition_cols
             .iter()
             .map(|col| match schema.field_with_name(col) {
-                Ok(field) => Ok((field.name().clone(), field.data_type().clone())),
-                Err(_) => Ok((col.clone(), DataType::Utf8)),
+                Ok(f) => Ok(f.clone()),
+                Err(_) => Ok(Field::new(col, DataType::Utf8, true)),
             })
             .collect::<datafusion::common::Result<Vec<_>>>()?
             .into_iter()

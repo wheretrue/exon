@@ -25,9 +25,9 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-arrow = {version = "47"}
+arrow = {version = "48.0.1"}
 async-trait = "0.1.74"
-datafusion = {version = "32", features = ["compression"]}
+datafusion = {version = "33", features = ["compression", "parquet"]}
 futures = "0.3.29"
 object_store = {version = "0.7.1"}
 tokio = {version = "1", features = ["io-util"]}

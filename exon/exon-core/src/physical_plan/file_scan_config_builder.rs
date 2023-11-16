@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use arrow::datatypes::{DataType, SchemaRef};
+use arrow::datatypes::{Field, SchemaRef};
 use datafusion::{
     datasource::{listing::PartitionedFile, physical_plan::FileScanConfig},
     execution::object_store::ObjectStoreUrl,
@@ -29,7 +29,7 @@ pub struct FileScanConfigBuilder {
     projection: Option<Vec<usize>>,
     limit: Option<usize>,
     output_ordering: Vec<Vec<PhysicalSortExpr>>,
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
     infinite_source: bool,
 }
 
@@ -40,11 +40,13 @@ impl FileScanConfigBuilder {
         file_schema: SchemaRef,
         file_groups: Vec<Vec<PartitionedFile>>,
     ) -> Self {
+        let statistics = Statistics::new_unknown(&file_schema.clone());
+
         Self {
             object_store_url,
             file_schema,
             file_groups,
-            statistics: Statistics::default(),
+            statistics,
             projection: None,
             limit: None,
             output_ordering: Vec::new(),
@@ -66,7 +68,7 @@ impl FileScanConfigBuilder {
     }
 
     /// Set the table partition columns.
-    pub fn table_partition_cols(mut self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn table_partition_cols(mut self, table_partition_cols: Vec<Field>) -> Self {
         self.table_partition_cols = table_partition_cols;
         self
     }

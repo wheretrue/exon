@@ -24,7 +24,7 @@ use datafusion::{
     error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream, Statistics,
+        Partitioning, SendableRecordBatchStream,
     },
 };
 use exon_fasta::FASTAConfig;
@@ -78,7 +78,7 @@ impl FASTAScan {
 }
 
 impl Repartitionable for FASTAScan {
-    fn repartitioned(
+    fn exon_repartitioned(
         &self,
         target_partitions: usize,
         _config: &ConfigOptions,
@@ -153,9 +153,5 @@ impl ExecutionPlan for FASTAScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
-    }
-
-    fn statistics(&self) -> Statistics {
-        Statistics::default()
     }
 }

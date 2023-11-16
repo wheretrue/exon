@@ -130,8 +130,4 @@ impl ExecutionPlan for CreateSchemaExec {
             stream,
         )))
     }
-
-    fn statistics(&self) -> datafusion::physical_plan::Statistics {
-        todo!()
-    }
 }

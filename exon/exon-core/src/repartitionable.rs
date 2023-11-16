@@ -18,7 +18,7 @@ use datafusion::error::Result;
 use datafusion::{config::ConfigOptions, physical_plan::ExecutionPlan};
 
 pub trait Repartitionable {
-    fn repartitioned(
+    fn exon_repartitioned(
         &self,
         _target_partitions: usize,
         _config: &ConfigOptions,

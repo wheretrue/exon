@@ -80,7 +80,7 @@ impl HMMDomTabConfig {
     /// Build a decoder for this configuration.
     pub fn build_decoder(&self) -> Decoder {
         let builder = ReaderBuilder::new(self.file_schema.clone())
-            .has_header(false)
+            .with_header(false)
             .with_delimiter(b'\t')
             .with_batch_size(self.batch_size);
 

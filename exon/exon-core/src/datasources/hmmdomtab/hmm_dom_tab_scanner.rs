@@ -22,7 +22,7 @@ use datafusion::{
     },
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
-        SendableRecordBatchStream, Statistics,
+        SendableRecordBatchStream,
     },
 };
 
@@ -136,9 +136,5 @@ impl ExecutionPlan for HMMDomTabScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
-    }
-
-    fn statistics(&self) -> Statistics {
-        Statistics::default()
     }
 }

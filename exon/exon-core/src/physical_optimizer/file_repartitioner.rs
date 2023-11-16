@@ -27,19 +27,16 @@ use datafusion::{
 
 use itertools::Itertools;
 
-use crate::{
-    datasources::{
-        bam::{BAMScan, IndexedBAMScan},
-        bed::BEDScan,
-        fasta::FASTAScan,
-        fastq::FASTQScan,
-        gff::GFFScan,
-        gtf::GTFScan,
-        hmmdomtab::HMMDomTabScan,
-        sam::SAMScan,
-        vcf::{IndexedVCFScanner, VCFScan},
-    },
-    repartitionable::Repartitionable,
+use crate::datasources::{
+    bam::{BAMScan, IndexedBAMScan},
+    bed::BEDScan,
+    fasta::FASTAScan,
+    fastq::FASTQScan,
+    gff::GFFScan,
+    gtf::GTFScan,
+    hmmdomtab::HMMDomTabScan,
+    sam::SAMScan,
+    vcf::{IndexedVCFScanner, VCFScan},
 };
 
 #[cfg(feature = "fcs")]
