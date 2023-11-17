@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -75,7 +75,7 @@ pub struct ListingGFFTableOptions {
 
     file_compression_type: FileCompressionType,
 
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingGFFTableOptions {
@@ -91,7 +91,7 @@ impl ListingGFFTableOptions {
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -102,13 +102,7 @@ impl ListingGFFTableOptions {
     pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let schema = new_gff_schema_builder();
 
-        let table_partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
-            .collect::<Vec<_>>();
-
-        let schema = schema.add_partition_fields(table_partition_fields);
+        let schema = schema.add_partition_fields(self.table_partition_cols.clone());
 
         Ok(schema.build())
     }

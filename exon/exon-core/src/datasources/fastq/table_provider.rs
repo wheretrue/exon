@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -78,7 +78,7 @@ pub struct ListingFASTQTableOptions {
     file_compression_type: FileCompressionType,
 
     /// The table partition columns
-    table_partition_cols: Vec<(String, arrow::datatypes::DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingFASTQTableOptions {
@@ -94,7 +94,7 @@ impl ListingFASTQTableOptions {
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -103,13 +103,8 @@ impl ListingFASTQTableOptions {
 
     /// Infer the schema for the underlying files
     pub fn infer_schema(&self) -> TableSchema {
-        let table_partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
-            .collect::<Vec<_>>();
-
-        let builder = new_fastq_schema_builder().add_partition_fields(table_partition_fields);
+        let builder =
+            new_fastq_schema_builder().add_partition_fields(self.table_partition_cols.clone());
         builder.build()
     }
 

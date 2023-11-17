@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -77,7 +77,7 @@ pub struct ListingMzMLTableOptions {
     file_compression_type: FileCompressionType,
 
     /// The table partition columns
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingMzMLTableOptions {
@@ -93,7 +93,7 @@ impl ListingMzMLTableOptions {
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -103,14 +103,7 @@ impl ListingMzMLTableOptions {
     /// Infer the schema for the table (i.e. the file and partition columns)
     pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = MzMLSchemaBuilder::default();
-
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
-            .collect();
-
-        schema_builder.add_partition_fields(partition_fields);
+        schema_builder.add_partition_fields(self.table_partition_cols.clone());
 
         let table_schema = schema_builder.build();
 

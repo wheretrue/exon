@@ -14,7 +14,7 @@
 
 use std::{any::Any, str::FromStr, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -104,7 +104,7 @@ pub struct ListingVCFTableOptions {
     file_compression_type: FileCompressionType,
 
     /// A list of table partition columns
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingVCFTableOptions {
@@ -121,7 +121,7 @@ impl ListingVCFTableOptions {
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -153,16 +153,10 @@ impl ListingVCFTableOptions {
             .map(|s| s.vcf_parse_formats)
             .unwrap_or(false);
 
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
         let mut builder = VCFSchemaBuilder::default()
             .with_parse_info(vcf_parse_info)
             .with_parse_formats(vcf_parse_formats)
-            .with_partition_fields(partition_fields);
+            .with_partition_fields(self.table_partition_cols.clone());
 
         let header = match self.file_compression_type {
             FileCompressionType::GZIP => {
@@ -354,7 +348,7 @@ impl TableProvider for ListingVCFTable {
                 object_store_url,
                 file_schema: self.table_schema.file_schema()?,
                 file_groups: vec![file_list],
-                statistics: Statistics::default(),
+                statistics: Statistics::new_unknown(&self.table_schema.file_schema().unwrap()),
                 projection: projection.cloned(),
                 limit,
                 output_ordering: Vec::new(),
@@ -399,7 +393,7 @@ impl TableProvider for ListingVCFTable {
             object_store_url: object_store_url.clone(),
             file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_partitions],
-            statistics: Statistics::default(),
+            statistics: Statistics::new_unknown(&self.table_schema.file_schema().unwrap()),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),

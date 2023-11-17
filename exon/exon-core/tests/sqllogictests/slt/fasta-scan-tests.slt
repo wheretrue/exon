@@ -29,6 +29,11 @@ SELECT id, description, sequence FROM fasta_table;
 a description ATCG
 b description2 ATCG
 
+query T
+SELECT COUNT(*) FROM fasta_table;
+----
+2
+
 statement ok
 DROP TABLE fasta_table;
 

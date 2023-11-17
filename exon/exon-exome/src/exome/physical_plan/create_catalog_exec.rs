@@ -127,8 +127,4 @@ impl ExecutionPlan for CreateCatalogExec {
             stream,
         )))
     }
-
-    fn statistics(&self) -> datafusion::physical_plan::Statistics {
-        todo!()
-    }
 }

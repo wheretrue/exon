@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use arrow::{
     error::{ArrowError, Result as ArrowResult},
-    record_batch::RecordBatch,
+    record_batch::{RecordBatch, RecordBatchOptions},
 };
 use futures::Stream;
 use noodles::{
@@ -209,8 +209,10 @@ where
             }
         }
 
+        let options = RecordBatchOptions::new().with_row_count(Some(builder.rows()));
+
         let schema = self.config.projected_schema()?;
-        let batch = RecordBatch::try_new(schema, builder.finish())?;
+        let batch = RecordBatch::try_new_with_options(schema, builder.finish(), &options)?;
 
         Ok(Some(batch))
     }

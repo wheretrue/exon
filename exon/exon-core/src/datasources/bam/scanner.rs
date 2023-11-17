@@ -19,7 +19,7 @@ use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream, Statistics,
+        Partitioning, SendableRecordBatchStream,
     },
 };
 use exon_bam::BAMConfig;
@@ -140,9 +140,5 @@ impl ExecutionPlan for BAMScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
-    }
-
-    fn statistics(&self) -> Statistics {
-        Statistics::default()
     }
 }

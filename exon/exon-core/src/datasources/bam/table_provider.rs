@@ -14,7 +14,7 @@
 
 use std::{any::Any, str::FromStr, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -97,7 +97,7 @@ pub struct ListingBAMTableOptions {
 
     indexed: bool,
 
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 
     tag_as_struct: bool,
 }
@@ -115,7 +115,7 @@ impl Default for ListingBAMTableOptions {
 
 impl ListingBAMTableOptions {
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -129,13 +129,8 @@ impl ListingBAMTableOptions {
         table_path: &ListingTableUrl,
     ) -> datafusion::error::Result<TableSchema> {
         if !self.tag_as_struct {
-            let partition_fields = self
-                .table_partition_cols
-                .iter()
-                .map(|f| Field::new(&f.0, f.1.clone(), false))
-                .collect::<Vec<_>>();
-
-            let builder = SAMSchemaBuilder::default().with_partition_fields(partition_fields);
+            let builder = SAMSchemaBuilder::default()
+                .with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone
             let table_schema = builder.build();
 
             return Ok(table_schema);
@@ -176,13 +171,7 @@ impl ListingBAMTableOptions {
             schema_builder = schema_builder.with_tags_data_type_from_data(&data)?;
         }
 
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
-        schema_builder = schema_builder.with_partition_fields(partition_fields);
+        schema_builder = schema_builder.with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone
 
         let table_schema = schema_builder.build();
 
@@ -333,7 +322,7 @@ impl TableProvider for ListingBAMTable {
                 object_store_url,
                 file_schema: self.table_schema.file_schema()?,
                 file_groups: vec![file_list],
-                statistics: Statistics::default(),
+                statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
                 projection: projection.cloned(),
                 limit,
                 output_ordering: Vec::new(),
@@ -378,7 +367,7 @@ impl TableProvider for ListingBAMTable {
             object_store_url: object_store_url.clone(),
             file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_partition_with_ranges],
-            statistics: Statistics::default(),
+            statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),

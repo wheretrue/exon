@@ -20,7 +20,7 @@ use crate::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
 };
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -76,7 +76,7 @@ pub struct ListingBEDTableOptions {
     file_compression_type: FileCompressionType,
 
     /// A list of table partition columns
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingBEDTableOptions {
@@ -92,7 +92,7 @@ impl ListingBEDTableOptions {
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -102,14 +102,7 @@ impl ListingBEDTableOptions {
     /// Infer the schema for the table
     pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = BEDSchemaBuilder::default();
-
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|(name, data_type)| Field::new(name, data_type.clone(), true))
-            .collect::<Vec<_>>();
-
-        schema_builder.add_partition_fields(partition_fields);
+        schema_builder.add_partition_fields(self.table_partition_cols.clone());
 
         Ok(schema_builder.build())
     }

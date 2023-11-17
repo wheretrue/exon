@@ -19,7 +19,7 @@ use std::sync::Arc;
 use arrow::{
     array::{Array, ArrayRef, AsArray, StringBuilder},
     compute::{and, cast, prep_null_mask_filter},
-    datatypes::{DataType, Field, Fields, Schema},
+    datatypes::{Field, Schema},
     record_batch::RecordBatch,
 };
 
@@ -79,7 +79,7 @@ pub async fn pruned_partition_list<'a>(
     table_path: &'a ListingTableUrl,
     filters: &'a [Expr],
     file_extension: &'a str,
-    partition_cols: &'a [(String, DataType)],
+    partition_cols: &'a [Field],
 ) -> Result<BoxStream<'a, Result<PartitionedFile>>> {
     if partition_cols.is_empty() {
         let files = list_all_files(table_path, ctx, store, file_extension)
@@ -94,15 +94,15 @@ pub async fn pruned_partition_list<'a>(
 
     let stream = futures::stream::iter(pruned)
         .map(move |partition: Partition| async move {
-            let cols = partition_cols.iter().map(|x| x.0.as_str());
+            let cols = partition_cols.iter().map(|x| x.name().as_str());
             let parsed = parse_partitions_for_path(table_path, &partition.path, cols);
 
             let partition_values = parsed
                 .into_iter()
                 .flatten()
                 .zip(partition_cols)
-                .map(|(parsed, (_, datatype))| {
-                    ScalarValue::try_from_string(parsed.to_string(), datatype)
+                .map(|(parsed, field)| {
+                    ScalarValue::try_from_string(parsed.to_string(), field.data_type())
                 })
                 .collect::<Result<Vec<_>>>()?;
 
@@ -207,7 +207,7 @@ async fn prune_partitions(
     table_path: &ListingTableUrl,
     partitions: Vec<Partition>,
     filters: &[Expr],
-    partition_cols: &[(String, DataType)],
+    partition_cols: &[Field],
 ) -> Result<Vec<Partition>> {
     if filters.is_empty() {
         return Ok(partitions);
@@ -218,7 +218,7 @@ async fn prune_partitions(
         .collect();
 
     for partition in &partitions {
-        let cols = partition_cols.iter().map(|x| x.0.as_str());
+        let cols = partition_cols.iter().map(|x| x.name().as_str());
         let parsed =
             parse_partitions_for_path(table_path, &partition.path, cols).unwrap_or_default();
 
@@ -232,22 +232,19 @@ async fn prune_partitions(
     let arrays = partition_cols
         .iter()
         .zip(builders)
-        .map(|((_, d), mut builder)| {
+        .map(|(field, mut builder)| {
             let array = builder.finish();
-            cast(&array, d)
+            cast(&array, field.data_type()).map_err(DataFusionError::ArrowError)
         })
         .collect::<Result<_, _>>()?;
 
-    let fields: Fields = partition_cols
-        .iter()
-        .map(|(n, d)| Field::new(n, d.clone(), true))
-        .collect();
-    let schema = Arc::new(Schema::new(fields));
+    // let fields: Fields = partition_cols.collect();
+    let schema = Arc::new(Schema::new(partition_cols.to_vec()));
 
     let df_schema = DFSchema::new_with_metadata(
         partition_cols
             .iter()
-            .map(|(n, d)| DFField::new_unqualified(n, d.clone(), true))
+            .map(|f| DFField::new_unqualified(f.name(), f.data_type().clone(), f.is_nullable())) // TODO: use qualified name, remove clone
             .collect(),
         Default::default(),
     )?;
@@ -259,7 +256,9 @@ async fn prune_partitions(
     // Applies `filter` to `batch` returning `None` on error
     let do_filter = |filter| -> Option<ArrayRef> {
         let expr = create_physical_expr(filter, &df_schema, &schema, &props).ok()?;
-        Some(expr.evaluate(&batch).ok()?.into_array(partitions.len()))
+
+        let eval = expr.evaluate(&batch).ok()?;
+        eval.into_array(partitions.len()).ok()
     };
 
     //.Compute the conjunction of the filters, ignoring errors

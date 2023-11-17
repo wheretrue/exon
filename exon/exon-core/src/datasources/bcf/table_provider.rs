@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -26,7 +26,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use exon_common::TableSchema;
@@ -77,7 +77,7 @@ pub struct ListingBCFTableOptions {
 
     region: Option<Region>,
 
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl Default for ListingBCFTableOptions {
@@ -98,7 +98,7 @@ impl ListingBCFTableOptions {
     }
 
     /// Set the file extension for the table options
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -136,17 +136,11 @@ impl ListingBCFTableOptions {
             .parse::<noodles::vcf::Header>()
             .map_err(|e| DataFusionError::Execution(e.to_string()))?;
 
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
         let mut schema_builder = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_formats(true)
             .with_parse_info(true)
-            .with_partition_fields(partition_fields);
+            .with_partition_fields(self.table_partition_cols.clone());
 
         let table_schema = schema_builder.build()?;
 
@@ -249,7 +243,7 @@ impl TableProvider for ListingBCFTable {
             object_store_url,
             file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_list],
-            statistics: Statistics::default(),
+            statistics: self.statistics().unwrap(),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),

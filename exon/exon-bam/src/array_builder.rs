@@ -94,6 +94,11 @@ impl BAMArrayBuilder {
         }
     }
 
+    /// Return the number of rows in the builder.
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
     /// Appends a record to the builder.
     pub(crate) fn append(&mut self, record: &SemiLazyRecord) -> Result<(), ArrowError> {
         for col_idx in self.projection.iter() {

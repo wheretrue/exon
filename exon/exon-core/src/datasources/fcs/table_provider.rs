@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -79,7 +79,7 @@ pub struct ListingFCSTableOptions {
     file_compression_type: FileCompressionType,
 
     /// The table partition columns
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingFCSTableOptions {
@@ -95,7 +95,7 @@ impl ListingFCSTableOptions {
     }
 
     /// Set the table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -153,15 +153,7 @@ impl ListingFCSTableOptions {
 
         let mut file_schema = FCSSchemaBuilder::new();
         file_schema.add_file_fields(fields);
-
-        // Add partition fields
-        for (partition_col, partition_col_type) in &self.table_partition_cols {
-            file_schema.add_partition_fields(vec![arrow::datatypes::Field::new(
-                partition_col,
-                partition_col_type.clone(),
-                false,
-            )]);
-        }
+        file_schema.add_partition_fields(self.table_partition_cols.clone());
 
         let (schema, projection) = file_schema.build();
 

@@ -14,7 +14,7 @@
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use arrow::datatypes::DataType;
+use arrow::datatypes::{DataType, Field};
 use async_trait::async_trait;
 use datafusion::{
     catalog::schema::SchemaProvider,
@@ -119,7 +119,7 @@ impl SchemaProvider for Schema {
                 proto_table
                     .partition_cols
                     .iter()
-                    .map(|s| (s.clone(), DataType::Utf8))
+                    .map(|s| Field::new(s, DataType::Utf8, true))
                     .collect(),
             )
             .await

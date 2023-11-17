@@ -20,7 +20,7 @@ use datafusion::{
     error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream, Statistics,
+        Partitioning, SendableRecordBatchStream,
     },
 };
 use noodles::core::Region;
@@ -62,7 +62,7 @@ impl IndexedVCFScanner {
 }
 
 impl Repartitionable for IndexedVCFScanner {
-    fn repartitioned(
+    fn exon_repartitioned(
         &self,
         target_partitions: usize,
         _config: &datafusion::config::ConfigOptions,
@@ -139,9 +139,5 @@ impl ExecutionPlan for IndexedVCFScanner {
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
         Ok(Box::pin(stream) as SendableRecordBatchStream)
-    }
-
-    fn statistics(&self) -> Statistics {
-        Statistics::default()
     }
 }

@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -71,26 +71,21 @@ pub struct ListingSAMTableOptions {
     file_extension: String,
 
     /// The table partition columns
-    table_partition_cols: Vec<(String, DataType)>,
+    table_partition_cols: Vec<Field>,
 }
 
 impl ListingSAMTableOptions {
     /// Infer the schema for the table
     pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
-        let partition_fields = self
-            .table_partition_cols
-            .iter()
-            .map(|f| Field::new(&f.0, f.1.clone(), false))
-            .collect::<Vec<_>>();
-
-        let builder = SAMSchemaBuilder::default().with_partition_fields(partition_fields.clone());
+        let builder =
+            SAMSchemaBuilder::default().with_partition_fields(self.table_partition_cols.clone());
 
         let table_schema = builder.build();
         Ok(table_schema)
     }
 
     /// Add table partition columns
-    pub fn with_table_partition_cols(self, table_partition_cols: Vec<(String, DataType)>) -> Self {
+    pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
             ..self
@@ -185,7 +180,7 @@ impl TableProvider for ListingSAMTable {
             object_store_url,
             file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_list],
-            statistics: Statistics::default(),
+            statistics: Statistics::new_unknown(&self.table_schema.file_schema().unwrap()),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),

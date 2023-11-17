@@ -22,7 +22,7 @@ use datafusion::{
     },
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream, Statistics,
+        Partitioning, SendableRecordBatchStream,
     },
 };
 use exon_gff::GFFConfig;
@@ -130,9 +130,5 @@ impl ExecutionPlan for GFFScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
-    }
-
-    fn statistics(&self) -> Statistics {
-        Statistics::default()
     }
 }

@@ -127,8 +127,4 @@ impl ExecutionPlan for DropCatalogExec {
             stream,
         )))
     }
-
-    fn statistics(&self) -> datafusion::physical_plan::Statistics {
-        todo!()
-    }
 }
