@@ -47,7 +47,6 @@ impl IndexedBAMOpener {
 impl FileOpener for IndexedBAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
-        // TODO: push down region
         let region = self.region.clone();
 
         Ok(Box::pin(async move {
