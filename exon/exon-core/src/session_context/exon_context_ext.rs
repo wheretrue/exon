@@ -98,7 +98,7 @@ pub trait ExonSessionExt {
         let round_robin_optimizer = ExonRoundRobin::default();
 
         let mut state = SessionState::new_with_config_rt(config, runtime)
-            .with_physical_optimizer_rules(vec![Arc::new(round_robin_optimizer)]);
+            .add_physical_optimizer_rule(Arc::new(round_robin_optimizer));
 
         let sources = vec![
             "BAM",
