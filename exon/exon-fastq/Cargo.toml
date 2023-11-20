@@ -1,4 +1,5 @@
 [package]
+description = "FASTQ support for Exon."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
