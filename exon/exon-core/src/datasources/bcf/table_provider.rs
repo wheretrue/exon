@@ -39,7 +39,9 @@ use crate::{
     datasources::{
         hive_partition::filter_matches_partition_cols, vcf::VCFSchemaBuilder, ExonFileType,
     },
-    physical_plan::object_store::pruned_partition_list,
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+    },
 };
 
 use super::BCFScan;
@@ -239,17 +241,15 @@ impl TableProvider for ListingBCFTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let file_scan_config = FileScanConfig {
-            object_store_url,
-            file_schema: self.table_schema.file_schema()?,
-            file_groups: vec![file_list],
-            statistics: self.statistics().unwrap(),
-            projection: projection.cloned(),
-            limit,
-            output_ordering: Vec::new(),
-            table_partition_cols: self.options.table_partition_cols.clone(),
-            infinite_source: false,
-        };
+        let file_scan_config = FileScanConfigBuilder::new(
+            object_store_url.clone(),
+            self.table_schema.file_schema()?,
+            vec![file_list],
+        )
+        .projection_option(projection.cloned())
+        .table_partition_cols(self.options.table_partition_cols.clone())
+        .limit_option(limit)
+        .build();
 
         let plan = self
             .options
