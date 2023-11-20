@@ -24,7 +24,13 @@ Therefore, to release the packages you must first release the undepended crates,
 
 First, bump the version in `Cargo.toml`, and bump the version of and inter-crate dependencies.
 
-Commit the changes, and tag the commit with the version number.
+Commit the changes,
+
+```console
+git commit -m 'release: bump version to v0.1.0'
+```
+
+and tag the commit with the version number.
 
 ```console
 git tag -a v0.1.0 -m "Release v0.1.0"
