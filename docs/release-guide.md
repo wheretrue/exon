@@ -9,10 +9,12 @@ flowchart TD
     exon-bam --> exon-core
     exon-common --> exon-core
     exon-fasta --> exon-core
+    exon-fastq --> exon-core
     exon-gff --> exon-core
     exon-io --> exon-core
     exon-core --> exon-exome
     exon-test --dev-dep--> exon-fasta
+    exon-test --dev-dep--> exon-fastq
     exon-test --dev-dep--> exon-gff
     exon-core --> exon-cli
     exon-core --> exon-benchmark
@@ -43,6 +45,7 @@ Then publish the crates:
 cargo publish --manifest-path exon/exon-bam/Cargo.toml
 cargo publish --manifest-path exon/exon-common/Cargo.toml
 cargo publish --manifest-path exon/exon-fasta/Cargo.toml
+cargo publish --manifest-path exon/exon-fastq/Cargo.toml
 cargo publish --manifest-path exon/exon-gff/Cargo.toml
 cargo publish --manifest-path exon/exon-io/Cargo.toml
 
