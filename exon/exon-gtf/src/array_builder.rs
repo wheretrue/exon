@@ -15,9 +15,7 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        ArrayBuilder, ArrayRef, Float32Builder, GenericStringBuilder, Int64Builder, MapBuilder,
-    },
+    array::{ArrayRef, Float32Builder, GenericStringBuilder, Int64Builder, MapBuilder},
     error::ArrowError,
 };
 use noodles::gtf::Record;
@@ -32,6 +30,14 @@ pub struct GTFArrayBuilder {
     strands: GenericStringBuilder<i32>,
     frame: GenericStringBuilder<i32>,
     attributes: MapBuilder<GenericStringBuilder<i32>, GenericStringBuilder<i32>>,
+
+    rows: usize,
+}
+
+impl Default for GTFArrayBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GTFArrayBuilder {
@@ -50,11 +56,16 @@ impl GTFArrayBuilder {
                 GenericStringBuilder::<i32>::new(),
                 GenericStringBuilder::<i32>::new(),
             ),
+            rows: 0,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.seqnames.len()
+        self.rows
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows == 0
     }
 
     pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
@@ -74,6 +85,8 @@ impl GTFArrayBuilder {
         }
 
         self.attributes.append(true)?;
+
+        self.rows += 1;
 
         Ok(())
     }
