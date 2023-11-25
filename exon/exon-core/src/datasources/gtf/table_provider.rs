@@ -30,6 +30,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
+use exon_gtf::new_gtf_schema_builder;
 use futures::TryStreamExt;
 
 use crate::{
@@ -39,7 +40,7 @@ use crate::{
     },
 };
 
-use super::{config::new_gtf_schema_builder, GTFScan};
+use super::GTFScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table

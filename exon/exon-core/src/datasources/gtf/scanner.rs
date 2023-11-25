@@ -25,10 +25,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_gtf::GTFConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::GTFConfig, file_opener::GTFOpener};
+use super::file_opener::GTFOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for GTF files.

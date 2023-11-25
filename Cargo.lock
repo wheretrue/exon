@@ -1474,6 +1474,7 @@ dependencies = [
  "exon-fasta",
  "exon-fastq",
  "exon-gff",
+ "exon-gtf",
  "exon-io",
  "exon-test",
  "flate2",
@@ -1609,6 +1610,18 @@ dependencies = [
  "object_store",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "exon-gtf"
+version = "0.3.11"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "futures",
+ "noodles",
+ "object_store",
+ "tokio",
 ]
 
 [[package]]

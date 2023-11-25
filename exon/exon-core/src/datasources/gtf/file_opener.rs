@@ -21,10 +21,9 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_gtf::{BatchReader, GTFConfig};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::GTFConfig};
 
 /// Implements a datafusion `FileOpener` for GTF files.
 pub struct GTFOpener {

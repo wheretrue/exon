@@ -93,7 +93,7 @@ where
             }
         }
 
-        if gtf_array_builder.len() == 0 {
+        if gtf_array_builder.is_empty() {
             return Ok(None);
         }
 

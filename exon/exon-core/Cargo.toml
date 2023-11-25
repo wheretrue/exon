@@ -23,6 +23,7 @@ exon-common = {path = "../exon-common", version = "0.3.9"}
 exon-fasta = {path = "../exon-fasta", version = "0.3.9"}
 exon-fastq = {path = "../exon-fastq", version = "0.3.9"}
 exon-gff = {path = "../exon-gff", version = "0.3.9"}
+exon-gtf = {path = "../exon-gtf", version = "0.3.9"}
 exon-io = {path = "../exon-io", version = "0.3.9"}
 flate2 = {version = "1.0.28", optional = true}
 futures = {workspace = true}
