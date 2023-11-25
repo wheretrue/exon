@@ -12,6 +12,7 @@ members = [
   "exon-cli",
   "exon-examples",
   "exon/exon-bam",
+  "exon/exon-bed",
   "exon/exon-common",
   "exon/exon-core",
   "exon/exon-exome",

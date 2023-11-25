@@ -1470,6 +1470,7 @@ dependencies = [
  "bytes",
  "datafusion",
  "exon-bam",
+ "exon-bed",
  "exon-common",
  "exon-fasta",
  "exon-fastq",
@@ -1505,6 +1506,19 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
+]
+
+[[package]]
+name = "exon-bed"
+version = "0.3.11"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "futures",
+ "noodles",
+ "object_store",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

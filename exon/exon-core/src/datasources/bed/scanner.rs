@@ -25,10 +25,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_bed::BEDConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::BEDConfig, file_opener::BEDOpener};
+use super::file_opener::BEDOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for BED files.

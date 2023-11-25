@@ -15,14 +15,14 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayBuilder, ArrayRef, GenericStringBuilder, Int64Builder},
+    array::{ArrayRef, GenericStringBuilder, Int64Builder},
     datatypes::{DataType, Field, Schema},
 };
 use exon_common::TableSchema;
 
 use super::bed_record_builder::BEDRecord;
 
-pub(crate) struct BEDSchemaBuilder {
+pub struct BEDSchemaBuilder {
     file_fields: Vec<Field>,
     partition_fields: Vec<Field>,
 }
@@ -86,6 +86,8 @@ pub struct BEDArrayBuilder {
     block_counts: Int64Builder,
     block_sizes: GenericStringBuilder<i32>,
     block_starts: GenericStringBuilder<i32>,
+
+    rows: usize,
 }
 
 impl BEDArrayBuilder {
@@ -103,11 +105,16 @@ impl BEDArrayBuilder {
             block_counts: Int64Builder::new(),
             block_sizes: GenericStringBuilder::<i32>::new(),
             block_starts: GenericStringBuilder::<i32>::new(),
+            rows: 0,
         }
     }
 
     pub fn len(&self) -> usize {
-        self.reference_sequence_names.len()
+        self.rows
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows == 0
     }
 
     pub fn append(&mut self, record: BEDRecord) -> std::io::Result<()> {
@@ -132,6 +139,8 @@ impl BEDArrayBuilder {
 
         self.block_sizes.append_option(record.block_sizes);
         self.block_starts.append_option(record.block_starts);
+
+        self.rows += 1;
 
         Ok(())
     }

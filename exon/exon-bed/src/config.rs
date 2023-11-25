@@ -15,9 +15,8 @@
 use std::sync::Arc;
 
 use arrow::datatypes::SchemaRef;
+use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
-
-use crate::datasources::DEFAULT_BATCH_SIZE;
 
 /// Configuration for a BED datasource.
 #[derive(Debug)]

@@ -21,10 +21,9 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_bed::{BEDConfig, BatchReader};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::BEDConfig};
 
 /// Implements a datafusion `FileOpener` for BED files.
 pub struct BEDOpener {

@@ -35,10 +35,11 @@ use datafusion::{
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
+use exon_bed::BEDSchemaBuilder;
 use exon_common::TableSchema;
 use futures::TryStreamExt;
 
-use super::{array_builder::BEDSchemaBuilder, BEDScan};
+use super::BEDScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table

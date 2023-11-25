@@ -67,7 +67,7 @@ where
             }
         }
 
-        if array_builder.len() == 0 {
+        if array_builder.is_empty() {
             return Ok(None);
         }
 
