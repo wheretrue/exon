@@ -15,10 +15,8 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
-use exon_common::TableSchemaBuilder;
+use exon_common::{TableSchemaBuilder, DEFAULT_BATCH_SIZE};
 use object_store::ObjectStore;
-
-use crate::datasources::DEFAULT_BATCH_SIZE;
 
 pub fn new_gtf_schema_builder() -> TableSchemaBuilder {
     let file_fields = file_fields();
