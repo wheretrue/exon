@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! BED data source.
-//!
-//! This module provides functionality for working with BED files as a data source.
+mod array_builder;
+mod batch_reader;
+mod bed_record_builder;
+mod config;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for BED files.
-pub mod table_provider;
-
-pub use self::file_opener::BEDOpener;
-pub use self::scanner::BEDScan;
+pub use array_builder::BEDArrayBuilder;
+pub use array_builder::BEDSchemaBuilder;
+pub use batch_reader::BatchReader;
+pub use config::BEDConfig;

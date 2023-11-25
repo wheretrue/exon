@@ -1,0 +1,20 @@
+[package]
+description = "Subcrate of the `exon` crate for working with BED files."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "exon-bed"
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrow = {workspace = true}
+exon-common = {path = "../exon-common", version = "0.3.9"}
+futures = {workspace = true}
+noodles = {version = "0.59", features = ["bed"]}
+object_store = {workspace = true}
+tokio = {workspace = true}
+tokio-util = {workspace = true}

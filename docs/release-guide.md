@@ -7,10 +7,12 @@ flowchart TD
     exon-sam --> exon-bam
     exon-sam --> exon-core
     exon-bam --> exon-core
+    exon-bed --> exon-core
     exon-common --> exon-core
     exon-fasta --> exon-core
     exon-fastq --> exon-core
     exon-gff --> exon-core
+    exon-gtf --> exon-core
     exon-io --> exon-core
     exon-core --> exon-exome
     exon-test --dev-dep--> exon-fasta
@@ -43,10 +45,12 @@ Then publish the crates:
 ```console
 # Crates that do not depend on other crates
 cargo publish --manifest-path exon/exon-bam/Cargo.toml
+cargo publish --manifest-path exon/exon-bed/Cargo.toml
 cargo publish --manifest-path exon/exon-common/Cargo.toml
 cargo publish --manifest-path exon/exon-fasta/Cargo.toml
 cargo publish --manifest-path exon/exon-fastq/Cargo.toml
 cargo publish --manifest-path exon/exon-gff/Cargo.toml
+cargo publish --manifest-path exon/exon-gtf/Cargo.toml
 cargo publish --manifest-path exon/exon-io/Cargo.toml
 
 # Crates that depend on other crates
