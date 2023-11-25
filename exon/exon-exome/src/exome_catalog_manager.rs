@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fmt;
+use std::{fmt, str::FromStr};
 
-use crate::{error::ExomeResult, exome::ExomeCatalogClient};
+use crate::{
+    error::{ExomeError, ExomeResult},
+    exome::ExomeCatalogClient,
+};
 
 macro_rules! impl_display_for {
     ($($t:ty),+) => {
@@ -42,6 +45,14 @@ pub struct LibraryName(pub String);
 
 #[derive(Debug, Clone)]
 pub struct OrganizationName(pub String);
+
+impl FromStr for OrganizationName {
+    type Err = ExomeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.to_string()))
+    }
+}
 
 impl_display_for!(
     SchemaName,
@@ -151,6 +162,7 @@ impl ExomeCatalogManager {
 
     pub async fn apply_changes(
         &self,
+        organization_name: OrganizationName,
         change_set: impl IntoIterator<Item = Change>,
     ) -> ExomeResult<()> {
         for change in change_set {
@@ -160,7 +172,7 @@ impl ExomeCatalogManager {
                         .create_catalog(
                             create_catalog.name,
                             create_catalog.library_name,
-                            OrganizationName(self.client.organization_name.clone()),
+                            organization_name.clone(),
                         )
                         .await?;
                 }
@@ -190,6 +202,7 @@ impl ExomeCatalogManager {
                             create_schema.name,
                             create_schema.catalog_name,
                             create_schema.library_name,
+                            organization_name.clone(),
                         )
                         .await?;
                 }

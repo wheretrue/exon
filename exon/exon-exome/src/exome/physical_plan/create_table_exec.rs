@@ -22,8 +22,12 @@ use datafusion::{
 
 use futures::stream;
 
-use crate::exome_catalog_manager::{
-    CatalogName, Change, CreateTable, ExomeCatalogManager, LibraryName, SchemaName, TableName,
+use crate::{
+    exome_catalog_manager::{
+        CatalogName, Change, CreateTable, ExomeCatalogManager, LibraryName, SchemaName, TableName,
+    },
+    exome_config::ExomeConfigExtension,
+    OrganizationName,
 };
 
 use super::CHANGE_SCHEMA;
@@ -70,6 +74,7 @@ impl CreateTableExec {
 
     pub async fn create_table(
         self,
+        organization_name: OrganizationName,
         manager: Arc<ExomeCatalogManager>,
     ) -> Result<RecordBatch, DataFusionError> {
         let changes = vec![Change::CreateTable(CreateTable::new(
@@ -85,7 +90,7 @@ impl CreateTableExec {
         ))];
 
         manager
-            .apply_changes(changes)
+            .apply_changes(organization_name, changes)
             .await
             .map_err(|e| DataFusionError::Execution(format!("Error applying changes: {}", e)))?;
 
@@ -164,8 +169,22 @@ impl ExecutionPlan for CreateTableExec {
             }
         };
 
+        let exome_config = match context
+            .session_config()
+            .get_extension::<ExomeConfigExtension>()
+        {
+            Some(exome_config) => exome_config,
+            None => {
+                return Err(DataFusionError::Execution(
+                    "ExomeConfigExtension not found".to_string(),
+                ))
+            }
+        };
+
         let this = self.clone();
-        let stream = stream::once(this.create_table(exome_catalog_manager));
+        let stream = stream::once(
+            this.create_table(exome_config.exome_organization(), exome_catalog_manager),
+        );
 
         Ok(Box::pin(RecordBatchStreamAdapter::new(
             CHANGE_SCHEMA.clone(),

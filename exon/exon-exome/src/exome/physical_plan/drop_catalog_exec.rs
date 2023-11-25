@@ -22,7 +22,11 @@ use datafusion::{
 
 use futures::stream;
 
-use crate::exome_catalog_manager::{Change, CreateCatalog, ExomeCatalogManager};
+use crate::{
+    exome_catalog_manager::{Change, CreateCatalog, ExomeCatalogManager},
+    exome_config::ExomeConfigExtension,
+    OrganizationName,
+};
 
 use super::CHANGE_SCHEMA;
 
@@ -39,6 +43,7 @@ impl DropCatalogExec {
 
     pub async fn drop_catalog(
         self,
+        organization_name: OrganizationName,
         manager: Arc<ExomeCatalogManager>,
     ) -> Result<RecordBatch, DataFusionError> {
         let changes = vec![Change::CreateCatalog(CreateCatalog::new(
@@ -47,7 +52,7 @@ impl DropCatalogExec {
         ))];
 
         manager
-            .apply_changes(changes)
+            .apply_changes(organization_name, changes)
             .await
             .map_err(|e| DataFusionError::Execution(format!("Error applying changes: {}", e)))?;
 
@@ -119,8 +124,22 @@ impl ExecutionPlan for DropCatalogExec {
             }
         };
 
+        let exome_config = match context
+            .session_config()
+            .get_extension::<ExomeConfigExtension>()
+        {
+            Some(exome_config) => exome_config,
+            None => {
+                return Err(DataFusionError::Execution(
+                    "ExomeConfig not found".to_string(),
+                ))
+            }
+        };
+
         let this = self.clone();
-        let stream = stream::once(this.drop_catalog(exome_catalog_manager));
+        let stream = stream::once(
+            this.drop_catalog(exome_config.exome_organization(), exome_catalog_manager),
+        );
 
         Ok(Box::pin(RecordBatchStreamAdapter::new(
             CHANGE_SCHEMA.clone(),

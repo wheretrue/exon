@@ -29,5 +29,6 @@ pub trait ExonClient {
         &mut self,
         catalog_name: CatalogName,
         library_name: LibraryName,
+        organization_name: OrganizationName,
     ) -> Result<(), ExomeError>;
 }
