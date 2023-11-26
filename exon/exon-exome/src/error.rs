@@ -48,6 +48,17 @@ impl From<tonic::transport::Error> for ExomeError {
     }
 }
 
+impl From<ExomeError> for DataFusionError {
+    fn from(error: ExomeError) -> Self {
+        match error {
+            ExomeError::DataFusionError(e) => e,
+            ExomeError::Execution(e) => DataFusionError::Execution(e),
+            ExomeError::TonicError(e) => DataFusionError::Execution(e.to_string()),
+            ExomeError::EnvironmentError(e) => DataFusionError::Execution(e),
+        }
+    }
+}
+
 impl std::fmt::Display for ExomeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

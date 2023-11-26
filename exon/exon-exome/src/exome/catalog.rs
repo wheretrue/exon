@@ -30,7 +30,6 @@ type CatalogServiceClient =
 /// ExomeCatalogClient is a client for interacting with the Exome Catalog service.
 #[derive(Clone)]
 pub struct ExomeCatalogClient {
-    pub(crate) organization_name: String,
     pub(crate) catalog_service_client: CatalogServiceClient,
     pub(crate) token: String,
 }
@@ -43,17 +42,12 @@ impl ExomeCatalogClient {
     /// # Arguments
     ///
     /// * `url` - The URL of the Exome Catalog service.
-    /// * `organization_name` - The organization name associated with the client.
     /// * `token` - The token to use for authentication.
     ///
     /// # Returns
     ///
     /// An instance of ExomeCatalogClient on success, or a boxed error on failure.
-    pub async fn connect_with_tls(
-        url: String,
-        organization_name: String,
-        token: String,
-    ) -> Result<Self, ExomeError> {
+    pub async fn connect_with_tls(url: String, token: String) -> Result<Self, ExomeError> {
         let tls = tonic::transport::ClientTlsConfig::new();
 
         let channel = tonic::transport::Channel::from_shared(url)
@@ -78,7 +72,6 @@ impl ExomeCatalogClient {
         let _ = health_check_client.check(health_check_request).await?;
 
         let s = Self {
-            organization_name,
             catalog_service_client,
             token,
         };
@@ -92,17 +85,12 @@ impl ExomeCatalogClient {
     /// # Arguments
     ///
     /// * `url` - The URL of the Exome Catalog service.
-    /// * `organization_name` - The organization ID associated with the client.
     /// * `token` - The token to use for authentication.
     ///
     /// # Returns
     ///
     /// An instance of ExomeCatalogClient on success, or a boxed error on failure.
-    pub async fn connect(
-        url: String,
-        organization_name: String,
-        token: String,
-    ) -> Result<Self, ExomeError> {
+    pub async fn connect(url: String, token: String) -> Result<Self, ExomeError> {
         let channel = tonic::transport::Channel::from_shared(url)
             .map_err(|e| {
                 tonic::Status::new(
@@ -117,7 +105,6 @@ impl ExomeCatalogClient {
             proto::catalog_service_client::CatalogServiceClient::new(channel);
 
         let s = Self {
-            organization_name,
             catalog_service_client,
             token,
         };
@@ -151,12 +138,11 @@ impl ExomeCatalogClient {
     /// Retrieves a list of catalogs associated with a specific library from the Exome Catalog service.
     ///
     /// # Arguments
-    ///
-    /// * `library_id` - The ID of the library to retrieve catalogs for.
+    /// * `organization_name` - The name of the organization to retrieve catalogs for.
+    /// * `library_name` - The name of the library to retrieve catalogs for.
     ///
     /// # Returns
-    ///
-    /// A vector containing the retrieved catalogs on success, or a boxed error on failure.
+    /// A list of catalogs associated with the specified library.
     pub async fn get_catalogs(
         &mut self,
         organization_name: OrganizationName,
@@ -180,7 +166,9 @@ impl ExomeCatalogClient {
     ///
     /// # Arguments
     ///
-    /// * `catalog_id` - The ID of the catalog to retrieve schemas for.
+    /// * `organization_name` - The name of the organization to retrieve schemas for.
+    /// * `library_name` - The name of the library to retrieve schemas for.
+    /// * `catalog_name` - The name of the catalog to retrieve schemas for.
     ///
     /// # Returns
     ///
@@ -219,11 +207,12 @@ impl ExomeCatalogClient {
         &mut self,
         name: String,
         library_name: String,
+        organization_name: String,
     ) -> Result<Option<proto::Catalog>, Box<dyn std::error::Error>> {
         let request = tonic::Request::new(proto::GetCatalogRequest {
             name,
             library_name,
-            organization_name: self.organization_name.clone(),
+            organization_name,
         });
 
         let response = self
@@ -250,14 +239,13 @@ impl ExomeCatalogClient {
         })?;
 
         let token = std::env::var("EXON_EXOME_TOKEN")?;
-        let organization_id = std::env::var("EXON_EXOME_ORGANIZATION_ID")?;
 
         let use_tls = std::env::var("EXON_EXOME_USE_TLS")?;
 
         if use_tls == "true" {
-            Self::connect_with_tls(url.to_string(), organization_id, token).await
+            Self::connect_with_tls(url.to_string(), token).await
         } else {
-            Self::connect(url.to_string(), organization_id, token).await
+            Self::connect(url.to_string(), token).await
         }
     }
 
@@ -267,12 +255,13 @@ impl ExomeCatalogClient {
         schema_name: String,
         catalog_name: String,
         library_name: String,
+        organization_name: String,
     ) -> Result<Vec<proto::Table>, ExomeError> {
         let request = self.make_request(proto::ListTablesRequest {
             schema_name,
             catalog_name,
             library_name,
-            organization_name: self.organization_name.clone(),
+            organization_name,
         })?;
 
         let mut client = self.catalog_service_client.clone();
@@ -346,12 +335,13 @@ impl ExomeCatalogClient {
         name: SchemaName,
         catalog_name: CatalogName,
         library_name: LibraryName,
+        organization_name: OrganizationName,
     ) -> Result<String, ExomeError> {
         let request = self.make_request(proto::CreateSchemaRequest {
             name: name.to_string(),
             catalog_name: catalog_name.to_string(),
             library_name: library_name.to_string(),
-            organization_name: self.organization_name.clone(),
+            organization_name: organization_name.to_string(),
         })?;
 
         let mut client = self.catalog_service_client.clone();

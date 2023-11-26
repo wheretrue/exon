@@ -30,6 +30,7 @@ use crate::{
         register_catalog, ExomeCatalogClient,
     },
     exome_catalog_manager::{CatalogName, LibraryName, OrganizationName},
+    exome_config::ExomeConfigExtension,
     exome_extension_planner::DfExtensionNode,
     exon_client::ExonClient,
     ExomeCatalogManager, ExomeExtensionPlanner,
@@ -40,12 +41,8 @@ pub struct ExomeSession {
 }
 
 impl ExomeSession {
-    pub async fn connect(
-        url: String,
-        organization_name: String,
-        token: String,
-    ) -> ExomeResult<Self> {
-        let client = ExomeCatalogClient::connect(url, organization_name, token).await?;
+    pub async fn connect(url: String, token: String) -> ExomeResult<Self> {
+        let client = ExomeCatalogClient::connect(url, token).await?;
 
         let extension_manager = ExomeCatalogManager::new(client.clone());
 
@@ -148,7 +145,11 @@ impl From<ExomeCatalogClient> for ExomeSession {
     fn from(client: ExomeCatalogClient) -> Self {
         let extension_manager = ExomeCatalogManager::new(client.clone());
 
-        let config = new_exon_config().with_extension(Arc::new(extension_manager));
+        let mut config = new_exon_config().with_extension(Arc::new(extension_manager));
+        config
+            .options_mut()
+            .extensions
+            .insert(ExomeConfigExtension::default());
 
         let session = SessionContext::with_config_exon(config);
 
@@ -162,6 +163,7 @@ impl ExonClient for ExomeSession {
         &mut self,
         catalog_name: CatalogName,
         library_name: LibraryName,
+        organization_name: OrganizationName,
     ) -> ExomeResult<()> {
         let manager = self
             .session
@@ -174,11 +176,7 @@ impl ExonClient for ExomeSession {
         manager
             .client
             .clone()
-            .create_catalog(
-                catalog_name,
-                library_name,
-                OrganizationName(manager.client.organization_name.clone()),
-            )
+            .create_catalog(catalog_name, library_name, organization_name)
             .await
             .map_err(|e| DataFusionError::Execution(format!("Error creating catalog {}", e)))?;
 
@@ -241,12 +239,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_exome_create_catalog() -> Result<(), Box<dyn std::error::Error>> {
-        let exome_session = ExomeSession::connect(
-            "http://localhost:50051".to_string(),
-            "public".to_string(),
-            "token".to_string(),
-        )
-        .await?;
+        let exome_session =
+            ExomeSession::connect("http://localhost:50051".to_string(), "token".to_string())
+                .await?;
 
         // let sql = "CREATE DATABASE test_catalog;";
 

@@ -15,6 +15,7 @@
 mod error;
 mod exome;
 mod exome_catalog_manager;
+mod exome_config;
 mod exome_extension_planner;
 mod exome_session;
 mod exon_client;

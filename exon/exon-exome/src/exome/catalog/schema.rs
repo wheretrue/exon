@@ -69,10 +69,11 @@ impl Schema {
         let library_name = self.inner.library_name.clone();
         let catalog_name = self.inner.catalog_name.clone();
         let schema_name = self.inner.name.clone();
+        let organization_name = self.inner.organization_name.clone();
 
         let tables = self
             .exome_client
-            .get_tables(schema_name, catalog_name, library_name)
+            .get_tables(schema_name, catalog_name, library_name, organization_name)
             .await?;
 
         self.tables.clear();

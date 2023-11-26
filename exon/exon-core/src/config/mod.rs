@@ -43,7 +43,7 @@ pub fn new_exon_config() -> SessionConfig {
 }
 
 extensions_options! {
-    /// My own config options.
+    /// Exon config options.
     pub struct ExonConfigExtension {
         pub vcf_parse_info: bool, default = true
         pub vcf_parse_formats: bool, default = true
