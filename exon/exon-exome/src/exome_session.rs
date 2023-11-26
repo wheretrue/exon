@@ -46,7 +46,11 @@ impl ExomeSession {
 
         let extension_manager = ExomeCatalogManager::new(client.clone());
 
-        let config = new_exon_config().with_extension(Arc::new(extension_manager));
+        let mut config = new_exon_config().with_extension(Arc::new(extension_manager));
+        config
+            .options_mut()
+            .extensions
+            .insert(ExomeConfigExtension::default());
 
         let session = SessionContext::with_config_exon(config);
 

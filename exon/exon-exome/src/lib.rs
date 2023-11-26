@@ -20,6 +20,7 @@ mod exome_extension_planner;
 mod exome_session;
 mod exon_client;
 
+pub use error::ExomeError;
 pub use exome::ExomeCatalogClient;
 pub use exome_catalog_manager::{
     CatalogName, ExomeCatalogManager, LibraryName, OrganizationName, SchemaName, TableName,
