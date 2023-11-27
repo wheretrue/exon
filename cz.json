@@ -4,7 +4,19 @@
     "version": "0.4.0",
     "tag_format": "v$version",
     "version_files": [
-      "Cargo.toml"
+      "Cargo.toml",
+      "exon/exon-bam/Cargo.toml",
+      "exon/exon-bed/Cargo.toml",
+      "exon/exon-common/Cargo.toml",
+      "exon/exon-core/Cargo.toml",
+      "exon/exon-exome/Cargo.toml",
+      "exon/exon-fasta/Cargo.toml",
+      "exon/exon-fastq/Cargo.toml",
+      "exon/exon-gff/Cargo.toml",
+      "exon/exon-gtf/Cargo.toml",
+      "exon/exon-io/Cargo.toml",
+      "exon/exon-sam/Cargo.toml",
+      "exon/exon-test/Cargo.toml"
     ],
     "update_changelog_on_bump": true
   }
