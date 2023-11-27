@@ -18,14 +18,14 @@ base64 = {version = "0.21", optional = true}
 byteorder = {version = "1.5.0", optional = true}
 bytes = "1.5.0"
 datafusion = {workspace = true}
-exon-bam = {path = "../exon-bam", version = "0.4.2"}
-exon-bed = {path = "../exon-bed", version = "0.4.2"}
-exon-common = {path = "../exon-common", version = "0.4.2"}
-exon-fasta = {path = "../exon-fasta", version = "0.4.2"}
-exon-fastq = {path = "../exon-fastq", version = "0.4.2"}
-exon-gff = {path = "../exon-gff", version = "0.4.2"}
-exon-gtf = {path = "../exon-gtf", version = "0.4.2"}
-exon-io = {path = "../exon-io", version = "0.4.2"}
+exon-bam = {path = "../exon-bam", version = "0.4.3"}
+exon-bed = {path = "../exon-bed", version = "0.4.3"}
+exon-common = {path = "../exon-common", version = "0.4.3"}
+exon-fasta = {path = "../exon-fasta", version = "0.4.3"}
+exon-fastq = {path = "../exon-fastq", version = "0.4.3"}
+exon-gff = {path = "../exon-gff", version = "0.4.3"}
+exon-gtf = {path = "../exon-gtf", version = "0.4.3"}
+exon-io = {path = "../exon-io", version = "0.4.3"}
 flate2 = {version = "1.0.28", optional = true}
 futures = {workspace = true}
 gb-io = {version = "0.7.1", optional = true}
