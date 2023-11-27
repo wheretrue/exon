@@ -106,9 +106,29 @@ impl SchemaProvider for Schema {
             .unwrap();
 
         let file_compression_type =
-            FileCompressionType::from_str(&proto_table.compression_type).unwrap();
+            match FileCompressionType::from_str(&proto_table.compression_type) {
+                Ok(file_compression_type) => file_compression_type,
+                Err(_) => {
+                    tracing::error!(
+                        "Unknown compression type {} for table {}",
+                        proto_table.compression_type,
+                        name
+                    );
+                    return None;
+                }
+            };
 
-        let file_type = ExonFileType::from_str(&proto_table.file_format).unwrap();
+        let file_type = match ExonFileType::from_str(&proto_table.file_format) {
+            Ok(file_type) => file_type,
+            Err(_) => {
+                tracing::error!(
+                    "Unknown file type {} for table {}",
+                    proto_table.file_format,
+                    name
+                );
+                return None;
+            }
+        };
 
         let table_provider_factory = ExonListingTableFactory {};
         let table_provider = table_provider_factory
