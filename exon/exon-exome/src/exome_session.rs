@@ -41,8 +41,12 @@ pub struct ExomeSession {
 }
 
 impl ExomeSession {
-    pub async fn connect(url: String, token: String) -> ExomeResult<Self> {
-        let client = ExomeCatalogClient::connect(url, token).await?;
+    pub async fn connect(url: String, token: String, use_tls: bool) -> ExomeResult<Self> {
+        let client = if use_tls {
+            ExomeCatalogClient::connect_with_tls(url, token).await?
+        } else {
+            ExomeCatalogClient::connect(url, token).await?
+        };
 
         let extension_manager = ExomeCatalogManager::new(client.clone());
 
@@ -243,9 +247,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_exome_create_catalog() -> Result<(), Box<dyn std::error::Error>> {
-        let exome_session =
-            ExomeSession::connect("http://localhost:50051".to_string(), "token".to_string())
-                .await?;
+        let exome_session = ExomeSession::connect(
+            "http://localhost:50051".to_string(),
+            "token".to_string(),
+            false,
+        )
+        .await?;
 
         // let sql = "CREATE DATABASE test_catalog;";
 

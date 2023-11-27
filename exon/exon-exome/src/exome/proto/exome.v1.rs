@@ -1,3 +1,12 @@
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMetastoreStateRequest {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMetastoreStateResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub tables: ::prost::alloc::vec::Vec<Table>,
+}
 /// Auth
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -913,6 +922,32 @@ pub mod catalog_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("exome.v1.CatalogService", "GetTable"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Metastore state
+        pub async fn get_metastore_state(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetMetastoreStateRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMetastoreStateResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/exome.v1.CatalogService/GetMetastoreState",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("exome.v1.CatalogService", "GetMetastoreState"));
             self.inner.unary(req, path, codec).await
         }
         /// File Formats
