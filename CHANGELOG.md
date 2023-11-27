@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.4.0 (2023-11-27)
+
+### Feat
+
+- add core to bed
+
+### Fix
+
+- **exome**: add back tls option (#309)
+
 ## v0.3.12 (2023-11-26)
 
 ### Feat
