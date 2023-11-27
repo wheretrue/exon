@@ -47,6 +47,9 @@ pub enum ExonError {
 
     /// IO error
     IOError(std::io::Error),
+
+    /// Invalid File Type
+    InvalidFileType(String),
 }
 
 impl From<DataFusionError> for ExonError {
@@ -93,7 +96,8 @@ impl Display for ExonError {
             ExonError::ExecutionError(error) => write!(f, "ExecutionError: {}", error),
             ExonError::ObjectStoreError(error) => write!(f, "ObjectStoreError: {}", error),
             ExonError::NoodlesError(error) => write!(f, "NoodlesError: {}", error),
-            _ => write!(f, "ExonError"),
+            ExonError::IOError(error) => write!(f, "IOError: {}", error),
+            ExonError::InvalidFileType(error) => write!(f, "InvalidFileType: {}", error),
         }
     }
 }

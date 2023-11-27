@@ -112,10 +112,9 @@ impl ExecutionPlan for CreateCatalogExec {
             ));
         }
 
-        let exome_catalog_manager = match context
-            .session_config()
-            .get_extension::<ExomeCatalogManager>()
-        {
+        let session_config = context.session_config();
+
+        let exome_catalog_manager = match session_config.get_extension::<ExomeCatalogManager>() {
             Some(exome_catalog_manager) => exome_catalog_manager,
             None => {
                 return Err(DataFusionError::Execution(
@@ -124,14 +123,15 @@ impl ExecutionPlan for CreateCatalogExec {
             }
         };
 
-        let exome_config = match context
-            .session_config()
-            .get_extension::<ExomeConfigExtension>()
+        let exome_config = match session_config
+            .options()
+            .extensions
+            .get::<ExomeConfigExtension>()
         {
             Some(exome_config) => exome_config,
             None => {
                 return Err(DataFusionError::Execution(
-                    "ExomeConfig not found".to_string(),
+                    "ExomeConfigExtension not found".to_string(),
                 ))
             }
         };

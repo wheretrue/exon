@@ -108,14 +108,13 @@ impl ExecutionPlan for DropCatalogExec {
     ) -> datafusion::error::Result<datafusion::physical_plan::SendableRecordBatchStream> {
         if partition != 0 {
             return Err(DataFusionError::Execution(
-                "CreateTableExec only supports 1 partition".to_string(),
+                "DropCatalogExec only supports 1 partition".to_string(),
             ));
         }
 
-        let exome_catalog_manager = match context
-            .session_config()
-            .get_extension::<ExomeCatalogManager>()
-        {
+        let session_config = context.session_config();
+
+        let exome_catalog_manager = match session_config.get_extension::<ExomeCatalogManager>() {
             Some(exome_catalog_manager) => exome_catalog_manager,
             None => {
                 return Err(DataFusionError::Execution(
@@ -124,14 +123,15 @@ impl ExecutionPlan for DropCatalogExec {
             }
         };
 
-        let exome_config = match context
-            .session_config()
-            .get_extension::<ExomeConfigExtension>()
+        let exome_config = match session_config
+            .options()
+            .extensions
+            .get::<ExomeConfigExtension>()
         {
             Some(exome_config) => exome_config,
             None => {
                 return Err(DataFusionError::Execution(
-                    "ExomeConfig not found".to_string(),
+                    "ExomeConfigExtension not found".to_string(),
                 ))
             }
         };

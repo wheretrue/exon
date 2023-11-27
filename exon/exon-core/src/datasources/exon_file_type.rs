@@ -18,6 +18,8 @@ use datafusion::{
     datasource::file_format::file_compression_type::FileCompressionType, error::DataFusionError,
 };
 
+use crate::error::ExonError;
+
 /// The type of file.
 #[derive(Debug, Clone)]
 pub enum ExonFileType {
@@ -73,7 +75,7 @@ pub enum ExonFileType {
 }
 
 impl FromStr for ExonFileType {
-    type Err = ();
+    type Err = ExonError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.to_uppercase();
@@ -97,7 +99,7 @@ impl FromStr for ExonFileType {
             "GTF" => Ok(Self::GTF),
             #[cfg(feature = "fcs")]
             "FCS" => Ok(Self::FCS),
-            _ => Err(()),
+            _ => Err(ExonError::InvalidFileType(s)),
         }
     }
 }
