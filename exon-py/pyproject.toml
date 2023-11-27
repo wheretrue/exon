@@ -15,10 +15,10 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  'adbc_driver_flightsql==0.7.0',
-  'pyarrow==13.0.0',
-  'grpcio==1.59.0',
-  'protobuf==4.24.3',
+  'adbc_driver_flightsql==0.8.0',
+  'pyarrow==14.0.1',
+  'grpcio==1.59.3',
+  'protobuf==4.25.1',
 ]
 description = ''
 dynamic = ["version"]
