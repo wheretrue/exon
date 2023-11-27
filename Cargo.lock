@@ -1461,7 +1461,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "futures",
@@ -1510,7 +1510,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bed"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "clap",
  "datafusion",
@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "clap",
  "datafusion",
@@ -1547,7 +1547,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1559,7 +1559,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1569,7 +1569,7 @@ dependencies = [
 
 [[package]]
 name = "exon-exome"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1586,7 +1586,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1601,7 +1601,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1614,7 +1614,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1628,7 +1628,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1640,7 +1640,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -1652,11 +1652,11 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.3.12"
+version = "0.4.0"
 
 [[package]]
 name = "exon-test"
-version = "0.3.12"
+version = "0.4.0"
 dependencies = [
  "datafusion",
  "object_store",
