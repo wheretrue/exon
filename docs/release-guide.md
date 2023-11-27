@@ -44,9 +44,12 @@ Then publish the crates:
 
 ```console
 # Crates that do not depend on other crates
+cargo publish --manifest-path exon/exon-common/Cargo.toml
+
+# Data source crates
 cargo publish --manifest-path exon/exon-bam/Cargo.toml
 cargo publish --manifest-path exon/exon-bed/Cargo.toml
-cargo publish --manifest-path exon/exon-common/Cargo.toml
+
 cargo publish --manifest-path exon/exon-fasta/Cargo.toml
 cargo publish --manifest-path exon/exon-fastq/Cargo.toml
 cargo publish --manifest-path exon/exon-gff/Cargo.toml
