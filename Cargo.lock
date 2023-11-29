@@ -1461,7 +1461,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1483,6 +1483,7 @@ dependencies = [
  "gb-io",
  "itertools 0.12.0",
  "noodles",
+ "noodles-bgzf",
  "num_cpus",
  "object_store",
  "pin-project",
@@ -1498,20 +1499,21 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "exon-common",
  "futures",
  "itertools 0.12.0",
  "noodles",
+ "noodles-bgzf",
  "object_store",
  "tokio",
 ]
 
 [[package]]
 name = "exon-bed"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1524,7 +1526,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "clap",
  "datafusion",
@@ -1537,7 +1539,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "clap",
  "datafusion",
@@ -1548,7 +1550,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1560,7 +1562,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1570,7 +1572,7 @@ dependencies = [
 
 [[package]]
 name = "exon-exome"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1587,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1602,7 +1604,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1615,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1629,7 +1631,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1641,7 +1643,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -1653,11 +1655,11 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.4.3"
+version = "0.5.0"
 
 [[package]]
 name = "exon-test"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "datafusion",
  "object_store",
@@ -2242,6 +2244,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
+name = "libdeflate-sys"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67921a7f85100c1559efc3d1c7c472091b7da05f304b4bbd5356f075e97f1cc2"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "libdeflater"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a31b22f662350ec294b13859f935aea772ba7b2bc8776269f4a5627308eab7d"
+dependencies = [
+ "libdeflate-sys",
+]
+
+[[package]]
 name = "libm"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2439,6 +2459,7 @@ dependencies = [
  "crossbeam-channel",
  "flate2",
  "futures",
+ "libdeflater",
  "pin-project-lite",
  "tokio",
  "tokio-util",
