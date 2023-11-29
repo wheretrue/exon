@@ -13,28 +13,29 @@ download-fixtures:
 
 run-benchmarks tag:
 	# Checkout the tag.
+	echo "Checking out tag {{tag}}..." \
 	git checkout {{tag}} \
 
 	# Build the benchmark crate.
 	cargo build --profile profiling --package exon-benchmarks \
 
 	# Run vcf benchmarks.
-	hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{tag}}.json \
-		-n bcftools \
-		"bcftools query -r chr1:10000-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
-		-n exon-vcf-query \
-		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:10000-10000000'
+	# hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{tag}}.json \
+	# 	-n bcftools \
+	# 	"bcftools query -r chr1:10000-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
+	# 	-n exon-vcf-query \
+	# 	'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:10000-10000000'
 
-	hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-chr17-query_{{tag}}.json \
-		-n bcftools \
-		"bcftools query -r 17:100-10000000 -f '%CHROM\n' ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
-		-n exon-vcf-query \
-		'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:100-10000000' \
-		-n exon-vcf-query-two-files \
-		'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ -r 17:100-10000000'
+	# hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-chr17-query_{{tag}}.json \
+	# 	-n bcftools \
+	# 	"bcftools query -r 17:100-10000000 -f '%CHROM\n' ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
+	# 	-n exon-vcf-query \
+	# 	'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:100-10000000' \
+	# 	-n exon-vcf-query-two-files \
+	# 	'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ -r 17:100-10000000'
 
 	# Run multiple file.
-	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query-{{tag}}.json \
+	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{tag}}.json \
 		-n samtools \
 		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam 20:1000000-100000000' \
 		-n exon-bam-query \
