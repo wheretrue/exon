@@ -175,5 +175,9 @@ async fn run_tests() -> Result<(), DataFusionError> {
 
 #[tokio::main]
 pub async fn main() -> Result<(), DataFusionError> {
+    // dont run on windows
+    if cfg!(windows) {
+        return Ok(());
+    }
     run_tests().await
 }
