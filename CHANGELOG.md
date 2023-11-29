@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.5.0 (2023-11-28)
+
+### Feat
+
+- **core**: use datafusion repartitioning (#314)
+
+### Fix
+
+- empty projections (#313)
+
 ## v0.4.3 (2023-11-27)
 
 ### Fix
