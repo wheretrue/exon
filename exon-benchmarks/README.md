@@ -18,7 +18,7 @@ This benchmark shows querying a 2.6G VCF file for a genomic region.
 
 ## BAM Query
 
-This benchmark shows querying a 303M BAM file for a genomic region. The same caveat as the VCF query benchmark applies.
+This benchmark shows querying a 303M BAM file for a genomic region.
 
 ![SAM Scan](./plots/bam-query.svg)
 
