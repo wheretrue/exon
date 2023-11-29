@@ -1461,7 +1461,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1499,7 +1499,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1513,7 +1513,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bed"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1526,7 +1526,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "clap",
  "datafusion",
@@ -1539,7 +1539,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "clap",
  "datafusion",
@@ -1550,7 +1550,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1562,7 +1562,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1572,7 +1572,7 @@ dependencies = [
 
 [[package]]
 name = "exon-exome"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1589,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1604,7 +1604,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1617,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1631,7 +1631,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1643,7 +1643,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -1655,11 +1655,11 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.5.0"
+version = "0.5.1"
 
 [[package]]
 name = "exon-test"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "datafusion",
  "object_store",
@@ -2056,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "idna"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "634d9b1461af396cad843f47fdba5597a4f9e6ddd4bfb6ff5d85028c25cb12f6"
 dependencies = [
@@ -3725,7 +3725,7 @@ dependencies = [
 
 [[package]]
 name = "system-configuration-sys"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a75fb188eb626b924683e3b95e3a48e63551fcfb51949de2f06a9d91dbee93c9"
 dependencies = [
