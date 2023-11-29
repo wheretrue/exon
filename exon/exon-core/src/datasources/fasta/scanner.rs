@@ -29,7 +29,7 @@ use datafusion::{
 };
 use exon_fasta::FASTAConfig;
 
-use crate::{datasources::ExonFileScanConfig, repartitionable::Repartitionable};
+use crate::datasources::ExonFileScanConfig;
 
 use super::file_opener::FASTAOpener;
 
@@ -77,8 +77,19 @@ impl FASTAScan {
     }
 }
 
-impl Repartitionable for FASTAScan {
-    fn exon_repartitioned(
+impl DisplayAs for FASTAScan {
+    fn fmt_as(&self, t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "FASTAScan")?;
+        self.base_config.fmt_as(t, f)
+    }
+}
+
+impl ExecutionPlan for FASTAScan {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn repartitioned(
         &self,
         target_partitions: usize,
         _config: &ConfigOptions,
@@ -94,19 +105,6 @@ impl Repartitionable for FASTAScan {
             }
             None => Ok(None),
         }
-    }
-}
-
-impl DisplayAs for FASTAScan {
-    fn fmt_as(&self, t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "FASTAScan")?;
-        self.base_config.fmt_as(t, f)
-    }
-}
-
-impl ExecutionPlan for FASTAScan {
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn schema(&self) -> SchemaRef {

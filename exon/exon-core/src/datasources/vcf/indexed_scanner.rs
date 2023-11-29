@@ -25,7 +25,7 @@ use datafusion::{
 };
 use noodles::core::Region;
 
-use crate::{datasources::ExonFileScanConfig, repartitionable::Repartitionable};
+use crate::datasources::ExonFileScanConfig;
 
 use super::{config::VCFConfig, file_opener::indexed_file_opener::IndexedVCFOpener};
 
@@ -61,8 +61,19 @@ impl IndexedVCFScanner {
     }
 }
 
-impl Repartitionable for IndexedVCFScanner {
-    fn exon_repartitioned(
+impl DisplayAs for IndexedVCFScanner {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let repr = format!("IndexedVCFScanner: {}", self.base_config.file_groups.len());
+        write!(f, "{}", repr)
+    }
+}
+
+impl ExecutionPlan for IndexedVCFScanner {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn repartitioned(
         &self,
         target_partitions: usize,
         _config: &datafusion::config::ConfigOptions,
@@ -80,19 +91,6 @@ impl Repartitionable for IndexedVCFScanner {
         }
 
         Ok(Some(Arc::new(new_plan)))
-    }
-}
-
-impl DisplayAs for IndexedVCFScanner {
-    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let repr = format!("IndexedVCFScanner: {}", self.base_config.file_groups.len());
-        write!(f, "{}", repr)
-    }
-}
-
-impl ExecutionPlan for IndexedVCFScanner {
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn schema(&self) -> SchemaRef {

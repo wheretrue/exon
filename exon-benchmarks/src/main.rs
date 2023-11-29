@@ -144,10 +144,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await?;
 
-            let df = ctx.sql("SELECT reference FROM bam").await?;
-            let cnt = df.count().await?;
+            let df = ctx.sql("SELECT COUNT(*) FROM bam").await?.collect().await?;
 
-            eprintln!("Count: {}", cnt);
+            assert!(df.len() == 1);
+
+            eprintln!("Batch Count: {:?}", df[0]);
         }
         Some(Commands::BAMQuery { path, region }) => {
             let path = path.as_str();

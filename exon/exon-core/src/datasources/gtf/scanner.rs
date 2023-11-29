@@ -59,22 +59,6 @@ impl GTFScan {
             metrics: ExecutionPlanMetricsSet::new(),
         }
     }
-
-    /// Get a new GTF scan with the specified number of partitions.
-    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
-        if target_partitions == 1 {
-            return self.clone();
-        }
-
-        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
-
-        let mut new_plan = self.clone();
-        if let Some(repartitioned_file_groups) = file_groups {
-            new_plan.base_config.file_groups = repartitioned_file_groups;
-        }
-
-        new_plan
-    }
 }
 
 impl DisplayAs for GTFScan {
@@ -86,6 +70,25 @@ impl DisplayAs for GTFScan {
 impl ExecutionPlan for GTFScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn repartitioned(
+        &self,
+        target_partitions: usize,
+        _config: &datafusion::config::ConfigOptions,
+    ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
+        if target_partitions == 1 {
+            return Ok(None);
+        }
+
+        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
+
+        let mut new_plan = self.clone();
+        if let Some(repartitioned_file_groups) = file_groups {
+            new_plan.base_config.file_groups = repartitioned_file_groups;
+        }
+
+        Ok(Some(Arc::new(new_plan)))
     }
 
     fn schema(&self) -> SchemaRef {
