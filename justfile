@@ -11,49 +11,51 @@ download-bam-file:
 download-fixtures:
 	aws s3 cp --recursive s3://wtt-01-dist-prd/chr17/ exon/exon-core/test-data/fixtures/
 
-GIT_SHA := `git describe --always --abbrev=7 --dirty`
+run-benchmarks tag:
+	# Checkout the tag.
+	echo "Checking out tag {{tag}}..." \
+	git checkout {{tag}} \
 
-run-benchmarks:
 	# Build the benchmark crate.
 	cargo build --profile profiling --package exon-benchmarks \
 
 	# Run vcf benchmarks.
-	hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{GIT_SHA}}.json \
-		-n bcftools \
-		"bcftools query -r chr1:10000-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
-		-n exon-vcf-query \
-		'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:10000-10000000'
+	# hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-query_{{tag}}.json \
+	# 	-n bcftools \
+	# 	"bcftools query -r chr1:10000-10000000 -f '\n' exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz | wc -l" \
+	# 	-n exon-vcf-query \
+	# 	'./target/profiling/exon-benchmarks vcf-query -p exon-benchmarks/data/CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.filtered.shapeit2-duohmm-phased.vcf.gz -r chr1:10000-10000000'
 
-	hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-chr17-query_{{GIT_SHA}}.json \
-		-n bcftools \
-		"bcftools query -r 17:100-10000000 -f '%CHROM\n' ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
-		-n exon-vcf-query \
-		'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:100-10000000' \
-		-n exon-vcf-query-two-files \
-		'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ -r 17:100-10000000'
+	# hyperfine --warmup 3 --runs 5 --export-json exon-benchmarks/results/vcf-chr17-query_{{tag}}.json \
+	# 	-n bcftools \
+	# 	"bcftools query -r 17:100-10000000 -f '%CHROM\n' ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz | wc -l" \
+	# 	-n exon-vcf-query \
+	# 	'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz -r 17:100-10000000' \
+	# 	-n exon-vcf-query-two-files \
+	# 	'./target/profiling/exon-benchmarks vcf-query -p ./exon-benchmarks/data/chr17/ -r 17:100-10000000'
 
 	# Run multiple file.
-	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query-{{GIT_SHA}}.json \
+	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-query_{{tag}}.json \
 		-n samtools \
 		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam 20:1000000-100000000' \
 		-n exon-bam-query \
 		'./target/profiling/exon-benchmarks bam-query -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -r 20:1000000-100000000'
 
-	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/bam-s3-query_{{GIT_SHA}}.json \
+	hyperfine --warmup 1 --runs 1 --export-json exon-benchmarks/results/bam-s3-query_{{tag}}.json \
 		-n exon-bam-s3-query \
 		'./target/profiling/exon-benchmarks bam-query -p s3://com.wheretrue.exome/cyt_assist_10x/CytAssist_FFPE_Human_Colon_Post_Xenium_Rep1_possorted_genome_bam.bam -r chr1:100000-1000000' \
 		-n samtools \
 		'samtools view -c s3://com.wheretrue.exome/cyt_assist_10x/CytAssist_FFPE_Human_Colon_Post_Xenium_Rep1_possorted_genome_bam.bam chr1:100000-1000000'
 
 	# Run bam benchmarks.
-	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-scan_{{GIT_SHA}}.json \
+	hyperfine --runs 2 --export-json exon-benchmarks/results/bam-scan_{{tag}}.json \
 		-n samtools \
 		'samtools view -c exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam' \
 		-n exon-bam-query \
 		'./target/profiling/exon-benchmarks bam-scan -p exon-benchmarks/data/HG00096.chrom20.ILLUMINA.bwa.GBR.low_coverage.20120522.bam'
 
 	# Run FASTA scan benchmarks.
-	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-meth-scan_{{GIT_SHA}}.json \
+	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-meth-scan_{{tag}}.json \
 		-n exon-gzip \
 		'./target/profiling/exon-benchmarks fasta-codon-scan -p ./exon-benchmarks/data/uniprot_sprot.fasta.gz -c gzip' \
 		-n exon-zstd \
@@ -66,7 +68,7 @@ run-benchmarks:
 		'python exon-benchmarks/biopython_scan_fasta.py exon-benchmarks/data/uniprot_sprot.fasta'
 
 	# Run FASTA parallel scan benchmarks.
-	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-parallel-scan_{{GIT_SHA}}.json \
+	hyperfine --runs 5 --export-json exon-benchmarks/results/fasta-parallel-scan_{{tag}}.json \
 		-n workers-1 \
 		'./target/profiling/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 1' \
 		-n workers-2 \
@@ -78,9 +80,9 @@ run-benchmarks:
 		-n workers-8 \
 		'./target/profiling/exon-benchmarks fasta-scan-parallel -p ./exon-benchmarks/data/fasta-files -w 8'
 
-run-mzml-benchmarks:
+run-mzml-benchmarks tag:
 	# Run mzml scan benchmarks.
-	hyperfine --runs 5 --export-json exon-benchmarks/results/mzml-scan_{{GIT_SHA}}.json \
+	hyperfine --runs 5 --export-json exon-benchmarks/results/mzml-scan_{{tag}}.json \
 		-n exon-gzip \
 		'./target/profiling/exon-benchmarks mz-ml-scan -p ./exon-benchmarks/data/SALJA0984.mzML.gz -c gzip' \
 		-n exon-no-compression \

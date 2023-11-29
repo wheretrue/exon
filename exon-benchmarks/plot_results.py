@@ -21,6 +21,8 @@ for filepath in directory.glob("*.json"):
     print(f"Processing {filepath.name}...")
     data = json.loads(filepath.read_text())
 
+    print(filepath)
+
     # Extract the command and git hash from the filename
     bench_group, git_hash = filepath.name[:-5].split("_")
 
