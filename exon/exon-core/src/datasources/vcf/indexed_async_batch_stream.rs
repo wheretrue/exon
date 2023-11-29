@@ -18,6 +18,7 @@ use arrow::{
     error::{ArrowError, Result as ArrowResult},
     record_batch::RecordBatch,
 };
+use exon_common::ExonArrayBuilder;
 use futures::Stream;
 use noodles::core::{Position, Region};
 use tokio::io::AsyncBufRead;
@@ -111,7 +112,7 @@ where
     }
 
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
-        let mut record_batch = LazyVCFArrayBuilder::create(
+        let mut array_builder = LazyVCFArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
             self.config.projection.clone(),
@@ -125,7 +126,7 @@ where
             match record {
                 Some(record) => {
                     if self.filter(&record)? {
-                        record_batch.append(&record)?;
+                        array_builder.append(&record)?;
                         record_count += 1;
                     }
                 }
@@ -140,7 +141,7 @@ where
 
             match record {
                 Some(record) => {
-                    record_batch.append(&record)?;
+                    array_builder.append(&record)?;
                 }
                 None => {
                     break;
@@ -148,12 +149,12 @@ where
             }
         }
 
-        if record_batch.is_empty() {
+        if array_builder.is_empty() {
             return Ok(None);
         }
 
         let schema = self.config.projected_schema();
-        let batch = RecordBatch::try_new(schema, record_batch.finish())?;
+        let batch = array_builder.try_into_record_batch(schema)?;
 
         Ok(Some(batch))
     }

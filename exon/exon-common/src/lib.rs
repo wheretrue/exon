@@ -15,8 +15,10 @@
 
 mod object_store_files_from_table_path;
 
+mod array_builder;
 mod table_schema;
 
+pub use array_builder::ExonArrayBuilder;
 pub use object_store_files_from_table_path::object_store_files_from_table_path;
 pub use table_schema::TableSchema;
 pub use table_schema::TableSchemaBuilder;

@@ -29,5 +29,10 @@ SELECT chrom, sample, COUNT(*) AS cnt FROM vcf_table WHERE vcf_region_filter('1'
 ----
 1 1 191
 
+query T
+SELECT COUNT(*) AS cnt FROM vcf_table WHERE vcf_region_filter('1', chrom) = true
+----
+382
+
 statement ok
 DROP TABLE vcf_table;

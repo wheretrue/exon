@@ -16,8 +16,9 @@ use std::sync::Arc;
 
 use arrow::{
     error::{ArrowError, Result as ArrowResult},
-    record_batch::{RecordBatch, RecordBatchOptions},
+    record_batch::RecordBatch,
 };
+use exon_common::ExonArrayBuilder;
 use futures::Stream;
 use noodles::{
     bam::lazy::Record,
@@ -209,10 +210,8 @@ where
             }
         }
 
-        let options = RecordBatchOptions::new().with_row_count(Some(builder.rows()));
-
         let schema = self.config.projected_schema()?;
-        let batch = RecordBatch::try_new_with_options(schema, builder.finish(), &options)?;
+        let batch = builder.try_into_record_batch(schema)?;
 
         Ok(Some(batch))
     }

@@ -16,6 +16,7 @@ use std::{str::FromStr, sync::Arc};
 
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
+use exon_common::ExonArrayBuilder;
 use futures::Stream;
 use noodles::bed::Record;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
@@ -71,7 +72,8 @@ where
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), array_builder.finish())?;
+        let schema = self.config.file_schema.clone();
+        let batch = array_builder.try_into_record_batch(schema)?;
 
         match &self.config.projection {
             Some(projection) => Ok(Some(batch.project(projection)?)),

@@ -19,6 +19,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
     error::ArrowError,
 };
+use exon_common::ExonArrayBuilder;
 use itertools::Itertools;
 use noodles::sam::header::ReferenceSequences;
 
@@ -92,11 +93,6 @@ impl BAMArrayBuilder {
 
             reference_names,
         }
-    }
-
-    /// Return the number of rows in the builder.
-    pub fn rows(&self) -> usize {
-        self.rows
     }
 
     /// Appends a record to the builder.
@@ -231,5 +227,15 @@ impl BAMArrayBuilder {
         }
 
         arrays
+    }
+}
+
+impl ExonArrayBuilder for BAMArrayBuilder {
+    fn finish(&mut self) -> Vec<ArrayRef> {
+        self.finish()
+    }
+
+    fn len(&self) -> usize {
+        self.rows
     }
 }

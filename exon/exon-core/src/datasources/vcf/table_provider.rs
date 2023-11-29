@@ -26,7 +26,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{expr::ScalarUDF, TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
+    physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
 use exon_common::TableSchema;
@@ -41,7 +41,9 @@ use crate::{
         indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
         ExonFileType,
     },
-    physical_plan::object_store::pruned_partition_list,
+    physical_plan::{
+        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+    },
 };
 
 use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
@@ -344,17 +346,13 @@ impl TableProvider for ListingVCFTable {
             .try_collect::<Vec<_>>()
             .await?;
 
-            let file_scan_config = FileScanConfig {
-                object_store_url,
-                file_schema: self.table_schema.file_schema()?,
-                file_groups: vec![file_list],
-                statistics: Statistics::new_unknown(&self.table_schema.file_schema().unwrap()),
-                projection: projection.cloned(),
-                limit,
-                output_ordering: Vec::new(),
-                table_partition_cols: self.options.table_partition_cols.clone(),
-                infinite_source: false,
-            };
+            let file_schema = self.table_schema.file_schema()?;
+            let file_scan_config =
+                FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
+                    .projection_option(projection.cloned())
+                    .limit_option(limit)
+                    .table_partition_cols(self.options.table_partition_cols.clone())
+                    .build();
 
             let table = self.options.create_physical_plan(file_scan_config).await?;
 
@@ -389,17 +387,16 @@ impl TableProvider for ListingVCFTable {
             }
         }
 
-        let file_scan_config = FileScanConfig {
-            object_store_url: object_store_url.clone(),
-            file_schema: self.table_schema.file_schema()?,
-            file_groups: vec![file_partitions],
-            statistics: Statistics::new_unknown(&self.table_schema.file_schema().unwrap()),
-            projection: projection.cloned(),
-            limit,
-            output_ordering: Vec::new(),
-            table_partition_cols: self.options.table_partition_cols.clone(),
-            infinite_source: false,
-        };
+        let file_schema = self.table_schema.file_schema()?;
+        let file_scan_config = FileScanConfigBuilder::new(
+            object_store_url.clone(),
+            file_schema,
+            vec![file_partitions],
+        )
+        .projection_option(projection.cloned())
+        .limit_option(limit)
+        .table_partition_cols(self.options.table_partition_cols.clone())
+        .build();
 
         let table = self
             .options
