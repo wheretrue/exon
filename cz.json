@@ -5,6 +5,7 @@
     "tag_format": "v$version",
     "version_files": [
       "Cargo.toml",
+      "Cargo.lock",
       "exon/exon-bam/Cargo.toml",
       "exon/exon-bed/Cargo.toml",
       "exon/exon-common/Cargo.toml",
