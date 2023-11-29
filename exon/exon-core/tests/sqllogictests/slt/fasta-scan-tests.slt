@@ -66,3 +66,6 @@ query T
 SELECT COUNT(*) FROM fasta_table WHERE sample = '4';
 ----
 0
+
+statement ok
+DROP TABLE fasta_table;

@@ -1,0 +1,21 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
+
+query ok
+COPY fasta_table TO '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.parquet' (FORMAT parquet)
+----
+2
+
+query ok
+CREATE EXTERNAL TABLE fasta_parquet_table STORED AS PARQUET LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.parquet';
+
+query T
+SELECT * FROM fasta_parquet_table
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE fasta_table;
