@@ -67,13 +67,26 @@ impl VCFScan {
     pub fn base_config(&self) -> &FileScanConfig {
         &self.base_config
     }
+}
 
-    /// Get a new scan with the specified number of partitions.
-    ///
-    /// Sort the file groups by size, then repartition in a round-robin fashion.
-    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+impl DisplayAs for VCFScan {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "VCFScan")
+    }
+}
+
+impl ExecutionPlan for VCFScan {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn repartitioned(
+        &self,
+        target_partitions: usize,
+        _config: &datafusion::config::ConfigOptions,
+    ) -> Result<Option<Arc<dyn ExecutionPlan>>> {
         if target_partitions == 1 {
-            return self.clone();
+            return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
@@ -88,19 +101,7 @@ impl VCFScan {
             new_plan.base_config.file_groups = repartitioned_file_groups;
         }
 
-        new_plan
-    }
-}
-
-impl DisplayAs for VCFScan {
-    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "VCFScan")
-    }
-}
-
-impl ExecutionPlan for VCFScan {
-    fn as_any(&self) -> &dyn Any {
-        self
+        Ok(Some(Arc::new(new_plan)))
     }
 
     fn schema(&self) -> SchemaRef {

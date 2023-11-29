@@ -34,7 +34,6 @@ use crate::{
     },
     error::ExonError,
     new_exon_config,
-    physical_optimizer::file_repartitioner::ExonRoundRobin,
     udfs::{
         bam_region_filter::register_bam_region_filter_udf,
         vcf::vcf_region_filter::register_vcf_region_filter_udf,
@@ -95,10 +94,7 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
-        let round_robin_optimizer = ExonRoundRobin::default();
-
-        let mut state = SessionState::new_with_config_rt(config, runtime)
-            .add_physical_optimizer_rule(Arc::new(round_robin_optimizer));
+        let mut state = SessionState::new_with_config_rt(config, runtime);
 
         let sources = vec![
             "BAM",

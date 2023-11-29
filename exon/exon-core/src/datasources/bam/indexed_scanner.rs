@@ -56,11 +56,26 @@ impl IndexedBAMScan {
             region,
         }
     }
+}
 
-    /// Return the repartitioned scan.
-    pub fn get_repartitioned(&self, target_partitions: usize) -> Self {
+impl DisplayAs for IndexedBAMScan {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
+        write!(f, "IndexedBAMScan: {:?}", self.base_config)
+    }
+}
+
+impl ExecutionPlan for IndexedBAMScan {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn repartitioned(
+        &self,
+        target_partitions: usize,
+        _config: &datafusion::config::ConfigOptions,
+    ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
         if target_partitions == 1 {
-            return self.clone();
+            return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
@@ -75,19 +90,7 @@ impl IndexedBAMScan {
             new_plan.base_config.file_groups = repartitioned_file_groups;
         }
 
-        new_plan
-    }
-}
-
-impl DisplayAs for IndexedBAMScan {
-    fn fmt_as(&self, _t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
-        write!(f, "IndexedBAMScan: {:?}", self.base_config)
-    }
-}
-
-impl ExecutionPlan for IndexedBAMScan {
-    fn as_any(&self) -> &dyn Any {
-        self
+        Ok(Some(Arc::new(new_plan)))
     }
 
     fn schema(&self) -> SchemaRef {

@@ -13,8 +13,7 @@
 // limitations under the License.
 
 use datafusion::datasource::{listing::PartitionedFile, physical_plan::FileScanConfig};
-
-use crate::physical_optimizer::file_repartitioner::regroup_files_by_size;
+use itertools::Itertools;
 
 /// Extension trait for [`FileScanConfig`] that adds whole file repartitioning.
 pub trait ExonFileScanConfig {
@@ -47,4 +46,34 @@ impl ExonFileScanConfig for FileScanConfig {
             })
             .unwrap_or_else(|| (0..n_file_schema_fields).collect())
     }
+}
+
+fn regroup_files_by_size(
+    file_partitions: &[Vec<PartitionedFile>],
+    target_group_size: usize,
+) -> Vec<Vec<PartitionedFile>> {
+    let flattened_files = file_partitions
+        .iter()
+        .flatten()
+        .cloned()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .sorted_by_key(|f| f.object_meta.size)
+        .collect::<Vec<_>>();
+
+    let target_partitions = std::cmp::min(target_group_size, flattened_files.len());
+    let mut new_file_groups = Vec::new();
+
+    // Add empty file groups to the new file groups equal to the number of target partitions.
+    for _ in 0..target_partitions {
+        new_file_groups.push(Vec::new());
+    }
+
+    // Work through the flattened files and add them to the new file groups.
+    for (i, file) in flattened_files.iter().enumerate() {
+        let target_partition = i % target_partitions;
+        new_file_groups[target_partition].push(file.clone());
+    }
+
+    new_file_groups
 }
