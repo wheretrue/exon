@@ -18,7 +18,7 @@ use arrow::{
     array::{ArrayRef, GenericStringBuilder, Int64Builder},
     datatypes::{DataType, Field, Schema},
 };
-use exon_common::TableSchema;
+use exon_common::{ExonArrayBuilder, TableSchema};
 
 use super::bed_record_builder::BEDRecord;
 
@@ -109,14 +109,6 @@ impl BEDArrayBuilder {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.rows
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.rows == 0
-    }
-
     pub fn append(&mut self, record: BEDRecord) -> std::io::Result<()> {
         self.reference_sequence_names
             .append_value(record.reference_sequence_name.as_str());
@@ -173,5 +165,15 @@ impl BEDArrayBuilder {
             Arc::new(block_sizes),
             Arc::new(block_starts),
         ]
+    }
+}
+
+impl ExonArrayBuilder for BEDArrayBuilder {
+    fn finish(&mut self) -> Vec<ArrayRef> {
+        self.finish()
+    }
+
+    fn len(&self) -> usize {
+        self.rows
     }
 }

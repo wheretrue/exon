@@ -8,6 +8,11 @@ SELECT * FROM bed LIMIT 1
 ----
 chr1 11874 12227 NR_046018_exon_0_0_chr1_11874_f NULL + NULL NULL NULL NULL NULL NULL
 
+query T
+SELECT COUNT(*) as cnt FROM bed;
+----
+10
+
 statement ok
 DROP TABLE bed;
 

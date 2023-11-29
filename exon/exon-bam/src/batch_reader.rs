@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
+use exon_common::ExonArrayBuilder;
 use futures::Stream;
 use noodles::bam::lazy::Record;
 use tokio::io::{AsyncBufRead, AsyncRead};
@@ -96,7 +97,8 @@ where
         }
 
         let schema = self.config.projected_schema()?;
-        let batch = RecordBatch::try_new(schema, builder.finish())?;
+        let batch = builder.try_into_record_batch(schema)?;
+
         Ok(Some(batch))
     }
 }

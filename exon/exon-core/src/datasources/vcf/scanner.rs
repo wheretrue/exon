@@ -142,8 +142,6 @@ impl ExecutionPlan for VCFScan {
             .with_batch_size(batch_size)
             .with_projection(self.base_config().file_projection());
 
-        tracing::trace!("VCF starting scan with config: {:#?}", config);
-
         let opener = VCFOpener::new(Arc::new(config), self.file_compression_type);
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

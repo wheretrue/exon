@@ -19,6 +19,7 @@ use arrow::{
     datatypes::{DataType, SchemaRef},
     error::ArrowError,
 };
+use exon_common::ExonArrayBuilder;
 use noodles::vcf::{
     record::{AlternateBases, Chromosome, Genotypes, Info, Position, ReferenceBases},
     Header,
@@ -52,7 +53,7 @@ pub struct LazyVCFArrayBuilder {
 
     header: Arc<Header>,
 
-    batch_size: usize,
+    rows: usize,
 }
 
 impl LazyVCFArrayBuilder {
@@ -135,18 +136,8 @@ impl LazyVCFArrayBuilder {
 
             header,
 
-            batch_size: 0,
+            rows: 0,
         })
-    }
-
-    /// Returns the number of records in the builder.
-    pub fn len(&self) -> usize {
-        self.batch_size
-    }
-
-    /// Returns whether the builder is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 
     /// Appends a record to the builder.
@@ -284,7 +275,7 @@ impl LazyVCFArrayBuilder {
             }
         }
 
-        self.batch_size += 1;
+        self.rows += 1;
 
         Ok(())
     }
@@ -323,5 +314,15 @@ impl LazyVCFArrayBuilder {
         }
 
         arrays
+    }
+}
+
+impl ExonArrayBuilder for LazyVCFArrayBuilder {
+    fn len(&self) -> usize {
+        self.rows
+    }
+
+    fn finish(&mut self) -> Vec<ArrayRef> {
+        self.finish()
     }
 }
