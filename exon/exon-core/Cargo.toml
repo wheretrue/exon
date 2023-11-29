@@ -30,7 +30,8 @@ flate2 = {version = "1.0.28", optional = true}
 futures = {workspace = true}
 gb-io = {version = "0.7.1", optional = true}
 itertools = "0.12.0"
-noodles = {workspace = true, features = ["bed", "tabix", "core", "async", "sam", "bcf", "vcf", "bgzf", "csi", "gtf"]}
+noodles = {workspace = true, features = ["bed", "tabix", "core", "async", "bcf", "vcf", "bgzf", "csi", "gtf"]}
+noodles-bgzf = {version = "0.25.0", features = ["libdeflate"]}
 num_cpus = "1.16.0"
 object_store = {workspace = true, features = ["aws"]}
 pin-project = {version = "1.1.3", optional = true}
