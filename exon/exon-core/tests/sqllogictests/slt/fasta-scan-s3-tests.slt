@@ -1,0 +1,13 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table_s3 STORED AS FASTA LOCATION 's3://test-bucket/test.fasta';
+
+query T
+SELECT id, description, sequence FROM fasta_table_s3;
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE fasta_table_s3;
