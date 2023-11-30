@@ -82,7 +82,13 @@ impl CredentialProvider for AwsCredentialAdapter {
                 token: creds.session_token().map(|s| s.to_string()),
             }))
         } else {
-            let refreshed_creds = Arc::new(self.inner.provide_credentials().await.unwrap());
+            let refreshed_creds =
+                Arc::new(self.inner.provide_credentials().await.map_err(|e| {
+                    object_store::Error::Generic {
+                        store: "aws",
+                        source: e.into(),
+                    }
+                })?);
 
             self.cache
                 .write()
@@ -110,7 +116,7 @@ pub async fn build_s3_object_store(uri: &Url) -> std::io::Result<Arc<dyn ObjectS
         .await;
 
     let credentials_refresh_offset = Duration::from_secs(60);
-    let s3 = AmazonS3Builder::from_env()
+    let s3_builder = AmazonS3Builder::from_env()
         .with_url(uri.to_owned())
         .with_credentials(Arc::new(AwsCredentialAdapter::new(
             Arc::new(credentials_provider),
@@ -122,8 +128,9 @@ pub async fn build_s3_object_store(uri: &Url) -> std::io::Result<Arc<dyn ObjectS
                 .await
                 .map(|r| r.as_ref().to_string())
                 .unwrap_or(DEFAULT_REGION.to_string()),
-        )
-        .build()?;
+        );
+
+    let s3 = s3_builder.build()?;
 
     Ok(Arc::new(s3))
 }

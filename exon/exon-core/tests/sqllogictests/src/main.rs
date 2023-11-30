@@ -16,7 +16,7 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::ScalarValue};
-use exon::ExonSessionExt;
+use exon::{ExonRuntimeEnvExt, ExonSessionExt};
 
 use sqllogictest::{ColumnType, DBOutput, DefaultColumnType};
 
@@ -149,6 +149,9 @@ async fn run_tests() -> Result<(), DataFusionError> {
     let test_files = std::fs::read_dir(&test_options.test_dir)?;
 
     let exon_context = Arc::new(SessionContext::new_exon());
+    let rt = exon_context.runtime_env();
+    rt.exon_register_object_store_uri("s3://test-bucket")
+        .await?;
 
     for test_file in test_files {
         let test_file = test_file?;

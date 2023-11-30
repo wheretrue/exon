@@ -5,7 +5,10 @@ version: '3.7'
 services:
   localstack:
     image: ghcr.io/wheretrue/exon/localstack:latest
-    container_name: localstack
+    container_name: exon_localstack
+    build:
+      context: .
+      dockerfile: Dockerfile.localstack
     ports:
       - '4566:4566'
     environment:
