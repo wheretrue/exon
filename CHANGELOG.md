@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.5.4 (2023-12-13)
+
+### Refactor
+
+- fixup from removal
+- remove exome (#326)
+
 ## v0.5.3 (2023-11-28)
 
 ## v0.5.2 (2023-11-28)
