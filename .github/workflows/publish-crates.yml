@@ -65,8 +65,3 @@ jobs:
         run: cargo publish --manifest-path exon/exon-core/Cargo.toml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish exon-exome
-        run: cargo publish --manifest-path exon/exon-exome/Cargo.toml
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

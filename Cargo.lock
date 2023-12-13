@@ -1504,7 +1504,6 @@ dependencies = [
  "exon-common",
  "exon-test",
  "futures",
- "itertools 0.12.0",
  "noodles",
  "object_store",
  "tokio",

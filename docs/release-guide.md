@@ -14,7 +14,6 @@ flowchart TD
     exon-gff --> exon-core
     exon-gtf --> exon-core
     exon-io --> exon-core
-    exon-core --> exon-exome
     exon-test --dev-dep--> exon-fasta
     exon-test --dev-dep--> exon-fastq
     exon-test --dev-dep--> exon-gff
@@ -58,5 +57,4 @@ cargo publish --manifest-path exon/exon-io/Cargo.toml
 
 # Crates that depend on other crates
 cargo publish --manifest-path exon/exon-core/Cargo.toml
-cargo publish --manifest-path exon/exon-exome/Cargo.toml
 ```

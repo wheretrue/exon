@@ -9,7 +9,6 @@
       "exon/exon-bed/Cargo.toml",
       "exon/exon-common/Cargo.toml",
       "exon/exon-core/Cargo.toml",
-      "exon/exon-exome/Cargo.toml",
       "exon/exon-fasta/Cargo.toml",
       "exon/exon-fastq/Cargo.toml",
       "exon/exon-gff/Cargo.toml",
