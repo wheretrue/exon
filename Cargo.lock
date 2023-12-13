@@ -1387,7 +1387,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1425,7 +1425,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1439,7 +1439,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bed"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1452,7 +1452,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "clap",
  "datafusion",
@@ -1465,7 +1465,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "clap",
  "datafusion",
@@ -1476,7 +1476,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1488,7 +1488,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1525,7 +1525,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1539,7 +1539,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -1563,11 +1563,11 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.5.3"
+version = "0.5.4"
 
 [[package]]
 name = "exon-test"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "datafusion",
  "object_store",
