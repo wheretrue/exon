@@ -69,3 +69,18 @@ SELECT COUNT(*) FROM fasta_table WHERE sample = '4';
 
 statement ok
 DROP TABLE fasta_table;
+
+query T
+SELECT COUNT(*) FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta');
+----
+2
+
+query T
+SELECT COUNT(*) FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta-partition/');
+----
+4
+
+query T
+SELECT COUNT(*) FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta.gz', 'gzip');
+----
+2
