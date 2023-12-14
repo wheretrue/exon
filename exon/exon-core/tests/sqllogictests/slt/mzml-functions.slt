@@ -27,3 +27,13 @@ SELECT contains_peak(mz.mz) AS has_peak FROM mzml_table LIMIT 1;
 
 statement ok
 DROP TABLE mzml_table
+
+query T
+SELECT COUNT(*) FROM mzml_scan('$CARGO_MANIFEST_DIR/test-data/datasources/mzml-pyoteomics/pyoteomics.mzML')
+----
+2
+
+query T
+SELECT COUNT(*) FROM mzml_scan('$CARGO_MANIFEST_DIR/test-data/datasources/mzml/test.mzML.gz', 'gzip')
+----
+2

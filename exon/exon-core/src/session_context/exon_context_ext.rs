@@ -37,6 +37,7 @@ use crate::{
         gff::GFFScanFunction,
         gtf::GTFScanFunction,
         hmmdomtab::HMMDomTabScanFunction,
+        mzml::MzMLScanFunction,
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
     },
@@ -171,6 +172,7 @@ pub trait ExonSessionExt {
         );
         ctx.register_udtf("genbank_scan", Arc::new(GenbankScanFunction::default()));
         ctx.register_udtf("fcs_scan", Arc::new(FCSScanFunction::new(ctx.clone())));
+        ctx.register_udtf("mzml_scan", Arc::new(MzMLScanFunction::default()));
 
         ctx
     }
