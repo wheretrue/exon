@@ -27,3 +27,6 @@ pub mod table_provider;
 pub use config::MzMLConfig;
 pub use file_opener::MzMLOpener;
 pub use scanner::MzMLScan;
+
+mod udtf;
+pub use udtf::MzMLScanFunction;
