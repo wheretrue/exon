@@ -26,3 +26,18 @@ chr1 11874 12227 NR_046018_exon_0_0_chr1_11874_f NULL + NULL NULL NULL NULL NULL
 
 statement ok
 DROP TABLE bed;
+
+query T
+SELECT COUNT(*) FROM bed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bed/test.bed');
+----
+10
+
+query T
+SELECT COUNT(*) FROM bed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bed-partition/');
+----
+20
+
+query T
+SELECT COUNT(*) FROM bed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bed/test.bed.gz', 'gzip');
+----
+1
