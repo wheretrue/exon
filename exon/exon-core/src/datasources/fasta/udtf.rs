@@ -12,19 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use datafusion::{
-    common::plan_err,
-    datasource::{
-        file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
-        listing::ListingTableUrl, TableProvider,
-    },
-    error::{DataFusionError, Result},
+    datasource::{function::TableFunctionImpl, TableProvider},
+    error::Result,
     logical_expr::Expr,
-    scalar::ScalarValue,
 };
 use exon_fasta::new_fasta_schema_builder;
+
+use crate::datasources::ScanFunction;
 
 use super::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions};
 
@@ -34,32 +31,16 @@ pub struct FastaScanFunction {}
 
 impl TableFunctionImpl for FastaScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
-        let Some(Expr::Literal(ScalarValue::Utf8(Some(ref path)))) = exprs.first() else {
-            return plan_err!("fasta_scan requires at least one string argument");
-        };
-
-        let passed_compression_type = exprs.get(1).and_then(|e| match e {
-            Expr::Literal(ScalarValue::Utf8(Some(ref compression_type))) => {
-                FileCompressionType::from_str(compression_type).ok()
-            }
-            _ => None,
-        });
-
-        let listing_table_url = ListingTableUrl::parse(path)?;
-        let inferred_compression = listing_table_url
-            .prefix()
-            .extension()
-            .and_then(|ext| FileCompressionType::from_str(ext).ok());
-
-        let compression_type = passed_compression_type
-            .or(inferred_compression)
-            .unwrap_or(FileCompressionType::UNCOMPRESSED);
+        let listing_scan_function = ScanFunction::try_from(exprs)?;
 
         let fasta_schema = new_fasta_schema_builder().build();
 
-        let listing_table_options = ListingFASTATableOptions::new(compression_type);
+        let listing_table_options =
+            ListingFASTATableOptions::new(listing_scan_function.file_compression_type);
+
         let listing_fasta_table_config =
-            ListingFASTATableConfig::new(listing_table_url).with_options(listing_table_options);
+            ListingFASTATableConfig::new(listing_scan_function.listing_table_url)
+                .with_options(listing_table_options);
 
         let listing_fasta_table =
             ListingFASTATable::try_new(listing_fasta_table_config, fasta_schema)?;
