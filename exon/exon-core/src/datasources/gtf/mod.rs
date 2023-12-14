@@ -24,3 +24,6 @@ pub mod table_provider;
 
 pub use self::file_opener::GTFOpener;
 pub use self::scanner::GTFScan;
+
+mod udtf;
+pub use self::udtf::GTFScanFunction;
