@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use arrow::datatypes::SchemaRef;
 use datafusion::error::Result;
+use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
 /// Configuration for a SAM datasource.
@@ -37,7 +38,7 @@ impl SAMConfig {
     /// Create a new SAM configuration.
     pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
         Self {
-            batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
+            batch_size: DEFAULT_BATCH_SIZE,
             file_schema,
             object_store,
             projection: None,

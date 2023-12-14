@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{Field, Schema, SchemaRef};
+use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
 /// Configuration for a FCS datasource.
@@ -33,7 +34,7 @@ impl FCSConfig {
     /// Create a new FCS configuration.
     pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
         Self {
-            batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
+            batch_size: DEFAULT_BATCH_SIZE,
             object_store,
             file_schema,
             projection: None,

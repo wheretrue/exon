@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::SchemaRef;
+use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
 use super::table_provider::schema;
@@ -40,7 +41,7 @@ impl GenbankConfig {
         Self {
             file_schema: schema(),
             object_store,
-            batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
+            batch_size: DEFAULT_BATCH_SIZE,
             projection: None,
         }
     }

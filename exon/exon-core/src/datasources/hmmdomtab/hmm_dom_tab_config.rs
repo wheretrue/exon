@@ -18,10 +18,8 @@ use arrow::{
     csv::{reader::Decoder, ReaderBuilder},
     datatypes::{DataType, Field, Schema, SchemaRef},
 };
-use exon_common::TableSchema;
+use exon_common::{TableSchema, DEFAULT_BATCH_SIZE};
 use object_store::ObjectStore;
-
-use crate::datasources::DEFAULT_BATCH_SIZE;
 
 pub struct HMMDomTabSchemaBuilder {
     file_fields: Vec<Field>,

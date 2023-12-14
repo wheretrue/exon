@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use object_store::ObjectStore;
 
-use exon_common::TableSchema;
+use exon_common::{TableSchema, DEFAULT_BATCH_SIZE};
 
 pub struct MzMLSchemaBuilder {
     file_fields: Vec<Field>,
@@ -70,7 +70,7 @@ impl MzMLConfig {
     pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: Arc<Schema>) -> Self {
         Self {
             object_store,
-            batch_size: crate::datasources::DEFAULT_BATCH_SIZE,
+            batch_size: DEFAULT_BATCH_SIZE,
             file_schema,
             projection: None,
         }

@@ -58,9 +58,6 @@ pub mod gtf;
 #[cfg(feature = "fcs")]
 pub mod fcs;
 
-/// Default batch size.
-pub const DEFAULT_BATCH_SIZE: usize = 8192;
-
 /// File types.
 mod exon_file_type;
 
