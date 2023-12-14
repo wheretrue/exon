@@ -34,7 +34,7 @@ impl TryFrom<&[Expr]> for ScanFunction {
     fn try_from(exprs: &[Expr]) -> Result<Self> {
         let Some(Expr::Literal(ScalarValue::Utf8(Some(ref path)))) = exprs.first() else {
             return Err(DataFusionError::Internal(
-                "listing_scan requires at least one string argument".to_string(),
+                "this function requires the path to be specified as the first argument".into(),
             ));
         };
 
