@@ -19,3 +19,13 @@ query T
 SELECT sample, COUNT(*) FROM fcs_table WHERE sample = '2' GROUP BY sample;
 ----
 2 108
+
+query T
+SELECT * FROM fcs_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fcs/Guava Muse.fcs') LIMIT 1;
+----
+481.9313 7.5 84.2256 7.5 395.87415 7.5 35964 2.682985 1.9254441 2.597557
+
+query T
+SELECT COUNT(*) FROM fcs_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fcs/Guava Muse.fcs');
+----
+108
