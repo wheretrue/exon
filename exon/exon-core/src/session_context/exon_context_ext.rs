@@ -32,6 +32,7 @@ use crate::{
         bed::BEDScanFunction,
         fasta::FastaScanFunction,
         fastq::FastqScanFunction,
+        fcs::FCSScanFunction,
         genbank::GenbankScanFunction,
         gff::GFFScanFunction,
         gtf::GTFScanFunction,
@@ -169,6 +170,7 @@ pub trait ExonSessionExt {
             Arc::new(HMMDomTabScanFunction::default()),
         );
         ctx.register_udtf("genbank_scan", Arc::new(GenbankScanFunction::default()));
+        ctx.register_udtf("fcs_scan", Arc::new(FCSScanFunction::new(ctx.clone())));
 
         ctx
     }

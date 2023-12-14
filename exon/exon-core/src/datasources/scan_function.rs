@@ -23,6 +23,7 @@ use datafusion::{
     scalar::ScalarValue,
 };
 
+#[derive(Debug)]
 pub(crate) struct ScanFunction {
     pub listing_table_url: ListingTableUrl,
     pub file_compression_type: FileCompressionType,

@@ -54,6 +54,7 @@ impl FCSConfig {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct FCSSchemaBuilder {
     file_fields: Vec<Field>,
     partition_fields: Vec<Field>,
