@@ -30,6 +30,7 @@ use crate::{
     datasources::{
         bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
         fasta::FastaScanFunction,
+        fastq::FastqScanFunction,
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
     },
@@ -154,6 +155,7 @@ pub trait ExonSessionExt {
 
         // Register UDTFs
         ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::default()));
+        ctx.register_udtf("fastq_scan", Arc::new(FastqScanFunction::default()));
 
         ctx
     }
