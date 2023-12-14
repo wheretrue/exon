@@ -24,3 +24,6 @@ pub mod table_provider;
 pub use self::hmm_dom_tab_config::HMMDomTabConfig;
 pub use self::hmm_dom_tab_opener::HMMDomTabOpener;
 pub use self::hmm_dom_tab_scanner::HMMDomTabScan;
+
+mod udtf;
+pub use self::udtf::HMMDomTabScanFunction;

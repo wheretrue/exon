@@ -22,3 +22,18 @@ SELECT sample, COUNT(*) cnt FROM hmm_table GROUP BY sample ORDER BY sample;
 
 statement ok
 DROP TABLE hmm_table;
+
+query T
+SELECT COUNT(*) FROM hmm_dom_tab_scan('$CARGO_MANIFEST_DIR/test-data/datasources/hmmdomtab/test.hmmdomtab');
+----
+100
+
+query T
+SELECT COUNT(*) FROM hmm_dom_tab_scan('$CARGO_MANIFEST_DIR/test-data/datasources/hmmdomtab-partition/');
+----
+200
+
+query T
+SELECT COUNT(*) FROM hmm_dom_tab_scan('$CARGO_MANIFEST_DIR/test-data/datasources/hmmdomtab/test.hmmdomtab.gz', 'gzip');
+----
+100
