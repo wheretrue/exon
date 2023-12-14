@@ -44,3 +44,18 @@ SELECT name, sample FROM fastq_table WHERE sample = '1' LIMIT 2;
 ----
 SEQ_ID 1
 SEQ_ID2 1
+
+query T
+SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq');
+----
+2
+
+query T
+SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq-partition/');
+----
+4
+
+query T
+SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.gz', 'gzip');
+----
+2

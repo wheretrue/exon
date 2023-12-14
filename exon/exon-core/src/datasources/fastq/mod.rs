@@ -24,3 +24,6 @@ pub mod table_provider;
 
 pub use self::file_opener::FASTQOpener;
 pub use self::scanner::FASTQScan;
+
+mod udtf;
+pub use self::udtf::FastqScanFunction;
