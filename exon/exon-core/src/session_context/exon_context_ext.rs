@@ -34,6 +34,7 @@ use crate::{
         fastq::FastqScanFunction,
         gff::GFFScanFunction,
         gtf::GTFScanFunction,
+        hmmdomtab::HMMDomTabScanFunction,
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
     },
@@ -162,6 +163,10 @@ pub trait ExonSessionExt {
         ctx.register_udtf("gff_scan", Arc::new(GFFScanFunction::default()));
         ctx.register_udtf("gtf_scan", Arc::new(GTFScanFunction::default()));
         ctx.register_udtf("bed_scan", Arc::new(BEDScanFunction::default()));
+        ctx.register_udtf(
+            "hmm_dom_tab_scan",
+            Arc::new(HMMDomTabScanFunction::default()),
+        );
 
         ctx
     }
