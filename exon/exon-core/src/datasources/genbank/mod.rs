@@ -26,3 +26,6 @@ pub mod table_provider;
 pub use self::config::GenbankConfig;
 pub use self::file_opener::GenbankOpener;
 pub use self::scanner::GenbankScan;
+
+mod udtf;
+pub use self::udtf::GenbankScanFunction;
