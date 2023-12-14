@@ -49,9 +49,7 @@ pub(crate) async fn list_all_files<'a>(
     // If the prefix is a file, use a head request, otherwise list
     let is_dir = path.as_str().ends_with('/');
     let list = match is_dir {
-        true => futures::stream::once(store.list(Some(path.prefix())))
-            .try_flatten()
-            .boxed(),
+        true => store.list(Some(path.prefix())),
         false => futures::stream::once(store.head(path.prefix())).boxed(),
     };
     Ok(list
@@ -109,7 +107,7 @@ pub async fn pruned_partition_list<'a>(
             let files = match partition.files {
                 Some(files) => files,
                 None => {
-                    let s = store.list(Some(&partition.path)).await?;
+                    let s = store.list(Some(&partition.path));
                     s.try_collect().await?
                 }
             };

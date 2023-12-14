@@ -78,7 +78,7 @@ pub async fn list_files_for_scan(
         if table_path.as_str().ends_with('/') {
             // We're working with a directory, so we need to list all files in the directory
 
-            let store_list = store.list(Some(table_path.prefix())).await?;
+            let store_list = store.list(Some(table_path.prefix()));
 
             store_list
                 .try_for_each(|v| {

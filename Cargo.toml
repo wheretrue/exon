@@ -26,9 +26,10 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-arrow = {version = "48.0.1"}
+arrow = {version = "49.0.0"}
 async-trait = "0.1.74"
-datafusion = {version = "33", features = ["compression", "parquet"]}
+datafusion = {git = "https://github.com/apache/arrow-datafusion.git", tag = "34.0.0-rc1", features = ["compression", "parquet"]}
+# datafusion = {version = "33", features = ["compression", "parquet"]}
 futures = "0.3.29"
 noodles = {version = "0.60"}
 object_store = {version = "0.7.1"}

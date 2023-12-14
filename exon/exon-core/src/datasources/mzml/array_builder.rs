@@ -421,7 +421,13 @@ impl MzMLArrayBuilder {
                 .values()
                 .field_builder::<GenericStringBuilder<i32>>(2)
                 .unwrap()
-                .append_option(cv_param.value.as_ref().map(|v| v.to_string()));
+                .append_option(cv_param.value.as_ref().and_then(|v| {
+                    if v.is_empty() {
+                        None
+                    } else {
+                        Some(v.to_string())
+                    }
+                }));
 
             self.cv_params.values().append(true);
         }

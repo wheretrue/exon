@@ -26,9 +26,8 @@ pub async fn object_store_files_from_table_path<'a>(
     glob: Option<glob::Pattern>,
 ) -> BoxStream<'a, Result<ObjectMeta>> {
     let object_list = if url.as_str().ends_with('/') {
-        futures::stream::once(store.list(Some(table_prefix)))
-            .try_flatten()
-            .boxed()
+        let list = store.list(Some(table_prefix));
+        list
     } else {
         futures::stream::once(store.head(table_prefix)).boxed()
     };

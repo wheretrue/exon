@@ -116,7 +116,7 @@ impl ListingBCFTableOptions {
         let store = state.runtime_env().object_store(table_path)?;
 
         let get_result = if table_path.to_string().ends_with('/') {
-            let list = store.list(Some(table_path.prefix())).await?;
+            let list = store.list(Some(table_path.prefix()));
             let collected_list = list.try_collect::<Vec<_>>().await?;
             let first = collected_list
                 .first()
@@ -224,7 +224,7 @@ impl TableProvider for ListingBCFTable {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
             url.object_store()
         } else {
-            return Ok(Arc::new(EmptyExec::new(false, Arc::new(Schema::empty()))));
+            return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
