@@ -29,6 +29,7 @@ use noodles::core::Region;
 use crate::{
     datasources::{
         bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
+        fasta::FastaScanFunction,
         vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
         ExonFileType, ExonListingTableFactory,
     },
@@ -150,6 +151,9 @@ pub trait ExonSessionExt {
 
         // Register VCF region filter UDF
         register_vcf_region_filter_udf(&ctx);
+
+        // Register UDTFs
+        ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::default()));
 
         ctx
     }
