@@ -25,3 +25,18 @@ SELECT sample, COUNT(*) cnt FROM gtf_table GROUP BY sample ORDER BY sample;
 ----
 1 77
 2 77
+
+query T
+SELECT COUNT(*) FROM gtf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/gtf-partition/');
+----
+154
+
+query T
+SELECT COUNT(*) FROM gtf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/gtf/test.gtf');
+----
+77
+
+query T
+SELECT COUNT(*) FROM gtf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/gtf/test.gtf.gz', 'gzip');
+----
+77
