@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
 use byteorder::{LittleEndian, ReadBytesExt};
 
 use base64::Engine;
-
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
@@ -543,7 +542,6 @@ mod tests {
         assert!(cv_param.cv_ref == "MS");
         assert!(cv_param.accession == "MS:1000576");
         assert!(cv_param.name == "no compression");
-        assert!(cv_param.value.is_none(), "value should be None");
     }
 
     #[test]

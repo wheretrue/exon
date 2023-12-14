@@ -92,7 +92,12 @@ impl TableSchema {
 
     /// Get the schema for the underlying file
     pub fn file_schema(&self) -> Result<SchemaRef> {
-        let file_schema = &self.schema.project(&self.file_projection)?;
+        let file_schema = &self.schema.project(&self.file_projection).map_err(|e| {
+            datafusion::error::DataFusionError::Execution(format!(
+                "Error projecting schema: {:?}",
+                e
+            ))
+        })?;
         Ok(Arc::new(file_schema.clone()))
     }
 

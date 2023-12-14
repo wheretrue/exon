@@ -43,7 +43,7 @@ pub(crate) fn between_to_interval_udf(expr: Expr) -> Result<Expr> {
 
                         return Ok(Transformed::Yes(chrom_udf));
                     }
-                    (Expr::ScalarUDF(left_udf), Expr::ScalarUDF(right_udf)) => {
+                    (Expr::ScalarFunction(left_udf), Expr::ScalarFunction(right_udf)) => {
                         // TODO: stricter checks (e.g. func names equal)
 
                         let chrom_scalar = match left_udf.args[1] {
@@ -175,8 +175,8 @@ mod tests {
         let new_expr = between_to_interval_udf(expr).unwrap();
 
         match new_expr {
-            Expr::ScalarUDF(scalar_udf) => {
-                assert_eq!(scalar_udf.fun.name, "interval_match");
+            Expr::ScalarFunction(scalar_udf) => {
+                assert_eq!(scalar_udf.name(), "interval_match");
             }
             _ => panic!("Expected ScalarUDF"),
         }
@@ -189,8 +189,8 @@ mod tests {
         let new_expr = between_to_interval_udf(expr).unwrap();
 
         match new_expr {
-            Expr::ScalarUDF(scalar_udf) => {
-                assert_eq!(scalar_udf.fun.name, "chrom_match");
+            Expr::ScalarFunction(scalar_udf) => {
+                assert_eq!(scalar_udf.name(), "chrom_match");
             }
             _ => panic!("Expected ScalarUDF"),
         }
@@ -205,8 +205,8 @@ mod tests {
         let new_expr = between_to_interval_udf(expr).unwrap();
 
         match new_expr {
-            Expr::ScalarUDF(scalar_udf) => {
-                assert_eq!(scalar_udf.fun.name, "region_match");
+            Expr::ScalarFunction(scalar_udf) => {
+                assert_eq!(scalar_udf.name(), "region_match");
             }
             _ => panic!("Expected ScalarUDF"),
         }

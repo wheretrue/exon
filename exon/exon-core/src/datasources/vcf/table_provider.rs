@@ -25,7 +25,7 @@ use datafusion::{
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
-    logical_expr::{expr::ScalarUDF, TableProviderFilterPushDown, TableType},
+    logical_expr::{expr::ScalarFunction, TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
@@ -48,8 +48,8 @@ use crate::{
 
 use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
 
-fn infer_region_from_scalar_udf(scalar_udf: &ScalarUDF) -> Option<Region> {
-    if scalar_udf.fun.name.as_str() == "vcf_region_filter" {
+fn infer_region_from_scalar_udf(scalar_udf: &ScalarFunction) -> Option<Region> {
+    if scalar_udf.name() == "vcf_region_filter" {
         if scalar_udf.args.len() == 2 || scalar_udf.args.len() == 3 {
             match &scalar_udf.args[0] {
                 Expr::Literal(l) => {
@@ -281,10 +281,8 @@ impl TableProvider for ListingVCFTable {
         Ok(filters
             .iter()
             .map(|f| {
-                if let Expr::ScalarUDF(s) = f {
-                    if s.fun.name.as_str() == "vcf_region_filter"
-                        && (s.args.len() == 2 || s.args.len() == 3)
-                    {
+                if let Expr::ScalarFunction(s) = f {
+                    if s.name() == "vcf_region_filter" && (s.args.len() == 2 || s.args.len() == 3) {
                         return TableProviderFilterPushDown::Exact;
                     }
                 }
@@ -304,7 +302,7 @@ impl TableProvider for ListingVCFTable {
         let object_store_url = if let Some(url) = self.table_paths.get(0) {
             url.object_store()
         } else {
-            return Ok(Arc::new(EmptyExec::new(false, Arc::new(Schema::empty()))));
+            return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
@@ -312,7 +310,7 @@ impl TableProvider for ListingVCFTable {
         let regions = filters
             .iter()
             .filter_map(|f| {
-                if let Expr::ScalarUDF(s) = f {
+                if let Expr::ScalarFunction(s) = f {
                     infer_region_from_scalar_udf(s)
                 } else {
                     None
