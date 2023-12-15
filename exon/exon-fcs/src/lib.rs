@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod file_opener;
-mod scanner;
+mod array_builder;
+mod batch_reader;
+mod config;
+mod reader;
 
-/// Table provider for FCS files.
-pub mod table_provider;
-pub use scanner::FCSScan;
-
-mod udtf;
-pub use udtf::FCSScanFunction;
+pub use batch_reader::BatchReader;
+pub use config::{FCSConfig, FCSSchemaBuilder};
+pub use reader::FcsReader;

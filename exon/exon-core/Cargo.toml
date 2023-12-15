@@ -22,6 +22,7 @@ exon-bed = {path = "../exon-bed", version = "0.5.4"}
 exon-common = {path = "../exon-common", version = "0.5.4"}
 exon-fasta = {path = "../exon-fasta", version = "0.5.4"}
 exon-fastq = {path = "../exon-fastq", version = "0.5.4"}
+exon-fcs = {path = "../exon-fcs", version = "0.5.4", optional = true}
 exon-gff = {path = "../exon-gff", version = "0.5.4"}
 exon-gtf = {path = "../exon-gtf", version = "0.5.4"}
 exon-io = {path = "../exon-io", version = "0.5.4"}
@@ -46,7 +47,7 @@ sqllogictest = "0.19.0"
 
 [features]
 all = ["ffi", "genbank", "mzml", "fcs"]
-fcs = ["dep:byteorder"]
+fcs = ["dep:exon-fcs"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 fixtures = []
 genbank = ["dep:gb-io"]

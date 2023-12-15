@@ -30,6 +30,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
+use exon_fcs::{FCSSchemaBuilder, FcsReader};
 use futures::TryStreamExt;
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
@@ -41,7 +42,7 @@ use crate::{
 
 use crate::physical_plan::file_scan_config_builder::FileScanConfigBuilder;
 
-use super::{config::FCSSchemaBuilder, reader::FcsReader, scanner::FCSScan};
+use super::scanner::FCSScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
