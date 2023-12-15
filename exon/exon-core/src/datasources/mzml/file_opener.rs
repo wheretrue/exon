@@ -21,10 +21,9 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_mzml::{BatchReader, MzMLConfig};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::MzMLConfig};
 
 /// Implements a datafusion `FileOpener` for MzML files.
 pub struct MzMLOpener {

@@ -22,16 +22,13 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 
-use crate::datasources::mzml::mzml_reader::types::WAVE_LENGTH_ARRAY;
-
-use super::mzml_reader::{
-    binary_conversion::decode_binary_array,
-    types::{
-        BinaryDataArray, BinaryDataType, CompressionType, DataType as MzDataType, Spectrum,
-        FLOAT_32_DATA_TYPE_MS_NUMBER, FLOAT_64_DATA_TYPE_MS_NUMBER, INTENSITY_ARRAY, MZ_ARRAY,
-        NO_COMPRESSION_MS_NUMBER, ZLIB_COMPRESSION_MS_NUMBER,
-    },
+use crate::mzml_reader::{
+    BinaryDataArray, BinaryDataType, CompressionType, DataType as MzDataType, Spectrum,
+    FLOAT_32_DATA_TYPE_MS_NUMBER, FLOAT_64_DATA_TYPE_MS_NUMBER, INTENSITY_ARRAY, MZ_ARRAY,
+    NO_COMPRESSION_MS_NUMBER, WAVE_LENGTH_ARRAY, ZLIB_COMPRESSION_MS_NUMBER,
 };
+
+use super::mzml_reader::binary_conversion::decode_binary_array;
 
 pub struct MzMLArrayBuilder {
     id: GenericStringBuilder<i32>,

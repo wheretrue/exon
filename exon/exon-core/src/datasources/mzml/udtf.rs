@@ -14,16 +14,14 @@
 
 use std::sync::Arc;
 
-use super::{
-    config::MzMLSchemaBuilder,
-    table_provider::{ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions},
-};
+use super::table_provider::{ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions};
 use crate::datasources::ScanFunction;
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
     logical_expr::Expr,
 };
+use exon_mzml::MzMLSchemaBuilder;
 
 /// A table function that returns a table provider for a MzML file.
 #[derive(Debug, Default)]

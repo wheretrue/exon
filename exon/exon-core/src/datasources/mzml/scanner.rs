@@ -26,10 +26,11 @@ use datafusion::{
         SendableRecordBatchStream,
     },
 };
+use exon_mzml::MzMLConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::MzMLConfig, file_opener::MzMLOpener};
+use super::file_opener::MzMLOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for MzML files.
