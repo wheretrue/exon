@@ -43,3 +43,8 @@ SELECT sample, COUNT(reference) cnt FROM bam_part WHERE bam_region_filter('chr1:
 
 statement ok
 DROP TABLE bam_part;
+
+query T
+SELECT COUNT(*) FROM bam_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam-partition/', 'chr1:1-12209145');
+----
+14

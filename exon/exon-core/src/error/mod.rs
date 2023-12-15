@@ -88,6 +88,12 @@ impl From<TryFromU64U16TupleError> for ExonError {
     }
 }
 
+impl From<noodles::core::region::ParseError> for ExonError {
+    fn from(_error: noodles::core::region::ParseError) -> Self {
+        ExonError::ExecutionError("Error parsing region".to_string())
+    }
+}
+
 impl Display for ExonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

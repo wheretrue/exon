@@ -95,7 +95,11 @@ use super::{indexed_scanner::IndexedBAMScan, BAMScan};
 pub struct ListingBAMTableOptions {
     file_extension: String,
 
+    /// Whether the scan should use the index
     indexed: bool,
+
+    /// Any regions to use for the scan
+    region: Option<Region>,
 
     table_partition_cols: Vec<Field>,
 
@@ -109,6 +113,7 @@ impl Default for ListingBAMTableOptions {
             table_partition_cols: Vec::new(),
             indexed: false,
             tag_as_struct: false,
+            region: None,
         }
     }
 }
@@ -118,6 +123,15 @@ impl ListingBAMTableOptions {
     pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
+            ..self
+        }
+    }
+
+    /// Set the region for the table options. This is used to filter the records
+    pub fn with_region(self, region: Option<Region>) -> Self {
+        Self {
+            region,
+            indexed: true,
             ..self
         }
     }
@@ -292,6 +306,19 @@ impl TableProvider for ListingBAMTable {
                 }
             })
             .collect::<Vec<Region>>();
+
+        let regions = if self.options.indexed {
+            if regions.len() == 1 {
+                regions
+            } else {
+                match self.options.region.clone() {
+                    Some(region) => vec![region],
+                    None => regions,
+                }
+            }
+        } else {
+            regions
+        };
 
         if regions.is_empty() && self.options.indexed {
             return Err(DataFusionError::Plan(

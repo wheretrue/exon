@@ -14,12 +14,13 @@
 
 use std::sync::Arc;
 
-use crate::datasources::ScanFunction;
+use crate::{datasources::ScanFunction, error::ExonError};
 use datafusion::{
-    datasource::{function::TableFunctionImpl, TableProvider},
-    error::Result,
+    datasource::{function::TableFunctionImpl, listing::ListingTableUrl, TableProvider},
+    error::{DataFusionError, Result},
     execution::context::SessionContext,
     logical_expr::Expr,
+    scalar::ScalarValue,
 };
 use exon_common::TableSchema;
 
@@ -48,6 +49,49 @@ impl TableFunctionImpl for BAMScanFunction {
         let listing_fasta_table_config =
             ListingBAMTableConfig::new(listing_scan_function.listing_table_url)
                 .with_options(listing_table_options);
+
+        let listing_fasta_table = ListingBAMTable::try_new(listing_fasta_table_config, schema)?;
+
+        Ok(Arc::new(listing_fasta_table))
+    }
+}
+
+#[derive(Default)]
+/// A table function that returns a table provider for an Indexed BAM file.
+pub struct BAMIndexedScanFunction {
+    ctx: SessionContext,
+}
+
+impl TableFunctionImpl for BAMIndexedScanFunction {
+    fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
+        let Some(Expr::Literal(ScalarValue::Utf8(Some(path)))) = exprs.first() else {
+            return Err(DataFusionError::Internal(
+                "this function requires the path to be specified as the first argument".into(),
+            ));
+        };
+
+        let listing_table_url = ListingTableUrl::parse(path)?;
+
+        let Some(Expr::Literal(ScalarValue::Utf8(Some(region_str)))) = exprs.get(1) else {
+            return Err(DataFusionError::Internal(
+                "this function requires the region to be specified as the second argument".into(),
+            ));
+        };
+
+        let region = region_str.parse().map_err(ExonError::from)?;
+
+        let listing_table_options = ListingBAMTableOptions::default().with_region(Some(region));
+
+        let schema = futures::executor::block_on(async {
+            let schema = listing_table_options
+                .infer_schema(&self.ctx.state(), &listing_table_url)
+                .await?;
+
+            Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
+        })?;
+
+        let listing_fasta_table_config =
+            ListingBAMTableConfig::new(listing_table_url).with_options(listing_table_options);
 
         let listing_fasta_table = ListingBAMTable::try_new(listing_fasta_table_config, schema)?;
 

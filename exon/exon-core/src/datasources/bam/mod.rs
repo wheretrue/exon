@@ -29,4 +29,5 @@ pub use indexed_scanner::IndexedBAMScan;
 pub use scanner::BAMScan;
 
 mod udtf;
+pub use udtf::BAMIndexedScanFunction;
 pub use udtf::BAMScanFunction;
