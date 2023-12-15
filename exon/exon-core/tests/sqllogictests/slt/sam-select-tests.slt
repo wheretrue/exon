@@ -32,3 +32,8 @@ SELECT sample, COUNT(name) AS cnt FROM sam GROUP BY sample ORDER BY sample ASC;
 
 statement ok
 DROP TABLE sam;
+
+query T
+SELECT name, flag, reference, start, end FROM sam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/sam/test.sam') LIMIT 1;
+----
+ref1_grp1_p001 99 ref1 1 10
