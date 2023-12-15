@@ -69,13 +69,13 @@ fn infer_region_from_scalar_udf(scalar_udf: &ScalarFunction) -> Option<Region> {
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
-pub struct VCFListingTableConfig {
+pub struct ListingVCFTableConfig {
     inner: ListingTableConfig,
 
     options: Option<ListingVCFTableOptions>,
 }
 
-impl VCFListingTableConfig {
+impl ListingVCFTableConfig {
     /// Create a new VCF listing table configuration
     pub fn new(table_path: ListingTableUrl) -> Self {
         Self {
@@ -244,7 +244,7 @@ pub struct ListingVCFTable {
 
 impl ListingVCFTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: VCFListingTableConfig, table_schema: TableSchema) -> Result<Self> {
+    pub fn try_new(config: ListingVCFTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,

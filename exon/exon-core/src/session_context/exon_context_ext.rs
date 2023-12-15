@@ -40,7 +40,7 @@ use crate::{
         hmmdomtab::HMMDomTabScanFunction,
         mzml::MzMLScanFunction,
         sam::SAMScanFunction,
-        vcf::{ListingVCFTable, ListingVCFTableOptions, VCFListingTableConfig},
+        vcf::{ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions, VCFScanFunction},
         ExonFileType, ExonListingTableFactory,
     },
     error::ExonError,
@@ -177,6 +177,7 @@ pub trait ExonSessionExt {
         ctx.register_udtf("mzml_scan", Arc::new(MzMLScanFunction::default()));
         ctx.register_udtf("bam_scan", Arc::new(BAMScanFunction::default()));
         ctx.register_udtf("sam_scan", Arc::new(SAMScanFunction::default()));
+        ctx.register_udtf("vcf_scan", Arc::new(VCFScanFunction::new(ctx.clone())));
 
         ctx
     }
@@ -438,7 +439,7 @@ impl ExonSessionExt for SessionContext {
             .infer_schema(&self.state(), &table_path)
             .await?;
 
-        let config = VCFListingTableConfig::new(table_path).with_options(vcf_table_options);
+        let config = ListingVCFTableConfig::new(table_path).with_options(vcf_table_options);
 
         let provider = Arc::new(ListingVCFTable::try_new(config, table_schema)?);
         self.register_table(table_name, provider)
