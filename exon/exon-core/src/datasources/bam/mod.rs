@@ -27,3 +27,6 @@ pub mod table_provider;
 pub use file_opener::BAMOpener;
 pub use indexed_scanner::IndexedBAMScan;
 pub use scanner::BAMScan;
+
+mod udtf;
+pub use udtf::BAMScanFunction;

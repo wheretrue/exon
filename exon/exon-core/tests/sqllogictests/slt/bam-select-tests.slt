@@ -36,3 +36,13 @@ READ_ID 2
 
 statement ok
 DROP TABLE bam;
+
+query T
+SELECT COUNT(*) FROM bam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam/test.bam');
+----
+61
+
+query T
+SELECT COUNT(*) FROM bam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam-partition');
+----
+122
