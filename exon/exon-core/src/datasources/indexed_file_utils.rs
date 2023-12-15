@@ -15,7 +15,10 @@
 use std::sync::Arc;
 
 use datafusion::datasource::listing::{FileRange, PartitionedFile};
-use noodles::{core::Region, csi::index::reference_sequence::bin::Chunk};
+use noodles::{
+    core::Region,
+    csi::{binning_index::index::reference_sequence::bin::Chunk, BinningIndex},
+};
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
