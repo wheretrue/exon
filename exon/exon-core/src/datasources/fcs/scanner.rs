@@ -25,12 +25,13 @@ use datafusion::{
         SendableRecordBatchStream,
     },
 };
+use exon_fcs::FCSConfig;
 
 // file format moted to physcial plan
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::FCSConfig, file_opener::FCSOpener};
+use super::file_opener::FCSOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for FCS files.

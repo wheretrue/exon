@@ -23,6 +23,7 @@ members = [
   "exon/exon-mzml",
   "exon/exon-sam",
   "exon/exon-test",
+  "exon/exon-fcs",
 ]
 resolver = "2"
 

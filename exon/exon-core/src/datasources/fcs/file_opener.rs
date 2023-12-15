@@ -21,10 +21,9 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_fcs::{BatchReader, FCSConfig, FcsReader};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::FCSConfig, reader::FcsReader};
 
 /// A file opener for FCS files.
 pub struct FCSOpener {

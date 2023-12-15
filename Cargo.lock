@@ -1393,6 +1393,7 @@ dependencies = [
  "exon-common",
  "exon-fasta",
  "exon-fastq",
+ "exon-fcs",
  "exon-gff",
  "exon-gtf",
  "exon-io",
@@ -1512,6 +1513,19 @@ dependencies = [
  "object_store",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "exon-fcs"
+version = "0.5.4"
+dependencies = [
+ "arrow",
+ "byteorder",
+ "exon-common",
+ "exon-test",
+ "futures",
+ "object_store",
+ "tokio",
 ]
 
 [[package]]
