@@ -1385,7 +1385,6 @@ version = "0.5.4"
 dependencies = [
  "arrow",
  "async-trait",
- "base64",
  "byteorder",
  "bytes",
  "datafusion",
@@ -1397,8 +1396,8 @@ dependencies = [
  "exon-gff",
  "exon-gtf",
  "exon-io",
+ "exon-mzml",
  "exon-test",
- "flate2",
  "futures",
  "gb-io",
  "itertools 0.12.0",
@@ -1407,8 +1406,6 @@ dependencies = [
  "num_cpus",
  "object_store",
  "pin-project",
- "quick-xml",
- "serde",
  "sqllogictest",
  "tokio",
  "tokio-util",
@@ -1553,6 +1550,22 @@ dependencies = [
  "object_store",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "exon-mzml"
+version = "0.5.4"
+dependencies = [
+ "arrow",
+ "base64",
+ "byteorder",
+ "exon-common",
+ "flate2",
+ "futures",
+ "object_store",
+ "quick-xml",
+ "serde",
+ "tokio",
 ]
 
 [[package]]

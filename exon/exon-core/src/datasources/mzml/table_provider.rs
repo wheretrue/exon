@@ -30,6 +30,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
+use exon_mzml::MzMLSchemaBuilder;
 use futures::TryStreamExt;
 
 use crate::{
@@ -39,7 +40,7 @@ use crate::{
     },
 };
 
-use super::{config::MzMLSchemaBuilder, MzMLScan};
+use super::MzMLScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table

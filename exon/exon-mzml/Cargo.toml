@@ -1,0 +1,22 @@
+[package]
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "exon-mzml"
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrow = {workspace = true}
+base64 = {version = "0.21"}
+byteorder = {version = "1.5.0"}
+exon-common = {path = "../exon-common", version = "0.5.4"}
+flate2 = {version = "1.0.28"}
+futures = {workspace = true}
+object_store = {workspace = true}
+quick-xml = {version = "0.31.0", features = ["async-tokio", "serialize", "overlapped-lists"]}
+serde = {version = "1", features = ["derive"]}
+tokio = {workspace = true}

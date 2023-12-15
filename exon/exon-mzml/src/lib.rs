@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod binary_conversion;
+pub mod mzml_reader;
 
-pub mod parser;
-pub mod types;
+mod array_builder;
+mod batch_reader;
+mod config;
+
+pub use batch_reader::BatchReader;
+pub use config::MzMLConfig;
+pub use config::MzMLSchemaBuilder;

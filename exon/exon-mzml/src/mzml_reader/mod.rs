@@ -12,16 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Data source for mzML files.
+pub mod binary_conversion;
 
-mod file_opener;
-mod scanner;
+pub mod parser;
+mod types;
 
-/// Table provider for mzML files.
-pub mod table_provider;
-
-pub use file_opener::MzMLOpener;
-pub use scanner::MzMLScan;
-
-mod udtf;
-pub use udtf::MzMLScanFunction;
+pub(crate) use types::*;
