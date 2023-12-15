@@ -15,3 +15,9 @@ SELECT sample, COUNT(*) cnt FROM bcf_table WHERE sample = '2' GROUP BY sample OR
 
 statement ok
 DROP TABLE bcf_table;
+
+
+query T
+SELECT COUNT(*) FROM bcf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bcf-partition/');
+----
+1242

@@ -27,3 +27,6 @@ pub mod table_provider;
 pub use self::config::BCFConfig;
 pub use self::file_opener::BCFOpener;
 pub use self::scanner::BCFScan;
+
+mod udtf;
+pub use self::udtf::BCFScanFunction;
