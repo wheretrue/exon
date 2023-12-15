@@ -39,4 +39,5 @@ pub use self::table_provider::ListingVCFTableOptions;
 pub use crate::datasources::vcf::file_opener::unindex_file_opener::VCFOpener;
 
 mod udtf;
+pub use self::udtf::VCFIndexedScanFunction;
 pub use self::udtf::VCFScanFunction;
