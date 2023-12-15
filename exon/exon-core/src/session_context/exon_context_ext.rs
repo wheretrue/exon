@@ -29,7 +29,10 @@ use noodles::core::Region;
 use crate::{
     datasources::{
         bam::BAMScanFunction,
-        bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
+        bcf::{
+            table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
+            BCFScanFunction,
+        },
         bed::BEDScanFunction,
         fasta::FastaScanFunction,
         fastq::FastqScanFunction,
@@ -178,6 +181,7 @@ pub trait ExonSessionExt {
         ctx.register_udtf("bam_scan", Arc::new(BAMScanFunction::default()));
         ctx.register_udtf("sam_scan", Arc::new(SAMScanFunction::default()));
         ctx.register_udtf("vcf_scan", Arc::new(VCFScanFunction::new(ctx.clone())));
+        ctx.register_udtf("bcf_scan", Arc::new(BCFScanFunction::new(ctx.clone())));
 
         ctx
     }
