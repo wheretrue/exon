@@ -29,3 +29,13 @@ PL  0,3,35
 
 statement ok
 DROP TABLE vcf_table;
+
+query T
+SELECT COUNT(*) FROM vcf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf');
+----
+621
+
+query T
+SELECT COUNT(*) FROM vcf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf.gz', 'gzip');
+----
+621
