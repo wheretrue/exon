@@ -14,12 +14,16 @@
 
 use std::sync::Arc;
 
-use crate::datasources::ScanFunction;
+use crate::{datasources::ScanFunction, error::ExonError};
 use datafusion::{
-    datasource::{function::TableFunctionImpl, TableProvider},
-    error::Result,
+    datasource::{
+        file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
+        listing::ListingTableUrl, TableProvider,
+    },
+    error::{DataFusionError, Result},
     execution::context::SessionContext,
     logical_expr::Expr,
+    scalar::ScalarValue,
 };
 use exon_common::TableSchema;
 
@@ -55,6 +59,56 @@ impl TableFunctionImpl for VCFScanFunction {
         let listing_table_config =
             ListingVCFTableConfig::new(listing_scan_function.listing_table_url)
                 .with_options(listing_table_options);
+
+        let listing_table = ListingVCFTable::try_new(listing_table_config, schema)?;
+
+        Ok(Arc::new(listing_table))
+    }
+}
+
+/// A table function that returns a table provider for an Indexed VCF file.
+pub struct VCFIndexedScanFunction {
+    ctx: SessionContext,
+}
+
+impl VCFIndexedScanFunction {
+    /// Create a new VCF scan function.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
+
+impl TableFunctionImpl for VCFIndexedScanFunction {
+    fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
+        let Some(Expr::Literal(ScalarValue::Utf8(Some(path)))) = exprs.first() else {
+            return Err(DataFusionError::Internal(
+                "this function requires the path to be specified as the first argument".into(),
+            ));
+        };
+
+        let listing_table_url = ListingTableUrl::parse(path)?;
+
+        let Some(Expr::Literal(ScalarValue::Utf8(Some(region_str)))) = exprs.get(1) else {
+            return Err(DataFusionError::Internal(
+                "this function requires the region to be specified as the second argument".into(),
+            ));
+        };
+
+        let region = region_str.parse().map_err(ExonError::from)?;
+
+        let listing_table_options =
+            ListingVCFTableOptions::new(FileCompressionType::GZIP, true).with_region(Some(region));
+
+        let schema = futures::executor::block_on(async {
+            let schema = listing_table_options
+                .infer_schema(&self.ctx.state(), &listing_table_url)
+                .await?;
+
+            Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
+        })?;
+
+        let listing_table_config =
+            ListingVCFTableConfig::new(listing_table_url).with_options(listing_table_options);
 
         let listing_table = ListingVCFTable::try_new(listing_table_config, schema)?;
 

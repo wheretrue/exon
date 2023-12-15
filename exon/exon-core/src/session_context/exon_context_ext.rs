@@ -43,7 +43,10 @@ use crate::{
         hmmdomtab::HMMDomTabScanFunction,
         mzml::MzMLScanFunction,
         sam::SAMScanFunction,
-        vcf::{ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions, VCFScanFunction},
+        vcf::{
+            ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions, VCFIndexedScanFunction,
+            VCFScanFunction,
+        },
         ExonFileType, ExonListingTableFactory,
     },
     error::ExonError,
@@ -185,6 +188,10 @@ pub trait ExonSessionExt {
         );
         ctx.register_udtf("sam_scan", Arc::new(SAMScanFunction::default()));
         ctx.register_udtf("vcf_scan", Arc::new(VCFScanFunction::new(ctx.clone())));
+        ctx.register_udtf(
+            "vcf_indexed_scan",
+            Arc::new(VCFIndexedScanFunction::new(ctx.clone())),
+        );
         ctx.register_udtf("bcf_scan", Arc::new(BCFScanFunction::new(ctx.clone())));
 
         ctx

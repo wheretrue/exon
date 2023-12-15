@@ -102,6 +102,9 @@ pub struct ListingVCFTableOptions {
     /// True if the file must be indexed
     indexed: bool,
 
+    /// A region to filter the records
+    region: Option<Region>,
+
     /// The file compression type
     file_compression_type: FileCompressionType,
 
@@ -119,6 +122,16 @@ impl ListingVCFTableOptions {
             file_compression_type,
             indexed,
             table_partition_cols: Vec::new(),
+            region: None,
+        }
+    }
+
+    /// Set the region
+    pub fn with_region(self, region: Option<Region>) -> Self {
+        Self {
+            region,
+            indexed: true,
+            ..self
         }
     }
 
@@ -317,6 +330,19 @@ impl TableProvider for ListingVCFTable {
                 }
             })
             .collect::<Vec<Region>>();
+
+        let regions = if self.options.indexed {
+            if !regions.is_empty() {
+                regions
+            } else {
+                match self.options.region.clone() {
+                    Some(region) => vec![region],
+                    None => regions,
+                }
+            }
+        } else {
+            regions
+        };
 
         if regions.len() > 1 {
             return Err(DataFusionError::NotImplemented(
