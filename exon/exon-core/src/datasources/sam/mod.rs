@@ -28,3 +28,6 @@ pub use self::array_builder::SAMSchemaBuilder;
 pub use self::config::SAMConfig;
 pub use self::file_opener::SAMOpener;
 pub use self::scanner::SAMScan;
+
+mod udtf;
+pub use udtf::SAMScanFunction;
