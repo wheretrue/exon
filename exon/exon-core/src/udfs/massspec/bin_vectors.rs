@@ -15,13 +15,13 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{Array, ArrayRef, Float64Builder},
+    array::{ArrayRef, Float64Builder},
     datatypes::Field,
 };
 
 use datafusion::{
     common::cast::{as_float64_array, as_int64_array, as_list_array},
-    error::Result,
+    error::{DataFusionError, Result},
     logical_expr::{ScalarUDF, Volatility},
     physical_plan::functions::make_scalar_function,
     prelude::create_udf,
@@ -49,7 +49,7 @@ use datafusion::{
 fn bin_vectors(args: &[ArrayRef]) -> Result<ArrayRef> {
     if args.len() < 4 {
         return Err(datafusion::error::DataFusionError::Execution(
-            "bin_vectors takes at least four arguments".to_string(),
+            "bin_vectors takes four arguments".to_string(),
         ));
     }
 
@@ -70,35 +70,16 @@ fn bin_vectors(args: &[ArrayRef]) -> Result<ArrayRef> {
     let mut bin_builder = arrow::array::ListBuilder::new(Float64Builder::new());
 
     for (mz_array, intensity_array) in value_iter {
-        let Some(mz_array) = mz_array else {
-            return Err(datafusion::error::DataFusionError::Execution(
-                "mz_array is None".to_string(),
-            ));
-        };
+        let mz_array =
+            mz_array.ok_or(DataFusionError::Execution("mz_array is None".to_string()))?;
 
-        let Some(mz_array) = mz_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float64Array>()
-        else {
-            return Err(datafusion::error::DataFusionError::Execution(
-                "mz_array is not a Float64Array".to_string(),
-            ));
-        };
+        let mz_array = as_float64_array(&mz_array)?;
 
-        let Some(intensity_array) = intensity_array else {
-            return Err(datafusion::error::DataFusionError::Execution(
-                "intensity_array is None".to_string(),
-            ));
-        };
+        let intensity_array = intensity_array.ok_or(DataFusionError::Execution(
+            "intensity_array is None".to_string(),
+        ))?;
 
-        let Some(intensity_array) = intensity_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float64Array>()
-        else {
-            return Err(datafusion::error::DataFusionError::Execution(
-                "intensity_array is not a Float64Array".to_string(),
-            ));
-        };
+        let intensity_array = as_float64_array(&intensity_array)?;
 
         // Iterate through the mz values and bin them by placing the sum of all the mz values in the bin
         // that they belong to.
@@ -107,14 +88,19 @@ fn bin_vectors(args: &[ArrayRef]) -> Result<ArrayRef> {
         let max_mz = min_mz + (numb_bins as f64 * bin_width);
 
         for (mz, intensity) in mz_array.iter().zip(intensity_array.iter()) {
-            let mz = mz.unwrap();
+            let Some(mz) = mz else {
+                continue;
+            };
+
+            let Some(intensity) = intensity else {
+                continue;
+            };
 
             if mz < min_mz || mz > max_mz {
                 continue;
             }
 
             let bin = ((mz - min_mz) / bin_width) as usize;
-            let intensity = intensity.unwrap();
 
             if bin < numb_bins as usize {
                 bins[bin] += intensity;
@@ -172,7 +158,7 @@ mod tests {
     use super::bin_vectors;
 
     #[test]
-    fn test_bin_vectors_function() {
+    fn test_bin_vectors_function() -> Result<(), Box<dyn std::error::Error>> {
         let mut mz_builder = arrow::array::ListBuilder::new(Float64Builder::new());
 
         mz_builder.values().append_slice(&[1.0, 2.0, 3.0]);
@@ -203,26 +189,25 @@ mod tests {
             Arc::new(test_min_mz) as arrow::array::ArrayRef,
             Arc::new(test_numb_bins) as arrow::array::ArrayRef,
             Arc::new(test_bin_width) as arrow::array::ArrayRef,
-        ])
-        .unwrap();
+        ])?;
 
         // Downcast ArrayRef to ListArray
         let result = result
             .as_any()
             .downcast_ref::<arrow::array::ListArray>()
-            .unwrap();
+            .ok_or("Unexpected array type")?;
 
         let expected_values = vec![vec![Some(1.0), Some(5.0)], vec![Some(0.0), Some(0.0)]];
 
         // rewrite the above map to be a for loop
         for (result, expected) in result.iter().zip(expected_values.iter()) {
-            let result = result.unwrap();
+            let result = result.ok_or("Unexpected null value")?;
 
             // Downcast ArrayRef to Float64Array
             let result = result
                 .as_any()
                 .downcast_ref::<arrow::array::Float64Array>()
-                .unwrap();
+                .ok_or("Unexpected array type")?;
 
             // collect the results into a vector
             let actual = result.iter().collect::<Vec<_>>();
@@ -230,5 +215,7 @@ mod tests {
             // assert that the results are what we expect
             assert_eq!(&actual, expected);
         }
+
+        Ok(())
     }
 }
