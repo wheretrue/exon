@@ -38,13 +38,12 @@ impl TableFunctionImpl for FastaScanFunction {
         let listing_table_options =
             ListingFASTATableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_fasta_table_config =
+        let listing_table_config =
             ListingFASTATableConfig::new(listing_scan_function.listing_table_url)
                 .with_options(listing_table_options);
 
-        let listing_fasta_table =
-            ListingFASTATable::try_new(listing_fasta_table_config, fasta_schema)?;
+        let listing_table = ListingFASTATable::try_new(listing_table_config, fasta_schema)?;
 
-        Ok(Arc::new(listing_fasta_table))
+        Ok(Arc::new(listing_table))
     }
 }

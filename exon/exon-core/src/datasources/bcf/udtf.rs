@@ -52,12 +52,12 @@ impl TableFunctionImpl for BCFScanFunction {
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_fasta_table_config =
+        let listing_table_config =
             ListingBCFTableConfig::new(listing_scan_function.listing_table_url)
                 .with_options(listing_table_options);
 
-        let listing_fasta_table = ListingBCFTable::try_new(listing_fasta_table_config, schema)?;
+        let listing_table = ListingBCFTable::try_new(listing_table_config, schema)?;
 
-        Ok(Arc::new(listing_fasta_table))
+        Ok(Arc::new(listing_table))
     }
 }

@@ -46,13 +46,13 @@ impl TableFunctionImpl for BAMScanFunction {
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_fasta_table_config =
+        let listing_table_config =
             ListingBAMTableConfig::new(listing_scan_function.listing_table_url)
                 .with_options(listing_table_options);
 
-        let listing_fasta_table = ListingBAMTable::try_new(listing_fasta_table_config, schema)?;
+        let listing_table = ListingBAMTable::try_new(listing_table_config, schema)?;
 
-        Ok(Arc::new(listing_fasta_table))
+        Ok(Arc::new(listing_table))
     }
 }
 
@@ -90,11 +90,11 @@ impl TableFunctionImpl for BAMIndexedScanFunction {
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_fasta_table_config =
+        let listing_table_config =
             ListingBAMTableConfig::new(listing_table_url).with_options(listing_table_options);
 
-        let listing_fasta_table = ListingBAMTable::try_new(listing_fasta_table_config, schema)?;
+        let listing_table = ListingBAMTable::try_new(listing_table_config, schema)?;
 
-        Ok(Arc::new(listing_fasta_table))
+        Ok(Arc::new(listing_table))
     }
 }
