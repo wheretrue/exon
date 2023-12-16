@@ -25,10 +25,11 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_genbank::GenbankConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::GenbankConfig, file_opener::GenbankOpener};
+use super::file_opener::GenbankOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for Genbank files.

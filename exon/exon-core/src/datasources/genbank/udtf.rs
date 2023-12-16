@@ -20,9 +20,10 @@ use datafusion::{
     error::Result,
     logical_expr::Expr,
 };
+use exon_genbank::schema;
 
 use super::table_provider::{
-    schema, ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
+    ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
 };
 
 /// A table function that returns a table provider for a Genbank file.

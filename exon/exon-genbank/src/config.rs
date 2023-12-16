@@ -14,11 +14,51 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{DataType, Field, Fields, Schema, SchemaRef};
 use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
-use super::table_provider::schema;
+/// The schema for a Genbank file
+pub fn schema() -> SchemaRef {
+    let kind_field = Field::new("kind", DataType::Utf8, false);
+    let location_field = Field::new("location", DataType::Utf8, false);
+
+    let qualifier_key_field = Field::new("keys", DataType::Utf8, false);
+    let qualifier_value_field = Field::new("values", DataType::Utf8, true);
+    let qualifiers_field = Field::new_map(
+        "qualifiers",
+        "entries",
+        qualifier_key_field,
+        qualifier_value_field,
+        false,
+        true,
+    );
+
+    let fields = Fields::from(vec![kind_field, location_field, qualifiers_field]);
+    let feature_field = Field::new("item", DataType::Struct(fields), true);
+
+    let comment_field = Field::new("item", DataType::Utf8, true);
+
+    let schema = Schema::new(vec![
+        Field::new("sequence", DataType::Utf8, false),
+        Field::new("accession", DataType::Utf8, true),
+        Field::new("comments", DataType::List(Arc::new(comment_field)), true),
+        Field::new("contig", DataType::Utf8, true),
+        Field::new("date", DataType::Utf8, true),
+        Field::new("dblink", DataType::Utf8, true),
+        Field::new("definition", DataType::Utf8, true),
+        Field::new("division", DataType::Utf8, false),
+        Field::new("keywords", DataType::Utf8, true),
+        Field::new("molecule_type", DataType::Utf8, true),
+        Field::new("name", DataType::Utf8, true),
+        Field::new("source", DataType::Utf8, true),
+        Field::new("version", DataType::Utf8, true),
+        Field::new("topology", DataType::Utf8, false),
+        Field::new("features", DataType::List(Arc::new(feature_field)), true),
+    ]);
+
+    Arc::new(schema)
+}
 
 /// Configuration for a Genbank data source.
 pub struct GenbankConfig {
