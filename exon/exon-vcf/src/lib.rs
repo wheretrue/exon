@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! BCF data source.
-//!
-//! This module provides functionality for working with BCF files as a data source.
+mod array_builder;
+mod async_batch_stream;
+mod config;
+mod indexed_async_batch_stream;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for BCF files.
-pub mod table_provider;
-
-pub use self::file_opener::BCFOpener;
-pub use self::scanner::BCFScan;
-
-mod udtf;
-pub use self::udtf::BCFScanFunction;
+pub use array_builder::VCFArrayBuilder;
+pub use async_batch_stream::AsyncBatchStream;
+pub use config::VCFConfig;
+pub use indexed_async_batch_stream::IndexedAsyncBatchStream;

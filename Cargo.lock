@@ -1388,6 +1388,7 @@ dependencies = [
  "bytes",
  "datafusion",
  "exon-bam",
+ "exon-bcf",
  "exon-bed",
  "exon-common",
  "exon-fasta",
@@ -1399,6 +1400,7 @@ dependencies = [
  "exon-io",
  "exon-mzml",
  "exon-test",
+ "exon-vcf",
  "futures",
  "itertools 0.12.0",
  "noodles",
@@ -1424,6 +1426,19 @@ dependencies = [
  "itertools 0.12.0",
  "noodles",
  "noodles-bgzf",
+ "object_store",
+ "tokio",
+]
+
+[[package]]
+name = "exon-bcf"
+version = "0.5.4"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "exon-vcf",
+ "futures",
+ "noodles",
  "object_store",
  "tokio",
 ]
@@ -1604,6 +1619,19 @@ version = "0.5.4"
 dependencies = [
  "datafusion",
  "object_store",
+]
+
+[[package]]
+name = "exon-vcf"
+version = "0.5.4"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "futures",
+ "noodles",
+ "noodles-bgzf",
+ "object_store",
+ "tokio",
 ]
 
 [[package]]

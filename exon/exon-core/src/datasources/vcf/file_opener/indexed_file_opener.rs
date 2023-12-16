@@ -21,6 +21,7 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_vcf::{IndexedAsyncBatchStream, VCFConfig};
 use futures::{StreamExt, TryStreamExt};
 use noodles::{
     bgzf::{self, VirtualPosition},
@@ -29,11 +30,7 @@ use noodles::{
 use object_store::GetOptions;
 use tokio_util::io::StreamReader;
 
-use crate::{
-    datasources::vcf::{indexed_async_batch_stream::IndexedAsyncBatchStream, VCFConfig},
-    error::ExonError,
-    streaming_bgzf::AsyncBGZFReader,
-};
+use crate::{error::ExonError, streaming_bgzf::AsyncBGZFReader};
 
 /// A file opener for VCF files.
 #[derive(Debug)]

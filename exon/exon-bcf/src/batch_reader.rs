@@ -16,12 +16,11 @@ use std::sync::Arc;
 
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
+use exon_vcf::VCFArrayBuilder;
 use noodles::bcf::lazy;
 use tokio::io::{AsyncBufRead, AsyncRead};
 
-use crate::datasources::vcf::VCFArrayBuilder;
-
-use super::BCFConfig;
+use crate::config::BCFConfig;
 
 pub struct BatchReader<R>
 where

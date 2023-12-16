@@ -18,16 +18,12 @@ use datafusion::{
     datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
+use exon_bcf::{BCFConfig, BatchAdapter, BatchReader};
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bcf, core::Region, csi};
 use object_store::GetResultPayload;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
-
-use super::{
-    batch_reader::{BatchAdapter, BatchReader},
-    config::BCFConfig,
-};
 
 /// A file opener for BCF files.
 pub struct BCFOpener {

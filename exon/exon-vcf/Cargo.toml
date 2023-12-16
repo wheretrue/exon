@@ -1,0 +1,19 @@
+[package]
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "exon-vcf"
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrow = {workspace = true}
+exon-common = {path = "../exon-common", version = "0.5.4"}
+futures = {workspace = true}
+noodles = {workspace = true, features = ["core", "async", "vcf", "bgzf"]}
+noodles-bgzf = {version = "0.26.0", features = ["libdeflate"]}
+object_store = {workspace = true}
+tokio = {workspace = true}
