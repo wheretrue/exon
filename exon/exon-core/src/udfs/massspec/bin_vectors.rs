@@ -57,44 +57,67 @@ fn bin_vectors(args: &[ArrayRef]) -> Result<ArrayRef> {
     let intensity_array = as_list_array(&args[1])?;
 
     let min_mz = as_float64_array(&args[2])?;
-    let numb_bins = as_int64_array(&args[3])?;
-    let bin_width = as_float64_array(&args[4])?;
+    let min_mz = min_mz.value(0);
 
-    let value_iter = mz_array
-        .iter()
-        .zip(intensity_array.iter())
-        .zip(min_mz.iter())
-        .zip(numb_bins.iter())
-        .zip(bin_width.iter());
+    let numb_bins = as_int64_array(&args[3])?;
+    let numb_bins = numb_bins.value(0);
+
+    let bin_width = as_float64_array(&args[4])?;
+    let bin_width = bin_width.value(0);
+
+    let value_iter = mz_array.iter().zip(intensity_array.iter());
 
     let mut bin_builder = arrow::array::ListBuilder::new(Float64Builder::new());
 
-    for ((((mz_array, intensity_array), min_mz), numb_bins), bin_width) in value_iter {
-        let mz_array = mz_array.unwrap();
-        let mz_array = mz_array
+    for (mz_array, intensity_array) in value_iter {
+        let Some(mz_array) = mz_array else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "mz_array is None".to_string(),
+            ));
+        };
+
+        let Some(mz_array) = mz_array
             .as_any()
             .downcast_ref::<arrow::array::Float64Array>()
-            .unwrap();
+        else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "mz_array is not a Float64Array".to_string(),
+            ));
+        };
 
-        let intensity_array = intensity_array.unwrap();
-        let intensity_array = intensity_array
+        let Some(intensity_array) = intensity_array else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "intensity_array is None".to_string(),
+            ));
+        };
+
+        let Some(intensity_array) = intensity_array
             .as_any()
             .downcast_ref::<arrow::array::Float64Array>()
-            .unwrap();
-
-        let min_mz = min_mz.unwrap();
-        let numb_bins = numb_bins.unwrap();
-        let bin_width = bin_width.unwrap();
+        else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "intensity_array is not a Float64Array".to_string(),
+            ));
+        };
 
         // Iterate through the mz values and bin them by placing the sum of all the mz values in the bin
         // that they belong to.
         let mut bins = vec![0.0; numb_bins as usize];
 
+        let max_mz = min_mz + (numb_bins as f64 * bin_width);
+
         for (mz, intensity) in mz_array.iter().zip(intensity_array.iter()) {
             let mz = mz.unwrap();
+
+            if mz < min_mz || mz > max_mz {
+                continue;
+            }
+
             let bin = ((mz - min_mz) / bin_width) as usize;
+            let intensity = intensity.unwrap();
+
             if bin < numb_bins as usize {
-                bins[bin] += intensity.unwrap();
+                bins[bin] += intensity;
             }
         }
 
