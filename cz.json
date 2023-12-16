@@ -6,16 +6,21 @@
     "version_files": [
       "Cargo.toml",
       "exon/exon-bam/Cargo.toml",
+      "exon/exon-bcf/Cargo.toml",
       "exon/exon-bed/Cargo.toml",
       "exon/exon-common/Cargo.toml",
       "exon/exon-core/Cargo.toml",
       "exon/exon-fasta/Cargo.toml",
       "exon/exon-fastq/Cargo.toml",
+      "exon/exon-fcs/Cargo.toml",
+      "exon/exon-genbank/Cargo.toml",
       "exon/exon-gff/Cargo.toml",
       "exon/exon-gtf/Cargo.toml",
       "exon/exon-io/Cargo.toml",
+      "exon/exon-mzml/Cargo.toml",
       "exon/exon-sam/Cargo.toml",
-      "exon/exon-test/Cargo.toml"
+      "exon/exon-test/Cargo.toml",
+      "exon/exon-vcf/Cargo.toml"
     ],
     "update_changelog_on_bump": true
   }

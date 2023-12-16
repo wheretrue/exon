@@ -31,6 +31,11 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+      - name: Publish exon-bcf
+        run: cargo publish --manifest-path exon/exon-bcf/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Publish exon-bed
         run: cargo publish --manifest-path exon/exon-bed/Cargo.toml
         env:
@@ -46,6 +51,16 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+      - name: Publish exon-fcs
+        run: cargo publish --manifest-path exon/exon-fcs/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish exon-genbank
+        run: cargo publish --manifest-path exon/exon-genbank/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Publish exon-gff
         run: cargo publish --manifest-path exon/exon-gff/Cargo.toml
         env:
@@ -53,6 +68,16 @@ jobs:
 
       - name: Publish exon-gtf
         run: cargo publish --manifest-path exon/exon-gtf/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish exon-mzml
+        run: cargo publish --manifest-path exon/exon-mzml/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish exon-sam
+        run: cargo publish --manifest-path exon/exon-sam/Cargo.toml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
