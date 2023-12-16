@@ -79,16 +79,31 @@ pub async fn pruned_partition_list<'a>(
     file_extension: &'a str,
     partition_cols: &'a [Field],
 ) -> Result<BoxStream<'a, Result<PartitionedFile>>> {
+    tracing::info!(
+        "pruned_partition_list: {:?} with filters {:?} and extension {:?}",
+        table_path,
+        filters,
+        file_extension
+    );
+
     if partition_cols.is_empty() {
         let files = list_all_files(table_path, ctx, store, file_extension)
             .await?
             .map_ok(|o| o.into());
+
+        tracing::info!("pruned_partition_list: no partition columns, returning all files");
 
         return Ok(Box::pin(files));
     }
 
     let partitions = list_partitions(store, table_path, partition_cols.len()).await?;
     let pruned = prune_partitions(table_path, partitions, filters, partition_cols).await?;
+
+    tracing::info!(
+        "pruned_partition_list: got partitions {:?} for table_path {:?}",
+        pruned,
+        table_path
+    );
 
     let stream = futures::stream::iter(pruned)
         .map(move |partition: Partition| async move {
@@ -113,8 +128,15 @@ pub async fn pruned_partition_list<'a>(
             };
 
             let files = files.into_iter().filter(move |o| {
-                let extension_match = o.location.as_ref().ends_with(file_extension);
+                let extension_match = o.location.as_ref().to_lowercase().ends_with(file_extension);
                 let glob_match = table_path.contains(&o.location);
+
+                tracing::info!(
+                    "pruned_partition_list: extension_match: {:?}, glob_match: {:?} for {:?}",
+                    extension_match,
+                    glob_match,
+                    o.location
+                );
                 extension_match && glob_match
             });
 
@@ -135,6 +157,7 @@ pub async fn pruned_partition_list<'a>(
     Ok(stream)
 }
 
+#[derive(Debug)]
 struct Partition {
     /// The path to the partition, including the table prefix
     path: Path,

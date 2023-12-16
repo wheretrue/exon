@@ -37,3 +37,12 @@ query T
 SELECT COUNT(*) FROM mzml_scan('$CARGO_MANIFEST_DIR/test-data/datasources/mzml/test.mzML.gz', 'gzip')
 ----
 2
+
+statement ok
+CREATE EXTERNAL TABLE mzml_table STORED AS MZML PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/mzml-partition/';
+
+query T
+SELECT sample, COUNT(*) FROM mzml_table GROUP BY sample ORDER BY sample;
+----
+1 2
+2 2

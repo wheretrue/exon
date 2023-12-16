@@ -188,7 +188,7 @@ impl TableProvider for ListingMzMLTable {
             &object_store,
             &self.table_paths[0],
             filters,
-            self.options.file_extension.as_str(),
+            self.options.file_extension.to_lowercase().as_str(),
             &self.options.table_partition_cols,
         )
         .await?
