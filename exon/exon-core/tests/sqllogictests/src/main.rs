@@ -19,6 +19,8 @@ use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::Scalar
 use exon::{ExonRuntimeEnvExt, ExonSessionExt};
 
 use sqllogictest::{ColumnType, DBOutput, DefaultColumnType};
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DFColumnType {
@@ -182,5 +184,13 @@ pub async fn main() -> Result<(), DataFusionError> {
     if cfg!(windows) {
         return Ok(());
     }
+
+    // Setup tracing
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::WARN)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     run_tests().await
 }
