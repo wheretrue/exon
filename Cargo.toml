@@ -17,6 +17,7 @@ members = [
   "exon/exon-core",
   "exon/exon-fasta",
   "exon/exon-fastq",
+  "exon/exon-genbank",
   "exon/exon-gff",
   "exon/exon-gtf",
   "exon/exon-io",

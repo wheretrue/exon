@@ -21,9 +21,8 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_genbank::{BatchReader, GenbankConfig};
 use futures::{StreamExt, TryStreamExt};
-
-use super::{batch_reader::BatchReader, config::GenbankConfig};
 
 /// Implements a datafusion `FileOpener` for Genbank files.
 pub struct GenbankOpener {
@@ -80,11 +79,12 @@ mod test {
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileMeta, FileOpener},
     };
+    use exon_genbank::GenbankConfig;
     use exon_test::test_listing_table_dir;
     use futures::StreamExt;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
-    use crate::datasources::genbank::{GenbankConfig, GenbankOpener};
+    use crate::datasources::genbank::GenbankOpener;
 
     #[tokio::test]
     async fn test_opener() {

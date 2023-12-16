@@ -1385,7 +1385,6 @@ version = "0.5.4"
 dependencies = [
  "arrow",
  "async-trait",
- "byteorder",
  "bytes",
  "datafusion",
  "exon-bam",
@@ -1394,13 +1393,13 @@ dependencies = [
  "exon-fasta",
  "exon-fastq",
  "exon-fcs",
+ "exon-genbank",
  "exon-gff",
  "exon-gtf",
  "exon-io",
  "exon-mzml",
  "exon-test",
  "futures",
- "gb-io",
  "itertools 0.12.0",
  "noodles",
  "noodles-bgzf",
@@ -1524,6 +1523,19 @@ dependencies = [
  "exon-common",
  "exon-test",
  "futures",
+ "object_store",
+ "tokio",
+]
+
+[[package]]
+name = "exon-genbank"
+version = "0.5.4"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "exon-test",
+ "futures",
+ "gb-io",
  "object_store",
  "tokio",
 ]

@@ -12,16 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Genbank Datasource Module
+mod array_builder;
+mod batch_reader;
+mod config;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for Genbank files.
-pub mod table_provider;
-
-pub use self::file_opener::GenbankOpener;
-pub use self::scanner::GenbankScan;
-
-mod udtf;
-pub use self::udtf::GenbankScanFunction;
+pub use batch_reader::BatchReader;
+pub use config::{schema, GenbankConfig};
