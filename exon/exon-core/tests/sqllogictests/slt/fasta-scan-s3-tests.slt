@@ -11,3 +11,9 @@ b description2 ATCG
 
 statement ok
 DROP TABLE fasta_table_s3;
+
+query T
+SELECT id, description, sequence FROM fasta_scan('s3://test-bucket/test.fasta');
+----
+a description ATCG
+b description2 ATCG
