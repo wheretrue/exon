@@ -37,12 +37,12 @@ impl TableFunctionImpl for GFFScanFunction {
         let listing_table_options =
             ListingGFFTableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_fasta_table_config =
+        let listing_table_config =
             ListingGFFTableConfig::new(listing_scan_function.listing_table_url)
                 .with_options(listing_table_options);
 
-        let listing_fasta_table = ListingGFFTable::try_new(listing_fasta_table_config, schema)?;
+        let listing_table = ListingGFFTable::try_new(listing_table_config, schema)?;
 
-        Ok(Arc::new(listing_fasta_table))
+        Ok(Arc::new(listing_table))
     }
 }
