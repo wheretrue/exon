@@ -12,18 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! BCF data source.
-//!
-//! This module provides functionality for working with BCF files as a data source.
+mod batch_reader;
+mod config;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for BCF files.
-pub mod table_provider;
-
-pub use self::file_opener::BCFOpener;
-pub use self::scanner::BCFScan;
-
-mod udtf;
-pub use self::udtf::BCFScanFunction;
+pub use batch_reader::{BatchAdapter, BatchReader};
+pub use config::BCFConfig;

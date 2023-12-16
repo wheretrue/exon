@@ -300,7 +300,7 @@ mod tests {
         Header,
     };
 
-    use crate::datasources::vcf::array_builder::genotype_builder::GenotypeBuilder;
+    use crate::array_builder::GenotypeBuilder;
 
     #[test]
     fn test_bad_init_genotype() {

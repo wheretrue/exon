@@ -26,10 +26,9 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_vcf::VCFConfig;
 
 use crate::datasources::{vcf::VCFOpener, ExonFileScanConfig};
-
-use super::config::VCFConfig;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for VCF files.

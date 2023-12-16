@@ -21,11 +21,10 @@ use datafusion::{
     },
     error::DataFusionError,
 };
+use exon_vcf::{AsyncBatchStream, VCFConfig};
 use futures::{StreamExt, TryStreamExt};
 use noodles::bgzf::{self};
 use tokio_util::io::StreamReader;
-
-use crate::datasources::vcf::{AsyncBatchStream, VCFConfig};
 
 /// A file opener for VCF files.
 #[derive(Debug)]

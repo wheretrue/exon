@@ -22,11 +22,12 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_bcf::BCFConfig;
 use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::BCFConfig, file_opener::BCFOpener};
+use super::file_opener::BCFOpener;
 
 #[derive(Debug)]
 /// Implements a datafusion `ExecutionPlan` for BCF files.

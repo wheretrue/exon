@@ -23,11 +23,12 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_vcf::VCFConfig;
 use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::VCFConfig, file_opener::indexed_file_opener::IndexedVCFOpener};
+use super::file_opener::indexed_file_opener::IndexedVCFOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for VCF files.
