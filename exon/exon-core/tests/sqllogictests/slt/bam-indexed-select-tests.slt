@@ -3,10 +3,10 @@ control substitution on
 statement ok
 CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam/';
 
-# query T
-# SELECT name, flag, reference, start, end, mapping_quality, cigar FROM bam WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true LIMIT 1;
-# ----
-# READ_ID 83 chr1 12203704 12217173 NULL 55M13394N21M
+query T
+SELECT name, flag, reference, start, end, mapping_quality, cigar FROM bam WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true LIMIT 1;
+----
+READ_ID 83 chr1 12203704 12217173 NULL 55M13394N21M
 
 query T
 SELECT COUNT(*) AS cnt FROM bam WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
@@ -19,10 +19,10 @@ DROP TABLE bam;
 statement ok
 CREATE EXTERNAL TABLE bam_multi STORED AS INDEXED_BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam-multifile/';
 
-# query T
-# SELECT COUNT(*) AS cnt FROM bam_multi WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
-# ----
-# 14
+query T
+SELECT COUNT(*) AS cnt FROM bam_multi WHERE bam_region_filter('chr1:1-12209145', reference, start, end) = true;
+----
+14
 
 statement ok
 DROP TABLE bam_multi;
