@@ -231,10 +231,12 @@ impl BAMArrayBuilder {
 }
 
 impl ExonArrayBuilder for BAMArrayBuilder {
+    /// Finishes building the internal data structures and returns the built arrays.
     fn finish(&mut self) -> Vec<ArrayRef> {
         self.finish()
     }
 
+    /// Returns the number of elements in the array.
     fn len(&self) -> usize {
         self.rows
     }

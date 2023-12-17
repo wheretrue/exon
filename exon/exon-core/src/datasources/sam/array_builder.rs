@@ -20,7 +20,7 @@ use arrow::{
     error::ArrowError,
 };
 use datafusion::error::Result;
-use exon_common::TableSchema;
+use exon_common::{ExonArrayBuilder, TableSchema};
 use noodles::sam::record::{
     data::field::{value::Array, Value},
     Data,
@@ -512,5 +512,17 @@ impl SAMArrayBuilder {
         }
 
         arrays
+    }
+}
+
+impl ExonArrayBuilder for SAMArrayBuilder {
+    /// Finishes building the internal data structures and returns the built arrays.
+    fn finish(&mut self) -> Vec<ArrayRef> {
+        self.finish()
+    }
+
+    /// Returns the number of elements in the array.
+    fn len(&self) -> usize {
+        self.len()
     }
 }
