@@ -106,6 +106,14 @@ impl ListingFASTATableOptions {
         }
     }
 
+    /// Set the file extension for the table
+    pub fn with_file_extension(self, file_extension: String) -> Self {
+        Self {
+            file_extension,
+            ..self
+        }
+    }
+
     async fn create_physical_plan(
         &self,
         state: &SessionState,

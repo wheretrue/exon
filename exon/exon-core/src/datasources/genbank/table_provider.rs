@@ -74,7 +74,7 @@ pub struct ListingGenbankTableOptions {
 impl ListingGenbankTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
-        let file_extension = ExonFileType::FASTA.get_file_extension(file_compression_type);
+        let file_extension = ExonFileType::GENBANK.get_file_extension(file_compression_type);
 
         Self {
             file_extension,

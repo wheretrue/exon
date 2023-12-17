@@ -93,6 +93,14 @@ impl ListingFASTQTableOptions {
         }
     }
 
+    /// Set the file extension for the table
+    pub fn with_file_extension(self, file_extension: String) -> Self {
+        Self {
+            file_extension,
+            ..self
+        }
+    }
+
     /// Set the table partition columns
     pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {

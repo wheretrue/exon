@@ -201,9 +201,50 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
+            ExonFileType::FAA => {
+                let extension = ExonFileType::FAA.get_file_extension(file_compression_type);
+
+                let options = ListingFASTATableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_file_extension(extension);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingFASTATableConfig::new(table_path).with_options(options);
+                let table = ListingFASTATable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::FNA => {
+                let extension = ExonFileType::FNA.get_file_extension(file_compression_type);
+
+                let options = ListingFASTATableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_file_extension(extension);
+                let schema = options.infer_schema().await?;
+
+                let config = ListingFASTATableConfig::new(table_path).with_options(options);
+                let table = ListingFASTATable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
             ExonFileType::FASTQ => {
                 let options = ListingFASTQTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
+                let schema = options.infer_schema();
+
+                let config: ListingFASTQTableConfig =
+                    ListingFASTQTableConfig::new(table_path).with_options(options);
+                let table = ListingFASTQTable::try_new(config, schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::FQ => {
+                let extension = ExonFileType::FQ.get_file_extension(file_compression_type);
+
+                let options = ListingFASTQTableOptions::new(file_compression_type)
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_file_extension(extension);
+
                 let schema = options.infer_schema();
 
                 let config: ListingFASTQTableConfig =

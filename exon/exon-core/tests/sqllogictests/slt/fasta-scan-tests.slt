@@ -84,3 +84,25 @@ query T
 SELECT COUNT(*) FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta.gz', 'gzip');
 ----
 2
+
+statement ok
+CREATE EXTERNAL TABLE faa_table STORED AS FAA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
+
+query T
+SELECT COUNT(*) FROM faa_table;
+----
+2
+
+statement ok
+DROP TABLE faa_table;
+
+statement ok
+CREATE EXTERNAL TABLE fna_table STORED AS FNA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna';
+
+query T
+SELECT COUNT(*) FROM fna_table;
+----
+2
+
+statement ok
+DROP TABLE fna_table;
