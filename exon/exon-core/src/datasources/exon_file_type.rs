@@ -26,8 +26,17 @@ pub enum ExonFileType {
     /// FASTA file format.
     FASTA,
 
+    /// FAA file format (FASTA with amino acids).
+    FAA,
+
+    /// FNA file format (FASTA with nucleotides).
+    FNA,
+
     /// FASTQ file format.
     FASTQ,
+
+    /// FQ (FASTQ) file format.
+    FQ,
 
     /// Indexed VCF file format.
     /// This is a special case of VCF file format that must be indexed.
@@ -81,8 +90,11 @@ impl FromStr for ExonFileType {
         let s = s.to_uppercase();
 
         match s.as_str() {
-            "FASTA" | "FA" | "FNA" => Ok(Self::FASTA),
-            "FASTQ" | "FQ" => Ok(Self::FASTQ),
+            "FASTA" => Ok(Self::FASTA),
+            "FAA" => Ok(Self::FAA),
+            "FNA" => Ok(Self::FNA),
+            "FASTQ" => Ok(Self::FASTQ),
+            "FQ" => Ok(Self::FQ),
             "VCF" => Ok(Self::VCF),
             "INDEXED_VCF" => Ok(Self::IndexedVCF),
             "BCF" => Ok(Self::BCF),
@@ -107,7 +119,10 @@ impl FromStr for ExonFileType {
 impl Display for ExonFileType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::FQ => write!(f, "FQ"),
             Self::FASTA => write!(f, "FASTA"),
+            Self::FAA => write!(f, "FAA"),
+            Self::FNA => write!(f, "FNA"),
             Self::FASTQ => write!(f, "FASTQ"),
             Self::VCF => write!(f, "VCF"),
             Self::IndexedVCF => write!(f, "INDEXED_VCF"),
@@ -189,6 +204,12 @@ mod tests {
         assert_eq!(ExonFileType::BED.to_string(), "BED");
         #[cfg(feature = "mzml")]
         assert_eq!(ExonFileType::MZML.to_string(), "MZML");
+        assert_eq!(ExonFileType::GTF.to_string(), "GTF");
+        #[cfg(feature = "fcs")]
+        assert_eq!(ExonFileType::FCS.to_string(), "FCS");
+        assert_eq!(ExonFileType::FQ.to_string(), "FQ");
+        assert_eq!(ExonFileType::FAA.to_string(), "FAA");
+        assert_eq!(ExonFileType::FNA.to_string(), "FNA");
     }
 
     #[test]
