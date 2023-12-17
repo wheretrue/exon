@@ -30,6 +30,11 @@ SELECT sample, COUNT(name) AS cnt FROM sam GROUP BY sample ORDER BY sample ASC;
 1 1
 2 1
 
+query T
+SELECT COUNT(*) FROM sam WHERE sample = 1;
+----
+1
+
 statement ok
 DROP TABLE sam;
 
