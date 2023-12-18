@@ -26,6 +26,15 @@ use datafusion::{
 };
 use noodles::core::Region;
 
+#[cfg(feature = "mzml")]
+use crate::datasources::mzml::MzMLScanFunction;
+
+#[cfg(feature = "fcs")]
+use crate::datasources::fcs::FCSScanFunction;
+
+#[cfg(feature = "genbank")]
+use crate::datasources::genbank::GenbankScanFunction;
+
 use crate::{
     datasources::{
         bam::{BAMIndexedScanFunction, BAMScanFunction},
@@ -36,12 +45,9 @@ use crate::{
         bed::BEDScanFunction,
         fasta::FastaScanFunction,
         fastq::FastqScanFunction,
-        fcs::FCSScanFunction,
-        genbank::GenbankScanFunction,
         gff::GFFScanFunction,
         gtf::GTFScanFunction,
         hmmdomtab::HMMDomTabScanFunction,
-        mzml::MzMLScanFunction,
         sam::SAMScanFunction,
         vcf::{
             ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions, VCFIndexedScanFunction,
@@ -181,9 +187,16 @@ pub trait ExonSessionExt {
             "hmm_dom_tab_scan",
             Arc::new(HMMDomTabScanFunction::default()),
         );
+
+        #[cfg(feature = "genbank")]
         ctx.register_udtf("genbank_scan", Arc::new(GenbankScanFunction::default()));
+
+        #[cfg(feature = "fcs")]
         ctx.register_udtf("fcs_scan", Arc::new(FCSScanFunction::new(ctx.clone())));
+
+        #[cfg(feature = "mzml")]
         ctx.register_udtf("mzml_scan", Arc::new(MzMLScanFunction::default()));
+
         ctx.register_udtf("bam_scan", Arc::new(BAMScanFunction::default()));
         ctx.register_udtf(
             "bam_indexed_scan",

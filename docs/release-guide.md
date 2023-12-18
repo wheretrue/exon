@@ -47,12 +47,17 @@ cargo publish --manifest-path exon/exon-common/Cargo.toml
 
 # Data source crates
 cargo publish --manifest-path exon/exon-bam/Cargo.toml
+cargo publish --manifest-path exon/exon-vcf/Cargo.toml
+cargo publish --manifest-path exon/exon-bcf/Cargo.toml
 cargo publish --manifest-path exon/exon-bed/Cargo.toml
-
 cargo publish --manifest-path exon/exon-fasta/Cargo.toml
 cargo publish --manifest-path exon/exon-fastq/Cargo.toml
+cargo publish --manifest-path exon/exon-fcs/Cargo.toml
+cargo publish --manifest-path exon/exon-genbank/Cargo.toml
 cargo publish --manifest-path exon/exon-gff/Cargo.toml
 cargo publish --manifest-path exon/exon-gtf/Cargo.toml
+cargo publish --manifest-path exon/exon-mzml/Cargo.toml
+cargo publish --manifest-path exon/exon-sam/Cargo.toml
 cargo publish --manifest-path exon/exon-io/Cargo.toml
 
 # Crates that depend on other crates
