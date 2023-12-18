@@ -16,19 +16,19 @@ arrow = {workspace = true}
 async-trait = {workspace = true}
 bytes = "1.5.0"
 datafusion = {workspace = true}
-exon-bam = {path = "../exon-bam", version = "0.5.4"}
-exon-bcf = {path = "../exon-bcf", version = "0.5.4"}
-exon-bed = {path = "../exon-bed", version = "0.5.4"}
-exon-common = {path = "../exon-common", version = "0.5.4"}
-exon-fasta = {path = "../exon-fasta", version = "0.5.4"}
-exon-fastq = {path = "../exon-fastq", version = "0.5.4"}
-exon-fcs = {path = "../exon-fcs", version = "0.5.4", optional = true}
-exon-genbank = {path = "../exon-genbank", version = "0.5.4", optional = true}
-exon-gff = {path = "../exon-gff", version = "0.5.4"}
-exon-gtf = {path = "../exon-gtf", version = "0.5.4"}
-exon-io = {path = "../exon-io", version = "0.5.4"}
-exon-mzml = {path = "../exon-mzml", version = "0.5.4", optional = true}
-exon-vcf = {path = "../exon-vcf", version = "0.5.4"}
+exon-bam = {path = "../exon-bam", version = "0.5.5"}
+exon-bcf = {path = "../exon-bcf", version = "0.5.5"}
+exon-bed = {path = "../exon-bed", version = "0.5.5"}
+exon-common = {path = "../exon-common", version = "0.5.5"}
+exon-fasta = {path = "../exon-fasta", version = "0.5.5"}
+exon-fastq = {path = "../exon-fastq", version = "0.5.5"}
+exon-fcs = {path = "../exon-fcs", version = "0.5.5", optional = true}
+exon-genbank = {path = "../exon-genbank", version = "0.5.5", optional = true}
+exon-gff = {path = "../exon-gff", version = "0.5.5"}
+exon-gtf = {path = "../exon-gtf", version = "0.5.5"}
+exon-io = {path = "../exon-io", version = "0.5.5"}
+exon-mzml = {path = "../exon-mzml", version = "0.5.5", optional = true}
+exon-vcf = {path = "../exon-vcf", version = "0.5.5"}
 futures = {workspace = true}
 itertools = "0.12.0"
 noodles = {workspace = true, features = ["bed", "tabix", "core", "async", "bcf", "vcf", "bgzf", "csi", "gtf"]}

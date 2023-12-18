@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## v0.5.5 (2023-12-17)
+
+### Feat
+
+- support additional file types
+- add indexed vcf
+- add indexed bam
+- add bcf scan function
+- add vcf
+- add sam scan fun
+- bam udf
+- add mzml scan function
+- add fcs scan
+- add genbank scan
+- add hmm_dom_tab_scan
+- add bed
+- add gtf scan
+- add gff scan fun
+- add fastq scan fun
+- add optional arg for compression
+
+### Fix
+
+- fix count bug
+- fix up error message
+- fix aws dep for exon-io
+
+### Refactor
+
+- no unwrap in bin vectors
+- more general names
+- remove bcf/vcf
+- separate genbank
+- refactor fcs
+- pull out mzml parser
+- remove DEFAULT_BATCH_SIZE
+- generalize scan function
+- update to new datafusion
+
 ## v0.5.4 (2023-12-13)
 
 ### Refactor

@@ -13,7 +13,7 @@ version.workspace = true
 arrow = {workspace = true}
 base64 = {version = "0.21"}
 byteorder = {version = "1.5.0"}
-exon-common = {path = "../exon-common", version = "0.5.4"}
+exon-common = {path = "../exon-common", version = "0.5.5"}
 flate2 = {version = "1.0.28"}
 futures = {workspace = true}
 object_store = {workspace = true}
