@@ -45,7 +45,7 @@ use crate::{
         bed::BEDScanFunction,
         fasta::FastaScanFunction,
         fastq::FastqScanFunction,
-        gff::GFFScanFunction,
+        gff::{GFFIndexedScanFunction, GFFScanFunction},
         gtf::GTFScanFunction,
         hmmdomtab::HMMDomTabScanFunction,
         sam::SAMScanFunction,
@@ -181,6 +181,10 @@ pub trait ExonSessionExt {
         ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::default()));
         ctx.register_udtf("fastq_scan", Arc::new(FastqScanFunction::default()));
         ctx.register_udtf("gff_scan", Arc::new(GFFScanFunction::default()));
+        ctx.register_udtf(
+            "gff_indexed_scan",
+            Arc::new(GFFIndexedScanFunction::default()),
+        );
         ctx.register_udtf("gtf_scan", Arc::new(GTFScanFunction::default()));
         ctx.register_udtf("bed_scan", Arc::new(BEDScanFunction::default()));
         ctx.register_udtf(

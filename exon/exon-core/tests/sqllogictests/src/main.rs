@@ -187,7 +187,7 @@ pub async fn main() -> Result<(), DataFusionError> {
 
     // Setup tracing
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::WARN)
+        .with_max_level(Level::INFO)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");

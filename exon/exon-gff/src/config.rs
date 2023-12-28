@@ -19,6 +19,7 @@ use exon_common::TableSchemaBuilder;
 use object_store::ObjectStore;
 
 /// Configuration for a GFF data source.
+#[derive(Debug, Clone)]
 pub struct GFFConfig {
     /// The number of rows to read at a time.
     pub batch_size: usize,

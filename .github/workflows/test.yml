@@ -53,11 +53,4 @@ jobs:
           AWS_ENDPOINT_URL: http://localhost:4566
           AWS_ENDPOINT: http://localhost:4566
           AWS_ALLOW_HTTP: true
-        run: |
-          docker compose up -d
-          sleep 5
-          aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
-          aws --endpoint-url=http://localhost:4566 s3api put-object --bucket test-bucket --key test.fasta --body ./exon/exon-core/test-data/datasources/fasta/test.fasta
-          aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-bucket --acl public-read
-
-          cargo test --test sqllogictests --all-features
+        run: bash ./bin/test.sh

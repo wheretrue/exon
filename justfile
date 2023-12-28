@@ -11,6 +11,9 @@ download-bam-file:
 download-fixtures:
 	aws s3 cp --recursive s3://wtt-01-dist-prd/chr17/ exon/exon-core/test-data/fixtures/
 
+test:
+	bash ./bin/test.bash
+
 run-benchmarks tag:
 	# Checkout the tag.
 	echo "Checking out tag {{tag}}..." \
