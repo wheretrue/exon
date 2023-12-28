@@ -12,7 +12,7 @@ download-fixtures:
 	aws s3 cp --recursive s3://wtt-01-dist-prd/chr17/ exon/exon-core/test-data/fixtures/
 
 test:
-	bash ./bin/test.bash
+	bash ./bin/test.sh
 
 run-benchmarks tag:
 	# Checkout the tag.
