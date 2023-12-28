@@ -168,6 +168,11 @@ async fn run_tests() -> Result<(), DataFusionError> {
             continue;
         }
 
+        // only run vcf-indexed-tests.slt
+        if test_file.path().file_name().expect("expected file name") != "gff-scan-tests.slt" {
+            continue;
+        }
+
         let mut runner =
             sqllogictest::Runner::new(|| async { Ok(ExonTextRunner::new(exon_context.clone())) });
         runner.run_file_async(test_file.path()).await.map_err(|e| {

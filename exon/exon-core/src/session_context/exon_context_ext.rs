@@ -58,7 +58,8 @@ use crate::{
     error::ExonError,
     new_exon_config,
     udfs::{
-        bam_region_filter::register_bam_region_filter_udf,
+        gff::gff_region_filter::register_gff_region_filter_udf,
+        sam::bam_region_filter::register_bam_region_filter_udf,
         vcf::vcf_region_filter::register_vcf_region_filter_udf,
     },
 };
@@ -132,6 +133,7 @@ pub trait ExonSessionExt {
             "GFF",
             "GTF",
             "HMMDOMTAB",
+            "INDEXED_GFF",
             "INDEXED_BAM",
             "INDEXED_VCF",
             "SAM",
@@ -162,7 +164,7 @@ pub trait ExonSessionExt {
         }
 
         // Register the sam flag UDFs
-        for sam_udf in crate::udfs::samflags::register_udfs() {
+        for sam_udf in crate::udfs::sam::samflags::register_udfs() {
             ctx.register_udf(sam_udf);
         }
 
@@ -176,6 +178,9 @@ pub trait ExonSessionExt {
 
         // Register VCF region filter UDF
         register_vcf_region_filter_udf(&ctx);
+
+        // Register GFF region filter UDF
+        register_gff_region_filter_udf(&ctx);
 
         // Register UDTFs
         ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::default()));

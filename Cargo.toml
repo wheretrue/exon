@@ -9,7 +9,7 @@ version = "0.5.5"
 [workspace]
 members = [
   "exon-benchmarks",
-  "exon-cli",
+  "exon/exon-cli",
   "exon-examples",
   "exon/exon-bam",
   "exon/exon-bcf",

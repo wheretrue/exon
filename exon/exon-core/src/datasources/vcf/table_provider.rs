@@ -286,7 +286,7 @@ impl TableProvider for ListingVCFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        tracing::debug!(
+        tracing::info!(
             "vcf table provider supports_filters_pushdown: {:?}",
             filters
         );

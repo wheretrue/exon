@@ -12,19 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! User-defined functions (UDFs) for Exon.
-
-/// sequence UDFs for Exon.
-pub mod sequence;
-
-/// UDFs for Mass Spectrometry.
-pub mod massspec;
-
-/// UDFs for VCF files.
-pub mod vcf;
-
-/// UDFs for SAM/BAM files.
-pub mod sam;
-
-/// UDFs for GFF files.
-pub mod gff;
+pub(crate) mod bam_region_filter;
+pub(crate) mod samflags;

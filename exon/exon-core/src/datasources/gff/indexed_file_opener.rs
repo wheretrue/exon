@@ -74,7 +74,7 @@ impl FileOpener for IndexGffOpener {
                             vp_end.compressed() as usize
                         };
 
-                        tracing::warn!(
+                        tracing::debug!(
                             "Reading compressed range: {}..{} (uncompressed {}..{}) of {}",
                             vp_start.compressed(),
                             vp_end.compressed(),

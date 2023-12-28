@@ -101,6 +101,7 @@ impl FromStr for ExonFileType {
             "FQ" => Ok(Self::FQ),
             "VCF" => Ok(Self::VCF),
             "INDEXED_VCF" => Ok(Self::IndexedVCF),
+            "INDEXED_GFF" => Ok(Self::IndexedGFF),
             "BCF" => Ok(Self::BCF),
             "GFF" => Ok(Self::GFF),
             "BAM" => Ok(Self::BAM),
