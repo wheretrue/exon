@@ -225,7 +225,7 @@ impl TableProvider for ListingFCSTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.get(0) {
+        let object_store_url = if let Some(url) = self.table_paths.first() {
             url.object_store()
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
