@@ -28,6 +28,9 @@ pub struct BatchReader<R> {
 
     /// The configuration for this reader.
     config: Arc<GFFConfig>,
+
+    /// A region to filter on.
+    region: Option<Arc<noodles::core::Region>>,
 }
 
 impl<R> BatchReader<R>
@@ -35,7 +38,16 @@ where
     R: AsyncBufRead + Unpin + Send,
 {
     pub fn new(reader: R, config: Arc<GFFConfig>) -> Self {
-        Self { reader, config }
+        Self {
+            reader,
+            config,
+            region: None,
+        }
+    }
+
+    pub fn with_region(mut self, region: Arc<noodles::core::Region>) -> Self {
+        self.region = Some(region);
+        self
     }
 
     pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
@@ -83,17 +95,47 @@ where
         }
     }
 
+    fn filter(&self, record: &noodles::gff::Record) -> Result<bool, ArrowError> {
+        let chrom = record.reference_sequence_name();
+
+        match &self.region {
+            Some(region) => {
+                if chrom != region.name() {
+                    return Ok(false);
+                }
+
+                if !region.interval().contains(record.start()) {
+                    return Ok(false);
+                }
+
+                Ok(true)
+            }
+            None => Ok(true),
+        }
+    }
+
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
         let mut gff_array_builder = GFFArrayBuilder::new();
+        let mut batch_size = 0;
 
-        for _ in 0..self.config.batch_size {
+        loop {
             match self.read_line().await? {
                 None => break,
                 Some(line) => match line {
                     noodles::gff::Line::Comment(_) => {}
                     noodles::gff::Line::Directive(_) => {}
                     noodles::gff::Line::Record(record) => {
+                        // Filter on region if provided.
+                        if !self.filter(&record)? {
+                            continue;
+                        }
+
                         gff_array_builder.append(&record)?;
+                        batch_size += 1;
+
+                        if batch_size == self.config.batch_size {
+                            break;
+                        }
                     }
                 },
             }

@@ -27,6 +27,7 @@ use datafusion::error::Result;
 pub enum IndexedFile {
     Vcf,
     Bam,
+    Gff,
 }
 
 impl IndexedFile {
@@ -41,7 +42,7 @@ impl IndexedFile {
 
     pub fn index_file_extension(&self) -> &str {
         match self {
-            Self::Vcf => ".tbi",
+            Self::Vcf | Self::Gff => ".tbi",
             Self::Bam => ".bai",
         }
     }
@@ -62,7 +63,7 @@ pub async fn get_byte_range_for_file(
     let cursor = std::io::Cursor::new(index_bytes);
 
     let chunks = match indexed_file {
-        IndexedFile::Vcf => {
+        IndexedFile::Vcf | IndexedFile::Gff => {
             let index = noodles::tabix::Reader::new(cursor).read_index()?;
 
             let header = index.header().ok_or_else(|| {

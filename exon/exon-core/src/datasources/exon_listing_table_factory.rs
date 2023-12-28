@@ -88,6 +88,11 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
+            ExonFileType::IndexedGFF => {
+                unimplemented!(
+                    "Indexed GFF not yet supported, use the gff_indexed_scan UDF for now."
+                )
+            }
             #[cfg(feature = "mzml")]
             ExonFileType::MZML => {
                 let options = ListingMzMLTableOptions::new(file_compression_type)
@@ -254,7 +259,7 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::GFF => {
-                let options = ListingGFFTableOptions::new(file_compression_type)
+                let options = ListingGFFTableOptions::new(file_compression_type, false)
                     .with_table_partition_cols(table_partition_cols);
                 let file_schema = options.infer_schema().await?;
 

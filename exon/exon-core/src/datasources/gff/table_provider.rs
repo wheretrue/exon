@@ -31,16 +31,21 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 use exon_gff::new_gff_schema_builder;
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
+use noodles::core::Region;
 
 use crate::{
-    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    datasources::indexed_file_utils::augment_partitioned_file_with_byte_range,
+    datasources::{
+        hive_partition::filter_matches_partition_cols, indexed_file_utils::IndexedFile,
+        ExonFileType,
+    },
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
 };
 
-use super::GFFScan;
+use super::{indexed_scanner::IndexedGffScanner, GFFScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a GFF listing table
@@ -76,17 +81,34 @@ pub struct ListingGFFTableOptions {
     file_compression_type: FileCompressionType,
 
     table_partition_cols: Vec<Field>,
+
+    /// True if the file must be indexed
+    indexed: bool,
+
+    /// A region to filter the records
+    region: Option<Region>,
 }
 
 impl ListingGFFTableOptions {
     /// Create a new set of options
-    pub fn new(file_compression_type: FileCompressionType) -> Self {
+    pub fn new(file_compression_type: FileCompressionType, indexed: bool) -> Self {
         let file_extension = ExonFileType::GFF.get_file_extension(file_compression_type);
 
         Self {
             file_extension,
             file_compression_type,
             table_partition_cols: Vec::new(),
+            indexed,
+            region: None,
+        }
+    }
+
+    /// Set the region
+    pub fn with_region(self, region: Region) -> Self {
+        Self {
+            region: Some(region),
+            indexed: true,
+            ..self
         }
     }
 
@@ -105,6 +127,16 @@ impl ListingGFFTableOptions {
         let schema = schema.add_partition_fields(self.table_partition_cols.clone());
 
         Ok(schema.build())
+    }
+
+    async fn create_physical_plan_with_region(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let region = Arc::new(self.region.clone().unwrap());
+        let scan = IndexedGffScanner::new(conf.clone(), region)?;
+
+        Ok(Arc::new(scan))
     }
 
     async fn create_physical_plan(
@@ -179,6 +211,57 @@ impl TableProvider for ListingGFFTable {
         };
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+
+        if self.options.indexed && self.options.region.is_none() {
+            return Err(DataFusionError::Internal(
+                "Indexed GFF tables must have a region".to_string(),
+            ));
+        }
+
+        if self.options.indexed && self.options.region.is_some() {
+            let mut file_list = pruned_partition_list(
+                state,
+                &object_store,
+                &self.table_paths[0],
+                filters,
+                self.options.file_extension.as_str(),
+                &self.options.table_partition_cols,
+            )
+            .await?;
+
+            let mut file_partitions = Vec::new();
+
+            while let Some(f) = file_list.next().await {
+                let f = f?;
+
+                let region = self.options.region.clone().unwrap();
+                let file_byte_range = augment_partitioned_file_with_byte_range(
+                    object_store.clone(),
+                    &f,
+                    &region,
+                    &IndexedFile::Gff,
+                )
+                .await?;
+
+                file_partitions.extend(file_byte_range);
+            }
+
+            let file_scan_config = FileScanConfigBuilder::new(
+                object_store_url.clone(),
+                self.table_schema.file_schema()?,
+                vec![file_partitions],
+            )
+            .projection_option(projection.cloned())
+            .table_partition_cols(self.options.table_partition_cols.clone())
+            .limit_option(limit)
+            .build();
+
+            let plan = self
+                .options
+                .create_physical_plan_with_region(file_scan_config)
+                .await?;
+            return Ok(plan);
+        }
 
         let file_list = pruned_partition_list(
             state,

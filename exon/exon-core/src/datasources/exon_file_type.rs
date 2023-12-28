@@ -51,6 +51,10 @@ pub enum ExonFileType {
     /// GFF file format.
     GFF,
 
+    /// Indexed GFF file format.
+    /// This is a special case of GFF file format that must be indexed.
+    IndexedGFF,
+
     /// BAM file format.
     BAM,
 
@@ -127,6 +131,7 @@ impl Display for ExonFileType {
             Self::VCF => write!(f, "VCF"),
             Self::IndexedVCF => write!(f, "INDEXED_VCF"),
             Self::IndexedBAM => write!(f, "INDEXED_BAM"),
+            Self::IndexedGFF => write!(f, "INDEXED_GFF"),
             Self::BCF => write!(f, "BCF"),
             Self::GFF => write!(f, "GFF"),
             Self::BAM => write!(f, "BAM"),

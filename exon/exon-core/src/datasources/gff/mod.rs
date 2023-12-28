@@ -17,6 +17,8 @@
 //! This module provides functionality for working with GFF files as a data source.
 
 mod file_opener;
+mod indexed_file_opener;
+mod indexed_scanner;
 mod scanner;
 
 /// Table provider for GFF files.
@@ -26,4 +28,5 @@ pub use self::file_opener::GFFOpener;
 pub use self::scanner::GFFScan;
 
 mod udtf;
+pub use self::udtf::GFFIndexedScanFunction;
 pub use self::udtf::GFFScanFunction;
