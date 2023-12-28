@@ -53,5 +53,7 @@ jobs:
           AWS_ENDPOINT_URL: http://localhost:4566
           AWS_ENDPOINT: http://localhost:4566
           AWS_ALLOW_HTTP: true
-        run: bash ./bin/test.sh
-        working-directory: ./exon
+        run: |
+          pwd
+          ls
+          bash ./bin/test.sh
