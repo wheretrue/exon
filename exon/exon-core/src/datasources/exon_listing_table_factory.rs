@@ -25,7 +25,7 @@ use datafusion::{
     logical_expr::CreateExternalTable,
 };
 
-use crate::{datasources::ExonFileType, error::ExonError};
+use crate::datasources::ExonFileType;
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
@@ -89,9 +89,14 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedGFF => {
-                unimplemented!(
-                    "Indexed GFF not yet supported, use the gff_indexed_scan UDF for now."
-                )
+                let options = ListingGFFTableOptions::new(file_compression_type, true)
+                    .with_table_partition_cols(table_partition_cols);
+                let file_schema = options.infer_schema().await?;
+
+                let config = ListingGFFTableConfig::new(table_path).with_options(options);
+                let table = ListingGFFTable::try_new(config, file_schema)?;
+
+                Ok(Arc::new(table))
             }
             #[cfg(feature = "mzml")]
             ExonFileType::MZML => {
@@ -305,9 +310,7 @@ impl TableProviderFactory for ExonListingTableFactory {
             .into_iter()
             .collect::<Vec<_>>();
 
-        let file_type = ExonFileType::from_str(&cmd.file_type).map_err(|_| {
-            ExonError::ExecutionError(format!("Unsupported file type: {}", &cmd.file_type,))
-        })?;
+        let file_type = ExonFileType::from_str(&cmd.file_type)?;
 
         self.create_from_file_type(
             state,

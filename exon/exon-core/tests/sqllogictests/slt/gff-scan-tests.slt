@@ -78,3 +78,11 @@ query T
 SELECT COUNT(*) FROM gff_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/gff-index/gencode.v38.polyAs.gff.gz', 'chr2');
 ----
 7091
+
+statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS INDEXED_GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-index';
+
+query T
+SELECT COUNT(*) FROM gff_table WHERE gff_region_filter('chr1', 1, 2) = true
+----
+8786
