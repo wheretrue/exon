@@ -80,9 +80,12 @@ SELECT COUNT(*) FROM gff_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources
 7091
 
 statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS INDEXED_GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-index';
+CREATE EXTERNAL TABLE new_gff STORED AS INDEXED_GFF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-index';
 
 query T
-SELECT COUNT(*) FROM gff_table WHERE gff_region_filter('chr1', 1, 2) = true
+SELECT COUNT(*) AS cnt FROM new_gff WHERE gff_region_filter('chr1', seqname) = true
 ----
 8786
+
+statement ok
+DROP TABLE new_gff;

@@ -89,7 +89,25 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedGFF => {
+                if file_compression_type != FileCompressionType::GZIP {
+                    return Err(datafusion::error::DataFusionError::Execution(
+                        "INDEXED_GFF files must be compressed with gzip".to_string(),
+                    ));
+                }
+
                 let options = ListingGFFTableOptions::new(file_compression_type, true)
+                    .with_table_partition_cols(table_partition_cols);
+                tracing::info!("options: {:?}", options);
+
+                let file_schema = options.infer_schema().await?;
+
+                let config = ListingGFFTableConfig::new(table_path).with_options(options);
+                let table = ListingGFFTable::try_new(config, file_schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::GFF => {
+                let options = ListingGFFTableOptions::new(file_compression_type, false)
                     .with_table_partition_cols(table_partition_cols);
                 let file_schema = options.infer_schema().await?;
 
@@ -260,16 +278,6 @@ impl ExonListingTableFactory {
                 let config: ListingFASTQTableConfig =
                     ListingFASTQTableConfig::new(table_path).with_options(options);
                 let table = ListingFASTQTable::try_new(config, schema)?;
-
-                Ok(Arc::new(table))
-            }
-            ExonFileType::GFF => {
-                let options = ListingGFFTableOptions::new(file_compression_type, false)
-                    .with_table_partition_cols(table_partition_cols);
-                let file_schema = options.infer_schema().await?;
-
-                let config = ListingGFFTableConfig::new(table_path).with_options(options);
-                let table = ListingGFFTable::try_new(config, file_schema)?;
 
                 Ok(Arc::new(table))
             }

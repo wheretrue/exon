@@ -49,17 +49,13 @@ use super::{indexed_scanner::IndexedGffScanner, GFFScan};
 
 fn infer_region_from_scalar_udf(scalar_udf: &ScalarFunction) -> Option<Region> {
     if scalar_udf.name() == "gff_region_filter" {
-        if scalar_udf.args.len() <= 2 || scalar_udf.args.len() == 4 {
-            match &scalar_udf.args[0] {
-                Expr::Literal(l) => {
-                    let region_str = l.to_string();
-                    let region = Region::from_str(region_str.as_str()).ok()?;
-                    Some(region)
-                }
-                _ => None,
+        match &scalar_udf.args[0] {
+            Expr::Literal(l) => {
+                let region_str = l.to_string();
+                let region = Region::from_str(region_str.as_str()).ok()?;
+                Some(region)
             }
-        } else {
-            None
+            _ => None,
         }
     } else {
         None
@@ -154,8 +150,8 @@ impl ListingGFFTableOptions {
     async fn create_physical_plan_with_region(
         &self,
         conf: FileScanConfig,
+        region: Arc<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let region = Arc::new(self.region.clone().unwrap());
         let scan = IndexedGffScanner::new(conf.clone(), region)?;
 
         Ok(Arc::new(scan))
@@ -213,11 +209,12 @@ impl TableProvider for ListingGFFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        tracing::info!("Pushing down region filter: {:?}", filters);
+        tracing::info!("Pushing down region in gff filter: {:?}", filters);
         Ok(filters
             .iter()
             .map(|f| match f {
                 Expr::ScalarFunction(s) if s.name() == "gff_region_filter" => {
+                    tracing::info!("Pushing down region filter: {:?}", s);
                     TableProviderFilterPushDown::Exact
                 }
                 _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
@@ -232,6 +229,7 @@ impl TableProvider for ListingGFFTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
+        tracing::info!("Scanning GFF table with filters: {:?}", filters);
         let object_store_url = if let Some(url) = self.table_paths.first() {
             url.object_store()
         } else {
@@ -239,12 +237,6 @@ impl TableProvider for ListingGFFTable {
         };
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
-
-        if self.options.indexed && self.options.region.is_none() {
-            return Err(DataFusionError::Internal(
-                "Indexed GFF tables must have a region".to_string(),
-            ));
-        }
 
         let regions = filters
             .iter()
@@ -315,9 +307,10 @@ impl TableProvider for ListingGFFTable {
             .limit_option(limit)
             .build();
 
+            let region = Arc::new(region.clone());
             let plan = self
                 .options
-                .create_physical_plan_with_region(file_scan_config)
+                .create_physical_plan_with_region(file_scan_config, region)
                 .await?;
             return Ok(plan);
         }

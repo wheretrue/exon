@@ -100,8 +100,8 @@ pub async fn pruned_partition_list<'a>(
     let pruned = prune_partitions(table_path, partitions, filters, partition_cols).await?;
 
     tracing::info!(
-        "pruned_partition_list: got partitions {:?} for table_path {:?}",
-        pruned,
+        "pruned_partition_list: got n partitions {:?} for table_path {:?}",
+        pruned.len(),
         table_path
     );
 
