@@ -1,0 +1,6 @@
+./target
+./.git
+./.gitignore
+./exon-r
+./exon-benchmarks/data
+./exon/exon-core/test-data

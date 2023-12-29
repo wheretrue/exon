@@ -16,3 +16,8 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_ENDPOINT: http://localhost:4566
+  cli:
+    image: ghcr.io/wheretrue/exon-cli:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.cli
