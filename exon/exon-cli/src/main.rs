@@ -57,7 +57,7 @@ struct Args {
 
     #[clap(
         long,
-        help = "A list of object store buckets to register with the context\n[default: []] [example values: s3://bucket]",
+        help = "A list of object store buckets to register with the context\n[example values: s3://bucket]",
         multiple = true,
         default_value = "[]"
     )]
