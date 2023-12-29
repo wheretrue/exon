@@ -4,7 +4,7 @@ on:
   push:
 
 jobs:
-  mirror:
+  build-cli-image:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,14 +21,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: List the working directory
-        run: ls -la
-
       - name: Build and Push the image
         uses: docker/build-push-action@v5
         with:
           context: .
-          # file: ./Dockerfile.cli
           push: true
           tags: ghcr.io/${{ github.repository }}/exon-cli
           platforms: linux/amd64,linux/arm64
