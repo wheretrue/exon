@@ -22,7 +22,7 @@ use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
 
 #[derive(Debug, Parser, PartialEq)]
 struct Args {
-    #[clap(long, arg_enum, default_value_t = PrintFormat::Table)]
+    #[arg(value_enum, long, default_value = "Table")]
     format: PrintFormat,
 
     #[clap(
@@ -42,23 +42,16 @@ struct Args {
     #[clap(
         short = 'c',
         long,
-        multiple_values = true,
         help = "Execute the given command string(s), then exit"
     )]
     command: Vec<String>,
 
-    #[clap(
-        short,
-        long,
-        multiple_values = true,
-        help = "Execute commands from file(s), then exit"
-    )]
+    #[clap(short, long, help = "Execute commands from file(s), then exit")]
     file: Vec<String>,
 
     #[clap(
         long,
         help = "A list of object store buckets to register with the context\n[example values: s3://bucket]",
-        multiple = true,
         default_value = "[]"
     )]
     object_store_buckets: Vec<String>,
