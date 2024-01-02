@@ -1,65 +1,28 @@
 # How to Release `Exon`
 
-Exon is a packaged in multiple crates as part of a larger workspace. The dependency graph looks like:
+First bump with `git cz bump --files-only`, so the files are changed, but no commit is made. This is let's Cargo pickup the new version and update its lock file.
 
-```mermaid
-flowchart TD
-    exon-sam --> exon-bam
-    exon-sam --> exon-core
-    exon-bam --> exon-core
-    exon-bed --> exon-core
-    exon-common --> exon-core
-    exon-fasta --> exon-core
-    exon-fastq --> exon-core
-    exon-gff --> exon-core
-    exon-gtf --> exon-core
-    exon-io --> exon-core
-    exon-test --dev-dep--> exon-fasta
-    exon-test --dev-dep--> exon-fastq
-    exon-test --dev-dep--> exon-gff
-    exon-core --> exon-cli
-    exon-core --> exon-benchmark
+```bash
+git cz bump --files-only
 ```
 
-Therefore, to release the packages you must first release the undepended crates, then the depended crates.
+Next, get the new version from `Cargo.toml` workspace and tag it.
 
-## Release Steps
-
-First, bump the version in `Cargo.toml`, and bump the version of and inter-crate dependencies.
-
-Commit the changes,
-
-```console
-git commit -m 'release: bump version to v0.1.0'
+```bash
+VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "exon") | .version')
 ```
 
-and tag the commit with the version number.
+Then commit the changes and tag it.
 
-```console
-git tag -a v0.1.0 -m "Release v0.1.0"
+```bash
+git add .
+git commit -m "chore(release): $VERSION"
+git tag -a $VERSION -m "chore(release): $VERSION"
 ```
 
-Then publish the crates:
+Finally, push the changes and tag.
 
-```console
-# Crates that do not depend on other crates
-cargo publish --manifest-path exon/exon-common/Cargo.toml
-
-# Data source crates
-cargo publish --manifest-path exon/exon-bam/Cargo.toml
-cargo publish --manifest-path exon/exon-vcf/Cargo.toml
-cargo publish --manifest-path exon/exon-bcf/Cargo.toml
-cargo publish --manifest-path exon/exon-bed/Cargo.toml
-cargo publish --manifest-path exon/exon-fasta/Cargo.toml
-cargo publish --manifest-path exon/exon-fastq/Cargo.toml
-cargo publish --manifest-path exon/exon-fcs/Cargo.toml
-cargo publish --manifest-path exon/exon-genbank/Cargo.toml
-cargo publish --manifest-path exon/exon-gff/Cargo.toml
-cargo publish --manifest-path exon/exon-gtf/Cargo.toml
-cargo publish --manifest-path exon/exon-mzml/Cargo.toml
-cargo publish --manifest-path exon/exon-sam/Cargo.toml
-cargo publish --manifest-path exon/exon-io/Cargo.toml
-
-# Crates that depend on other crates
-cargo publish --manifest-path exon/exon-core/Cargo.toml
+```bash
+git push origin main
+git push origin $VERSION
 ```
