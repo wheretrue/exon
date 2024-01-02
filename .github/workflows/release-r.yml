@@ -4,14 +4,13 @@ name: Release R
 on:
   push:
     tags:
-    - 'exonr-*'
+      - 'exonr-*'
 
 permissions:
   id-token: write
   contents: write
 
 jobs:
-
   prep_release:
     runs-on: ubuntu-latest
     outputs:
@@ -19,21 +18,21 @@ jobs:
       prerelease: ${{ steps.version.outputs.prerelease }}
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    # https://github.com/getdozer/dozer/blob/main/.github/workflows/release.yaml
-    - name: Get the tag
-      id: version
-      run: |
-        tag=$(printf "%q" ${{ github.ref_name }})
+      # https://github.com/getdozer/dozer/blob/main/.github/workflows/release.yaml
+      - name: Get the tag
+        id: version
+        run: |
+          tag=$(printf "%q" ${{ github.ref_name }})
 
-        if [[ $tag =~ ^exonr-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "version=$tag" >> $GITHUB_OUTPUT
-          echo "prerelease=false" >> $GITHUB_OUTPUT
-        else
-          echo "version=$tag" >> $GITHUB_OUTPUT
-          echo "prerelease=true" >> $GITHUB_OUTPUT
-        fi
+          if [[ $tag =~ ^exonr-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=$tag" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          else
+            echo "version=$tag" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          fi
 
   release-r:
     runs-on: ${{ matrix.os }}
@@ -45,39 +44,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - os: ubuntu-latest
-          r: release
-        - os: macos-latest
-          r: release
+          - os: ubuntu-latest
+            r: release
+          - os: macos-latest
+            r: release
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - uses: ./.github/actions/r_setup
+      - uses: ./.github/actions/r_setup
 
-    - shell: Rscript {0}
-      working-directory: ./exon-r/exonr/
-      run: |
-        fn = devtools::build(binary = TRUE, args = c('--preclean'))
+      - shell: Rscript {0}
+        working-directory: ./exon-r/exonr/
+        run: |
+          fn = devtools::build(binary = TRUE, args = c('--preclean'))
 
-        newfn = paste0(substr(fn, 1, regexpr("_", fn)), R.version$platform, ".", tools::file_ext(fn))
-        print(paste0("Renaming ", fn, " to ", newfn))
+          newfn = paste0(substr(fn, 1, regexpr("_", fn)), R.version$platform, ".", tools::file_ext(fn))
+          print(paste0("Renaming ", fn, " to ", newfn))
 
-        file.rename(fn, newfn)
+          file.rename(fn, newfn)
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: exonr-${{ matrix.os }}-${{ matrix.r }}
-        path: exon-r/exonr_*
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: exonr-${{ matrix.os }}-${{ matrix.r }}
+          path: exon-r/exonr_*
 
-    - name: Upload the release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: exon-r/exonr_*
-        file_glob: true
-        overwrite: true
-        tag: ${{ needs.prep_release.outputs.version }}
-        release_name: "Release - ${{ needs.prep_release.outputs.version }}"
-        prerelease: ${{ needs.prep_release.outputs.prerelease }}
+      - name: Upload the release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: exon-r/exonr_*
+          file_glob: true
+          overwrite: true
+          tag: ${{ needs.prep_release.outputs.version }}
+          release_name: 'Release - ${{ needs.prep_release.outputs.version }}'
+          prerelease: ${{ needs.prep_release.outputs.prerelease }}

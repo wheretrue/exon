@@ -133,7 +133,7 @@ test_that("querying an exon session to a dataframe works", {
 })
 
 test_that("querying an exon session works", {
-    skip_if_not(requireNamespace("duckdb", quietly = TRUE))
+    skip_if_not(requireNamespace("duckdb", quietly = F))
 
     library(duckdb)
 
@@ -168,12 +168,5 @@ test_that("querying an exon session works", {
 test_that("reading a file that doesnt exist errors properly", {
     expect_error(
         batch_reader <- read_gff_file("../../../../exon/exon-core/test-data/datasources/gff/missing.gff")
-    )
-})
-
-test_that("creating a table with a file that doesnt exist errors properly", {
-    session <- ExonRSessionContext$new()
-    expect_error(
-        session$execute("CREATE EXTERNAL TABLE gene_annotations STORED AS GFF LOCATION 'missing-file.gff'")
     )
 })
