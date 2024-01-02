@@ -1,7 +1,7 @@
 {
   "commitizen": {
     "name": "cz_conventional_commits",
-    "version": "0.5.5",
+    "version": "0.6.0",
     "tag_format": "v$version",
     "version_files": [
       "Cargo.toml",
@@ -21,6 +21,7 @@
       "exon/exon-sam/Cargo.toml",
       "exon/exon-test/Cargo.toml",
       "exon/exon-vcf/Cargo.toml",
+      "exon/exon-cli/Cargo.toml",
       ".github/workflows/build-cli-image.yml"
     ],
     "update_changelog_on_bump": true

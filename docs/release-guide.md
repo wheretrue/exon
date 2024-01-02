@@ -10,14 +10,15 @@ Next, get the new version from `Cargo.toml` workspace and tag it.
 
 ```bash
 VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "exon") | .version')
+echo "Releasing v$VERSION"
 ```
 
 Then commit the changes and tag it.
 
 ```bash
-git add .
-git commit -m "chore(release): $VERSION"
-git tag -a $VERSION -m "chore(release): $VERSION"
+git add -u .
+git commit -m "release: bump to version v$VERSION"
+git tag -a v$VERSION -m "release v$VERSION"
 ```
 
 Finally, push the changes and tag.

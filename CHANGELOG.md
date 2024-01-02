@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.6.0 (2024-01-02)
+
+### Feat
+
+- add indexed gff table (#335)
+- indexed gff file
+
+### Fix
+
+- fix path
+
 ## v0.5.5 (2023-12-17)
 
 ### Feat

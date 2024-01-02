@@ -27,5 +27,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/exon-cli:latest,ghcr.io/${{ github.repository }}/exon-cli:v0.5.5
+          tags: ghcr.io/${{ github.repository }}/exon-cli:latest,ghcr.io/${{ github.repository }}/exon-cli:v0.6.0
           platforms: linux/amd64,linux/arm64
