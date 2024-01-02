@@ -18,12 +18,12 @@ Then commit the changes and tag it.
 ```bash
 git add -u .
 git commit -m "release: bump to version v$VERSION"
-git tag -a v$VERSION -m "release v$VERSION"
+git tag -a v$VERSION -m "release: v$VERSION"
 ```
 
 Finally, push the changes and tag.
 
 ```bash
 git push origin main
-git push origin $VERSION
+git push origin v$VERSION
 ```
