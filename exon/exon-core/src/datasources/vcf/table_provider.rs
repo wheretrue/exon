@@ -149,6 +149,12 @@ impl ListingVCFTableOptions {
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
     ) -> datafusion::error::Result<TableSchema> {
+        if objects.is_empty() {
+            return Err(DataFusionError::Execution(
+                "No objects found in the table path".to_string(),
+            ));
+        }
+
         let get_result = store.get(&objects[0].location).await?;
 
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));

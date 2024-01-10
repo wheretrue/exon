@@ -1,5 +1,3 @@
-control substitution on
-
 statement ok
 CREATE EXTERNAL TABLE fasta_table_s3 STORED AS FASTA LOCATION 's3://test-bucket/test.fasta';
 

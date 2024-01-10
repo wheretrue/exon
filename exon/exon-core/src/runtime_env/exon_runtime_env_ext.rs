@@ -91,6 +91,14 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
 
                 Ok(previous)
             }
+            "file" => {
+                use object_store::local::LocalFileSystem;
+
+                let local = LocalFileSystem::default();
+                let previous = self.register_object_store(url, Arc::new(local));
+
+                Ok(previous)
+            }
             _ => Err(DataFusionError::Execution(format!(
                 "Unsupported scheme: {}",
                 url.scheme()

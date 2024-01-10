@@ -6,8 +6,6 @@ set -e
 # Setup the trap.
 function teardown {
     echo "Tearing down..."
-    aws --endpoint-url=http://localhost:4566 s3 rm s3://test-bucket --recursive
-    aws --endpoint-url=http://localhost:4566 s3 rb s3://test-bucket
     docker compose down -v
     echo "Teardown completed."
 }
@@ -18,7 +16,7 @@ trap teardown EXIT
 echo "Setting up..."
 
 # Start the docker compose stack.
-docker compose up -d
+docker compose up -d localstack
 
 # Wait for the stack to start.
 sleep 1
