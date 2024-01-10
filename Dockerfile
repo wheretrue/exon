@@ -7,6 +7,6 @@ RUN cargo build --release --bin exon-cli
 
 FROM debian:bullseye-slim
 
-COPY --from=builder /usr/src/exon/target/release/exon-cli /usr/local/bin/exon-cli
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates procps && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["exon-cli"]
+COPY --from=builder /usr/src/exon/target/release/exon-cli /usr/local/bin/exon-cli
