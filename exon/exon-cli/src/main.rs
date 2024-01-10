@@ -18,7 +18,7 @@ use datafusion::execution::context::SessionContext;
 use datafusion_cli::exec;
 use datafusion_cli::print_format::PrintFormat;
 use datafusion_cli::print_options::{MaxRows, PrintOptions};
-use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
+use exon::{new_exon_config, ExonSessionExt};
 
 #[derive(Debug, Parser, PartialEq)]
 struct Args {
@@ -48,13 +48,6 @@ struct Args {
 
     #[clap(short, long, help = "Execute commands from file(s), then exit")]
     file: Vec<String>,
-
-    #[clap(
-        long,
-        help = "A list of object store buckets to register with the context\n[example values: s3://bucket]",
-        default_value = "[]"
-    )]
-    object_store_buckets: Vec<String>,
 }
 
 #[tokio::main]
@@ -63,12 +56,6 @@ pub async fn main() -> Result<()> {
 
     let config = new_exon_config();
     let mut ctx = SessionContext::with_config_exon(config);
-
-    for object_store_bucket in args.object_store_buckets {
-        ctx.runtime_env()
-            .exon_register_object_store_uri(&object_store_bucket)
-            .await?;
-    }
 
     let mut print_options = PrintOptions {
         format: args.format,

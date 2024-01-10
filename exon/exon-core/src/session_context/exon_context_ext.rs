@@ -183,35 +183,39 @@ pub trait ExonSessionExt {
         register_gff_region_filter_udf(&ctx);
 
         // Register UDTFs
-        ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::default()));
-        ctx.register_udtf("fastq_scan", Arc::new(FastqScanFunction::default()));
-        ctx.register_udtf("gff_scan", Arc::new(GFFScanFunction::default()));
+        ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::new(ctx.clone())));
+        ctx.register_udtf("fastq_scan", Arc::new(FastqScanFunction::new(ctx.clone())));
+        ctx.register_udtf("gff_scan", Arc::new(GFFScanFunction::new(ctx.clone())));
         ctx.register_udtf(
             "gff_indexed_scan",
-            Arc::new(GFFIndexedScanFunction::default()),
+            Arc::new(GFFIndexedScanFunction::new(ctx.clone())),
         );
-        ctx.register_udtf("gtf_scan", Arc::new(GTFScanFunction::default()));
-        ctx.register_udtf("bed_scan", Arc::new(BEDScanFunction::default()));
+        ctx.register_udtf("gtf_scan", Arc::new(GTFScanFunction::new(ctx.clone())));
+        ctx.register_udtf("bed_scan", Arc::new(BEDScanFunction::new(ctx.clone())));
         ctx.register_udtf(
             "hmm_dom_tab_scan",
             Arc::new(HMMDomTabScanFunction::default()),
         );
 
         #[cfg(feature = "genbank")]
-        ctx.register_udtf("genbank_scan", Arc::new(GenbankScanFunction::default()));
+        ctx.register_udtf(
+            "genbank_scan",
+            Arc::new(GenbankScanFunction::new(ctx.clone())),
+        );
 
         #[cfg(feature = "fcs")]
         ctx.register_udtf("fcs_scan", Arc::new(FCSScanFunction::new(ctx.clone())));
 
         #[cfg(feature = "mzml")]
-        ctx.register_udtf("mzml_scan", Arc::new(MzMLScanFunction::default()));
+        ctx.register_udtf("mzml_scan", Arc::new(MzMLScanFunction::new(ctx.clone())));
 
-        ctx.register_udtf("bam_scan", Arc::new(BAMScanFunction::default()));
+        ctx.register_udtf("bam_scan", Arc::new(BAMScanFunction::new(ctx.clone())));
         ctx.register_udtf(
             "bam_indexed_scan",
-            Arc::new(BAMIndexedScanFunction::default()),
+            Arc::new(BAMIndexedScanFunction::new(ctx.clone())),
         );
-        ctx.register_udtf("sam_scan", Arc::new(SAMScanFunction::default()));
+
+        ctx.register_udtf("sam_scan", Arc::new(SAMScanFunction::new(ctx.clone())));
         ctx.register_udtf("vcf_scan", Arc::new(VCFScanFunction::new(ctx.clone())));
         ctx.register_udtf(
             "vcf_indexed_scan",

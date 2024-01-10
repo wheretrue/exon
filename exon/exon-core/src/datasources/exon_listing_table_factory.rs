@@ -24,8 +24,9 @@ use datafusion::{
     execution::context::SessionState,
     logical_expr::CreateExternalTable,
 };
+use url::Url;
 
-use crate::datasources::ExonFileType;
+use crate::{datasources::ExonFileType, ExonRuntimeEnvExt};
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
@@ -319,6 +320,15 @@ impl TableProviderFactory for ExonListingTableFactory {
             .collect::<Vec<_>>();
 
         let file_type = ExonFileType::from_str(&cmd.file_type)?;
+
+        // Attempt to register the object store if it hasn't been registered yet.
+        let table_path = ListingTableUrl::parse(&cmd.location)?;
+        let url: &Url = table_path.as_ref();
+
+        state
+            .runtime_env()
+            .exon_register_object_store_url(url)
+            .await?;
 
         self.create_from_file_type(
             state,

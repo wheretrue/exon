@@ -16,7 +16,7 @@ statement ok
 DROP TABLE indexed_vcf_table;
 
 statement ok
-CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF PARTITIONED BY (sample) COMPRESSION TYPE GZIP LOCATION 'exon/exon-core/test-data/datasources/vcf-partition';
+CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF PARTITIONED BY (sample) COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf-partition';
 
 # Test that zero rows are returned when the region filter does not match any rows.
 query T

@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, error::ExonError};
+use crate::{datasources::ScanFunction, error::ExonError, ExonRuntimeEnvExt};
 use datafusion::{
     datasource::{function::TableFunctionImpl, listing::ListingTableUrl, TableProvider},
     error::{DataFusionError, Result},
@@ -32,9 +32,23 @@ pub struct BAMScanFunction {
     ctx: SessionContext,
 }
 
+impl BAMScanFunction {
+    /// Create a new `BAMScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
+
 impl TableFunctionImpl for BAMScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
+
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_scan_function.listing_table_url.as_ref())
+                .await
+        })?;
 
         let listing_table_options = ListingBAMTableOptions::default();
 
@@ -56,10 +70,16 @@ impl TableFunctionImpl for BAMScanFunction {
     }
 }
 
-#[derive(Default)]
 /// A table function that returns a table provider for an Indexed BAM file.
 pub struct BAMIndexedScanFunction {
     ctx: SessionContext,
+}
+
+impl BAMIndexedScanFunction {
+    /// Create a new `BAMIndexedScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
 }
 
 impl TableFunctionImpl for BAMIndexedScanFunction {
@@ -71,6 +91,13 @@ impl TableFunctionImpl for BAMIndexedScanFunction {
         };
 
         let listing_table_url = ListingTableUrl::parse(path)?;
+
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_table_url.as_ref())
+                .await
+        })?;
 
         let Some(Expr::Literal(ScalarValue::Utf8(Some(region_str)))) = exprs.get(1) else {
             return Err(DataFusionError::Internal(

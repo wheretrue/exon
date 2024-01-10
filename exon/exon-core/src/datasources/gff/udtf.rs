@@ -14,13 +14,14 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, error::ExonError};
+use crate::{datasources::ScanFunction, error::ExonError, ExonRuntimeEnvExt};
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
         listing::ListingTableUrl, TableProvider,
     },
     error::{DataFusionError, Result},
+    execution::context::SessionContext,
     logical_expr::Expr,
     scalar::ScalarValue,
 };
@@ -29,12 +30,27 @@ use exon_gff::new_gff_schema_builder;
 use super::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions};
 
 /// A table function that returns a table provider for a GFF file.
-#[derive(Debug, Default)]
-pub struct GFFScanFunction {}
+pub struct GFFScanFunction {
+    ctx: SessionContext,
+}
+
+impl GFFScanFunction {
+    /// Create a new `GFFScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
 
 impl TableFunctionImpl for GFFScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
+
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_scan_function.listing_table_url.as_ref())
+                .await
+        })?;
 
         let schema = new_gff_schema_builder().build();
 
@@ -52,8 +68,16 @@ impl TableFunctionImpl for GFFScanFunction {
 }
 
 /// A table function that returns a table provider for an indexed GFF file.
-#[derive(Debug, Default)]
-pub struct GFFIndexedScanFunction {}
+pub struct GFFIndexedScanFunction {
+    ctx: SessionContext,
+}
+
+impl GFFIndexedScanFunction {
+    /// Create a new `GFFIndexedScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
 
 impl TableFunctionImpl for GFFIndexedScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
@@ -64,6 +88,12 @@ impl TableFunctionImpl for GFFIndexedScanFunction {
         };
 
         let listing_table_url = ListingTableUrl::parse(path)?;
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_table_url.as_ref())
+                .await
+        })?;
 
         let Some(Expr::Literal(ScalarValue::Utf8(Some(region_str)))) = exprs.get(1) else {
             return Err(DataFusionError::Internal(
