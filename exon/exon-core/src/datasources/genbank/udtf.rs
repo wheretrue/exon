@@ -14,10 +14,11 @@
 
 use std::sync::Arc;
 
-use crate::datasources::ScanFunction;
+use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
+    execution::context::SessionContext,
     logical_expr::Expr,
 };
 use exon_genbank::schema;
@@ -27,12 +28,26 @@ use super::table_provider::{
 };
 
 /// A table function that returns a table provider for a Genbank file.
-#[derive(Debug, Default)]
-pub struct GenbankScanFunction {}
+pub struct GenbankScanFunction {
+    ctx: SessionContext,
+}
+
+impl GenbankScanFunction {
+    /// Create a new `GenbankScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
 
 impl TableFunctionImpl for GenbankScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_scan_function.listing_table_url.as_ref())
+                .await
+        })?;
 
         let schema = schema();
 

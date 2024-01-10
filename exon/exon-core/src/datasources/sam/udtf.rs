@@ -15,20 +15,36 @@
 use std::sync::Arc;
 
 use super::table_provider::{ListingSAMTable, ListingSAMTableConfig, ListingSAMTableOptions};
-use crate::datasources::ScanFunction;
+use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
+    execution::context::SessionContext,
     logical_expr::Expr,
 };
 
 /// A table function that returns a table provider for a SAM file.
-#[derive(Default)]
-pub struct SAMScanFunction {}
+pub struct SAMScanFunction {
+    ctx: SessionContext,
+}
+
+impl SAMScanFunction {
+    /// Create a new `SAMScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
 
 impl TableFunctionImpl for SAMScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
+
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_scan_function.listing_table_url.as_ref())
+                .await
+        })?;
 
         let listing_table_options = ListingSAMTableOptions::default();
 

@@ -15,3 +15,18 @@ SELECT id, description, sequence FROM fasta_scan('s3://test-bucket/test.fasta');
 ----
 a description ATCG
 b description2 ATCG
+
+statement ok
+COPY (SELECT * from fasta_scan('s3://test-bucket/test.fasta')) TO 's3://test-bucket/test.parquet';
+
+statement ok
+CREATE EXTERNAL TABLE parquet STORED AS PARQUET LOCATION 's3://test-bucket/test.parquet';
+
+query T
+SELECT id, description, sequence FROM parquet;
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE parquet;

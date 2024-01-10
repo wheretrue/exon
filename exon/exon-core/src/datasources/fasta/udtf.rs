@@ -17,21 +17,37 @@ use std::sync::Arc;
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
+    execution::context::SessionContext,
     logical_expr::Expr,
 };
 use exon_fasta::new_fasta_schema_builder;
 
-use crate::datasources::ScanFunction;
+use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
 
 use super::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions};
 
 /// A table function that returns a table provider for a FASTA file.
-#[derive(Debug, Default)]
-pub struct FastaScanFunction {}
+pub struct FastaScanFunction {
+    ctx: SessionContext,
+}
+
+impl FastaScanFunction {
+    /// Create a new `FastaScanFunction`.
+    pub fn new(ctx: SessionContext) -> Self {
+        Self { ctx }
+    }
+}
 
 impl TableFunctionImpl for FastaScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
+
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_scan_function.listing_table_url.as_ref())
+                .await
+        })?;
 
         let fasta_schema = new_fasta_schema_builder().build();
 

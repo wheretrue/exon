@@ -10,16 +10,30 @@ function teardown {
     echo "Teardown completed."
 }
 
-trap teardown EXIT
+# check docker and aws cli are installed
+if ! command -v docker &> /dev/null
+then
+    echo "docker could not be found"
+    exit
+fi
+
+if ! command -v aws &> /dev/null
+then
+    echo "aws cli could not be found"
+    exit
+fi
+
 
 # Setup
 echo "Setting up..."
+
+trap teardown EXIT
 
 # Start the docker compose stack.
 docker compose up -d localstack
 
 # Wait for the stack to start.
-sleep 1
+sleep 2
 
 # Create the test bucket.
 aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
