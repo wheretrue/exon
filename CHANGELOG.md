@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.7.0 (2024-01-10)
+
+### Feat
+
+- improve s3 handling (#349)
+- better nextflow setup (#348)
+
+### Fix
+
+- add missing feature
+
 ## v0.6.0 (2024-01-02)
 
 ### Feat
