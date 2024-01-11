@@ -17,5 +17,5 @@ services:
       AWS_SECRET_ACCESS_KEY: test
       AWS_ENDPOINT: http://localhost:4566
   cli:
-    image: ghcr.io/wheretrue/exon-cli:latest
+    image: public.ecr.aws/p3a4z1t3/exon-cli
     build: .
