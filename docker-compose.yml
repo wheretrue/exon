@@ -18,4 +18,7 @@ services:
       AWS_ENDPOINT: http://localhost:4566
   cli:
     image: public.ecr.aws/p3a4z1t3/exon-cli
-    build: .
+    build:
+      context: .
+      args:
+        - CARGO_BUILD_PROFILE=debug
