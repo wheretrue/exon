@@ -21,4 +21,4 @@ services:
     build:
       context: .
       args:
-        - CARGO_BUILD_PROFILE=debug
+        - CARGO_BUILD_PROFILE=release
