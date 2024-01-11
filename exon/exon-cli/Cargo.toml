@@ -13,5 +13,5 @@ version.workspace = true
 clap = {version = "4", features = ["derive", "cargo"]}
 datafusion = {workspace = true}
 datafusion-cli = "34.0.0"
-exon = {path = "../exon-core", version = "0.7.0"}
+exon = {path = "../exon-core", version = "0.7.1"}
 tokio = {workspace = true}
