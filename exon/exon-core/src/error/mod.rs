@@ -114,7 +114,7 @@ impl From<ExonError> for DataFusionError {
     fn from(error: ExonError) -> Self {
         match error {
             ExonError::DataFusionError(error) => error,
-            ExonError::ArrowError(error) => DataFusionError::ArrowError(error),
+            ExonError::ArrowError(error) => DataFusionError::ArrowError(error, None),
             ExonError::ExecutionError(error) => DataFusionError::Execution(error),
             _ => DataFusionError::Execution(format!("ExonError: {}", error)),
         }

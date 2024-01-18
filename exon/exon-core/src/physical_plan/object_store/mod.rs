@@ -88,7 +88,7 @@ pub async fn list_files_for_scan(
                         parse_partition_key_values(&path, table_partition_cols).unwrap();
 
                     let extension_match = path.as_ref().to_lowercase().ends_with(file_extension);
-                    let glob_match = table_path.contains(&path);
+                    let glob_match = table_path.contains(&path, false);
                     if extension_match && glob_match {
                         let mut pc: PartitionedFile = v.into();
                         pc.partition_values = partition_values

@@ -12,41 +12,65 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
-
-use arrow::{array::ArrayRef, datatypes::DataType};
+use arrow::datatypes::DataType;
 use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
-    logical_expr::{ReturnTypeFunction, ScalarUDF, Signature, TypeSignature, Volatility},
-    physical_plan::functions::make_scalar_function,
+    logical_expr::{ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility},
     prelude::SessionContext,
 };
 
-/// Return true if the GFF record is in the region. This should not be called directly.
-fn gff_region_filter(_args: &[ArrayRef]) -> DataFusionResult<ArrayRef> {
-    Err(DataFusionError::Plan(
-        "gff_region_filter should not be called, check your query".to_string(),
-    ))
+#[derive(Debug)]
+pub struct GFFRegionFilterUDF {
+    signature: Signature,
+}
+
+impl Default for GFFRegionFilterUDF {
+    fn default() -> Self {
+        let signature = Signature::one_of(
+            vec![
+                TypeSignature::Exact(vec![DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8, DataType::Int64]),
+            ],
+            Volatility::Immutable,
+        );
+
+        Self { signature }
+    }
+}
+
+impl ScalarUDFImpl for GFFRegionFilterUDF {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn name(&self) -> &str {
+        "gff_region_filter"
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    fn return_type(&self, _arg_types: &[DataType]) -> DataFusionResult<DataType> {
+        Ok(DataType::Boolean)
+    }
+
+    fn invoke(
+        &self,
+        _args: &[datafusion::physical_plan::ColumnarValue],
+    ) -> DataFusionResult<datafusion::physical_plan::ColumnarValue> {
+        Err(DataFusionError::Plan(
+            "gff_region_filter should not be called, check your query".to_string(),
+        ))
+    }
 }
 
 /// Create a scalar UDF for GFF region filtering.
 pub fn register_gff_region_filter_udf(ctx: &SessionContext) {
-    let func = make_scalar_function(gff_region_filter);
+    let scalar_impl = GFFRegionFilterUDF::default();
 
-    let volatility = Volatility::Immutable;
-    let return_type = Arc::new(DataType::Boolean);
-    let return_type: ReturnTypeFunction = Arc::new(move |_| Ok(return_type.clone()));
+    let scalar_func = ScalarUDF::from(scalar_impl);
 
-    let signatures = Signature::one_of(
-        vec![
-            TypeSignature::Exact(vec![DataType::Utf8]),
-            TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
-            TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8, DataType::Int64]),
-        ],
-        volatility,
-    );
-
-    let scalar = ScalarUDF::new("gff_region_filter", &signatures, &return_type, &func);
-
-    ctx.register_udf(scalar);
+    ctx.register_udf(scalar_func);
 }

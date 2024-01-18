@@ -354,7 +354,6 @@ impl TableProvider for ListingBAMTable {
                 limit,
                 output_ordering: Vec::new(),
                 table_partition_cols: self.options.table_partition_cols.clone(),
-                infinite_source: false,
             };
 
             let plan = self.options.create_physical_plan(file_scan_config).await?;
@@ -399,7 +398,6 @@ impl TableProvider for ListingBAMTable {
             limit,
             output_ordering: Vec::new(),
             table_partition_cols: self.options.table_partition_cols.clone(),
-            infinite_source: false,
         };
 
         let table = self

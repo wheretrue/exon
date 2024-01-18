@@ -22,7 +22,7 @@ use exon_gff::{BatchReader, GFFConfig};
 use futures::{StreamExt, TryStreamExt};
 use noodles::core::Region;
 use noodles_bgzf::VirtualPosition;
-use object_store::GetOptions;
+use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
 use crate::{error::ExonError, streaming_bgzf::AsyncBGZFReader};
@@ -84,7 +84,7 @@ impl FileOpener for IndexGffOpener {
                         );
 
                         let get_options = GetOptions {
-                            range: Some(Range { start, end }),
+                            range: Some(GetRange::Bounded(Range { start, end })),
                             ..Default::default()
                         };
 

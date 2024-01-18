@@ -129,7 +129,7 @@ pub async fn pruned_partition_list<'a>(
 
             let files = files.into_iter().filter(move |o| {
                 let extension_match = o.location.as_ref().to_lowercase().ends_with(file_extension);
-                let glob_match = table_path.contains(&o.location);
+                let glob_match = table_path.contains(&o.location, false);
 
                 tracing::info!(
                     "pruned_partition_list: extension_match: {:?}, glob_match: {:?} for {:?}",
@@ -255,7 +255,7 @@ async fn prune_partitions(
         .zip(builders)
         .map(|(field, mut builder)| {
             let array = builder.finish();
-            cast(&array, field.data_type()).map_err(DataFusionError::ArrowError)
+            cast(&array, field.data_type()).map_err(|e| DataFusionError::ArrowError(e, None))
         })
         .collect::<Result<_, _>>()?;
 
@@ -276,7 +276,7 @@ async fn prune_partitions(
 
     // Applies `filter` to `batch` returning `None` on error
     let do_filter = |filter| -> Option<ArrayRef> {
-        let expr = create_physical_expr(filter, &df_schema, &schema, &props).ok()?;
+        let expr = create_physical_expr(filter, &df_schema, &props).ok()?;
 
         let eval = expr.evaluate(&batch).ok()?;
         eval.into_array(partitions.len()).ok()

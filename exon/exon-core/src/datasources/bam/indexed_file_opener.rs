@@ -24,7 +24,7 @@ use datafusion::{
 use exon_bam::{BAMConfig, IndexedAsyncBatchStream};
 use futures::{StreamExt, TryStreamExt};
 use noodles::{bgzf::VirtualPosition, core::Region};
-use object_store::GetOptions;
+use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
 use crate::streaming_bgzf::AsyncBGZFReader;
@@ -108,7 +108,7 @@ impl FileOpener for IndexedBAMOpener {
                 );
 
                 let get_options = GetOptions {
-                    range: Some(Range { start, end }),
+                    range: Some(GetRange::Bounded(Range { start, end })),
                     ..Default::default()
                 };
 
