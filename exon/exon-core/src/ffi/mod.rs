@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use arrow::ffi_stream::{export_reader_into_raw, FFI_ArrowArrayStream as ArrowArrayStream};
+use arrow::ffi_stream::FFI_ArrowArrayStream as ArrowArrayStream;
 use arrow::{datatypes::SchemaRef, error::ArrowError, record_batch::RecordBatchReader};
 use datafusion::physical_plan::SendableRecordBatchStream;
 use datafusion::prelude::DataFrame;
@@ -64,7 +64,9 @@ pub async fn create_dataset_stream_from_table_provider(
     let dataset_record_batch_stream = DataFrameRecordBatchStream::new(stream, rt);
 
     unsafe {
-        export_reader_into_raw(Box::new(dataset_record_batch_stream), stream_ptr);
+        let new_stream_ptr = ArrowArrayStream::new(Box::new(dataset_record_batch_stream));
+
+        std::ptr::write_unaligned(stream_ptr, new_stream_ptr);
     }
 
     Ok(())

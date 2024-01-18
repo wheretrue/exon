@@ -31,12 +31,13 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-arrow = {version = "49.0.0"}
+arrow = {version = "50.0.0"}
 async-trait = "0.1.77"
-datafusion = {version = "34", features = ["compression", "parquet"]}
+# datafusion = {version = "34", features = ["compression", "parquet"]}
+datafusion = {git = "https://github.com/apache/arrow-datafusion", branch = "main", features = ["compression", "parquet"]}
 futures = "0.3"
 noodles = {version = "0.60"}
-object_store = {version = "0.8.0"}
+object_store = {version = "0.9.0"}
 tokio = {version = "1", features = ["io-util"]}
 tokio-util = {version = "0.7.10", features = ["compat"]}
 url = {version = "2.5.0"}

@@ -30,7 +30,6 @@ pub struct FileScanConfigBuilder {
     limit: Option<usize>,
     output_ordering: Vec<Vec<PhysicalSortExpr>>,
     table_partition_cols: Vec<Field>,
-    infinite_source: bool,
 }
 
 impl FileScanConfigBuilder {
@@ -51,7 +50,6 @@ impl FileScanConfigBuilder {
             limit: None,
             output_ordering: Vec::new(),
             table_partition_cols: Vec::new(),
-            infinite_source: false,
         }
     }
 
@@ -84,7 +82,6 @@ impl FileScanConfigBuilder {
             limit: self.limit,
             output_ordering: self.output_ordering,
             table_partition_cols: self.table_partition_cols,
-            infinite_source: self.infinite_source,
         }
     }
 }

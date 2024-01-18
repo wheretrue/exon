@@ -27,7 +27,7 @@ use noodles::{
     bgzf::{self, VirtualPosition},
     core::Region,
 };
-use object_store::GetOptions;
+use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
 use crate::{error::ExonError, streaming_bgzf::AsyncBGZFReader};
@@ -122,7 +122,7 @@ impl FileOpener for IndexedVCFOpener {
                         );
 
                         let get_options = GetOptions {
-                            range: Some(Range { start, end }),
+                            range: Some(GetRange::Bounded(Range { start, end })),
                             ..Default::default()
                         };
 

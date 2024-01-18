@@ -12,6 +12,6 @@ version.workspace = true
 [dependencies]
 clap = {version = "4", features = ["derive", "cargo"]}
 datafusion = {workspace = true}
-datafusion-cli = "34.0.0"
+datafusion-cli = {git = "https://github.com/apache/arrow-datafusion", branch = "main"}
 exon = {path = "../exon-core", version = "0.7.1"}
 tokio = {workspace = true}

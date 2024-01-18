@@ -12,51 +12,75 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
-
-use arrow::{array::ArrayRef, datatypes::DataType};
+use arrow::datatypes::DataType;
 use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
-    logical_expr::{ReturnTypeFunction, ScalarUDF, Signature, TypeSignature, Volatility},
-    physical_plan::functions::make_scalar_function,
+    logical_expr::{ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility},
     prelude::SessionContext,
 };
 
-/// Return true if the BAM record overlaps the region.
-fn bam_region_filter(_args: &[ArrayRef]) -> DataFusionResult<ArrayRef> {
-    Err(DataFusionError::Plan(
-        "bam_region_filter should not be called, check your query".to_string(),
-    ))
+#[derive(Debug)]
+pub struct BAMRegionFilterUDF {
+    signature: Signature,
+}
+
+impl Default for BAMRegionFilterUDF {
+    fn default() -> Self {
+        let signature = Signature::one_of(
+            vec![
+                TypeSignature::Exact(vec![DataType::Utf8]),
+                TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
+                TypeSignature::Exact(vec![
+                    DataType::Utf8,
+                    DataType::Utf8,
+                    DataType::Int32,
+                    DataType::Int32,
+                ]),
+                TypeSignature::Exact(vec![
+                    DataType::Utf8,
+                    DataType::Utf8,
+                    DataType::Int64,
+                    DataType::Int64,
+                ]),
+            ],
+            Volatility::Immutable,
+        );
+
+        Self { signature }
+    }
+}
+
+impl ScalarUDFImpl for BAMRegionFilterUDF {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn name(&self) -> &str {
+        "bam_region_filter"
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    fn return_type(&self, _arg_types: &[DataType]) -> DataFusionResult<DataType> {
+        Ok(DataType::Boolean)
+    }
+
+    fn invoke(
+        &self,
+        _args: &[datafusion::physical_plan::ColumnarValue],
+    ) -> DataFusionResult<datafusion::physical_plan::ColumnarValue> {
+        Err(DataFusionError::Plan(
+            "bam_region_filter should not be called, check your query".to_string(),
+        ))
+    }
 }
 
 /// Create a scalar UDF for BAM region filtering.
 pub fn register_bam_region_filter_udf(ctx: &SessionContext) {
-    let func = make_scalar_function(bam_region_filter);
-
-    let volatility = Volatility::Immutable;
-    let return_type = Arc::new(DataType::Boolean);
-    let return_type: ReturnTypeFunction = Arc::new(move |_| Ok(return_type.clone()));
-
-    let signatures = Signature::one_of(
-        vec![
-            TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]),
-            TypeSignature::Exact(vec![
-                DataType::Utf8,
-                DataType::Utf8,
-                DataType::Int32,
-                DataType::Int32,
-            ]),
-            TypeSignature::Exact(vec![
-                DataType::Utf8,
-                DataType::Utf8,
-                DataType::Int64,
-                DataType::Int64,
-            ]),
-        ],
-        volatility,
-    );
-
-    let scalar = ScalarUDF::new("bam_region_filter", &signatures, &return_type, &func);
+    let scalar_impl = BAMRegionFilterUDF::default();
+    let scalar = ScalarUDF::from(scalar_impl);
 
     ctx.register_udf(scalar);
 }

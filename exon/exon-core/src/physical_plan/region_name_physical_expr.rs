@@ -287,8 +287,7 @@ mod tests {
         let execution_props = ExecutionProps::default();
 
         for expr in exprs {
-            let phy_expr =
-                create_physical_expr(&expr, &df_schema, &arrow_schema, &execution_props).unwrap();
+            let phy_expr = create_physical_expr(&expr, &df_schema, &execution_props).unwrap();
 
             let binary_expr = phy_expr
                 .as_any()
@@ -315,8 +314,7 @@ mod tests {
         let execution_props = ExecutionProps::default();
 
         for expr in exprs {
-            let phy_expr =
-                create_physical_expr(&expr, &df_schema, &arrow_schema, &execution_props).unwrap();
+            let phy_expr = create_physical_expr(&expr, &df_schema, &execution_props).unwrap();
 
             let binary_expr = phy_expr
                 .as_any()

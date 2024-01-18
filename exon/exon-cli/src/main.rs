@@ -73,11 +73,11 @@ pub async fn main() -> Result<()> {
     }
 
     if !commands.is_empty() {
-        exec::exec_from_commands(&mut ctx, &print_options, commands).await
+        exec::exec_from_commands(&mut ctx, commands, &print_options).await?;
     }
 
     if !files.is_empty() {
-        exec::exec_from_files(files, &mut ctx, &print_options).await
+        exec::exec_from_files(&mut ctx, files, &print_options).await?;
     }
 
     Ok(())
