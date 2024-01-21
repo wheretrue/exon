@@ -33,8 +33,8 @@ resolver = "2"
 [workspace.dependencies]
 arrow = {version = "50.0.0"}
 async-trait = "0.1.77"
-# datafusion = {version = "34", features = ["compression", "parquet"]}
-datafusion = {git = "https://github.com/apache/arrow-datafusion", branch = "main", features = ["compression", "parquet"]}
+# datafusion = {version = "35", features = ["compression", "parquet"]}
+datafusion = {git = "https://github.com/apache/arrow-datafusion", tag = "35.0.0-rc1", features = ["compression", "parquet"]}
 futures = "0.3"
 noodles = {version = "0.60"}
 object_store = {version = "0.9.0"}
