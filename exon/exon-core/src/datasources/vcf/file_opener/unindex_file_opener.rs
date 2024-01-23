@@ -49,6 +49,12 @@ impl FileOpener for VCFOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
         let config = self.config.clone();
 
+        tracing::debug!(
+            "Opening file: {:?} with compression {:?}",
+            file_meta.location(),
+            self.file_compression_type
+        );
+
         match self.file_compression_type {
             FileCompressionType::GZIP => Ok(Box::pin(async move {
                 let s = config.object_store.get(file_meta.location()).await?;

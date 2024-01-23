@@ -19,6 +19,7 @@ use datafusion_cli::exec;
 use datafusion_cli::print_format::PrintFormat;
 use datafusion_cli::print_options::{MaxRows, PrintOptions};
 use exon::{new_exon_config, ExonSessionExt};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug, Parser, PartialEq)]
 struct Args {
@@ -53,6 +54,10 @@ struct Args {
 #[tokio::main]
 pub async fn main() -> Result<()> {
     let args = Args::parse();
+
+    let filter = EnvFilter::new(std::env::var("EXON_LOG").unwrap_or_else(|_| "OFF".to_string()));
+    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = new_exon_config();
     let mut ctx = SessionContext::with_config_exon(config);
