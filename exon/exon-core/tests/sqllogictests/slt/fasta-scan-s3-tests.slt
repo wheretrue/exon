@@ -1,3 +1,5 @@
+control substitution on
+
 statement ok
 CREATE EXTERNAL TABLE fasta_table_s3 STORED AS FASTA LOCATION 's3://test-bucket/test.fasta';
 
@@ -30,3 +32,15 @@ b description2 ATCG
 
 statement ok
 DROP TABLE parquet;
+
+statement ok
+COPY (SELECT * FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta')) TO 's3://test-bucket/test2.parquet';
+
+statement ok
+CREATE EXTERNAL TABLE parquet STORED AS PARQUET LOCATION 's3://test-bucket/test2.parquet';
+
+query T
+SELECT id, description, sequence FROM parquet;
+----
+a description ATCG
+b description2 ATCG
