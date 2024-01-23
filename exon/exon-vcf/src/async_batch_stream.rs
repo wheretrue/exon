@@ -85,7 +85,7 @@ where
             self.header.clone(),
         )?;
 
-        for _ in 0..self.config.batch_size {
+        while array_builder.len() < self.config.batch_size {
             let record = self.read_record().await?;
 
             match record {

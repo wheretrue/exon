@@ -15,3 +15,5 @@ datafusion = {workspace = true}
 datafusion-cli = {git = "https://github.com/apache/arrow-datafusion", tag = "35.0.0-rc1"}
 exon = {path = "../exon-core", version = "0.7.1"}
 tokio = {workspace = true}
+tracing = "0.1.40"
+tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}

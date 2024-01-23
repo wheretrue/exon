@@ -70,7 +70,7 @@ impl VCFScan {
 
 impl DisplayAs for VCFScan {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "VCFScan")
+        write!(f, "VCFScan: {:?}", self.base_config)
     }
 }
 
