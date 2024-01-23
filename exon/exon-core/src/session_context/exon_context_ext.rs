@@ -57,6 +57,7 @@ use crate::{
     },
     error::ExonError,
     new_exon_config,
+    physical_plan::planner::ExonQueryPlanner,
     udfs::{
         gff::gff_region_filter::register_gff_region_filter_udf,
         sam::bam_region_filter::register_bam_region_filter_udf,
@@ -101,7 +102,7 @@ pub trait ExonSessionExt {
         table_path: &str,
         file_type: ExonFileType,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError>;
+    ) -> Result<DataFrame, ExonError>;
 
     /// Create a new Exon based [`SessionContext`].
     fn new_exon() -> SessionContext {
@@ -150,7 +151,10 @@ pub trait ExonSessionExt {
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
 
-        let ctx = SessionContext::new_with_state(state);
+        // state = state.with_query_planner(Arc::new(ExonQueryPlanner::default()));
+        let ctx = SessionContext::new_with_state(
+            state.with_query_planner(Arc::new(ExonQueryPlanner::default())),
+        );
 
         // Register the mass spec UDFs
         #[cfg(feature = "mzml")]
@@ -239,7 +243,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::FASTA, file_compression_type)
             .await;
@@ -250,7 +254,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::BAM, file_compression_type)
             .await;
@@ -264,7 +268,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::SAM, file_compression_type)
             .await;
@@ -275,7 +279,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::FASTQ, file_compression_type)
             .await;
@@ -286,7 +290,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::VCF, file_compression_type)
             .await;
@@ -297,7 +301,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::BCF, file_compression_type)
             .await;
@@ -308,7 +312,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::GFF, file_compression_type)
             .await;
@@ -319,7 +323,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         self.read_exon_table(table_path, ExonFileType::GTF, file_compression_type)
             .await
     }
@@ -329,7 +333,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::BED, file_compression_type)
             .await;
@@ -341,7 +345,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::GENBANK, file_compression_type)
             .await;
@@ -352,7 +356,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::HMMDOMTAB, file_compression_type)
             .await;
@@ -364,7 +368,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::MZML, file_compression_type)
             .await;
@@ -412,7 +416,7 @@ impl ExonSessionExt for SessionContext {
         table_path: &str,
         file_type: ExonFileType,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, DataFusionError> {
+    ) -> Result<DataFrame, ExonError> {
         let session_state = self.state();
 
         let file_compression_type =
@@ -430,7 +434,9 @@ impl ExonSessionExt for SessionContext {
             )
             .await?;
 
-        self.read_table(table)
+        let table = self.read_table(table)?;
+
+        Ok(table)
     }
 
     async fn register_exon_table(
