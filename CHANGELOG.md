@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.8.0 (2024-01-23)
+
+### Feat
+
+- register copy to target
+- vcf improvements
+
+### Refactor
+
+- update for df 35
+
 ## v0.7.1 (2024-01-11)
 
 ## v0.7.0 (2024-01-10)
