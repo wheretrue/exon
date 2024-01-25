@@ -20,10 +20,11 @@ use arrow::{
     error::ArrowError,
 };
 use exon_common::ExonArrayBuilder;
-use itertools::Itertools;
 use noodles::sam::{
-    alignment::record::{Cigar, Name},
-    header::ReferenceSequences,
+    alignment::{
+        record::{cigar::op::Kind, Cigar, Name},
+        record_buf::data::field::Value,
+    },
     Header,
 };
 
@@ -146,15 +147,27 @@ impl BAMArrayBuilder {
                 6 => {
                     let cigar = record.record().cigar();
 
-                    // let cigar_string: Result<String, _> = cigar
-                    //     .iter()
-                    //     .map(|c| c.map(|item| item.to_string()))
-                    //     .collect::<Result<Vec<_>, _>>()
-                    //     .map(|vec| vec.join(""));
+                    let mut cigar_to_print = Vec::new();
 
-                    // let cigar_string = cigar.iter().map(|c| c.to_string()).join("");
+                    for op_result in cigar.iter() {
+                        let op = op_result?;
 
-                    self.cigar.append_value("");
+                        let kind_str = match op.kind() {
+                            Kind::Deletion => "D",
+                            Kind::Insertion => "I",
+                            Kind::HardClip => "H",
+                            Kind::SoftClip => "S",
+                            Kind::Match => "M",
+                            Kind::SequenceMismatch => "X",
+                            Kind::Skip => "N",
+                            Kind::Pad => "P",
+                            Kind::SequenceMatch => "=",
+                        };
+
+                        cigar_to_print.push(format!("{}{}", op.len(), kind_str));
+                    }
+
+                    self.cigar.append_value(cigar_to_print.join(""));
                 }
                 7 => match record.record().mate_reference_sequence_id() {
                     Some(mate_reference_sequence_id) => {
@@ -200,7 +213,40 @@ impl BAMArrayBuilder {
                                 .unwrap()
                                 .append_option(tag_value_str);
                         } else {
-                            todo!()
+                            match tag_value {
+                                Value::String(tag_value_str) => {
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
+
+                                    let tag_value_str = std::str::from_utf8(tag_value_str)?;
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(tag_value_str);
+                                }
+                                Value::Character(tag_value_char) => {
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
+
+                                    let tag_value_char = *tag_value_char as char;
+                                    let tag_value_str = tag_value_char.to_string();
+
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(tag_value_str);
+                                }
+                                _ => {
+                                    return Err(ArrowError::InvalidArgumentError(format!(
+                                        "Invalid tag value {:?} for tag {}",
+                                        tag_value, tag_str
+                                    )))
+                                }
+                            }
                         }
 
                         tag_struct.append(true);

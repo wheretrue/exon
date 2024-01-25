@@ -22,6 +22,7 @@ use arrow::{
 };
 use exon_common::{ExonArrayBuilder, TableSchema};
 use noodles::sam::alignment::{
+    record::{cigar::op::Kind, Cigar},
     record_buf::{
         data::field::{value::Array, Value},
         Data,
@@ -453,9 +454,29 @@ impl SAMArrayBuilder {
                         .append_option(record.mapping_quality().map(|v| v.get().to_string()));
                 }
                 6 => {
-                    // let cigar_string = record.cigar().to_string();
-                    // self.cigar.append_value(cigar_string.as_str());
-                    todo!("CIGAR");
+                    let mut cigar_to_print = Vec::new();
+
+                    // let cigar_string = cigar.iter().map(|c| c.to_string()).join("");
+                    for op_result in record.cigar().iter() {
+                        let op = op_result?;
+
+                        let kind_str = match op.kind() {
+                            Kind::Deletion => "D",
+                            Kind::Insertion => "I",
+                            Kind::HardClip => "H",
+                            Kind::SoftClip => "S",
+                            Kind::Match => "M",
+                            Kind::SequenceMismatch => "X",
+                            Kind::Skip => "N",
+                            Kind::Pad => "P",
+                            Kind::SequenceMatch => "=",
+                        };
+
+                        cigar_to_print.push(format!("{}{}", op.len(), kind_str));
+                    }
+
+                    let cigar_string = cigar_to_print.join("");
+                    self.cigar.append_value(cigar_string);
                 }
                 7 => {
                     let mate_reference_name = match record.mate_reference_sequence(&self.header) {
@@ -475,29 +496,67 @@ impl SAMArrayBuilder {
                         .append_value(std::str::from_utf8(quality_scores)?);
                 }
                 10 => {
-                    todo!("TAGS");
-                    // let data = record.data();
-                    // let tags = data.keys();
+                    // This is _very_ similar to BAM, may not need body any more
+                    let data = record.data();
+                    let tags = data.keys();
 
-                    // let tag_struct = self.tags.values();
-                    // for tag in tags {
-                    //     let tag_value = data.get(&tag).unwrap();
+                    let tag_struct = self.tags.values();
+                    for tag in tags {
+                        let tag_str = std::str::from_utf8(tag.as_ref())?;
+                        let tag_value = data.get(&tag).unwrap();
 
-                    //     let tag_value_string = tag_value.to_string();
+                        if tag_value.is_int() {
+                            let tag_value_str = tag_value.as_int().map(|v| v.to_string());
 
-                    //     tag_struct
-                    //         .field_builder::<GenericStringBuilder<i32>>(0)
-                    //         .unwrap()
-                    //         .append_value(tag_name);
+                            tag_struct
+                                .field_builder::<GenericStringBuilder<i32>>(0)
+                                .unwrap()
+                                .append_value(tag_str);
 
-                    //     tag_struct
-                    //         .field_builder::<GenericStringBuilder<i32>>(1)
-                    //         .unwrap()
-                    //         .append_value(tag_value_string);
+                            tag_struct
+                                .field_builder::<GenericStringBuilder<i32>>(1)
+                                .unwrap()
+                                .append_option(tag_value_str);
+                        } else {
+                            match tag_value {
+                                Value::String(tag_value_str) => {
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
 
-                    //     tag_struct.append(true);
-                    // }
-                    // self.tags.append(true);
+                                    let tag_value_str = std::str::from_utf8(tag_value_str)?;
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(tag_value_str);
+                                }
+                                Value::Character(tag_value_char) => {
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
+
+                                    let tag_value_char = *tag_value_char as char;
+                                    let tag_value_str = tag_value_char.to_string();
+
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(tag_value_str);
+                                }
+                                _ => {
+                                    return Err(ArrowError::InvalidArgumentError(format!(
+                                        "Invalid tag value {:?} for tag {}",
+                                        tag_value, tag_str
+                                    )))
+                                }
+                            }
+                        }
+
+                        tag_struct.append(true);
+                    }
+                    self.tags.append(true);
                 }
                 _ => {
                     return Err(ArrowError::InvalidArgumentError(format!(

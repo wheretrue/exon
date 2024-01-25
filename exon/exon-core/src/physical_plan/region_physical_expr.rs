@@ -14,7 +14,7 @@
 
 use std::{any::Any, fmt::Display, sync::Arc};
 
-use crate::error::{ExonError, Result};
+use crate::error::Result;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
     error::DataFusionError,
