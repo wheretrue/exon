@@ -18,7 +18,7 @@ use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use exon_common::ExonArrayBuilder;
 use futures::Stream;
-use noodles::bam::lazy::Record;
+use noodles::sam::{alignment::RecordBuf, Header};
 use tokio::io::{AsyncBufRead, AsyncRead};
 
 use crate::{indexed_async_batch_stream::SemiLazyRecord, BAMArrayBuilder, BAMConfig};
@@ -34,8 +34,7 @@ where
     /// The BAM configuration.
     config: Arc<BAMConfig>,
 
-    /// The Reference Sequences.
-    reference_sequences: Arc<noodles::sam::header::ReferenceSequences>,
+    header: Arc<Header>,
 }
 
 impl<R> BatchReader<R>
@@ -45,19 +44,17 @@ where
     pub async fn new(inner: R, config: Arc<BAMConfig>) -> std::io::Result<Self> {
         let mut reader = noodles::bam::AsyncReader::new(inner);
 
-        reader.read_header().await.map_err(|e| {
+        let header = reader.read_header().await.map_err(|e| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!("invalid BAM header: {}", e),
             )
         })?;
 
-        let reference_sequences = reader.read_reference_sequences().await?;
-
         Ok(Self {
             reader,
             config,
-            reference_sequences: Arc::new(reference_sequences),
+            header: Arc::new(header),
         })
     }
 
@@ -71,18 +68,21 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<Record>> {
-        let mut record = Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<RecordBuf>> {
+        let mut record_buf = RecordBuf::default();
 
-        match self.reader.read_lazy_record(&mut record).await? {
+        match self
+            .reader
+            .read_record_buf(&self.header, &mut record_buf)
+            .await?
+        {
             0 => Ok(None),
-            _ => Ok(Some(record)),
+            _ => Ok(Some(record_buf)),
         }
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut builder =
-            BAMArrayBuilder::create(self.reference_sequences.clone(), self.config.projection());
+        let mut builder = BAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for i in 0..self.config.batch_size {
             if let Some(record) = self.read_record().await? {

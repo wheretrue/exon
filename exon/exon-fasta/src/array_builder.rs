@@ -14,11 +14,10 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayBuilder, ArrayRef, GenericStringBuilder},
-    error::ArrowError,
-};
+use arrow::array::{ArrayBuilder, ArrayRef, GenericStringBuilder};
 use noodles::fasta::Record;
+
+use crate::ExonFastaError;
 
 pub struct FASTAArrayBuilder {
     names: GenericStringBuilder<i32>,
@@ -43,17 +42,18 @@ impl FASTAArrayBuilder {
         self.len() == 0
     }
 
-    pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
-        self.names.append_value(record.name());
-        self.descriptions.append_option(record.description());
+    pub fn append(&mut self, record: &Record) -> Result<(), ExonFastaError> {
+        let name = std::str::from_utf8(record.name())?;
+        self.names.append_value(name);
 
-        let sequence_str = std::str::from_utf8(record.sequence().as_ref()).map_err(|e| {
-            ArrowError::ExternalError(Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                e,
-            )))
-        })?;
+        if let Some(description) = record.description() {
+            let description = std::str::from_utf8(description)?;
+            self.descriptions.append_value(description);
+        } else {
+            self.descriptions.append_null();
+        }
 
+        let sequence_str = std::str::from_utf8(record.sequence().as_ref())?;
         self.sequences.append_value(sequence_str);
 
         Ok(())

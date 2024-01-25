@@ -58,10 +58,7 @@ impl FileOpener for IndexedBAMOpener {
 
             let mut first_bam_reader = noodles::bam::AsyncReader::new(stream_reader);
 
-            first_bam_reader.read_header().await?;
-
-            let reference_sequences = first_bam_reader.read_reference_sequences().await?;
-
+            let header = first_bam_reader.read_header().await?;
             let header_offset = first_bam_reader.virtual_position();
 
             let (vp_start, vp_end) = match file_meta.range {
@@ -131,10 +128,10 @@ impl FileOpener for IndexedBAMOpener {
 
             let bam_reader = noodles::bam::AsyncReader::from(bgzf_reader);
 
-            let reference_sequences = Arc::new(reference_sequences);
+            let header = Arc::new(header);
 
             let mut batch_stream =
-                IndexedAsyncBatchStream::try_new(bam_reader, config, reference_sequences, region)?;
+                IndexedAsyncBatchStream::try_new(bam_reader, config, header, region)?;
 
             if vp_start.compressed() == vp_end.compressed() {
                 batch_stream.set_max_bytes(vp_end.uncompressed());

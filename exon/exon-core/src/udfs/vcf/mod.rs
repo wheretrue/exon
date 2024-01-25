@@ -56,7 +56,8 @@ pub fn region_match(args: &[ArrayRef]) -> Result<ArrayRef> {
 
             let position = Position::try_from(pos as usize).unwrap();
 
-            region.name() == chrom && region.interval().contains(position)
+            let region_name = std::str::from_utf8(region.name()).unwrap();
+            region_name == chrom && region.interval().contains(position)
         });
 
     for ar in array {

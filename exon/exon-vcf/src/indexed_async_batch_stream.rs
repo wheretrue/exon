@@ -99,7 +99,8 @@ where
     fn filter(&self, record: &noodles::vcf::lazy::Record) -> Result<bool, ArrowError> {
         let chrom = record.chromosome();
 
-        if chrom != self.region.name() {
+        let region_name = std::str::from_utf8(self.region.name())?;
+        if chrom != region_name {
             return Ok(false);
         }
 

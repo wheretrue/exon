@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, str::Utf8Error};
 
 use arrow::error::ArrowError;
 use datafusion::error::DataFusionError;
 use noodles::bgzf::virtual_position::TryFromU64U16TupleError;
+
+use self::invalid_chrom::InvalidRegionNameError;
 
 /// Error for an invalid region.
 pub mod invalid_region;
@@ -91,6 +93,18 @@ impl From<TryFromU64U16TupleError> for ExonError {
 impl From<noodles::core::region::ParseError> for ExonError {
     fn from(_error: noodles::core::region::ParseError) -> Self {
         ExonError::ExecutionError("Error parsing region".to_string())
+    }
+}
+
+impl From<InvalidRegionNameError> for ExonError {
+    fn from(error: InvalidRegionNameError) -> Self {
+        ExonError::ExecutionError(format!("Error parsing region: {}", error))
+    }
+}
+
+impl From<Utf8Error> for ExonError {
+    fn from(error: Utf8Error) -> Self {
+        ExonError::ExecutionError(format!("Error parsing string: {}", error))
     }
 }
 

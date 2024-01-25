@@ -70,9 +70,13 @@ pub async fn get_byte_range_for_file(
                 std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")
             })?;
 
-            let id = header
-                .reference_sequence_names()
-                .get_index_of(region.name());
+            let region_name = std::str::from_utf8(region.name()).map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("invalid region name: {}", e),
+                )
+            })?;
+            let id = header.reference_sequence_names().get_index_of(region_name);
 
             match id {
                 Some(id) => {
@@ -89,7 +93,6 @@ pub async fn get_byte_range_for_file(
             let mut bam_reader = noodles::bam::AsyncReader::new(reader);
 
             let header = bam_reader.read_header().await?;
-            let header: noodles::sam::Header = header.parse().unwrap();
 
             let mut index_reader = noodles::bam::bai::Reader::new(cursor);
             let index = index_reader.read_index()?;

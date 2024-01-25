@@ -18,6 +18,7 @@ use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use exon_common::ExonArrayBuilder;
 use futures::Stream;
+use noodles::sam::alignment::RecordBuf;
 use tokio::io::{AsyncBufRead, AsyncRead};
 
 use super::{array_builder::SAMArrayBuilder, config::SAMConfig};
@@ -63,10 +64,14 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::sam::alignment::Record>> {
-        let mut record = noodles::sam::alignment::Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<RecordBuf>> {
+        let mut record = RecordBuf::default();
 
-        match self.reader.read_record(&self.header, &mut record).await? {
+        match self
+            .reader
+            .read_record_buf(&self.header, &mut record)
+            .await?
+        {
             0 => Ok(None),
             _ => Ok(Some(record)),
         }

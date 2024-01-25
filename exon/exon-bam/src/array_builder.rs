@@ -21,7 +21,11 @@ use arrow::{
 };
 use exon_common::ExonArrayBuilder;
 use itertools::Itertools;
-use noodles::sam::header::ReferenceSequences;
+use noodles::sam::{
+    alignment::record::{Cigar, Name},
+    header::ReferenceSequences,
+    Header,
+};
 
 const BATCH_SIZE: usize = 8192;
 
@@ -51,7 +55,7 @@ pub struct BAMArrayBuilder {
 
 impl BAMArrayBuilder {
     /// Creates a new SAM array builder.
-    pub fn create(reference_sequences: Arc<ReferenceSequences>, projection: Vec<usize>) -> Self {
+    pub fn create(header: Arc<Header>, projection: Vec<usize>) -> Self {
         let tag_field = Field::new("tag", DataType::Utf8, false);
         let value_field = Field::new("value", DataType::Utf8, true);
 
@@ -63,7 +67,8 @@ impl BAMArrayBuilder {
             ],
         );
 
-        let reference_names = reference_sequences
+        let reference_names = header
+            .reference_sequences()
             .keys()
             .map(|k| k.to_string())
             .collect::<Vec<_>>();
@@ -100,16 +105,19 @@ impl BAMArrayBuilder {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let sam_read_name: Option<noodles::sam::record::ReadName> =
-                        record.record().read_name().map(|v| v.try_into().unwrap());
+                    if let Some(name) = record.record().name() {
+                        let sam_read_name = std::str::from_utf8(name.as_bytes())?;
 
-                    self.names.append_option(sam_read_name);
+                        self.names.append_value(sam_read_name);
+                    } else {
+                        self.names.append_null();
+                    }
                 }
                 1 => {
                     let flag_bits = record.record().flags().bits();
                     self.flags.append_value(flag_bits as i32);
                 }
-                2 => match record.record().reference_sequence_id()? {
+                2 => match record.record().reference_sequence_id() {
                     Some(reference_sequence_id) => {
                         let reference_name = &self.reference_names[reference_sequence_id];
 
@@ -121,7 +129,7 @@ impl BAMArrayBuilder {
                 },
                 3 => {
                     self.starts
-                        .append_option(record.record().alignment_start()?.map(|v| v.get() as i32));
+                        .append_option(record.record().alignment_start().map(|v| v.get() as i32));
                 }
                 4 => {
                     let alignment_end = record.alignment_end().map(|v| v.get() as i32);
@@ -136,12 +144,19 @@ impl BAMArrayBuilder {
                     );
                 }
                 6 => {
-                    let cigar = record.cigar();
-                    let cigar_string = cigar.iter().map(|c| c.to_string()).join("");
+                    let cigar = record.record().cigar();
 
-                    self.cigar.append_value(cigar_string.as_str());
+                    // let cigar_string: Result<String, _> = cigar
+                    //     .iter()
+                    //     .map(|c| c.map(|item| item.to_string()))
+                    //     .collect::<Result<Vec<_>, _>>()
+                    //     .map(|vec| vec.join(""));
+
+                    // let cigar_string = cigar.iter().map(|c| c.to_string()).join("");
+
+                    self.cigar.append_value("");
                 }
-                7 => match record.record().mate_reference_sequence_id()? {
+                7 => match record.record().mate_reference_sequence_id() {
                     Some(mate_reference_sequence_id) => {
                         let mate_reference_name = &self.reference_names[mate_reference_sequence_id];
 
@@ -152,40 +167,41 @@ impl BAMArrayBuilder {
                     }
                 },
                 8 => {
-                    let sequence = record.record().sequence();
-                    let sam_record_sequence: noodles::sam::record::Sequence =
-                        sequence.try_into()?;
+                    let sequence = record.record().sequence().as_ref();
+                    let sequence_str = std::str::from_utf8(sequence)?;
 
-                    self.sequences.append_value(sam_record_sequence.to_string());
+                    self.sequences.append_value(sequence_str);
                 }
                 9 => {
-                    let quality_scores = record.record().quality_scores();
-                    let sam_record_quality_scores: noodles::sam::record::QualityScores =
-                        quality_scores.try_into()?;
+                    let quality_scores = record.record().quality_scores().as_ref();
+                    let quality_scores_str = std::str::from_utf8(quality_scores)?;
 
-                    self.quality_scores
-                        .append_value(sam_record_quality_scores.to_string().as_str());
+                    self.quality_scores.append_value(quality_scores_str);
                 }
                 10 => {
                     let data = record.record().data();
-                    let data: noodles::sam::record::Data = data.try_into()?;
                     let tags = data.keys();
 
                     let tag_struct = self.tags.values();
                     for tag in tags {
+                        let tag_str = std::str::from_utf8(tag.as_ref())?;
                         let tag_value = data.get(&tag).unwrap();
 
-                        let tag_value_string = tag_value.to_string();
+                        if tag_value.is_int() {
+                            let tag_value_str = tag_value.as_int().map(|v| v.to_string());
 
-                        tag_struct
-                            .field_builder::<GenericStringBuilder<i32>>(0)
-                            .unwrap()
-                            .append_value(tag.to_string());
+                            tag_struct
+                                .field_builder::<GenericStringBuilder<i32>>(0)
+                                .unwrap()
+                                .append_value(tag_str);
 
-                        tag_struct
-                            .field_builder::<GenericStringBuilder<i32>>(1)
-                            .unwrap()
-                            .append_value(tag_value_string);
+                            tag_struct
+                                .field_builder::<GenericStringBuilder<i32>>(1)
+                                .unwrap()
+                                .append_option(tag_value_str);
+                        } else {
+                            todo!()
+                        }
 
                         tag_struct.append(true);
                     }

@@ -14,22 +14,25 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use crate::error::{ExonError, Result};
 use arrow::{
     array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, StructBuilder},
     datatypes::{DataType, Field, Fields, Schema},
     error::ArrowError,
 };
-use datafusion::error::Result;
 use exon_common::{ExonArrayBuilder, TableSchema};
-use noodles::sam::record::{
-    data::field::{value::Array, Value},
-    Data,
+use noodles::sam::alignment::{
+    record_buf::{
+        data::field::{value::Array, Value},
+        Data,
+    },
+    RecordBuf,
 };
-use noodles::sam::{alignment::Record, Header};
+use noodles::sam::Header;
 
 macro_rules! datafusion_error {
     ($tag:expr, $field_type:expr, $expected_type:expr) => {
-        Err(datafusion::error::DataFusionError::Execution(
+        Err(ExonError::ExecutionError(
             format!(
                 "tag {} has conflicting types: {:?} and {:?}",
                 $tag, $field_type, $expected_type,
@@ -77,14 +80,16 @@ impl SAMSchemaBuilder {
         let mut fields = HashMap::new();
 
         for (tag, value) in data.iter() {
+            let tag_name = std::str::from_utf8(tag.as_ref())?;
+
             match value {
                 Value::Character(_) | Value::String(_) | Value::Hex(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::Utf8, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Utf8, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Utf8 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::Utf8
                         );
@@ -92,11 +97,11 @@ impl SAMSchemaBuilder {
                 }
                 Value::Int8(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::Int8, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Int8, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Int8 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::Int8
                         );
@@ -104,11 +109,11 @@ impl SAMSchemaBuilder {
                 }
                 Value::Int16(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::Int16, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Int16, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Int16 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::Int16
                         );
@@ -116,11 +121,11 @@ impl SAMSchemaBuilder {
                 }
                 Value::Int32(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::Int32, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Int32, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Int32 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::Int32
                         );
@@ -128,11 +133,11 @@ impl SAMSchemaBuilder {
                 }
                 Value::UInt8(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::UInt8, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::UInt8, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::UInt8 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::UInt8
                         );
@@ -140,11 +145,11 @@ impl SAMSchemaBuilder {
                 }
                 Value::UInt16(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::UInt16, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::UInt16, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::UInt16 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::UInt16
                         );
@@ -152,11 +157,11 @@ impl SAMSchemaBuilder {
                 }
                 Value::UInt32(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::UInt32, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::UInt32, false)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::UInt32 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::UInt16
                         );
@@ -164,111 +169,116 @@ impl SAMSchemaBuilder {
                 }
                 Value::Float(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag.to_string(), arrow::datatypes::DataType::Float32, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Float32, false)
                     });
 
                     if field.data_type() != &arrow::datatypes::DataType::Float32 {
                         return datafusion_error!(
-                            tag,
+                            tag_name,
                             field.data_type(),
                             arrow::datatypes::DataType::Float32
                         );
                     }
                 }
-                Value::Array(array) => {
-                    match array {
-                        Array::Int32(_) => {
-                            let field = fields.entry(tag).or_insert_with(|| {
-                                Field::new(
-                                    tag.to_string(),
-                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
-                                        "item",
-                                        arrow::datatypes::DataType::Int32,
-                                        true,
-                                    ))),
-                                    false,
-                                )
-                            });
+                Value::Array(array) => match array {
+                    Array::Int32(_) => {
+                        let field = fields.entry(tag).or_insert_with(|| {
+                            Field::new(
+                                tag_name,
+                                arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                    "item",
+                                    arrow::datatypes::DataType::Int32,
+                                    true,
+                                ))),
+                                false,
+                            )
+                        });
 
-                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
-                                Field::new("item", arrow::datatypes::DataType::Int32, true),
-                            ));
+                        let expected_type = arrow::datatypes::DataType::List(Arc::new(Field::new(
+                            "item",
+                            arrow::datatypes::DataType::Int32,
+                            true,
+                        )));
 
-                            if field.data_type() != &expected_type {
-                                return datafusion_error!(tag, field.data_type(), expected_type);
-                            }
-                        }
-                        Array::Int16(_) => {
-                            let field = fields.entry(tag).or_insert_with(|| {
-                                Field::new(
-                                    tag.to_string(),
-                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
-                                        "item",
-                                        arrow::datatypes::DataType::Int16,
-                                        true,
-                                    ))),
-                                    false,
-                                )
-                            });
-
-                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
-                                Field::new("item", arrow::datatypes::DataType::Int16, true),
-                            ));
-
-                            if field.data_type() != &expected_type {
-                                return datafusion_error!(tag, field.data_type(), expected_type);
-                            }
-                        }
-                        Array::Int8(_) => {
-                            let field = fields.entry(tag).or_insert_with(|| {
-                                Field::new(
-                                    tag.to_string(),
-                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
-                                        "item",
-                                        arrow::datatypes::DataType::Int8,
-                                        true,
-                                    ))),
-                                    false,
-                                )
-                            });
-
-                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
-                                Field::new("item", arrow::datatypes::DataType::Int8, true),
-                            ));
-
-                            if field.data_type() != &expected_type {
-                                return datafusion_error!(tag, field.data_type(), expected_type);
-                            }
-                        }
-                        Array::Float(_) => {
-                            let field = fields.entry(tag).or_insert_with(|| {
-                                Field::new(
-                                    tag.to_string(),
-                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
-                                        "item",
-                                        arrow::datatypes::DataType::Float32,
-                                        true,
-                                    ))),
-                                    false,
-                                )
-                            });
-
-                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
-                                Field::new("item", arrow::datatypes::DataType::Float32, true),
-                            ));
-
-                            if field.data_type() != &expected_type {
-                                return datafusion_error!(tag, field.data_type(), expected_type);
-                            }
-                        }
-                        _ => {
-                            return Err(datafusion::error::DataFusionError::Execution(format!(
-                                "tag {} has unsupported array type",
-                                tag
-                            )))
+                        if field.data_type() != &expected_type {
+                            return datafusion_error!(tag_name, field.data_type(), expected_type);
                         }
                     }
-                }
+                    Array::Int16(_) => {
+                        let field = fields.entry(tag).or_insert_with(|| {
+                            Field::new(
+                                tag_name,
+                                arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                    "item",
+                                    arrow::datatypes::DataType::Int16,
+                                    true,
+                                ))),
+                                false,
+                            )
+                        });
+
+                        let expected_type = arrow::datatypes::DataType::List(Arc::new(Field::new(
+                            "item",
+                            arrow::datatypes::DataType::Int16,
+                            true,
+                        )));
+
+                        if field.data_type() != &expected_type {
+                            return datafusion_error!(tag_name, field.data_type(), expected_type);
+                        }
+                    }
+                    Array::Int8(_) => {
+                        let field = fields.entry(tag).or_insert_with(|| {
+                            Field::new(
+                                tag_name,
+                                arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                    "item",
+                                    arrow::datatypes::DataType::Int8,
+                                    true,
+                                ))),
+                                false,
+                            )
+                        });
+
+                        let expected_type = arrow::datatypes::DataType::List(Arc::new(Field::new(
+                            "item",
+                            arrow::datatypes::DataType::Int8,
+                            true,
+                        )));
+
+                        if field.data_type() != &expected_type {
+                            return datafusion_error!(tag_name, field.data_type(), expected_type);
+                        }
+                    }
+                    Array::Float(_) => {
+                        let field = fields.entry(tag).or_insert_with(|| {
+                            Field::new(
+                                tag_name,
+                                arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                    "item",
+                                    arrow::datatypes::DataType::Float32,
+                                    true,
+                                ))),
+                                false,
+                            )
+                        });
+
+                        let expected_type = arrow::datatypes::DataType::List(Arc::new(Field::new(
+                            "item",
+                            arrow::datatypes::DataType::Float32,
+                            true,
+                        )));
+
+                        if field.data_type() != &expected_type {
+                            return datafusion_error!(tag_name, field.data_type(), expected_type);
+                        }
+                    }
+                    _ => {
+                        return Err(ExonError::ExecutionError(
+                            format!("tag {} has unsupported array type", tag_name).into(),
+                        ));
+                    }
+                },
             }
         }
 
@@ -277,7 +287,11 @@ impl SAMSchemaBuilder {
                 .into_iter()
                 .map(|(tag, field)| {
                     let data_type = field.data_type().clone();
-                    Field::new(tag.to_string(), data_type, false)
+
+                    // TODO: remove unwrap
+                    let tag_name = std::str::from_utf8(tag.as_ref()).unwrap();
+
+                    Field::new(tag_name, data_type, false)
                 })
                 .collect::<Vec<_>>(),
         ));
@@ -403,17 +417,24 @@ impl SAMArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &Record) -> Result<(), ArrowError> {
+    pub fn append(&mut self, record: &RecordBuf) -> Result<(), ArrowError> {
         for col_idx in self.projection.iter() {
             match col_idx {
-                0 => self.names.append_option(record.read_name()),
+                0 => {
+                    if let Some(name) = record.name() {
+                        let name = std::str::from_utf8(name.as_ref())?;
+                        self.names.append_value(name);
+                    } else {
+                        self.names.append_null();
+                    }
+                }
                 1 => {
                     let flag_bits = record.flags().bits();
                     self.flags.append_value(flag_bits as i32);
                 }
                 2 => {
                     let reference_name = match record.reference_sequence(&self.header) {
-                        Some(Ok((name, _))) => Some(name.as_str()),
+                        Some(Ok((name, _))) => Some(std::str::from_utf8(name)?),
                         Some(Err(_)) => None,
                         None => None,
                     };
@@ -432,49 +453,51 @@ impl SAMArrayBuilder {
                         .append_option(record.mapping_quality().map(|v| v.get().to_string()));
                 }
                 6 => {
-                    let cigar_string = record.cigar().to_string();
-                    self.cigar.append_value(cigar_string.as_str());
+                    // let cigar_string = record.cigar().to_string();
+                    // self.cigar.append_value(cigar_string.as_str());
+                    todo!("CIGAR");
                 }
                 7 => {
                     let mate_reference_name = match record.mate_reference_sequence(&self.header) {
-                        Some(Ok((name, _))) => Some(name.as_str()),
+                        Some(Ok((name, _))) => Some(std::str::from_utf8(name)?),
                         Some(Err(_)) => None,
                         None => None,
                     };
                     self.mate_references.append_option(mate_reference_name);
                 }
                 8 => {
-                    let sequence_string = record.sequence().to_string();
-                    self.sequences.append_value(sequence_string.as_str());
+                    let sequence = record.sequence().as_ref();
+                    self.sequences.append_value(std::str::from_utf8(sequence)?);
                 }
                 9 => {
-                    let quality_scores = record.quality_scores();
+                    let quality_scores = record.quality_scores().as_ref();
                     self.quality_scores
-                        .append_value(quality_scores.to_string().as_str());
+                        .append_value(std::str::from_utf8(quality_scores)?);
                 }
                 10 => {
-                    let data = record.data();
-                    let tags = data.keys();
+                    todo!("TAGS");
+                    // let data = record.data();
+                    // let tags = data.keys();
 
-                    let tag_struct = self.tags.values();
-                    for tag in tags {
-                        let tag_value = data.get(&tag).unwrap();
+                    // let tag_struct = self.tags.values();
+                    // for tag in tags {
+                    //     let tag_value = data.get(&tag).unwrap();
 
-                        let tag_value_string = tag_value.to_string();
+                    //     let tag_value_string = tag_value.to_string();
 
-                        tag_struct
-                            .field_builder::<GenericStringBuilder<i32>>(0)
-                            .unwrap()
-                            .append_value(tag.to_string());
+                    //     tag_struct
+                    //         .field_builder::<GenericStringBuilder<i32>>(0)
+                    //         .unwrap()
+                    //         .append_value(tag_name);
 
-                        tag_struct
-                            .field_builder::<GenericStringBuilder<i32>>(1)
-                            .unwrap()
-                            .append_value(tag_value_string);
+                    //     tag_struct
+                    //         .field_builder::<GenericStringBuilder<i32>>(1)
+                    //         .unwrap()
+                    //         .append_value(tag_value_string);
 
-                        tag_struct.append(true);
-                    }
-                    self.tags.append(true);
+                    //     tag_struct.append(true);
+                    // }
+                    // self.tags.append(true);
                 }
                 _ => {
                     return Err(ArrowError::InvalidArgumentError(format!(

@@ -22,7 +22,7 @@ use datafusion::{
     physical_plan::functions::make_scalar_function,
     prelude::create_udf,
 };
-use noodles::sam::record::Flags;
+use noodles::sam::alignment::record::Flags;
 
 /// Based on the SAM flags, determine if the read is segmented.
 ///
