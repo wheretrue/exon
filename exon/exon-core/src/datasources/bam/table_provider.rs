@@ -184,7 +184,7 @@ impl ListingBAMTableOptions {
 
             // let data = noodles::sam::record::Data::try_from(data)?;
 
-            schema_builder = schema_builder.with_tags_data_type_from_data(&data)?;
+            schema_builder = schema_builder.with_tags_data_type_from_data(data)?;
         }
 
         schema_builder = schema_builder.with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone

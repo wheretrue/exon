@@ -139,7 +139,7 @@ where
         region: Arc<Region>,
     ) -> std::io::Result<Self> {
         let region_reference =
-            get_reference_sequence_for_region(&header.reference_sequences(), &region)?;
+            get_reference_sequence_for_region(header.reference_sequences(), &region)?;
         let region_interval = region.interval();
 
         Ok(Self {

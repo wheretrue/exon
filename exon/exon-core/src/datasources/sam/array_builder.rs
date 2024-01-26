@@ -275,9 +275,10 @@ impl SAMSchemaBuilder {
                         }
                     }
                     _ => {
-                        return Err(ExonError::ExecutionError(
-                            format!("tag {} has unsupported array type", tag_name).into(),
-                        ));
+                        return Err(ExonError::ExecutionError(format!(
+                            "tag {} has unsupported array type",
+                            tag_name
+                        )));
                     }
                 },
             }
