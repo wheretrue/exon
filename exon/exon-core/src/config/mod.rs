@@ -65,7 +65,11 @@ mod tests {
     async fn test_config_set_with_defaults() -> Result<(), Box<dyn std::error::Error>> {
         let config = new_exon_config();
 
-        let exon_config = config.options().extensions.get::<ExonConfigExtension>()?;
+        let exon_config = config
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or("ExonConfigExtension not found in config options".to_string())?;
 
         assert!(exon_config.vcf_parse_info);
         assert!(exon_config.vcf_parse_formats);
@@ -86,7 +90,11 @@ mod tests {
         options.set("exon.vcf_parse_formats", "false")?;
         options.set("exon.fasta_sequence_buffer_capacity", "1024")?;
 
-        let exon_config = config.options().extensions.get::<ExonConfigExtension>()?;
+        let exon_config = config
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or("ExonConfigExtension not found in config options".to_string())?;
 
         assert!(!exon_config.vcf_parse_info);
         assert!(!exon_config.vcf_parse_formats);

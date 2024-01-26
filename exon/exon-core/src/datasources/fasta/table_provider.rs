@@ -15,7 +15,7 @@
 use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crate::{
-    config::{ExonConfigExtension, FASTA_READER_SEQUENCE_CAPACITY},
+    config::ExonConfigExtension,
     datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
