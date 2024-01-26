@@ -13,15 +13,29 @@ SELECT sequence FROM bam LIMIT 1;
 ----
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-# query T
-# SELECT array_position(quality_score, 2) FROM bam LIMIT 1;
-# ----
-# 32
+query T
+SELECT array_element(quality_score, 1) FROM bam LIMIT 5;
+----
+23
+20
+37
+34
+31
 
-# query I
-# SELECT tags FROM bam LIMIT 1;
-# ----
-# {tag: NH, value: 1}, {tag: HI, value: 1}, {tag: AS, value: 149}, {tag: nM, value: 1}, {tag: NM, value: 0}, {tag: XS, value: -}, {tag: RG, value: H7G9G.1}
+query T
+SELECT array_length(quality_score) FROM bam LIMIT 5;
+----
+76
+76
+76
+76
+76
+
+
+query I
+SELECT tags FROM bam LIMIT 1;
+----
+[{tag: NH, value: 1}, {tag: HI, value: 1}, {tag: AS, value: 149}, {tag: nM, value: 1}, {tag: NM, value: 0}, {tag: XS, value: -}, {tag: RG, value: H7G9G.1}]
 
 statement ok
 DROP TABLE bam;

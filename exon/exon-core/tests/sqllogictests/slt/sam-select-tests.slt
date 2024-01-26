@@ -13,10 +13,10 @@ SELECT sequence FROM sam LIMIT 1;
 ----
 CGAGCTCGGT
 
-# query T
-# SELECT quality_score FROM sam LIMIT 1;
-# ----
-# !!!!!!!!!!
+query T
+SELECT quality_score FROM sam LIMIT 1;
+----
+!!!!!!!!!!
 
 statement ok
 DROP TABLE sam;

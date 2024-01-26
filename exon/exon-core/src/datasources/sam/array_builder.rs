@@ -16,7 +16,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::error::{ExonError, Result};
 use arrow::{
-    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, StructBuilder},
+    array::{
+        ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder,
+        StructBuilder,
+    },
     datatypes::{DataType, Field, Fields, Schema},
     error::ArrowError,
 };
@@ -331,15 +334,16 @@ impl Default for SAMSchemaBuilder {
             true,
         )));
 
-        let quality_score_list = DataType::List(Arc::new(Field::new("item", DataType::Int8, true)));
+        let quality_score_list =
+            DataType::LargeList(Arc::new(Field::new("item", DataType::Int64, true)));
 
         Self::new(
             vec![
                 Field::new("name", DataType::Utf8, false),
                 Field::new("flag", DataType::Int32, false),
                 Field::new("reference", DataType::Utf8, true),
-                Field::new("start", DataType::Int32, true),
-                Field::new("end", DataType::Int32, true),
+                Field::new("start", DataType::Int64, true),
+                Field::new("end", DataType::Int64, true),
                 Field::new("mapping_quality", DataType::Utf8, true),
                 Field::new("cigar", DataType::Utf8, false),
                 Field::new("mate_reference", DataType::Utf8, true),
@@ -357,13 +361,13 @@ pub struct SAMArrayBuilder {
     names: GenericStringBuilder<i32>,
     flags: Int32Builder,
     references: GenericStringBuilder<i32>,
-    starts: Int32Builder,
-    ends: Int32Builder,
+    starts: Int64Builder,
+    ends: Int64Builder,
     mapping_qualities: GenericStringBuilder<i32>,
     cigar: GenericStringBuilder<i32>,
     mate_references: GenericStringBuilder<i32>,
     sequences: GenericStringBuilder<i32>,
-    quality_scores: GenericStringBuilder<i32>,
+    quality_scores: GenericListBuilder<i32, Int64Builder>,
 
     tags: GenericListBuilder<i32, StructBuilder>,
 
@@ -388,17 +392,19 @@ impl SAMArrayBuilder {
             ],
         );
 
+        let quality_scores = GenericListBuilder::<i32, Int64Builder>::new(Int64Builder::new());
+
         Self {
             names: GenericStringBuilder::<i32>::new(),
             flags: Int32Builder::new(),
             references: GenericStringBuilder::<i32>::new(),
-            starts: Int32Builder::new(),
-            ends: Int32Builder::new(),
+            starts: Int64Builder::new(),
+            ends: Int64Builder::new(),
             mapping_qualities: GenericStringBuilder::<i32>::new(),
             cigar: GenericStringBuilder::<i32>::new(),
             mate_references: GenericStringBuilder::<i32>::new(),
             sequences: GenericStringBuilder::<i32>::new(),
-            quality_scores: GenericStringBuilder::<i32>::new(),
+            quality_scores,
 
             tags: GenericListBuilder::new(tag),
 
@@ -446,11 +452,11 @@ impl SAMArrayBuilder {
                 }
                 3 => {
                     self.starts
-                        .append_option(record.alignment_start().map(|v| v.get() as i32));
+                        .append_option(record.alignment_start().map(|v| v.get() as i64));
                 }
                 4 => {
                     self.ends
-                        .append_option(record.alignment_end().map(|v| v.get() as i32));
+                        .append_option(record.alignment_end().map(|v| v.get() as i64));
                 }
                 5 => {
                     self.mapping_qualities
@@ -495,8 +501,17 @@ impl SAMArrayBuilder {
                 }
                 9 => {
                     let quality_scores = record.quality_scores().as_ref();
-                    self.quality_scores
-                        .append_value(std::str::from_utf8(quality_scores)?);
+                    let slice_i8: &[i8] = unsafe {
+                        std::slice::from_raw_parts(
+                            quality_scores.as_ptr() as *const i8,
+                            quality_scores.len(),
+                        )
+                    };
+
+                    let slice_i64 = slice_i8.iter().map(|v| *v as i64).collect::<Vec<_>>();
+
+                    self.quality_scores.values().append_slice(&slice_i64);
+                    self.quality_scores.append(true);
                 }
                 10 => {
                     // This is _very_ similar to BAM, may not need body any more

@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int8Builder,
+        ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder,
         StructBuilder,
     },
     datatypes::{DataType, Field, Fields},
@@ -40,13 +40,13 @@ pub struct BAMArrayBuilder {
     names: GenericStringBuilder<i32>,
     flags: Int32Builder,
     references: GenericStringBuilder<i32>,
-    starts: Int32Builder,
-    ends: Int32Builder,
+    starts: Int64Builder,
+    ends: Int64Builder,
     mapping_qualities: GenericStringBuilder<i32>,
     cigar: GenericStringBuilder<i32>,
     mate_references: GenericStringBuilder<i32>,
     sequences: GenericStringBuilder<i32>,
-    quality_scores: GenericListBuilder<i32, Int8Builder>,
+    quality_scores: GenericListBuilder<i64, Int64Builder>,
 
     tags: GenericListBuilder<i32, StructBuilder>,
 
@@ -79,7 +79,7 @@ impl BAMArrayBuilder {
 
         let item_capacity = BATCH_SIZE;
 
-        let quality_score_inner = Int8Builder::new();
+        let quality_score_inner = Int64Builder::new();
 
         Self {
             names: GenericStringBuilder::<i32>::new(),
@@ -88,8 +88,8 @@ impl BAMArrayBuilder {
                 item_capacity,
                 item_capacity * 10,
             ),
-            starts: Int32Builder::with_capacity(item_capacity),
-            ends: Int32Builder::with_capacity(item_capacity),
+            starts: Int64Builder::with_capacity(item_capacity),
+            ends: Int64Builder::with_capacity(item_capacity),
             mapping_qualities: GenericStringBuilder::<i32>::new(),
             cigar: GenericStringBuilder::<i32>::new(),
             mate_references: GenericStringBuilder::<i32>::new(),
@@ -135,10 +135,10 @@ impl BAMArrayBuilder {
                 },
                 3 => {
                     self.starts
-                        .append_option(record.record().alignment_start().map(|v| v.get() as i32));
+                        .append_option(record.record().alignment_start().map(|v| v.get() as i64));
                 }
                 4 => {
-                    let alignment_end = record.alignment_end().map(|v| v.get() as i32);
+                    let alignment_end = record.alignment_end().map(|v| v.get() as i64);
                     self.ends.append_option(alignment_end);
                 }
                 5 => {
@@ -201,7 +201,10 @@ impl BAMArrayBuilder {
                         )
                     };
 
-                    self.quality_scores.values().append_slice(slice_i8);
+                    // Convert the i8s into i64s
+                    let slice_i64 = slice_i8.iter().map(|v| *v as i64).collect::<Vec<_>>();
+
+                    self.quality_scores.values().append_slice(&slice_i64);
                     self.quality_scores.append(true);
                 }
                 10 => {
