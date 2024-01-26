@@ -31,7 +31,6 @@ SELECT array_length(quality_score) FROM bam LIMIT 5;
 76
 76
 
-
 query I
 SELECT tags FROM bam LIMIT 1;
 ----

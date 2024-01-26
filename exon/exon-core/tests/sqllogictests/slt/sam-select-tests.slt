@@ -16,7 +16,7 @@ CGAGCTCGGT
 query T
 SELECT quality_score FROM sam LIMIT 1;
 ----
-!!!!!!!!!!
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 statement ok
 DROP TABLE sam;

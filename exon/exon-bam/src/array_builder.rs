@@ -46,7 +46,7 @@ pub struct BAMArrayBuilder {
     cigar: GenericStringBuilder<i32>,
     mate_references: GenericStringBuilder<i32>,
     sequences: GenericStringBuilder<i32>,
-    quality_scores: GenericListBuilder<i64, Int64Builder>,
+    quality_scores: GenericListBuilder<i32, Int64Builder>,
 
     tags: GenericListBuilder<i32, StructBuilder>,
 

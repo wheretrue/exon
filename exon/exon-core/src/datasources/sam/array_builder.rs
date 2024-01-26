@@ -335,7 +335,7 @@ impl Default for SAMSchemaBuilder {
         )));
 
         let quality_score_list =
-            DataType::LargeList(Arc::new(Field::new("item", DataType::Int64, true)));
+            DataType::List(Arc::new(Field::new("item", DataType::Int64, true)));
 
         Self::new(
             vec![
