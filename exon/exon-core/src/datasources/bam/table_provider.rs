@@ -30,7 +30,7 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 use futures::{StreamExt, TryStreamExt};
-use noodles::{bam::lazy::Record, core::Region};
+use noodles::{core::Region, sam::alignment::RecordBuf};
 use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
 
@@ -172,17 +172,19 @@ impl ListingBAMTableOptions {
             let stream_reader = StreamReader::new(stream_reader);
             let mut reader = noodles::bam::AsyncReader::new(stream_reader);
 
-            reader.read_header().await?;
-            reader.read_reference_sequences().await?;
+            let header = reader.read_header().await?;
+            // reader.read_reference_sequences().await?;
 
-            let mut record = Record::default();
+            let mut record = RecordBuf::default();
 
-            reader.read_lazy_record(&mut record).await?;
+            reader.read_record_buf(&header, &mut record).await?;
 
             let data = record.data();
-            let data: noodles::sam::record::Data = data.try_into()?;
+            // let data: noodles::sam::record::Data = data.try_into()?;
 
-            schema_builder = schema_builder.with_tags_data_type_from_data(&data)?;
+            // let data = noodles::sam::record::Data::try_from(data)?;
+
+            schema_builder = schema_builder.with_tags_data_type_from_data(data)?;
         }
 
         schema_builder = schema_builder.with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone

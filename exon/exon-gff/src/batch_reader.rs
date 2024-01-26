@@ -100,7 +100,9 @@ where
 
         match &self.region {
             Some(region) => {
-                if chrom != region.name() {
+                let region_name = std::str::from_utf8(region.name())?;
+
+                if chrom != region_name {
                     return Ok(false);
                 }
 

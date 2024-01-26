@@ -14,9 +14,10 @@
 
 use std::{any::Any, fmt::Display, sync::Arc};
 
+use crate::error::Result;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    error::{DataFusionError, Result},
+    error::DataFusionError,
     physical_plan::{expressions::BinaryExpr, PhysicalExpr},
 };
 use noodles::core::Region;
@@ -86,7 +87,9 @@ impl RegionPhysicalExpr {
         let end = region.interval().end().map(usize::from);
 
         let interval_expr = PosIntervalPhysicalExpr::from_interval(start, end, &schema)?;
-        let chrom_expr = RegionNamePhysicalExpr::from_chrom(region.name(), &schema)?;
+
+        let region_name = std::str::from_utf8(region.name())?;
+        let chrom_expr = RegionNamePhysicalExpr::from_chrom(region_name, &schema)?;
 
         let region_expr = Self::new(Arc::new(chrom_expr), Some(Arc::new(interval_expr)));
 

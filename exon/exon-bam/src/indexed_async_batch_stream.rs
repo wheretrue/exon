@@ -21,9 +21,8 @@ use arrow::{
 use exon_common::ExonArrayBuilder;
 use futures::Stream;
 use noodles::{
-    bam::lazy::Record,
     core::{region::Interval, Position, Region},
-    sam::{header::ReferenceSequences, record::Cigar},
+    sam::{alignment::RecordBuf, header::ReferenceSequences, Header},
 };
 use tokio::io::AsyncBufRead;
 
@@ -32,19 +31,17 @@ use super::{array_builder::BAMArrayBuilder, BAMConfig};
 /// This is a semi-lazy record that can be used to filter on the region without
 /// having to decode the entire record or re-decode the cigar.
 pub(crate) struct SemiLazyRecord {
-    inner: Record,
-    cigar: Cigar,
+    inner: RecordBuf,
     alignment_end: Option<Position>,
 }
 
-impl TryFrom<Record> for SemiLazyRecord {
+impl TryFrom<RecordBuf> for SemiLazyRecord {
     type Error = arrow::error::ArrowError;
 
-    fn try_from(record: Record) -> Result<Self, Self::Error> {
-        let cigar: Cigar = record.cigar().try_into()?;
+    fn try_from(record: RecordBuf) -> Result<Self, Self::Error> {
+        let start = record.alignment_start();
 
-        let start = record.alignment_start()?;
-        let alignment_end = start.map(|s| usize::from(s) + cigar.alignment_span() - 1);
+        let alignment_end = start.map(|s| usize::from(s) + record.cigar().alignment_span() - 1);
         let alignment_end = alignment_end
             .map(Position::try_from)
             .transpose()
@@ -52,7 +49,6 @@ impl TryFrom<Record> for SemiLazyRecord {
 
         Ok(Self {
             inner: record,
-            cigar,
             alignment_end,
         })
     }
@@ -60,19 +56,15 @@ impl TryFrom<Record> for SemiLazyRecord {
 
 impl SemiLazyRecord {
     pub fn alignment_start(&self) -> Option<Position> {
-        self.inner.alignment_start().unwrap()
+        self.inner.alignment_start()
     }
 
     pub fn alignment_end(&self) -> Option<Position> {
         self.alignment_end
     }
 
-    pub fn record(&self) -> &Record {
+    pub fn record(&self) -> &RecordBuf {
         &self.inner
-    }
-
-    pub fn cigar(&self) -> &Cigar {
-        &self.cigar
     }
 
     pub fn intersects(
@@ -80,7 +72,7 @@ impl SemiLazyRecord {
         region_sequence_id: usize,
         region_interval: &Interval,
     ) -> std::io::Result<bool> {
-        let reference_sequence_id = self.inner.reference_sequence_id()?;
+        let reference_sequence_id = self.inner.reference_sequence_id();
 
         let alignment_start = self.alignment_start();
         let alignment_end = self.alignment_end();
@@ -110,7 +102,7 @@ where
     config: Arc<BAMConfig>,
 
     /// The reference sequences.
-    reference_sequences: Arc<noodles::sam::header::ReferenceSequences>,
+    header: Arc<Header>,
 
     /// The region reference sequence.
     region_reference: usize,
@@ -131,7 +123,7 @@ fn get_reference_sequence_for_region(
         .ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("invalid reference sequence: {}", region.name()),
+                "invalid reference sequence", // format!("invalid reference sequence: {}", region.name()),
             )
         })
 }
@@ -143,16 +135,17 @@ where
     pub fn try_new(
         reader: noodles::bam::AsyncReader<noodles::bgzf::AsyncReader<R>>,
         config: Arc<BAMConfig>,
-        reference_sequences: Arc<noodles::sam::header::ReferenceSequences>,
+        header: Arc<Header>,
         region: Arc<Region>,
     ) -> std::io::Result<Self> {
-        let region_reference = get_reference_sequence_for_region(&reference_sequences, &region)?;
+        let region_reference =
+            get_reference_sequence_for_region(header.reference_sequences(), &region)?;
         let region_interval = region.interval();
 
         Ok(Self {
             reader,
             config,
-            reference_sequences,
+            header,
             region_reference,
             region_interval,
             max_bytes: None,
@@ -174,8 +167,8 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::bam::lazy::Record>> {
-        let mut record = noodles::bam::lazy::Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<RecordBuf>> {
+        let mut record = RecordBuf::default();
 
         if let Some(max_bytes) = self.max_bytes {
             if self.reader.virtual_position().uncompressed() >= max_bytes {
@@ -183,7 +176,10 @@ where
             }
         }
 
-        let bytes_read: usize = self.reader.read_lazy_record(&mut record).await?;
+        let bytes_read = self
+            .reader
+            .read_record_buf(&self.header, &mut record)
+            .await?;
 
         if bytes_read == 0 {
             Ok(None)
@@ -193,8 +189,7 @@ where
     }
 
     async fn read_record_batch(&mut self) -> ArrowResult<Option<arrow::record_batch::RecordBatch>> {
-        let mut builder =
-            BAMArrayBuilder::create(self.reference_sequences.clone(), self.config.projection());
+        let mut builder = BAMArrayBuilder::create(self.header.clone(), self.config.projection());
 
         for i in 0..self.config.batch_size {
             if let Some(record) = self.read_record().await? {

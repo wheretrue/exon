@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, str::Utf8Error};
 
 use arrow::error::ArrowError;
 
@@ -61,6 +61,12 @@ impl From<ArrowError> for ExonFastaError {
 impl From<ExonFastaError> for ArrowError {
     fn from(error: ExonFastaError) -> Self {
         ArrowError::ExternalError(Box::new(error))
+    }
+}
+
+impl From<Utf8Error> for ExonFastaError {
+    fn from(error: Utf8Error) -> Self {
+        ExonFastaError::ParseError(error.to_string())
     }
 }
 

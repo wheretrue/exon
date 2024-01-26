@@ -402,11 +402,7 @@ pub trait ExonSessionExt {
     /// Query a gzipped indexed VCF file.
     ///
     /// File must be indexed and index file must be in the same directory as the VCF file.
-    async fn query_vcf_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError>;
+    async fn query_vcf_file(&self, table_path: &str, query: &str) -> Result<DataFrame, ExonError>;
 }
 
 #[async_trait]
@@ -495,11 +491,7 @@ impl ExonSessionExt for SessionContext {
         self.register_table(table_name, provider)
     }
 
-    async fn query_vcf_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError> {
+    async fn query_vcf_file(&self, table_path: &str, query: &str) -> Result<DataFrame, ExonError> {
         let region: Region = query.parse().map_err(|e| {
             DataFusionError::Execution(format!(
                 "Failed to parse query '{}' as region: {}",
@@ -509,7 +501,7 @@ impl ExonSessionExt for SessionContext {
 
         self.register_vcf_file("vcf_file", table_path).await?;
 
-        let name = region.name();
+        let name = std::str::from_utf8(region.name())?;
         let interval = region.interval();
         let lower_bound = interval.start();
         let upper_bound = interval.end();
@@ -534,7 +526,9 @@ impl ExonSessionExt for SessionContext {
             (None, None) => format!("SELECT * FROM vcf_file WHERE chrom = '{}'", name),
         };
 
-        return self.sql(&sql).await;
+        let resp = self.sql(&sql).await?;
+
+        Ok(resp)
     }
 
     async fn query_bcf_file(

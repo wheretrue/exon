@@ -247,7 +247,7 @@ impl LazyVCFArrayBuilder {
                                 ))
                             })?;
 
-                            builder.append_value(&infos);
+                            builder.append_value(&infos)?;
                         }
                     },
                 },

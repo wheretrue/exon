@@ -141,7 +141,7 @@ impl InfosBuilder {
     }
 
     /// Appends a new value to the end of the builder.
-    pub fn append_value(&mut self, info: &Info) {
+    pub fn append_value(&mut self, info: &Info) -> Result<(), ArrowError> {
         for (i, f) in self.fields.iter().enumerate() {
             let field_name = f.name().to_string();
             let field_type = f.data_type();
@@ -221,7 +221,10 @@ impl InfosBuilder {
                     InfoValue::String(s) => self
                         .inner
                         .field_builder::<GenericStringBuilder<i32>>(i)
-                        .unwrap()
+                        .ok_or(ArrowError::InvalidArgumentError(format!(
+                            "field {} is not a string",
+                            field_name
+                        )))?
                         .append_value(s),
                     InfoValue::Character(c) => self
                         .inner
@@ -292,6 +295,8 @@ impl InfosBuilder {
             }
         }
         self.inner.append(true);
+
+        Ok(())
     }
 }
 
@@ -318,7 +323,7 @@ mod tests {
     use super::InfosBuilder;
 
     #[test]
-    fn test_vcf_builder() {
+    fn test_vcf_builder() -> Result<(), Box<dyn std::error::Error>> {
         let info_test_table = vec![
             (
                 "single_int",
@@ -476,7 +481,7 @@ mod tests {
 
         let mut ib = InfosBuilder::try_new(&field, 0).unwrap();
 
-        ib.append_value(&info);
+        ib.append_value(&info)?;
 
         let array = Arc::new(ib.finish());
 
@@ -497,5 +502,7 @@ mod tests {
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+";
 
         assert_eq!(formatted.to_string(), expected);
+
+        Ok(())
     }
 }

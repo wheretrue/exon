@@ -229,6 +229,8 @@ fn vcf_info_to_field(infos: Infos) -> arrow::datatypes::Field {
     for (key, value) in infos {
         let ty = vcf_info_type_to_arrow_type(value.ty());
 
+        eprintln!("key: {}, ty: {:?}", key, ty);
+
         let field = arrow::datatypes::Field::new(key.to_string(), ty, true);
         let field = wrap_type_in_count(value.number(), &field);
 
