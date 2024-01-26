@@ -36,6 +36,7 @@ use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
+    config::ExonConfigExtension,
     datasources::{
         hive_partition::filter_matches_partition_cols,
         indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
@@ -162,21 +163,16 @@ impl ListingVCFTableOptions {
 
         let exon_settings = state
             .config()
-            .get_extension::<crate::config::ExonConfigExtension>();
-
-        let vcf_parse_info = exon_settings
-            .as_ref()
-            .map(|s| s.vcf_parse_info)
-            .unwrap_or(false);
-
-        let vcf_parse_formats = exon_settings
-            .as_ref()
-            .map(|s| s.vcf_parse_formats)
-            .unwrap_or(false);
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or(DataFusionError::Execution(
+                "Exon settings must be configured.".to_string(),
+            ))?;
 
         let mut builder = VCFSchemaBuilder::default()
-            .with_parse_info(vcf_parse_info)
-            .with_parse_formats(vcf_parse_formats)
+            .with_parse_info(exon_settings.vcf_parse_info)
+            .with_parse_formats(exon_settings.vcf_parse_formats)
             .with_partition_fields(self.table_partition_cols.clone());
 
         let header = match self.file_compression_type {

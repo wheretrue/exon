@@ -15,7 +15,7 @@
 use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crate::{
-    config::FASTA_READER_SEQUENCE_CAPACITY,
+    config::{ExonConfigExtension, FASTA_READER_SEQUENCE_CAPACITY},
     datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
@@ -121,12 +121,14 @@ impl ListingFASTATableOptions {
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
         let exon_settings = state
             .config()
-            .get_extension::<crate::config::ExonConfigExtension>();
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or(DataFusionError::Execution(
+                "Exon settings must be configured.".to_string(),
+            ))?;
 
-        let fasta_sequence_buffer_capacity = exon_settings
-            .as_ref()
-            .map(|s| s.fasta_sequence_buffer_capacity)
-            .unwrap_or(FASTA_READER_SEQUENCE_CAPACITY);
+        let fasta_sequence_buffer_capacity = exon_settings.fasta_sequence_buffer_capacity;
 
         let scan = FASTAScan::new(
             conf.clone(),
