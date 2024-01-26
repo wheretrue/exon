@@ -15,7 +15,10 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, StructBuilder},
+    array::{
+        ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int8Builder,
+        StructBuilder,
+    },
     datatypes::{DataType, Field, Fields},
     error::ArrowError,
 };
@@ -43,7 +46,7 @@ pub struct BAMArrayBuilder {
     cigar: GenericStringBuilder<i32>,
     mate_references: GenericStringBuilder<i32>,
     sequences: GenericStringBuilder<i32>,
-    quality_scores: GenericStringBuilder<i32>,
+    quality_scores: GenericListBuilder<i32, Int8Builder>,
 
     tags: GenericListBuilder<i32, StructBuilder>,
 
@@ -76,6 +79,8 @@ impl BAMArrayBuilder {
 
         let item_capacity = BATCH_SIZE;
 
+        let quality_score_inner = Int8Builder::new();
+
         Self {
             names: GenericStringBuilder::<i32>::new(),
             flags: Int32Builder::new(),
@@ -89,7 +94,7 @@ impl BAMArrayBuilder {
             cigar: GenericStringBuilder::<i32>::new(),
             mate_references: GenericStringBuilder::<i32>::new(),
             sequences: GenericStringBuilder::<i32>::new(),
-            quality_scores: GenericStringBuilder::<i32>::new(),
+            quality_scores: GenericListBuilder::new(quality_score_inner),
 
             tags: GenericListBuilder::new(tag),
 
@@ -186,10 +191,18 @@ impl BAMArrayBuilder {
                     self.sequences.append_value(sequence_str);
                 }
                 9 => {
-                    let quality_scores = record.record().quality_scores().as_ref();
-                    let quality_scores_str = std::str::from_utf8(quality_scores)?;
+                    let quality_scores = record.record().quality_scores();
 
-                    self.quality_scores.append_value(quality_scores_str);
+                    let quality_scores_str = quality_scores.as_ref();
+                    let slice_i8: &[i8] = unsafe {
+                        std::slice::from_raw_parts(
+                            quality_scores_str.as_ptr() as *const i8,
+                            quality_scores_str.len(),
+                        )
+                    };
+
+                    self.quality_scores.values().append_slice(slice_i8);
+                    self.quality_scores.append(true);
                 }
                 10 => {
                     let data = record.record().data();
@@ -220,7 +233,8 @@ impl BAMArrayBuilder {
                                         .unwrap()
                                         .append_value(tag_str);
 
-                                    let tag_value_str = std::str::from_utf8(tag_value_str)?;
+                                    let tag_value_str =
+                                        std::str::from_utf8(tag_value_str.as_ref())?.to_string();
                                     tag_struct
                                         .field_builder::<GenericStringBuilder<i32>>(1)
                                         .unwrap()

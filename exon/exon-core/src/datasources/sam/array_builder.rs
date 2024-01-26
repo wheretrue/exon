@@ -330,6 +330,8 @@ impl Default for SAMSchemaBuilder {
             true,
         )));
 
+        let quality_score_list = DataType::List(Arc::new(Field::new("item", DataType::Int8, true)));
+
         Self::new(
             vec![
                 Field::new("name", DataType::Utf8, false),
@@ -341,7 +343,7 @@ impl Default for SAMSchemaBuilder {
                 Field::new("cigar", DataType::Utf8, false),
                 Field::new("mate_reference", DataType::Utf8, true),
                 Field::new("sequence", DataType::Utf8, false),
-                Field::new("quality_score", DataType::Utf8, false),
+                Field::new("quality_score", quality_score_list, false),
             ],
             vec![],
         )

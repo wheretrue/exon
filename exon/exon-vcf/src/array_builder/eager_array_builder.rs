@@ -130,7 +130,7 @@ impl VCFArrayBuilder {
                     }
                     self.filters.append(true);
                 }
-                7 => self.infos.append_value(record.info()),
+                7 => self.infos.append_value(record.info())?,
                 8 => self.formats.append_value(record.genotypes())?,
                 _ => Err(ArrowError::InvalidArgumentError(
                     "Invalid column index".to_string(),

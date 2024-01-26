@@ -3,20 +3,11 @@ control substitution on
 statement ok
 CREATE EXTERNAL TABLE vcf_table STORED AS VCF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf';
 
-statement ok
-SET exon.vcf_parse_info = true
-
-statement ok
-SET exon.vcf_parse_formats = true
-
 query T
-SELECT length(info) FROM vcf_table LIMIT 5;
+SELECT info FROM vcf_table LIMIT 2;
 ----
-0
-0
-0
-0
-0
+DP=1;I16=1,0,0,0,26,676,0,0,60,3600,0,0,0,0,0,0;QS=1,0;MQ0F=0
+DP=1;I16=1,0,0,0,34,1156,0,0,60,3600,0,0,1,1,0,0;QS=1,0;MQ0F=0
 
 query I
 SELECT formats FROM vcf_table LIMIT 5;
