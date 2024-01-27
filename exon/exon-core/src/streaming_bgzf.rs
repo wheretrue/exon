@@ -14,6 +14,7 @@
 
 // A streaming bgzf reader. Mimics seek, but only works for forward reads.
 
+use bytes::Buf;
 use noodles::bgzf::{self, VirtualPosition};
 use tokio::io::AsyncReadExt;
 
@@ -78,6 +79,44 @@ where
         Ok(buf)
     }
 }
+
+pub(crate) fn is_bgzip_valid_header<B>(mut src: B) -> bool
+where
+    B: Buf,
+{
+    use std::mem;
+
+    const BGZF_CM: u8 = 0x08; // DEFLATE
+    const BGZF_FLG: u8 = 0x04; // FEXTRA
+    const BGZF_XLEN: u16 = 6;
+    const BGZF_SI1: u8 = b'B';
+    const BGZF_SI2: u8 = b'C';
+    const BGZF_SLEN: u16 = 2;
+    const MAGIC_NUMBER: [u8; 2] = [0x1f, 0x8b];
+
+    let id_1 = src.get_u8();
+    let id_2 = src.get_u8();
+    let cm = src.get_u8();
+    let flg = src.get_u8();
+
+    // 4 (MTIME) + 1 (XFL) + 1 (OS)
+    src.advance(mem::size_of::<u32>() + mem::size_of::<u8>() + mem::size_of::<u8>());
+
+    let xlen = src.get_u16_le();
+    let subfield_id_1 = src.get_u8();
+    let subfield_id_2 = src.get_u8();
+    let subfield_len = src.get_u16_le();
+
+    id_1 == MAGIC_NUMBER[0]
+        && id_2 == MAGIC_NUMBER[1]
+        && cm == BGZF_CM
+        && flg == BGZF_FLG
+        && xlen == BGZF_XLEN
+        && subfield_id_1 == BGZF_SI1
+        && subfield_id_2 == BGZF_SI2
+        && subfield_len == BGZF_SLEN
+}
+
 #[cfg(test)]
 mod tests {
     use object_store::path::Path;

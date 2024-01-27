@@ -24,7 +24,10 @@ use datafusion::{
 };
 use exon_fastq::{BatchReader, FASTQConfig};
 use futures::{StreamExt, TryStreamExt};
+use tokio::io::AsyncBufReadExt;
 use tokio_util::io::StreamReader;
+
+use crate::streaming_bgzf::is_bgzip_valid_header;
 
 /// Implements a datafusion `FileOpener` for FASTQ files.
 pub struct FASTQOpener {
@@ -50,21 +53,56 @@ impl FileOpener for FASTQOpener {
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
-            let get_result = config.object_store.get(file_meta.location()).await?;
+            match file_compression_type {
+                FileCompressionType::GZIP => {
+                    let get_result = config.object_store.get(file_meta.location()).await?;
 
-            let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+                    let stream = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+                    let mut stream_reader = StreamReader::new(stream);
 
-            let new_reader = match file_compression_type.convert_stream(stream_reader) {
-                Ok(reader) => reader,
-                Err(e) => return Err(e),
-            };
+                    let buf = stream_reader.fill_buf().await?;
 
-            let buf_reader = StreamReader::new(new_reader);
-            let batch_reader = BatchReader::new(buf_reader, config);
+                    if is_bgzip_valid_header(buf) {
+                        let get_result = config.object_store.get(file_meta.location()).await?;
 
-            let batch_stream = batch_reader.into_stream().map_err(ArrowError::from);
+                        let stream =
+                            Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+                        let stream_reader = StreamReader::new(stream);
+                        let bgzf_reader = noodles::bgzf::AsyncReader::new(stream_reader);
+                        let batch_reader = BatchReader::new(bgzf_reader, config);
 
-            Ok(batch_stream.boxed())
+                        let batch_stream = batch_reader.into_stream().map_err(ArrowError::from);
+
+                        Ok(batch_stream.boxed())
+                    } else {
+                        let get_result = config.object_store.get(file_meta.location()).await?;
+
+                        let stream =
+                            Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+
+                        let new_reader = file_compression_type.convert_stream(stream)?;
+                        let buf_reader = StreamReader::new(new_reader);
+                        let batch_reader = BatchReader::new(buf_reader, config);
+
+                        let batch_stream = batch_reader.into_stream().map_err(ArrowError::from);
+
+                        Ok(batch_stream.boxed())
+                    }
+                }
+                _ => {
+                    let get_result = config.object_store.get(file_meta.location()).await?;
+
+                    let stream = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+
+                    let new_reader = file_compression_type.convert_stream(stream)?;
+                    let buf_reader = StreamReader::new(new_reader);
+                    let batch_reader = BatchReader::new(buf_reader, config);
+
+                    let batch_stream = batch_reader.into_stream().map_err(ArrowError::from);
+
+                    Ok(batch_stream.boxed())
+                }
+            }
         }))
     }
 }
