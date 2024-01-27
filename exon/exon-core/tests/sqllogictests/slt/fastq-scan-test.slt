@@ -70,3 +70,16 @@ query T
 SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.gz', 'gzip');
 ----
 2
+
+query T
+SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test_bgzip.fastq.gz', 'gzip');
+----
+2
+
+statement ok
+CREATE EXTERNAL TABLE fastq_bgzip_table STORED AS FASTQ COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test_bgzip.fastq.gz';
+
+query T
+SELECT COUNT(*) FROM fastq_bgzip_table LIMIT 2;
+----
+2
