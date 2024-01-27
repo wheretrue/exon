@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.8.4 (2024-01-27)
+
+### Fix
+
+- support bgzip for fastq (#368)
+- fix settings extractions (#367)
+
 ## v0.8.3 (2024-01-26)
 
 ### Fix
