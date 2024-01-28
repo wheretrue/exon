@@ -214,54 +214,70 @@ impl BAMArrayBuilder {
                     let tag_struct = self.tags.values();
                     for tag in tags {
                         let tag_str = std::str::from_utf8(tag.as_ref())?;
-                        let tag_value = data.get(&tag).unwrap();
+                        // let tag_value = data.get(&tag);
 
-                        if tag_value.is_int() {
-                            let tag_value_str = tag_value.as_int().map(|v| v.to_string());
+                        match data.get(&tag) {
+                            None => {
+                                tag_struct
+                                    .field_builder::<GenericStringBuilder<i32>>(0)
+                                    .unwrap()
+                                    .append_value(tag_str);
 
-                            tag_struct
-                                .field_builder::<GenericStringBuilder<i32>>(0)
-                                .unwrap()
-                                .append_value(tag_str);
+                                tag_struct
+                                    .field_builder::<GenericStringBuilder<i32>>(1)
+                                    .unwrap()
+                                    .append_null();
+                            }
+                            Some(tag_value) => {
+                                if tag_value.is_int() {
+                                    let tag_value_str = tag_value.as_int().map(|v| v.to_string());
 
-                            tag_struct
-                                .field_builder::<GenericStringBuilder<i32>>(1)
-                                .unwrap()
-                                .append_option(tag_value_str);
-                        } else {
-                            match tag_value {
-                                Value::String(tag_value_str) => {
                                     tag_struct
                                         .field_builder::<GenericStringBuilder<i32>>(0)
                                         .unwrap()
                                         .append_value(tag_str);
 
-                                    let tag_value_str =
-                                        std::str::from_utf8(tag_value_str.as_ref())?.to_string();
                                     tag_struct
                                         .field_builder::<GenericStringBuilder<i32>>(1)
                                         .unwrap()
-                                        .append_value(tag_value_str);
-                                }
-                                Value::Character(tag_value_char) => {
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
+                                        .append_option(tag_value_str);
+                                } else {
+                                    match tag_value {
+                                        Value::String(tag_value_str) => {
+                                            tag_struct
+                                                .field_builder::<GenericStringBuilder<i32>>(0)
+                                                .unwrap()
+                                                .append_value(tag_str);
 
-                                    let tag_value_char = *tag_value_char as char;
-                                    let tag_value_str = tag_value_char.to_string();
+                                            let tag_value_str =
+                                                std::str::from_utf8(tag_value_str.as_ref())?
+                                                    .to_string();
+                                            tag_struct
+                                                .field_builder::<GenericStringBuilder<i32>>(1)
+                                                .unwrap()
+                                                .append_value(tag_value_str);
+                                        }
+                                        Value::Character(tag_value_char) => {
+                                            tag_struct
+                                                .field_builder::<GenericStringBuilder<i32>>(0)
+                                                .unwrap()
+                                                .append_value(tag_str);
 
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_value(tag_value_str);
-                                }
-                                _ => {
-                                    return Err(ArrowError::InvalidArgumentError(format!(
-                                        "Invalid tag value {:?} for tag {}",
-                                        tag_value, tag_str
-                                    )))
+                                            let tag_value_char = *tag_value_char as char;
+                                            let tag_value_str = tag_value_char.to_string();
+
+                                            tag_struct
+                                                .field_builder::<GenericStringBuilder<i32>>(1)
+                                                .unwrap()
+                                                .append_value(tag_value_str);
+                                        }
+                                        _ => {
+                                            return Err(ArrowError::InvalidArgumentError(format!(
+                                                "Invalid tag value {:?} for tag {}",
+                                                tag_value, tag_str
+                                            )))
+                                        }
+                                    }
                                 }
                             }
                         }

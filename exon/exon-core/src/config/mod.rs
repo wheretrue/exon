@@ -118,7 +118,7 @@ mod tests {
             .options()
             .extensions
             .get::<ExonConfigExtension>()
-            .unwrap();
+            .ok_or("ExonConfigExtension not found in config options".to_string())?;
 
         assert!(exon_config.vcf_parse_info);
         assert!(exon_config.vcf_parse_formats);

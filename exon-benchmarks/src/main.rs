@@ -108,8 +108,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ctx = SessionContext::new_exon();
             ctx.runtime_env()
                 .exon_register_object_store_uri(path)
-                .await
-                .unwrap();
+                .await?;
 
             ctx.sql(
                 format!(
@@ -132,8 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ctx = SessionContext::new_exon();
             ctx.runtime_env()
                 .exon_register_object_store_uri(path)
-                .await
-                .unwrap();
+                .await?;
 
             ctx.sql(
                 format!(
@@ -157,8 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ctx = SessionContext::new_exon();
             ctx.runtime_env()
                 .exon_register_object_store_uri(path)
-                .await
-                .unwrap();
+                .await?;
 
             ctx.sql(
                 format!(
@@ -189,14 +186,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.read_fasta(path, compression).await.unwrap();
+            let df = ctx.read_fasta(path, compression).await?;
 
-            let count = df
-                .filter(col("sequence").ilike(lit("M%")))
-                .unwrap()
-                .count()
-                .await
-                .unwrap();
+            let count = df.filter(col("sequence").ilike(lit("M%")))?.count().await?;
 
             eprintln!("Count: {count}");
         }
@@ -204,15 +196,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let exon_config = new_exon_config().with_target_partitions(*workers);
             let ctx = SessionContext::with_config_exon(exon_config);
             let compression = None;
-            let df = ctx.read_fasta(path, compression).await.unwrap();
+            let df = ctx.read_fasta(path, compression).await?;
 
-            let count = df
-                .filter(col("sequence").ilike(lit("M%")))
-                .unwrap()
-                .count()
-                .await
-                .unwrap();
-
+            let count = df.filter(col("sequence").ilike(lit("M%")))?.count().await?;
             assert_eq!(count, 4_437_864);
 
             eprintln!("Count: {count}");
@@ -223,9 +209,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.read_mzml(path, compression).await.unwrap();
-
-            let count = df.count().await.unwrap();
+            let df = ctx.read_mzml(path, compression).await?;
+            let count = df.count().await?;
 
             eprintln!("Count: {count}");
         }
