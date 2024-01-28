@@ -363,11 +363,11 @@ mod tests {
 
     // Don't include this test on windows
     #[tokio::test]
-    async fn test_in_catalog() {
+    async fn test_in_catalog() -> Result<(), Box<dyn std::error::Error>> {
         let mem_catalog: MemoryCatalogProvider = MemoryCatalogProvider::new();
         let object_store = Arc::new(LocalFileSystem::new());
 
-        let cargo_manifest_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+        let cargo_manifest_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
 
         let schema = ListingSchemaProvider::new(
             "file://localhost".to_string(),
@@ -376,7 +376,7 @@ mod tests {
                 .join("datasources")
                 .join("sam")
                 .to_str()
-                .unwrap()
+                .ok_or("Failed to create path")?
                 .into(),
             Arc::new(ExonListingTableFactory::default()),
             object_store,
@@ -384,23 +384,23 @@ mod tests {
             false,
         );
 
-        mem_catalog
-            .register_schema("exon", Arc::new(schema))
-            .unwrap();
+        mem_catalog.register_schema("exon", Arc::new(schema))?;
 
-        let session_config = SessionConfig::from_env().unwrap();
-        let runtime_env = create_runtime_env().unwrap();
+        let session_config = SessionConfig::from_env()?;
+        let runtime_env = create_runtime_env()?;
         let ctx = SessionContext::new_with_config_rt(session_config.clone(), Arc::new(runtime_env));
 
         ctx.register_catalog("exon", Arc::new(mem_catalog));
-        ctx.refresh_catalogs().await.unwrap();
+        ctx.refresh_catalogs().await?;
 
-        let gotten_catalog = ctx.catalog("exon").unwrap();
+        let gotten_catalog = ctx.catalog("exon").ok_or("No catalog found")?;
         let schema_names = gotten_catalog.schema_names();
         assert_eq!(schema_names, vec!["exon"]);
 
-        let new_schema = gotten_catalog.schema("exon").unwrap();
+        let new_schema = gotten_catalog.schema("exon").ok_or("No schema found")?;
         let tables = new_schema.table_names();
         assert_eq!(tables, vec!["test"]);
+
+        Ok(())
     }
 }

@@ -170,7 +170,7 @@ mod tests {
         let df = ctx.read_table(table)?;
 
         let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
+        let bs = df.collect().await?;
         for batch in bs {
             row_cnt += batch.num_rows();
         }

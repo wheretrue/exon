@@ -40,7 +40,7 @@ async fn main() -> Result<(), DataFusionError> {
         .await?;
 
     let batches = df.collect().await?;
-    let formatted = pretty_format_batches(&batches).unwrap();
+    let formatted = pretty_format_batches(&batches)?;
     println!("{}", formatted);
 
     Ok(())
