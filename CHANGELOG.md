@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.8.5 (2024-01-28)
+
+### Fix
+
+- fix issue parsing broad file (#372)
+- update tests (#371)
+
+### Refactor
+
+- remove some unwraps (#370)
+
 ## v0.8.4 (2024-01-27)
 
 ### Fix
