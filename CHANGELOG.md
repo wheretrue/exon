@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.8.6 (2024-01-29)
+
+### Refactor
+
+- remove vcf unwraps (#373)
+
 ## v0.8.5 (2024-01-28)
 
 ### Fix
