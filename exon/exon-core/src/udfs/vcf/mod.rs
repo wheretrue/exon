@@ -22,7 +22,7 @@ use arrow::{
 };
 use datafusion::{
     common::cast::as_int64_array,
-    error::Result,
+    error::{DataFusionError, Result},
     logical_expr::{ScalarUDF, Volatility},
     physical_plan::functions::make_scalar_function,
     prelude::create_udf,
@@ -49,18 +49,32 @@ pub fn region_match(args: &[ArrayRef]) -> Result<ArrayRef> {
         .zip(position_array.iter())
         .zip(region_array.iter())
         .map(|((chrom, pos), region)| {
-            let chrom = chrom.unwrap();
-            let pos = pos.unwrap();
+            let chrom = chrom.ok_or(DataFusionError::Execution(
+                "Failed to get chrom".to_string(),
+            ))?;
+            let pos = pos.ok_or(DataFusionError::Execution("Failed to get pos".to_string()))?;
 
-            let region: Region = region.unwrap().parse().unwrap();
+            let region: Region = region
+                .ok_or(DataFusionError::Execution(
+                    "Failed to get region".to_string(),
+                ))?
+                .parse()
+                .map_err(|e| {
+                    DataFusionError::Execution(format!("Failed to parse region: {}", e))
+                })?;
 
-            let position = Position::try_from(pos as usize).unwrap();
+            let position = Position::try_from(pos as usize)
+                .map_err(|e| DataFusionError::Execution(format!("Failed to convert pos: {}", e)))?;
 
-            let region_name = std::str::from_utf8(region.name()).unwrap();
-            region_name == chrom && region.interval().contains(position)
+            let region_name = std::str::from_utf8(region.name()).map_err(|e| {
+                DataFusionError::Execution(format!("Failed to convert region name: {}", e))
+            })?;
+
+            Ok::<_, DataFusionError>(region_name == chrom && region.interval().contains(position))
         });
 
     for ar in array {
+        let ar = ar?;
         new_bool_array.append_value(ar);
     }
 
@@ -106,15 +120,19 @@ pub fn interval_match(args: &[ArrayRef]) -> Result<ArrayRef> {
         .zip(interval.iter())
         .map(|(pos, interval)| match (pos, interval) {
             (Some(pos), Some(interval)) => {
-                let interval: Interval = interval.parse().unwrap();
+                let interval: Interval = interval.parse().map_err(|e| {
+                    DataFusionError::Execution(format!("Failed to parse interval: {}", e))
+                })?;
 
-                let position = Position::try_from(pos as usize).unwrap();
+                let position = Position::try_from(pos as usize).map_err(|e| {
+                    DataFusionError::Execution(format!("Failed to convert pos: {}", e))
+                })?;
 
-                Some(interval.contains(position))
+                Ok::<_, DataFusionError>(Some(interval.contains(position)))
             }
-            _ => Some(false),
+            _ => Ok(Some(false)),
         })
-        .collect::<BooleanArray>();
+        .collect::<Result<BooleanArray>>()?;
 
     Ok(Arc::new(intersects))
 }
@@ -184,7 +202,7 @@ mod tests {
     use std::sync::Arc;
 
     #[test]
-    fn test_region_match() {
+    fn test_region_match() -> Result<(), Box<dyn std::error::Error>> {
         let chroms = vec!["1", "1", "1", "2", "2"];
         let positions = vec![1, 1, 2, 2, 3];
         let region_strings = vec!["1:1-1", "2:1-2", "1:1-2", "1:1-2", "2:2-3"];
@@ -200,8 +218,7 @@ mod tests {
             Arc::new(chrom_array),
             Arc::new(position_array),
             Arc::new(region_array),
-        ])
-        .unwrap();
+        ])?;
 
         // Check the result
         let expected = vec![true, false, true, false, true];
@@ -211,13 +228,15 @@ mod tests {
         let result = result
             .as_any()
             .downcast_ref::<arrow::array::BooleanArray>()
-            .unwrap();
+            .ok_or("Failed to downcast result")?;
 
         assert_eq!(result, &expected_array);
+
+        Ok(())
     }
 
     #[test]
-    fn test_interval_match() {
+    fn test_interval_match() -> Result<(), Box<dyn std::error::Error>> {
         let positions = vec![1, 1, 2, 2, 3];
         let region_intervals = vec!["1-1", "1-2", "1-2", "2-3", "1-2"];
 
@@ -226,8 +245,7 @@ mod tests {
         let position_array = arrow::array::Int64Array::from(positions);
         let region_array = arrow::array::StringArray::from(region_intervals);
 
-        let result =
-            super::interval_match(&[Arc::new(position_array), Arc::new(region_array)]).unwrap();
+        let result = super::interval_match(&[Arc::new(position_array), Arc::new(region_array)])?;
 
         // Check the result
         let expected = vec![true, true, true, true, false];
@@ -237,13 +255,15 @@ mod tests {
         let result = result
             .as_any()
             .downcast_ref::<arrow::array::BooleanArray>()
-            .unwrap();
+            .ok_or("Failed to downcast result")?;
 
         assert_eq!(result, &expected_array);
+
+        Ok(())
     }
 
     #[test]
-    fn test_chrom_match() {
+    fn test_chrom_match() -> Result<(), Box<dyn std::error::Error>> {
         // Test the happy path of chrom_match
         let chrom_val = vec!["1", "1", "1", "1", "2", "2", "2", "2", "2"];
         let region_string = vec!["1", "1", "1", "1", "1", "1", "1", "1", "1"];
@@ -251,7 +271,7 @@ mod tests {
         let chrom_array = arrow::array::StringArray::from(chrom_val);
         let region_array = arrow::array::StringArray::from(region_string);
 
-        let result = super::chrom_match(&[Arc::new(chrom_array), Arc::new(region_array)]).unwrap();
+        let result = super::chrom_match(&[Arc::new(chrom_array), Arc::new(region_array)])?;
 
         // Check the result
         let expected = vec![true, true, true, true, false, false, false, false, false];
@@ -261,13 +281,15 @@ mod tests {
         let result = result
             .as_any()
             .downcast_ref::<arrow::array::BooleanArray>()
-            .unwrap();
+            .ok_or("Failed to downcast result")?;
 
         assert_eq!(result, &expected_array);
+
+        Ok(())
     }
 
     #[test]
-    fn test_chrom_match_bad_arg_count() {
+    fn test_chrom_match_bad_arg_count() -> Result<(), Box<dyn std::error::Error>> {
         // Check we throw an error if chrom_match is called with anything but two arguments
         let dummy = vec!["1", "1", "1", "1", "2", "2", "2", "2", "2"];
         let dummy = arrow::array::StringArray::from(dummy);
@@ -281,5 +303,7 @@ mod tests {
 
         let result = super::chrom_match(&[]);
         assert!(result.is_err());
+
+        Ok(())
     }
 }

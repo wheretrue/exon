@@ -369,14 +369,13 @@ mod tests {
         ];
 
         for (a, b, c, d) in test_table {
-            let key = genotypes::keys::Key::from_str(a).unwrap();
+            let key = genotypes::keys::Key::from_str(a)?;
             let format = Map::builder()
                 .set_description("test")
                 .set_number(b)
                 .set_type(c)
                 .set_idx(1)
-                .build()
-                .unwrap();
+                .build()?;
 
             header_builder = header_builder.add_format(key, format);
 
@@ -416,7 +415,7 @@ mod tests {
         let df = session_ctx
             .sql(&format!(
                 "SELECT * FROM vcf_scan('{}')",
-                vcf_path.to_str().unwrap()
+                vcf_path.to_str().ok_or("Invalid path")?
             ))
             .await?;
 
@@ -428,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn test_info_schema_inference() {
+    fn test_info_schema_inference() -> Result<(), Box<dyn std::error::Error>> {
         let info_test_table = vec![
             (
                 "single_int",
@@ -544,13 +543,12 @@ mod tests {
         let mut header = Header::builder();
 
         for (key_str, number, ty, field) in info_test_table {
-            let key = Key::from_str(key_str).unwrap();
+            let key = Key::from_str(key_str)?;
             let info = Map::builder()
                 .set_description(key_str)
                 .set_number(number)
                 .set_type(ty)
-                .build()
-                .unwrap();
+                .build()?;
 
             header = header.add_info(key, info.clone());
             fields.push(field);
@@ -560,8 +558,7 @@ mod tests {
         let table_schema = VCFSchemaBuilder::default()
             .with_header(header)
             .with_parse_info(true)
-            .build()
-            .unwrap();
+            .build()?;
 
         let ts = table_schema.table_schema();
         let info_field = ts.field(7);
@@ -571,11 +568,13 @@ mod tests {
             info_field.data_type(),
             &arrow::datatypes::DataType::Struct(arrow::datatypes::Fields::from(fields))
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_default_header_to_schema() {
-        let table_schema = super::VCFSchemaBuilder::default().build().unwrap();
+    fn test_default_header_to_schema() -> Result<(), Box<dyn std::error::Error>> {
+        let table_schema = super::VCFSchemaBuilder::default().build()?;
 
         let schema = table_schema.table_schema();
 
@@ -646,5 +645,7 @@ mod tests {
             schema.field(8).data_type(),
             &arrow::datatypes::DataType::Utf8,
         );
+
+        Ok(())
     }
 }
