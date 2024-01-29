@@ -16,6 +16,24 @@ jobs:
         run: |
           cargo test --package exon --package exon-bam --test sqllogictests --all-features
 
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the image for testing
+        run: |
+          docker buildx build -t exon:latest -f Dockerfile .
+
+      - name: Run the image
+        run: |
+          docker run exon:latest exon-cli -c "SELECT 1;"
+
   linux:
     runs-on: ubuntu-latest
     steps:
