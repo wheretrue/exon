@@ -26,13 +26,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build the image for testing
+      - name: Build and smoke test the image
         run: |
-          docker buildx build -t exon:latest -f Dockerfile .
-
-      - name: Run the image
-        run: |
-          docker run exon:latest exon-cli -c "SELECT 1;"
+          docker build --build-arg CARGO_BUILD_PROFILE=debug -t exon:latest -f Dockerfile .
+          docker run -t exon:latest exon-cli -c "SELECT 1;"
 
   linux:
     runs-on: ubuntu-latest
