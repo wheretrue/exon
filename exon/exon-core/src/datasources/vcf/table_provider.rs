@@ -567,7 +567,7 @@ mod tests {
     async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
         let table_path = test_path("vcf", "index.vcf.gz");
-        let table_path = table_path.to_str().unwrap();
+        let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF COMPRESSION TYPE GZIP LOCATION '{}';",
@@ -591,7 +591,7 @@ mod tests {
                     .input()
                     .as_any()
                     .downcast_ref::<CoalescePartitionsExec>()
-                    .unwrap();
+                    .ok_or("Invalid partition")?;
 
                 let scan = scan.input().as_any().downcast_ref::<IndexedVCFScanner>();
                 assert!(scan.is_some());
@@ -615,7 +615,7 @@ mod tests {
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
-            table_path.to_str().unwrap(),
+            table_path.to_str().ok_or("Invalid path")?
         );
         ctx.sql(&sql).await?;
 
@@ -669,7 +669,7 @@ mod tests {
 
         let ctx = SessionContext::new_exon();
         let table_path = test_path("vcf", "index.vcf");
-        let table_path = table_path.to_str().unwrap();
+        let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         let table = ExonListingTableFactory::new()
             .create_from_file_type(
@@ -700,7 +700,7 @@ mod tests {
         let ctx = SessionContext::new_exon();
 
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
-        let table_path = table_path.to_str().unwrap();
+        let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         ctx.register_vcf_file("vcf_file", table_path).await?;
 
@@ -728,7 +728,7 @@ mod tests {
         let ctx = SessionContext::new_exon();
 
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
-        let table_path = table_path.to_str().unwrap();
+        let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         ctx.register_vcf_file("vcf_file", table_path).await?;
 
@@ -747,7 +747,7 @@ mod tests {
         let ctx = SessionContext::new_exon();
 
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
-        let table_path = table_path.to_str().unwrap();
+        let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         ctx.register_vcf_file("vcf_file", table_path).await?;
 
@@ -774,7 +774,7 @@ mod tests {
     async fn test_compressed_read_with_region() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new_exon();
         let table_path = test_path("bigger-index", "test.vcf.gz");
-        let table_path = table_path.to_str().unwrap();
+        let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         ctx.register_vcf_file("vcf_file", table_path).await?;
 
