@@ -223,7 +223,7 @@ fn wrap_type_in_count(cnt: InfoNumber, typ: &arrow::datatypes::Field) -> arrow::
     }
 }
 
-fn vcf_info_to_field(infos: Infos) -> arrow::datatypes::Field {
+pub(crate) fn vcf_info_to_field(infos: Infos) -> arrow::datatypes::Field {
     let mut arrow_fields = Vec::new();
 
     for (key, value) in infos {
@@ -259,7 +259,7 @@ fn vcf_formats_to_field(formats: Formats) -> arrow::datatypes::Field {
     arrow::datatypes::Field::new(
         "formats",
         arrow::datatypes::DataType::List(Arc::new(field)),
-        false,
+        true,
     )
 }
 
@@ -267,6 +267,8 @@ fn vcf_formats_to_field(formats: Formats) -> arrow::datatypes::Field {
 mod tests {
     use std::{str::FromStr, sync::Arc};
 
+    use datafusion::execution::context::SessionContext;
+    use exon_test::test_path;
     use noodles::vcf::{
         header::{
             record::value::{
@@ -279,6 +281,8 @@ mod tests {
         record::info::field::Key,
         Header,
     };
+
+    use crate::ExonSessionExt;
 
     use super::VCFSchemaBuilder;
 
@@ -396,6 +400,29 @@ mod tests {
 
         assert_eq!(info_field.name(), "formats");
         assert_eq!(info_field.data_type(), &expected_type);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_broad_example() -> Result<(), Box<dyn std::error::Error>> {
+        let vcf_path = test_path("vcf-broad", "00-common_all.head.vcf");
+
+        let session_ctx = SessionContext::new_exon();
+
+        session_ctx.sql("SET exon.vcf_parse_info = true").await?;
+        session_ctx.sql("SET exon.vcf_parse_formats = true").await?;
+
+        let df = session_ctx
+            .sql(&format!(
+                "SELECT * FROM vcf_scan('{}')",
+                vcf_path.to_str().unwrap()
+            ))
+            .await?;
+
+        let batches = df.collect().await?;
+
+        assert!(!batches.is_empty());
 
         Ok(())
     }

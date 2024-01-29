@@ -110,6 +110,10 @@ impl GenotypeBuilder {
         self.inner.finish()
     }
 
+    pub fn append_null(&mut self) {
+        self.inner.append(false);
+    }
+
     /// Appends a record to the builder.
     ///
     /// It is important that the passed genotypes was parsed using the same header as the one used
