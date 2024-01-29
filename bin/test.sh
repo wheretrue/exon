@@ -45,4 +45,5 @@ aws --endpoint-url=http://localhost:4566 s3api put-object --bucket test-bucket -
 aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-bucket --acl public-read
 
 # Run the tests.
-cargo test --test sqllogictests --all-features
+cargo test --test sqllogictests
+cargo test

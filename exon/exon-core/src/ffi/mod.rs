@@ -90,7 +90,7 @@ mod tests {
     pub fn test() -> Result<(), DataFusionError> {
         let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
 
         let path = test_path("fasta", "test.fasta");
 

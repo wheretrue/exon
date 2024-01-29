@@ -435,13 +435,15 @@ impl TableProvider for ListingVCFTable {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use crate::{
         datasources::{vcf::IndexedVCFScanner, ExonListingTableFactory},
         tests::setup_tracing,
         ExonSessionExt,
     };
 
-    use arrow::datatypes::DataType;
+    use arrow::datatypes::{DataType, Field, Fields};
     use datafusion::{
         datasource::file_format::file_compression_type::FileCompressionType,
         physical_plan::{coalesce_partitions::CoalescePartitionsExec, filter::FilterExec},
@@ -481,25 +483,31 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "fixtures")]
     #[tokio::test]
+    #[cfg(feature = "fixtures")]
     async fn test_chr17_positions() -> Result<(), Box<dyn std::error::Error>> {
         use crate::tests::test_fixture_table_url;
 
-        let path = test_fixture_table_url("chr17/")?;
+        let path = test_fixture_table_url(
+            "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
+        )?;
 
         let ctx = SessionContext::new_exon();
-        let registration_result = ctx
-            .register_vcf_file("vcf_file", path.to_string().as_str())
-            .await;
 
-        assert!(registration_result.is_ok());
+        ctx.sql(
+            format!(
+                "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+                path.to_string().as_str()
+            )
+            .as_str(),
+        )
+        .await?;
 
         let sql_commands = vec![
-            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1 AND 1000;",
-            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000 AND 1000000;",
-            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1234 AND 1424000;",
-            "SELECT chrom, pos FROM vcf_file WHERE chrom = '17' AND pos BETWEEN 1000000 AND 1424000;",
+            "SELECT chrom, pos FROM vcf_file WHERE vcf_region_filter('17:1-1000', chrom, pos);",
+            "SELECT chrom, pos FROM vcf_file WHERE vcf_region_filter('17:1000-1000000', chrom, pos);",
+            "SELECT chrom, pos FROM vcf_file WHERE vcf_region_filter('17:1234-1424000', chrom, pos);",
+            "SELECT chrom, pos FROM vcf_file WHERE vcf_region_filter('17:1000000-1424000', chrom, pos);",
         ];
 
         for sql in sql_commands {
@@ -521,7 +529,9 @@ mod tests {
     async fn test_region_query_with_additional_predicates() -> Result<(), Box<dyn std::error::Error>>
     {
         setup_tracing();
-        let path = crate::tests::test_fixture_table_url("chr17/")?;
+        let path = crate::tests::test_fixture_table_url(
+            "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
+        )?;
 
         let ctx = SessionContext::new_exon();
         ctx.sql(
@@ -615,8 +625,40 @@ mod tests {
         // Check that the last two columns are strings.
         let schema = df.schema();
 
-        assert_eq!(schema.field(7).data_type(), &DataType::Utf8);
-        assert_eq!(schema.field(8).data_type(), &DataType::Utf8);
+        let infos_fields = Fields::from(vec![
+            Field::new("INDEL", DataType::Boolean, true),
+            Field::new("IDV", DataType::Int32, true),
+            Field::new("IMF", DataType::Float32, true),
+            Field::new("DP", DataType::Int32, true),
+            Field::new("VDB", DataType::Float32, true),
+            Field::new("RPB", DataType::Float32, true),
+            Field::new("MQB", DataType::Float32, true),
+            Field::new("BQB", DataType::Float32, true),
+            Field::new("MQSB", DataType::Float32, true),
+            Field::new("SGB", DataType::Float32, true),
+            Field::new("MQ0F", DataType::Float32, true),
+            Field::new(
+                "I16",
+                DataType::List(Arc::new(Field::new("item", DataType::Float32, true))),
+                true,
+            ),
+            Field::new(
+                "QS",
+                DataType::List(Arc::new(Field::new("item", DataType::Float32, true))),
+                true,
+            ),
+        ]);
+        assert_eq!(schema.field(7).data_type(), &DataType::Struct(infos_fields));
+
+        let inner_item_fields = vec![Field::new(
+            "PL",
+            DataType::List(Arc::new(Field::new("item", DataType::Int32, true))),
+            true,
+        )];
+
+        let inner_struct = DataType::Struct(Fields::from(inner_item_fields));
+        let inner_list = DataType::List(Arc::new(Field::new("item", inner_struct, true)));
+        assert_eq!(schema.field(8).data_type(), &inner_list);
 
         Ok(())
     }

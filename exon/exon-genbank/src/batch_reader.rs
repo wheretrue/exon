@@ -92,15 +92,15 @@ mod tests {
     use object_store::{local::LocalFileSystem, ObjectStore};
 
     #[tokio::test]
-    async fn test_streaming_batch_reader() {
+    async fn test_streaming_batch_reader() -> Result<(), Box<dyn std::error::Error>> {
         let object_store = Arc::new(LocalFileSystem::new());
 
         let config = Arc::new(super::GenbankConfig::new(object_store.clone()));
 
         let path = test_listing_table_dir("genbank", "test.gb");
-        let reader = object_store.get(&path).await.unwrap();
+        let reader = object_store.get(&path).await?;
 
-        let bytes = reader.bytes().await.unwrap();
+        let bytes = reader.bytes().await?;
 
         let cursor = std::io::Cursor::new(bytes);
         let buf_reader = std::io::BufReader::new(cursor);
@@ -115,5 +115,7 @@ mod tests {
             n_rows += batch.num_rows();
         }
         assert_eq!(n_rows, 1);
+
+        Ok(())
     }
 }

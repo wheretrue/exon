@@ -116,13 +116,11 @@ mod tests {
     use std::path::PathBuf;
 
     #[tokio::test]
-    async fn reader_test() -> Result<(), String> {
+    async fn reader_test() -> Result<(), Box<dyn std::error::Error>> {
         let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         d.push("test-data/datasources/mzml/test.mzML");
 
-        let file = tokio::fs::File::open(d)
-            .await
-            .expect("Couldn't open test file.");
+        let file = tokio::fs::File::open(d).await?;
         let buf_reader = tokio::io::BufReader::new(file);
 
         let mut xml_reader = quick_xml::Reader::from_reader(buf_reader);

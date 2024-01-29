@@ -71,8 +71,8 @@ mod tests {
             .get::<ExonConfigExtension>()
             .ok_or("ExonConfigExtension not found in config options".to_string())?;
 
-        assert!(exon_config.vcf_parse_info);
-        assert!(exon_config.vcf_parse_formats);
+        assert!(!exon_config.vcf_parse_info);
+        assert!(!exon_config.vcf_parse_formats);
         assert_eq!(
             exon_config.fasta_sequence_buffer_capacity,
             super::FASTA_READER_SEQUENCE_CAPACITY

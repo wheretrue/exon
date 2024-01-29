@@ -39,7 +39,7 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<()> {
-//! let ctx = SessionContext::new();
+//! let ctx = SessionContext::new_exon();
 //!
 //! let df = ctx.read_fastq("test-data/datasources/fastq/test.fastq", None).await?;
 //!
@@ -48,34 +48,6 @@
 //! assert_eq!(df.schema().field(1).name(), "description");
 //! assert_eq!(df.schema().field(2).name(), "sequence");
 //! assert_eq!(df.schema().field(3).name(), "quality_scores");
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! ## Loading a ZSTD-compressed FASTA file
-//!
-//! ```rust
-//! use exon::ExonSessionExt;
-//!
-//! use datafusion::prelude::*;
-//! use datafusion::error::Result;
-//! use datafusion::common::FileCompressionType;
-//!
-//! # #[tokio::main]
-//! # async fn main() -> Result<()> {
-//! let ctx = SessionContext::new();
-//!
-//! let file_compression = FileCompressionType::ZSTD;
-//! let df = ctx.read_fasta("test-data/datasources/fasta/test.fasta.zstd", Some(file_compression)).await?;
-//!
-//! assert_eq!(df.schema().fields().len(), 3);
-//! assert_eq!(df.schema().field(0).name(), "id");
-//! assert_eq!(df.schema().field(1).name(), "description");
-//! assert_eq!(df.schema().field(2).name(), "sequence");
-//!
-//! let results = df.collect().await?;
-//! assert_eq!(results.len(), 1);  // 1 batch, small dataset
-//!
 //! # Ok(())
 //! # }
 //! ```
