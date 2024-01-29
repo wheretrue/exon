@@ -240,14 +240,16 @@ impl LazyVCFArrayBuilder {
                     InfosFormat::Struct(ref mut builder) => match record.info().as_ref() {
                         "." => builder.append_null(),
                         _ => {
-                            let infos = Info::from_str(record.info().as_ref()).map_err(|_| {
-                                ArrowError::ParseError(format!(
-                                    "Invalid info {}",
-                                    record.info().as_ref()
-                                ))
-                            })?;
+                            let info =
+                                Info::try_from_str(record.info().as_ref(), self.header.infos())
+                                    .map_err(|_| {
+                                        ArrowError::ParseError(format!(
+                                            "Invalid info {}",
+                                            record.info().as_ref()
+                                        ))
+                                    })?;
 
-                            builder.append_value(&infos)?;
+                            builder.append_value(&info)?;
                         }
                     },
                 },
@@ -256,11 +258,19 @@ impl LazyVCFArrayBuilder {
                         builder.append_value(record.genotypes().as_ref());
                     }
                     FormatsFormat::List(ref mut builder) => {
-                        let genotypes = Genotypes::parse(record.genotypes().as_ref(), &self.header)
-                            .map_err(|_| {
+                        let raw_genotypes = record.genotypes();
+
+                        if raw_genotypes.is_empty() {
+                            builder.append_null();
+                            continue;
+                        }
+
+                        let genotypes = Genotypes::parse(raw_genotypes.as_ref(), &self.header)
+                            .map_err(|e| {
                                 ArrowError::ParseError(format!(
-                                    "Invalid genotypes {}",
-                                    record.genotypes().as_ref()
+                                    "Invalid genotypes {}, got error: {}",
+                                    record.genotypes().as_ref(),
+                                    e
                                 ))
                             })?;
 
