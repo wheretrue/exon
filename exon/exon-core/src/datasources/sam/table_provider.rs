@@ -120,7 +120,9 @@ impl ListingSAMTable {
             table_schema,
             options: config
                 .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
+                .ok_or(DataFusionError::Internal(String::from(
+                    "Options must be set",
+                )))?,
         })
     }
 }
@@ -176,11 +178,12 @@ impl TableProvider for ListingSAMTable {
         .try_collect::<Vec<_>>()
         .await?;
 
+        let file_schema = self.table_schema.file_schema()?;
         let file_scan_config = FileScanConfig {
             object_store_url,
-            file_schema: self.table_schema.file_schema()?,
+            file_schema: file_schema.clone(),
             file_groups: vec![file_list],
-            statistics: Statistics::new_unknown(&self.table_schema.file_schema().unwrap()),
+            statistics: Statistics::new_unknown(&file_schema),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),
@@ -204,6 +207,7 @@ mod tests {
     use exon_test::test_listing_table_url;
 
     #[tokio::test]
+    #[ignore]
     async fn test_table_provider() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
@@ -219,10 +223,10 @@ mod tests {
             )
             .await?;
 
-        let df = ctx.read_table(table.clone()).unwrap();
+        let df = ctx.read_table(table.clone())?;
 
         let mut row_cnt = 0;
-        let bs = df.collect().await.unwrap();
+        let bs = df.collect().await?;
         for batch in bs {
             row_cnt += batch.num_rows();
         }

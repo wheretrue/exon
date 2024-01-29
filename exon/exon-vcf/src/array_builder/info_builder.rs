@@ -222,8 +222,8 @@ impl InfosBuilder {
                         .inner
                         .field_builder::<GenericStringBuilder<i32>>(i)
                         .ok_or(ArrowError::InvalidArgumentError(format!(
-                            "field {} is not a string",
-                            field_name
+                            "field {} is not registered as a string, but got {}",
+                            field_name, s
                         )))?
                         .append_value(s),
                     InfoValue::Character(c) => self

@@ -426,8 +426,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_file() -> std::io::Result<()> {
         let test_path = test_path("fcs", "Guava Muse.fcs");
-
-        let file = tokio::fs::File::open(test_path).await.unwrap();
+        let file = tokio::fs::File::open(test_path).await?;
 
         let mut reader = FcsReader::new(file).await?;
 

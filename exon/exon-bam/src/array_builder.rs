@@ -271,6 +271,17 @@ impl BAMArrayBuilder {
                                                 .unwrap()
                                                 .append_value(tag_value_str);
                                         }
+                                        Value::Float(f) => {
+                                            tag_struct
+                                                .field_builder::<GenericStringBuilder<i32>>(0)
+                                                .unwrap()
+                                                .append_value(tag_str);
+
+                                            tag_struct
+                                                .field_builder::<GenericStringBuilder<i32>>(1)
+                                                .unwrap()
+                                                .append_value(f.to_string());
+                                        }
                                         _ => {
                                             return Err(ArrowError::InvalidArgumentError(format!(
                                                 "Invalid tag value {:?} for tag {}",

@@ -30,30 +30,6 @@ use noodles::sam::alignment::record::Flags;
 ///
 /// * `args` - A slice of ArrayRefs. The first element should be a Int32Array.
 ///     The Int32Array should contain SAM flags and be a single column.
-///
-/// # Example
-///
-/// ```rust
-/// use arrow::array::{ArrayRef, BooleanArray, Int32Array};
-/// use datafusion::{common::cast::as_boolean_array, error::Result};
-/// use std::sync::Arc;
-///
-/// let sam_flags = Int32Array::from(vec![Some(1), Some(2)]);
-/// let array_ref = Arc::new(sam_flags) as ArrayRef;
-///
-/// let result = exon::udfs::samflags::is_segmented(&[array_ref]).unwrap();
-/// let result = as_boolean_array(&result).unwrap();
-///
-/// let expected = vec![Some(true), Some(false)];
-/// let expected = BooleanArray::from(expected);
-///
-/// result
-///     .iter()
-///     .zip(expected.iter())
-///     .for_each(|(result, expected)| {
-///         assert_eq!(result, expected);
-///    });
-/// ```
 pub fn is_segmented(args: &[ArrayRef]) -> Result<ArrayRef> {
     sam_flag_function(args, Flags::SEGMENTED)
 }

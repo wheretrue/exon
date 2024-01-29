@@ -16,7 +16,7 @@ byteorder = {version = "1.5.0"}
 exon-common = {path = "../exon-common", version = "0.8.4"}
 futures = {workspace = true}
 object_store = {workspace = true}
-tokio = {workspace = true}
+tokio = {workspace = true, features = ["fs"]}
 
 [dev-dependencies]
 exon-test = {path = "../exon-test"}

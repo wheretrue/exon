@@ -563,6 +563,30 @@ impl SAMArrayBuilder {
                                         .unwrap()
                                         .append_value(tag_value_str);
                                 }
+                                Value::Hex(hex) => {
+                                    let hex_str = std::str::from_utf8(hex.as_ref())?;
+
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
+
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(hex_str);
+                                }
+                                Value::Float(tag_value_float) => {
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
+
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(tag_value_float.to_string());
+                                }
                                 _ => {
                                     return Err(ArrowError::InvalidArgumentError(format!(
                                         "Invalid tag value {:?} for tag {}",
