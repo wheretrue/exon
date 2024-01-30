@@ -14,7 +14,7 @@ version = {workspace = true}
 arrow = {workspace = true}
 exon-common = {path = "../exon-common", version = "0.8.6"}
 futures = {workspace = true}
-itertools = "0.12.0"
+itertools = "0.12.1"
 noodles = {workspace = true, features = ["core", "async", "bam", "sam", "bgzf"]}
 noodles-bgzf = {version = "0.26.0", features = ["libdeflate"]}
 object_store = {workspace = true}
