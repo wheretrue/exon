@@ -37,7 +37,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
-use exon_fasta::new_fasta_schema_builder;
+use exon_fasta::FASTASchemaBuilder;
 use futures::TryStreamExt;
 
 use super::FASTAScan;
@@ -71,10 +71,13 @@ impl ListingFASTATableConfig {
 #[derive(Debug, Clone)]
 /// Listing options for a FASTA table
 pub struct ListingFASTATableOptions {
+    /// The file extension for the table
     file_extension: String,
 
+    /// The file compression type for the table
     file_compression_type: FileCompressionType,
 
+    /// The partition columns for the table
     table_partition_cols: Vec<Field>,
 }
 
@@ -91,11 +94,24 @@ impl ListingFASTATableOptions {
     }
 
     /// Infer the base schema for the table
-    pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
-        let builder =
-            new_fasta_schema_builder().add_partition_fields(self.table_partition_cols.clone());
+    pub async fn infer_schema(
+        &self,
+        state: &SessionState,
+    ) -> datafusion::error::Result<TableSchema> {
+        let exon_settings = state
+            .config()
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or(DataFusionError::Execution(
+                "Exon settings must be configured.".to_string(),
+            ))?;
 
-        Ok(builder.build())
+        let mut fasta_schema_builder = FASTASchemaBuilder::default()
+            .with_large_utf8(exon_settings.fasta_large_utf8)
+            .with_partition_fields(self.table_partition_cols.clone());
+
+        Ok(fasta_schema_builder.build())
     }
 
     /// Set the table partition columns

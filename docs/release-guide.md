@@ -3,7 +3,7 @@
 First bump with `git cz bump --files-only`, so the files are changed, but no commit is made. This is let's Cargo pickup the new version and update its lock file.
 
 ```bash
-git cz bump --files-only --increment PATCH
+git cz bump --files-only
 ```
 
 Next, get the new version from `Cargo.toml` workspace and tag it.
