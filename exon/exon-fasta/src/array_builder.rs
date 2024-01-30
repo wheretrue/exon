@@ -14,7 +14,11 @@
 
 use std::sync::Arc;
 
-use arrow::array::{ArrayBuilder, ArrayRef, GenericStringBuilder};
+use arrow::{
+    array::{ArrayBuilder, ArrayRef, GenericStringBuilder},
+    datatypes::{DataType, SchemaRef},
+    error::ArrowError,
+};
 use noodles::fasta::Record;
 
 use crate::ExonFastaError;
@@ -22,16 +26,48 @@ use crate::ExonFastaError;
 pub struct FASTAArrayBuilder {
     names: GenericStringBuilder<i32>,
     descriptions: GenericStringBuilder<i32>,
-    sequences: GenericStringBuilder<i32>,
+    sequences: SequenceBuilder,
+}
+
+enum SequenceBuilder {
+    Utf8(GenericStringBuilder<i32>),
+    LargeUtf8(GenericStringBuilder<i64>),
+}
+
+impl SequenceBuilder {
+    fn finish(&mut self) -> ArrayRef {
+        match self {
+            Self::Utf8(ref mut builder) => Arc::new(builder.finish()),
+            Self::LargeUtf8(ref mut builder) => Arc::new(builder.finish()),
+        }
+    }
 }
 
 impl FASTAArrayBuilder {
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
+    /// Create a new FASTA array builder.
+    pub fn create(schema: SchemaRef, capacity: usize) -> Result<Self, ArrowError> {
+        let sequence_field = schema.field_with_name("sequence")?;
+
+        let sequence_builder = match sequence_field.data_type() {
+            DataType::Utf8 => SequenceBuilder::Utf8(GenericStringBuilder::<i32>::with_capacity(
+                capacity, capacity,
+            )),
+            DataType::LargeUtf8 => SequenceBuilder::LargeUtf8(
+                GenericStringBuilder::<i64>::with_capacity(capacity, capacity),
+            ),
+            _ => {
+                return Err(ArrowError::InvalidArgumentError(format!(
+                    "Unsupported sequence data type: {:?}",
+                    sequence_field.data_type()
+                )))
+            }
+        };
+
+        Ok(Self {
             names: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
             descriptions: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
-            sequences: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
-        }
+            sequences: sequence_builder,
+        })
     }
 
     pub fn len(&self) -> usize {
@@ -54,7 +90,11 @@ impl FASTAArrayBuilder {
         }
 
         let sequence_str = std::str::from_utf8(record.sequence().as_ref())?;
-        self.sequences.append_value(sequence_str);
+
+        match &mut self.sequences {
+            SequenceBuilder::Utf8(builder) => builder.append_value(sequence_str),
+            SequenceBuilder::LargeUtf8(builder) => builder.append_value(sequence_str),
+        }
 
         Ok(())
     }

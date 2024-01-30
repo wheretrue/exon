@@ -21,6 +21,6 @@ mod config;
 mod error;
 
 pub use batch_reader::BatchReader;
-pub use config::new_fasta_schema_builder;
 pub use config::FASTAConfig;
+pub use config::FASTASchemaBuilder;
 pub use error::ExonFastaError;

@@ -48,6 +48,7 @@ extensions_options! {
         pub vcf_parse_info: bool, default = false
         pub vcf_parse_formats: bool, default = false
         pub fasta_sequence_buffer_capacity: usize, default = FASTA_READER_SEQUENCE_CAPACITY
+        pub fasta_large_utf8: bool, default = false
     }
 }
 
@@ -77,6 +78,7 @@ mod tests {
             exon_config.fasta_sequence_buffer_capacity,
             super::FASTA_READER_SEQUENCE_CAPACITY
         );
+        assert!(!exon_config.fasta_large_utf8);
 
         Ok(())
     }
@@ -89,6 +91,7 @@ mod tests {
         options.set("exon.vcf_parse_info", "false")?;
         options.set("exon.vcf_parse_formats", "false")?;
         options.set("exon.fasta_sequence_buffer_capacity", "1024")?;
+        options.set("exon.fasta_large_utf8", "true")?;
 
         let exon_config = config
             .options()
@@ -99,6 +102,7 @@ mod tests {
         assert!(!exon_config.vcf_parse_info);
         assert!(!exon_config.vcf_parse_formats);
         assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
+        assert!(exon_config.fasta_large_utf8);
 
         Ok(())
     }
@@ -111,6 +115,7 @@ mod tests {
         ctx.sql("SET exon.vcf_parse_formats = true").await?;
         ctx.sql("SET exon.fasta_sequence_buffer_capacity = 1024")
             .await?;
+        ctx.sql("SET exon.fasta_large_utf8 = true").await?;
 
         let state = ctx.state();
         let exon_config = state
@@ -123,6 +128,7 @@ mod tests {
         assert!(exon_config.vcf_parse_info);
         assert!(exon_config.vcf_parse_formats);
         assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
+        assert!(exon_config.fasta_large_utf8);
 
         Ok(())
     }

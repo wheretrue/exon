@@ -223,7 +223,7 @@ impl ExonListingTableFactory {
             ExonFileType::FASTA => {
                 let options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
-                let schema = options.infer_schema().await?;
+                let schema = options.infer_schema(state).await?;
 
                 let config = ListingFASTATableConfig::new(table_path).with_options(options);
                 let table = ListingFASTATable::try_new(config, schema)?;
@@ -236,7 +236,7 @@ impl ExonListingTableFactory {
                 let options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
                     .with_file_extension(extension);
-                let schema = options.infer_schema().await?;
+                let schema = options.infer_schema(state).await?;
 
                 let config = ListingFASTATableConfig::new(table_path).with_options(options);
                 let table = ListingFASTATable::try_new(config, schema)?;
@@ -249,7 +249,7 @@ impl ExonListingTableFactory {
                 let options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
                     .with_file_extension(extension);
-                let schema = options.infer_schema().await?;
+                let schema = options.infer_schema(state).await?;
 
                 let config = ListingFASTATableConfig::new(table_path).with_options(options);
                 let table = ListingFASTATable::try_new(config, schema)?;

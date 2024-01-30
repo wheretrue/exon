@@ -16,13 +16,13 @@ use std::sync::Arc;
 
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
-    error::Result,
+    error::{DataFusionError, Result},
     execution::context::SessionContext,
     logical_expr::Expr,
 };
-use exon_fasta::new_fasta_schema_builder;
+use exon_fasta::FASTASchemaBuilder;
 
-use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
+use crate::{config::ExonConfigExtension, datasources::ScanFunction, ExonRuntimeEnvExt};
 
 use super::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions};
 
@@ -49,7 +49,20 @@ impl TableFunctionImpl for FastaScanFunction {
                 .await
         })?;
 
-        let fasta_schema = new_fasta_schema_builder().build();
+        let state = self.ctx.state();
+
+        let exon_settings = state
+            .config()
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or(DataFusionError::Execution(
+                "Exon settings must be configured.".to_string(),
+            ))?;
+
+        let fasta_schema = FASTASchemaBuilder::default()
+            .with_large_utf8(exon_settings.fasta_large_utf8)
+            .build();
 
         let listing_table_options =
             ListingFASTATableOptions::new(listing_scan_function.file_compression_type);

@@ -76,7 +76,8 @@ where
     }
 
     async fn read_batch(&mut self) -> ExonFastaResult<Option<RecordBatch>> {
-        let mut record_batch = FASTAArrayBuilder::with_capacity(self.config.batch_size);
+        let mut record_batch =
+            FASTAArrayBuilder::create(self.config.file_schema.clone(), self.config.batch_size)?;
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {

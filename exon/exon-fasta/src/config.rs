@@ -15,7 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
-use exon_common::TableSchemaBuilder;
+use exon_common::TableSchema;
 use object_store::ObjectStore;
 
 /// Configuration for a FASTA data source.
@@ -34,6 +34,9 @@ pub struct FASTAConfig {
 
     /// How many bytes to pre-allocate for the sequence.
     pub fasta_sequence_buffer_capacity: usize,
+
+    /// Whether or not to use a LargeUtf8 array for the sequence.
+    pub use_large_utf8: bool,
 }
 
 impl FASTAConfig {
@@ -44,7 +47,8 @@ impl FASTAConfig {
             file_schema,
             batch_size: exon_common::DEFAULT_BATCH_SIZE,
             projection: None,
-            fasta_sequence_buffer_capacity: 384, // TODO: have this us a param
+            fasta_sequence_buffer_capacity: 384,
+            use_large_utf8: false,
         }
     }
 
@@ -77,13 +81,68 @@ impl FASTAConfig {
         self.fasta_sequence_buffer_capacity = fasta_sequence_buffer_capacity;
         self
     }
+
+    /// Create a new FASTA configuration with the use_large_utf8 flag set.
+    pub fn with_use_large_utf8(mut self, use_large_utf8: bool) -> Self {
+        self.use_large_utf8 = use_large_utf8;
+        self
+    }
 }
 
-/// Create a new FASTA schema builder.
-pub fn new_fasta_schema_builder() -> TableSchemaBuilder {
-    TableSchemaBuilder::new_with_field_fields(vec![
-        Field::new("id", DataType::Utf8, false),
-        Field::new("description", DataType::Utf8, true),
-        Field::new("sequence", DataType::Utf8, false),
-    ])
+pub struct FASTASchemaBuilder {
+    /// The fields of the schema.
+    fields: Vec<Field>,
+
+    /// The partition fields to potentially add to the schema.
+    partition_fields: Vec<Field>,
+
+    /// Whether or not to use a LargeUtf8 array for the sequence.
+    large_utf8: bool,
+}
+
+impl Default for FASTASchemaBuilder {
+    fn default() -> Self {
+        Self {
+            fields: vec![
+                Field::new("id", DataType::Utf8, false),
+                Field::new("description", DataType::Utf8, true),
+                Field::new("sequence", DataType::Utf8, false),
+            ],
+            partition_fields: vec![],
+            large_utf8: false,
+        }
+    }
+}
+
+impl FASTASchemaBuilder {
+    /// Set the large_utf8 flag.
+    pub fn with_large_utf8(mut self, large_utf8: bool) -> Self {
+        self.large_utf8 = large_utf8;
+        self
+    }
+
+    /// Extend the partition fields with the given fields.
+    pub fn with_partition_fields(mut self, partition_fields: Vec<Field>) -> Self {
+        self.partition_fields.extend(partition_fields);
+        self
+    }
+
+    pub fn build(&mut self) -> TableSchema {
+        if self.large_utf8 {
+            let field = Field::new("sequence", DataType::LargeUtf8, false);
+            self.fields[2] = field;
+        }
+
+        let file_field_projection = self
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
+
+        self.fields.extend(self.partition_fields.clone());
+
+        let arrow_schema = Arc::new(arrow::datatypes::Schema::new(self.fields.clone()));
+        TableSchema::new(arrow_schema, file_field_projection)
+    }
 }
