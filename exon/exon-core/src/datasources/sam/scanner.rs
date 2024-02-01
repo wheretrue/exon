@@ -16,7 +16,6 @@ use std::{any::Any, sync::Arc};
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::{config::SAMConfig, file_opener::SAMOpener};
 use arrow::datatypes::SchemaRef;
 use datafusion::{
     datasource::physical_plan::{FileScanConfig, FileStream},
@@ -25,6 +24,9 @@ use datafusion::{
         Partitioning, SendableRecordBatchStream,
     },
 };
+use exon_sam::SAMConfig;
+
+use super::SAMOpener;
 
 #[derive(Debug, Clone)]
 /// Implements a datafusion `ExecutionPlan` for SAM files.

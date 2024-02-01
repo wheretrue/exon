@@ -29,6 +29,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
+use exon_sam::SAMSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{core::Region, sam::alignment::RecordBuf};
 use object_store::ObjectStore;
@@ -83,7 +84,6 @@ use crate::{
     datasources::{
         hive_partition::filter_matches_partition_cols,
         indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
-        sam::SAMSchemaBuilder,
     },
     physical_plan::object_store::pruned_partition_list,
 };

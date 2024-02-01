@@ -28,6 +28,7 @@ exon-gff = {path = "../exon-gff", version = "0.8.6"}
 exon-gtf = {path = "../exon-gtf", version = "0.8.6"}
 exon-io = {path = "../exon-io", version = "0.8.6"}
 exon-mzml = {path = "../exon-mzml", version = "0.8.6", optional = true}
+exon-sam = {path = "../exon-sam", version = "0.8.6"}
 exon-vcf = {path = "../exon-vcf", version = "0.8.6"}
 futures = {workspace = true}
 itertools = "0.12.1"

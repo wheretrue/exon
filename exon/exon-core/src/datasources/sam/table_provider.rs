@@ -29,6 +29,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
+use exon_sam::SAMSchemaBuilder;
 use futures::TryStreamExt;
 
 use crate::{
@@ -36,7 +37,7 @@ use crate::{
     physical_plan::object_store::pruned_partition_list,
 };
 
-use super::{scanner::SAMScan, SAMSchemaBuilder};
+use super::SAMScan;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
