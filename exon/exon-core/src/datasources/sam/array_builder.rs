@@ -587,6 +587,18 @@ impl SAMArrayBuilder {
                                         .unwrap()
                                         .append_value(tag_value_float.to_string());
                                 }
+                                Value::Array(arr) => {
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(0)
+                                        .unwrap()
+                                        .append_value(tag_str);
+
+                                    let f = format!("{arr:?}");
+                                    tag_struct
+                                        .field_builder::<GenericStringBuilder<i32>>(1)
+                                        .unwrap()
+                                        .append_value(f);
+                                }
                                 _ => {
                                     return Err(ArrowError::InvalidArgumentError(format!(
                                         "Invalid tag value {:?} for tag {}",
