@@ -207,7 +207,6 @@ mod tests {
     use exon_test::test_listing_table_url;
 
     #[tokio::test]
-    #[ignore]
     async fn test_table_provider() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = SessionContext::new();
         let session_state = ctx.state();
