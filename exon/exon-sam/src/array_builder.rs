@@ -14,7 +14,6 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use crate::error::{ExonError, Result};
 use arrow::{
     array::{
         ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder,
@@ -22,6 +21,7 @@ use arrow::{
     },
     datatypes::{DataType, Field, Fields, Schema},
     error::ArrowError,
+    error::Result,
 };
 use exon_common::{ExonArrayBuilder, TableSchema};
 use noodles::sam::alignment::{
@@ -36,7 +36,7 @@ use noodles::sam::Header;
 
 macro_rules! datafusion_error {
     ($tag:expr, $field_type:expr, $expected_type:expr) => {
-        Err(ExonError::ExecutionError(
+        Err(arrow::error::ArrowError::InvalidArgumentError(
             format!(
                 "tag {} has conflicting types: {:?} and {:?}",
                 $tag, $field_type, $expected_type,
@@ -278,10 +278,10 @@ impl SAMSchemaBuilder {
                         }
                     }
                     _ => {
-                        return Err(ExonError::ExecutionError(format!(
-                            "tag {} has unsupported array type",
-                            tag_name
-                        )));
+                        return Err(ArrowError::InvalidArgumentError(format!(
+                            "Invalid tag value {:?} for tag {}",
+                            array, tag_name
+                        )))
                     }
                 },
             }
@@ -427,7 +427,7 @@ impl SAMArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &RecordBuf) -> Result<(), ArrowError> {
+    pub fn append(&mut self, record: &RecordBuf) -> Result<()> {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {

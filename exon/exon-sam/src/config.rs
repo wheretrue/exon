@@ -15,7 +15,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::SchemaRef;
-use datafusion::error::Result;
+use arrow::error::Result;
 use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 

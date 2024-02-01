@@ -1900,6 +1900,7 @@ dependencies = [
  "exon-gtf",
  "exon-io",
  "exon-mzml",
+ "exon-sam",
  "exon-test",
  "exon-vcf",
  "futures",
@@ -2115,6 +2116,16 @@ dependencies = [
 [[package]]
 name = "exon-sam"
 version = "0.8.6"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "futures",
+ "itertools 0.12.1",
+ "noodles 0.61.0",
+ "noodles-bgzf",
+ "object_store",
+ "tokio",
+]
 
 [[package]]
 name = "exon-test"

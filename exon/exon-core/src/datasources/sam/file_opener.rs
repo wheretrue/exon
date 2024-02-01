@@ -18,10 +18,9 @@ use datafusion::{
     datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
+use exon_sam::{BatchReader, SAMConfig};
 use futures::{StreamExt, TryStreamExt};
 use tokio_util::io::StreamReader;
-
-use super::{batch_reader::BatchReader, config::SAMConfig};
 
 /// A file opener for SAM files.
 pub struct SAMOpener {

@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Implementations to adapt SAM files to datafusion.
+mod array_builder;
+mod batch_reader;
+mod config;
 
-mod file_opener;
-mod scanner;
-
-/// Table provider for SAM files.
-pub mod table_provider;
-
-pub use self::file_opener::SAMOpener;
-pub use self::scanner::SAMScan;
-
-mod udtf;
-pub use udtf::SAMScanFunction;
+pub use array_builder::{SAMArrayBuilder, SAMSchemaBuilder};
+pub use batch_reader::BatchReader;
+pub use config::SAMConfig;
