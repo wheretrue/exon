@@ -17,7 +17,7 @@ use std::{str::FromStr, sync::Arc};
 use arrow::{
     array::{
         make_builder, ArrayBuilder, ArrayRef, GenericListBuilder, GenericStringBuilder,
-        Int8Builder, StructBuilder, UInt8Builder,
+        StructBuilder, UInt8Builder,
     },
     datatypes::{DataType, Field, Fields},
     error::ArrowError,
@@ -163,7 +163,7 @@ impl TagsStructBuilder {
                     },
                     DataType::UInt8 => {
                         if let Value::UInt8(int) = tag_value {
-                            let u8_value = *int as u8;
+                            let u8_value = *int;
                             self.builder
                                 .field_builder::<UInt8Builder>(i)
                                 .unwrap()

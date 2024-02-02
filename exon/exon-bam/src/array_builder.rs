@@ -26,10 +26,7 @@ use noodles::sam::{
 
 const BATCH_SIZE: usize = 8192;
 
-use crate::{
-    tag_builder::{TagsBuilder, TagsMapBuilder},
-    BAMConfig,
-};
+use crate::{tag_builder::TagsBuilder, BAMConfig};
 
 use super::indexed_async_batch_stream::SemiLazyRecord;
 
@@ -75,11 +72,10 @@ impl BAMArrayBuilder {
                 TagsBuilder::try_from(field.data_type()).unwrap()
             });
 
-        let projection = bam_config.projection.clone().unwrap_or(
-            (0..bam_config.file_schema.fields.len())
-                .map(|i| i as usize)
-                .collect::<Vec<_>>(),
-        );
+        let projection = bam_config
+            .projection
+            .clone()
+            .unwrap_or((0..bam_config.file_schema.fields.len()).collect::<Vec<_>>());
 
         Self {
             names: GenericStringBuilder::<i32>::new(),
