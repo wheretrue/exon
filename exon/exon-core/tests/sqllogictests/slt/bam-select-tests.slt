@@ -59,3 +59,11 @@ query T
 SELECT COUNT(*) FROM bam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam-partition');
 ----
 122
+
+statement ok
+SET exon.bam_parse_tags = true;
+
+query T
+SELECT tags FROM bam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam/test.bam') LIMIT 1;
+----
+h

@@ -93,6 +93,7 @@ use super::{indexed_scanner::IndexedBAMScan, BAMScan};
 #[derive(Debug, Clone)]
 /// Listing options for a BAM table
 pub struct ListingBAMTableOptions {
+    /// The file extension for the BAM file
     file_extension: String,
 
     /// Whether the scan should use the index
@@ -101,8 +102,10 @@ pub struct ListingBAMTableOptions {
     /// Any regions to use for the scan
     region: Option<Region>,
 
+    /// The table partition columns
     table_partition_cols: Vec<Field>,
 
+    /// Whether to infer the schema from the tags
     tag_as_struct: bool,
 }
 

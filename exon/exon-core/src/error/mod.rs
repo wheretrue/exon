@@ -52,6 +52,9 @@ pub enum ExonError {
 
     /// Invalid File Type
     InvalidFileType(String),
+
+    /// Invalid Configuration
+    Configuration(String),
 }
 
 impl From<DataFusionError> for ExonError {
@@ -118,6 +121,7 @@ impl Display for ExonError {
             ExonError::NoodlesError(error) => write!(f, "NoodlesError: {}", error),
             ExonError::IOError(error) => write!(f, "IOError: {}", error),
             ExonError::InvalidFileType(error) => write!(f, "InvalidFileType: {}", error),
+            ExonError::Configuration(error) => write!(f, "InvalidConfig: {}", error),
         }
     }
 }
@@ -130,6 +134,7 @@ impl From<ExonError> for DataFusionError {
             ExonError::DataFusionError(error) => error,
             ExonError::ArrowError(error) => DataFusionError::ArrowError(error, None),
             ExonError::ExecutionError(error) => DataFusionError::Execution(error),
+            ExonError::Configuration(error) => DataFusionError::Configuration(error),
             _ => DataFusionError::Execution(format!("ExonError: {}", error)),
         }
     }

@@ -26,7 +26,7 @@ use datafusion::{
 };
 use url::Url;
 
-use crate::{datasources::ExonFileType, ExonRuntimeEnvExt};
+use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
@@ -76,6 +76,8 @@ impl ExonListingTableFactory {
         table_partition_cols: Vec<Field>,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let table_path = ListingTableUrl::parse(&location)?;
+
+        let exon_config_extension = extract_config_from_state(state)?;
 
         match file_type {
             ExonFileType::SAM => {
@@ -140,7 +142,9 @@ impl ExonListingTableFactory {
             }
             ExonFileType::BAM => {
                 let options = ListingBAMTableOptions::default()
-                    .with_table_partition_cols(table_partition_cols);
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_tag_as_struct(exon_config_extension.bam_parse_tags);
+
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingBAMTableConfig::new(table_path).with_options(options);
@@ -201,6 +205,7 @@ impl ExonListingTableFactory {
             ExonFileType::IndexedVCF => {
                 let vcf_options = ListingVCFTableOptions::new(file_compression_type, true)
                     .with_table_partition_cols(table_partition_cols);
+
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
                 let config = ListingVCFTableConfig::new(table_path).with_options(vcf_options);
@@ -211,7 +216,8 @@ impl ExonListingTableFactory {
             ExonFileType::IndexedBAM => {
                 let bam_options = ListingBAMTableOptions::default()
                     .with_indexed(true)
-                    .with_table_partition_cols(table_partition_cols);
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_tag_as_struct(exon_config_extension.bam_parse_tags);
 
                 let table_schema = bam_options.infer_schema(state, &table_path).await?;
 
@@ -348,20 +354,12 @@ mod tests {
 
     use datafusion::{
         catalog::{listing_schema::ListingSchemaProvider, CatalogProvider, MemoryCatalogProvider},
-        error::DataFusionError,
-        execution::runtime_env::{RuntimeConfig, RuntimeEnv},
-        prelude::{SessionConfig, SessionContext},
+        prelude::SessionContext,
     };
     use object_store::local::LocalFileSystem;
 
-    use crate::datasources::ExonListingTableFactory;
+    use crate::{datasources::ExonListingTableFactory, ExonSessionExt};
 
-    fn create_runtime_env() -> Result<RuntimeEnv, DataFusionError> {
-        let rn_config = RuntimeConfig::new();
-        RuntimeEnv::new(rn_config)
-    }
-
-    // Don't include this test on windows
     #[tokio::test]
     async fn test_in_catalog() -> Result<(), Box<dyn std::error::Error>> {
         let mem_catalog: MemoryCatalogProvider = MemoryCatalogProvider::new();
@@ -386,9 +384,10 @@ mod tests {
 
         mem_catalog.register_schema("exon", Arc::new(schema))?;
 
-        let session_config = SessionConfig::from_env()?;
-        let runtime_env = create_runtime_env()?;
-        let ctx = SessionContext::new_with_config_rt(session_config.clone(), Arc::new(runtime_env));
+        // let session_config = SessionConfig::from_env()?;
+        // let runtime_env = create_runtime_env()?;
+        // let ctx = SessionContext::new_with_config_rt(session_config.clone(), Arc::new(runtime_env));
+        let ctx = SessionContext::new_exon();
 
         ctx.register_catalog("exon", Arc::new(mem_catalog));
         ctx.refresh_catalogs().await?;

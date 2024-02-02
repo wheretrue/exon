@@ -199,7 +199,10 @@ impl TableProvider for ListingSAMTable {
 
 #[cfg(test)]
 mod tests {
-    use crate::datasources::{ExonFileType, ExonListingTableFactory};
+    use crate::{
+        datasources::{ExonFileType, ExonListingTableFactory},
+        ExonSessionExt,
+    };
 
     use datafusion::{
         datasource::file_format::file_compression_type::FileCompressionType,
@@ -209,7 +212,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_table_provider() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
         let session_state = ctx.state();
 
         let table_path = test_listing_table_url("sam");

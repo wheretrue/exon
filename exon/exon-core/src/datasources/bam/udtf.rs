@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, error::ExonError, ExonRuntimeEnvExt};
+use crate::{
+    config::extract_config_from_state, datasources::ScanFunction, error::ExonError,
+    ExonRuntimeEnvExt,
+};
 use datafusion::{
     datasource::{function::TableFunctionImpl, listing::ListingTableUrl, TableProvider},
     error::{DataFusionError, Result},
@@ -50,7 +53,11 @@ impl TableFunctionImpl for BAMScanFunction {
                 .await
         })?;
 
-        let listing_table_options = ListingBAMTableOptions::default();
+        let state = self.ctx.state();
+        let config = extract_config_from_state(&state)?;
+
+        let listing_table_options =
+            ListingBAMTableOptions::default().with_tag_as_struct(config.bam_parse_tags);
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options

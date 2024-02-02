@@ -227,11 +227,14 @@ mod tests {
     };
     use exon_test::test_listing_table_url;
 
-    use crate::datasources::{ExonFileType, ExonListingTableFactory};
+    use crate::{
+        datasources::{ExonFileType, ExonListingTableFactory},
+        ExonSessionExt,
+    };
 
     #[tokio::test]
     async fn test_table_scan() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
         let session_state = ctx.state();
 
         let table_path = test_listing_table_url("fastq");
