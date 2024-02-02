@@ -16,6 +16,7 @@ mod array_builder;
 mod batch_reader;
 mod config;
 mod indexed_async_batch_stream;
+mod tag_builder;
 
 pub use array_builder::BAMArrayBuilder;
 pub use batch_reader::BatchReader;

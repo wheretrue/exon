@@ -76,7 +76,7 @@ impl SAMSchemaBuilder {
             match value {
                 Value::Character(_) | Value::String(_) | Value::Hex(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::Utf8, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Utf8, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Utf8 {
                         return arrow_error!(
@@ -88,7 +88,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::Int8(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::Int8, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Int8, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Int8 {
                         return arrow_error!(
@@ -100,7 +100,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::Int16(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::Int16, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Int16, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Int16 {
                         return arrow_error!(
@@ -112,7 +112,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::Int32(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::Int32, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Int32, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::Int32 {
                         return arrow_error!(
@@ -124,7 +124,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::UInt8(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::UInt8, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::UInt8, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::UInt8 {
                         return arrow_error!(
@@ -136,7 +136,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::UInt16(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::UInt16, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::UInt16, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::UInt16 {
                         return arrow_error!(
@@ -148,7 +148,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::UInt32(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::UInt32, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::UInt32, true)
                     });
                     if field.data_type() != &arrow::datatypes::DataType::UInt32 {
                         return arrow_error!(
@@ -160,7 +160,7 @@ impl SAMSchemaBuilder {
                 }
                 Value::Float(_) => {
                     let field = fields.entry(tag).or_insert_with(|| {
-                        Field::new(tag_name, arrow::datatypes::DataType::Float32, false)
+                        Field::new(tag_name, arrow::datatypes::DataType::Float32, true)
                     });
 
                     if field.data_type() != &arrow::datatypes::DataType::Float32 {
@@ -203,7 +203,7 @@ impl SAMSchemaBuilder {
                                         arrow::datatypes::DataType::Int16,
                                         true,
                                     ))),
-                                    false,
+                                    true,
                                 )
                             });
 
@@ -224,7 +224,7 @@ impl SAMSchemaBuilder {
                                         arrow::datatypes::DataType::Int8,
                                         true,
                                     ))),
-                                    false,
+                                    true,
                                 )
                             });
 
@@ -245,7 +245,7 @@ impl SAMSchemaBuilder {
                                         arrow::datatypes::DataType::Float32,
                                         true,
                                     ))),
-                                    false,
+                                    true,
                                 )
                             });
 
@@ -284,7 +284,7 @@ impl SAMSchemaBuilder {
                     // TODO: remove unwrap
                     let tag_name = std::str::from_utf8(tag.as_ref()).unwrap();
 
-                    Field::new(tag_name, data_type, false)
+                    Field::new(tag_name, data_type, true)
                 })
                 .collect::<Vec<_>>(),
         ));

@@ -114,7 +114,12 @@ impl TableFunctionImpl for BAMIndexedScanFunction {
 
         let region = region_str.parse().map_err(ExonError::from)?;
 
-        let listing_table_options = ListingBAMTableOptions::default().with_region(Some(region));
+        let state = self.ctx.state();
+        let config = extract_config_from_state(&state)?;
+
+        let listing_table_options = ListingBAMTableOptions::default()
+            .with_region(Some(region))
+            .with_tag_as_struct(config.bam_parse_tags);
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options

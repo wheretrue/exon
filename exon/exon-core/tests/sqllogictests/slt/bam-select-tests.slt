@@ -64,6 +64,10 @@ statement ok
 SET exon.bam_parse_tags = true;
 
 query T
-SELECT tags FROM bam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam/test.bam') LIMIT 1;
+SELECT tags."NH", tags."XS" FROM bam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/bam/test.bam') LIMIT 5;
 ----
-h
+1 45
+1 NULL
+1 NULL
+1 NULL
+1 NULL
