@@ -15,7 +15,9 @@
 mod array_builder;
 mod batch_reader;
 mod config;
+mod schema_builder;
 
-pub use array_builder::{SAMArrayBuilder, SAMSchemaBuilder};
+pub use array_builder::SAMArrayBuilder;
 pub use batch_reader::BatchReader;
 pub use config::SAMConfig;
+pub use schema_builder::SAMSchemaBuilder;
