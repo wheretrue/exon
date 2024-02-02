@@ -173,17 +173,12 @@ impl ListingBAMTableOptions {
             let mut reader = noodles::bam::AsyncReader::new(stream_reader);
 
             let header = reader.read_header().await?;
-            // reader.read_reference_sequences().await?;
 
             let mut record = RecordBuf::default();
 
             reader.read_record_buf(&header, &mut record).await?;
 
             let data = record.data();
-            // let data: noodles::sam::record::Data = data.try_into()?;
-
-            // let data = noodles::sam::record::Data::try_from(data)?;
-
             schema_builder = schema_builder.with_tags_data_type_from_data(data)?;
         }
 

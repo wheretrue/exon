@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, Fields, Schema, SchemaRef};
 
 use datafusion::error::Result;
 
@@ -99,6 +99,11 @@ impl TableSchema {
             ))
         })?;
         Ok(Arc::new(file_schema.clone()))
+    }
+
+    /// Get the fields for the table
+    pub fn fields(&self) -> Fields {
+        self.schema.fields().clone()
     }
 
     /// Get the schema for the table
