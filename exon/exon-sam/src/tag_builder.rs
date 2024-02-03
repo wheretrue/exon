@@ -23,15 +23,12 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
     error::ArrowError,
 };
-use noodles::{
-    bam::record::data::field,
-    sam::{
-        alignment::record_buf::{
-            data::field::{value::Array, Value},
-            Data,
-        },
-        header::record::value::map::header::Tag,
+use noodles::sam::{
+    alignment::record_buf::{
+        data::field::{value::Array, Value},
+        Data,
     },
+    header::record::value::map::header::Tag,
 };
 
 pub enum TagsBuilder {
@@ -307,7 +304,7 @@ impl TagsStructBuilder {
                             let builder_values = builder.values();
 
                             for v in arr.iter() {
-                                builder_values.append_value(*v as i8);
+                                builder_values.append_value(*v);
                             }
 
                             builder.append(true);
@@ -321,7 +318,7 @@ impl TagsStructBuilder {
                             let builder_values = builder.values();
 
                             for v in arr.iter() {
-                                builder_values.append_value(*v as u16);
+                                builder_values.append_value(*v);
                             }
 
                             builder.append(true);
@@ -335,7 +332,7 @@ impl TagsStructBuilder {
                             let builder_values = builder.values();
 
                             for v in arr.iter() {
-                                builder_values.append_value(*v as i16);
+                                builder_values.append_value(*v);
                             }
 
                             builder.append(true);
@@ -354,7 +351,7 @@ impl TagsStructBuilder {
                             let builder_values = builder.values();
 
                             for v in arr.iter() {
-                                builder_values.append_value(*v as f32);
+                                builder_values.append_value(*v);
                             }
 
                             builder.append(true);
@@ -412,7 +409,7 @@ impl TagsStructBuilder {
                             self.builder
                                 .field_builder::<Float32Builder>(i)
                                 .unwrap()
-                                .append_value(f as f32);
+                                .append_value(f);
                         } else {
                             return Err(ArrowError::InvalidArgumentError(format!(
                                 "Invalid tag value {:?} for tag {} a {}",
@@ -440,6 +437,12 @@ impl TagsStructBuilder {
 
 pub struct TagsMapBuilder {
     builder: GenericListBuilder<i32, StructBuilder>,
+}
+
+impl Default for TagsMapBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TagsMapBuilder {
