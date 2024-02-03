@@ -30,7 +30,9 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 use exon_sam::SAMSchemaBuilder;
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
+use noodles::sam::alignment::RecordBuf;
+use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::hive_partition::filter_matches_partition_cols,
@@ -73,15 +75,63 @@ pub struct ListingSAMTableOptions {
 
     /// The table partition columns
     table_partition_cols: Vec<Field>,
+
+    /// Whether to infer the schema from the tags
+    tag_as_struct: bool,
 }
 
 impl ListingSAMTableOptions {
     /// Infer the schema for the table
-    pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
-        let builder =
-            SAMSchemaBuilder::default().with_partition_fields(self.table_partition_cols.clone());
+    pub async fn infer_schema(
+        &self,
+        state: &SessionState,
+        table_path: &ListingTableUrl,
+    ) -> datafusion::error::Result<TableSchema> {
+        eprintln!("tag as struct: {}", self.tag_as_struct);
+        if !self.tag_as_struct {
+            let builder = SAMSchemaBuilder::default()
+                .with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone
+            let table_schema = builder.build();
 
-        let table_schema = builder.build();
+            return Ok(table_schema);
+        }
+
+        let store = state.runtime_env().object_store(table_path)?;
+
+        let mut files = exon_common::object_store_files_from_table_path(
+            &store,
+            table_path.as_ref(),
+            table_path.prefix(),
+            self.file_extension.as_str(),
+            None,
+        )
+        .await;
+
+        let mut schema_builder = SAMSchemaBuilder::default();
+
+        while let Some(f) = files.next().await {
+            let f = f?;
+
+            let get_result = store.get(&f.location).await?;
+
+            let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+            let stream_reader = StreamReader::new(stream_reader);
+            let mut reader = noodles::sam::AsyncReader::new(stream_reader);
+
+            let header = reader.read_header().await?;
+
+            let mut record = RecordBuf::default();
+
+            reader.read_record_buf(&header, &mut record).await?;
+
+            let data = record.data();
+            schema_builder = schema_builder.with_tags_data_type_from_data(data)?;
+        }
+
+        schema_builder = schema_builder.with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone
+
+        let table_schema = schema_builder.build();
+
         Ok(table_schema)
     }
 
@@ -89,6 +139,14 @@ impl ListingSAMTableOptions {
     pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
+            ..self
+        }
+    }
+
+    /// Update the tag_as_struct option
+    pub fn with_tag_as_struct(self, tag_as_struct: bool) -> Self {
+        Self {
+            tag_as_struct,
             ..self
         }
     }

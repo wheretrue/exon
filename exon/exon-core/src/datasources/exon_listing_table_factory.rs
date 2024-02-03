@@ -80,11 +80,35 @@ impl ExonListingTableFactory {
         let exon_config_extension = extract_config_from_state(state)?;
 
         match file_type {
-            ExonFileType::SAM => {
-                let options = ListingSAMTableOptions::default()
+            ExonFileType::BAM => {
+                let options = ListingBAMTableOptions::default()
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_tag_as_struct(exon_config_extension.bam_parse_tags);
+
+                let table_schema = options.infer_schema(state, &table_path).await?;
+
+                let config = ListingBAMTableConfig::new(table_path).with_options(options);
+                let table = ListingBAMTable::try_new(config, table_schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::BED => {
+                let options = ListingBEDTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
 
                 let table_schema = options.infer_schema()?;
+
+                let config = ListingBEDTableConfig::new(table_path).with_options(options);
+                let table = ListingBEDTable::try_new(config, table_schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::SAM => {
+                let options = ListingSAMTableOptions::default()
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_tag_as_struct(exon_config_extension.sam_parse_tags);
+
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ListingSAMTableConfig::new(table_path).with_options(options);
                 let table = ListingSAMTable::try_new(config, table_schema)?;
@@ -137,28 +161,6 @@ impl ExonListingTableFactory {
 
                 let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
                 let table = ListingHMMDomTabTable::try_new(config, table_schema)?;
-
-                Ok(Arc::new(table))
-            }
-            ExonFileType::BAM => {
-                let options = ListingBAMTableOptions::default()
-                    .with_table_partition_cols(table_partition_cols)
-                    .with_tag_as_struct(exon_config_extension.bam_parse_tags);
-
-                let table_schema = options.infer_schema(state, &table_path).await?;
-
-                let config = ListingBAMTableConfig::new(table_path).with_options(options);
-                let table = ListingBAMTable::try_new(config, table_schema)?;
-
-                Ok(Arc::new(table))
-            }
-            ExonFileType::BED => {
-                let options = ListingBEDTableOptions::new(file_compression_type)
-                    .with_table_partition_cols(table_partition_cols);
-                let table_schema = options.infer_schema()?;
-
-                let config = ListingBEDTableConfig::new(table_path).with_options(options);
-                let table = ListingBEDTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }

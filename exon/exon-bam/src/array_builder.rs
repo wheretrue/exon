@@ -19,6 +19,7 @@ use arrow::{
     error::ArrowError,
 };
 use exon_common::ExonArrayBuilder;
+use exon_sam::TagsBuilder;
 use noodles::sam::{
     alignment::record::{cigar::op::Kind, Cigar, Name},
     Header,
@@ -26,7 +27,7 @@ use noodles::sam::{
 
 const BATCH_SIZE: usize = 8192;
 
-use crate::{tag_builder::TagsBuilder, BAMConfig};
+use crate::BAMConfig;
 
 use super::indexed_async_batch_stream::SemiLazyRecord;
 
@@ -72,11 +73,6 @@ impl BAMArrayBuilder {
                 TagsBuilder::try_from(field.data_type()).unwrap()
             });
 
-        let projection = bam_config
-            .projection
-            .clone()
-            .unwrap_or((0..bam_config.file_schema.fields.len()).collect::<Vec<_>>());
-
         Self {
             names: GenericStringBuilder::<i32>::new(),
             flags: Int32Builder::new(),
@@ -94,7 +90,7 @@ impl BAMArrayBuilder {
 
             tags: tags_builder,
 
-            projection,
+            projection: bam_config.projection(),
 
             rows: 0,
 

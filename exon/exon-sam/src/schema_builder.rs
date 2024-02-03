@@ -236,6 +236,69 @@ impl SAMSchemaBuilder {
                                 return arrow_error!(tag_name, field.data_type(), expected_type);
                             }
                         }
+                        Array::UInt8(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag_name,
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::UInt8,
+                                        true,
+                                    ))),
+                                    true,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::UInt8, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return arrow_error!(tag_name, field.data_type(), expected_type);
+                            }
+                        }
+                        Array::UInt16(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag_name,
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::UInt16,
+                                        true,
+                                    ))),
+                                    true,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::UInt16, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return arrow_error!(tag_name, field.data_type(), expected_type);
+                            }
+                        }
+                        Array::UInt32(_) => {
+                            let field = fields.entry(tag).or_insert_with(|| {
+                                Field::new(
+                                    tag_name,
+                                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                                        "item",
+                                        arrow::datatypes::DataType::UInt32,
+                                        true,
+                                    ))),
+                                    true,
+                                )
+                            });
+
+                            let expected_type = arrow::datatypes::DataType::List(Arc::new(
+                                Field::new("item", arrow::datatypes::DataType::UInt32, true),
+                            ));
+
+                            if field.data_type() != &expected_type {
+                                return arrow_error!(tag_name, field.data_type(), expected_type);
+                            }
+                        }
                         Array::Float(_) => {
                             let field = fields.entry(tag).or_insert_with(|| {
                                 Field::new(
@@ -256,12 +319,6 @@ impl SAMSchemaBuilder {
                             if field.data_type() != &expected_type {
                                 return arrow_error!(tag_name, field.data_type(), expected_type);
                             }
-                        }
-                        _ => {
-                            return Err(ArrowError::InvalidArgumentError(format!(
-                                "Invalid tag value {:?} for tag {}",
-                                array, tag_name
-                            )))
                         }
                     }
                 }

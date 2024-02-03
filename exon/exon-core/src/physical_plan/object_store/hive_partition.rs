@@ -79,13 +79,6 @@ pub async fn pruned_partition_list<'a>(
     file_extension: &'a str,
     partition_cols: &'a [Field],
 ) -> Result<BoxStream<'a, Result<PartitionedFile>>> {
-    tracing::info!(
-        "pruned_partition_list: {:?} with filters {:?} and extension {:?}",
-        table_path,
-        filters,
-        file_extension
-    );
-
     if partition_cols.is_empty() {
         let files = list_all_files(table_path, ctx, store, file_extension)
             .await?
