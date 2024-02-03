@@ -141,7 +141,7 @@ impl ExecutionPlan for FCSScan {
 
 #[cfg(test)]
 mod tests {
-    use crate::datasources::ExonListingTableFactory;
+    use crate::{datasources::ExonListingTableFactory, ExonSessionExt};
 
     use datafusion::{
         datasource::file_format::file_compression_type::FileCompressionType,
@@ -152,7 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fcs_read() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new();
+        let ctx = SessionContext::new_exon();
         let session_state = ctx.state();
 
         let table_path = test_listing_table_url("fcs");

@@ -189,7 +189,7 @@ where
     }
 
     async fn read_record_batch(&mut self) -> ArrowResult<Option<arrow::record_batch::RecordBatch>> {
-        let mut builder = BAMArrayBuilder::create(self.header.clone(), self.config.projection());
+        let mut builder = BAMArrayBuilder::create(self.header.clone(), self.config.clone());
 
         for i in 0..self.config.batch_size {
             if let Some(record) = self.read_record().await? {

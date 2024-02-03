@@ -15,21 +15,18 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder,
-        StructBuilder,
-    },
-    datatypes::{DataType, Field, Fields},
+    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder},
     error::ArrowError,
     error::Result,
 };
 use exon_common::ExonArrayBuilder;
 use noodles::sam::alignment::{
     record::{cigar::op::Kind, Cigar},
-    record_buf::data::field::Value,
     RecordBuf,
 };
 use noodles::sam::Header;
+
+use crate::{SAMConfig, TagsBuilder};
 
 /// Builds an vector of arrays from a SAM file.
 pub struct SAMArrayBuilder {
@@ -44,7 +41,7 @@ pub struct SAMArrayBuilder {
     sequences: GenericStringBuilder<i32>,
     quality_scores: GenericListBuilder<i32, Int64Builder>,
 
-    tags: GenericListBuilder<i32, StructBuilder>,
+    tags: TagsBuilder,
 
     projection: Vec<usize>,
 
@@ -55,17 +52,15 @@ pub struct SAMArrayBuilder {
 
 impl SAMArrayBuilder {
     /// Creates a new SAM array builder.
-    pub fn create(header: Header, projection: Vec<usize>) -> Self {
-        let tag_field = Field::new("tag", DataType::Utf8, false);
-        let value_field = Field::new("value", DataType::Utf8, true);
+    pub fn create(header: Header, sam_config: Arc<SAMConfig>) -> Self {
+        let tags_builder = sam_config
+            .file_schema
+            .field_with_name("tags")
+            .map_or(TagsBuilder::default(), |field| {
+                TagsBuilder::try_from(field.data_type()).unwrap()
+            });
 
-        let tag = StructBuilder::new(
-            Fields::from(vec![tag_field, value_field]),
-            vec![
-                Box::new(GenericStringBuilder::<i32>::new()),
-                Box::new(GenericStringBuilder::<i32>::new()),
-            ],
-        );
+        let projection = sam_config.projection();
 
         let quality_scores = GenericListBuilder::<i32, Int64Builder>::new(Int64Builder::new());
 
@@ -81,7 +76,7 @@ impl SAMArrayBuilder {
             sequences: GenericStringBuilder::<i32>::new(),
             quality_scores,
 
-            tags: GenericListBuilder::new(tag),
+            tags: tags_builder,
 
             projection,
 
@@ -191,101 +186,7 @@ impl SAMArrayBuilder {
                 10 => {
                     // This is _very_ similar to BAM, may not need body any more
                     let data = record.data();
-                    let tags = data.keys();
-
-                    let tag_struct = self.tags.values();
-                    for tag in tags {
-                        let tag_str = std::str::from_utf8(tag.as_ref())?;
-                        let tag_value = data.get(&tag).unwrap();
-
-                        if tag_value.is_int() {
-                            let tag_value_str = tag_value.as_int().map(|v| v.to_string());
-
-                            tag_struct
-                                .field_builder::<GenericStringBuilder<i32>>(0)
-                                .unwrap()
-                                .append_value(tag_str);
-
-                            tag_struct
-                                .field_builder::<GenericStringBuilder<i32>>(1)
-                                .unwrap()
-                                .append_option(tag_value_str);
-                        } else {
-                            match tag_value {
-                                Value::String(tag_value_str) => {
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
-
-                                    let tag_value_str = std::str::from_utf8(tag_value_str)?;
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_value(tag_value_str);
-                                }
-                                Value::Character(tag_value_char) => {
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
-
-                                    let tag_value_char = *tag_value_char as char;
-                                    let tag_value_str = tag_value_char.to_string();
-
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_value(tag_value_str);
-                                }
-                                Value::Hex(hex) => {
-                                    let hex_str = std::str::from_utf8(hex.as_ref())?;
-
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
-
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_value(hex_str);
-                                }
-                                Value::Float(tag_value_float) => {
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
-
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_value(tag_value_float.to_string());
-                                }
-                                Value::Array(arr) => {
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
-
-                                    let f = format!("{arr:?}");
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_value(f);
-                                }
-                                _ => {
-                                    return Err(ArrowError::InvalidArgumentError(format!(
-                                        "Invalid tag value {:?} for tag {}",
-                                        tag_value, tag_str
-                                    )))
-                                }
-                            }
-                        }
-
-                        tag_struct.append(true);
-                    }
-                    self.tags.append(true);
+                    self.tags.append(data)?;
                 }
                 _ => {
                     return Err(ArrowError::InvalidArgumentError(format!(

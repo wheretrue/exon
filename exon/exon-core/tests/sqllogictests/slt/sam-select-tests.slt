@@ -42,3 +42,19 @@ query T
 SELECT name, flag, reference, start, end FROM sam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/sam/test.sam') LIMIT 1;
 ----
 ref1_grp1_p001 99 ref1 1 10
+
+statement ok
+SET exon.sam_parse_tags = false;
+
+query T
+SELECT tags FROM sam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/sam/test.sam') LIMIT 1;
+----
+[{tag: MD, value: 10}, {tag: NM, value: 0}, {tag: RG, value: grp1}, {tag: BC, value: ACGT}, {tag: H0, value: 1}, {tag: aa, value: !}, {tag: ab, value: ~}, {tag: fa, value: 3.14159}, {tag: za, value: Hello world!}, {tag: ha, value: DEADBEEF}, {tag: ba, value: -128,0,127}, {tag: bb, value: 0,127,255}, {tag: bc, value: -32768,0,32767}, {tag: bd, value: 0,32768,65535}, {tag: be, value: -2147483648,0,2147483647}, {tag: bf, value: 0,2147483648,4294967295}, {tag: bg, value: 2.72, 0.00, 2997900032.00}]
+
+statement ok
+SET exon.sam_parse_tags = true;
+
+query T
+SELECT tags."bb", tags."za", tags."RG" FROM sam_scan('$CARGO_MANIFEST_DIR/test-data/datasources/sam/test.sam') LIMIT 1;
+----
+[0, 127, 255] Hello world! grp1

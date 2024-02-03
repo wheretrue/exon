@@ -15,8 +15,11 @@
 use datafusion::{
     common::extensions_options,
     config::{ConfigExtension, ConfigOptions},
+    execution::context::SessionState,
     prelude::SessionConfig,
 };
+
+use crate::error::{ExonError, Result};
 
 pub const BATCH_SIZE: usize = 8 * 1024;
 pub const FASTA_READER_SEQUENCE_CAPACITY: usize = 512;
@@ -42,6 +45,24 @@ pub fn new_exon_config() -> SessionConfig {
         .with_target_partitions(num_cpus::get())
 }
 
+pub fn extract_config_from_state(session_state: &SessionState) -> Result<&ExonConfigExtension> {
+    let config = session_state.config();
+
+    extract_exon_config(config)
+}
+
+pub fn extract_exon_config(session_config: &SessionConfig) -> Result<&ExonConfigExtension> {
+    let config = session_config
+        .options()
+        .extensions
+        .get::<ExonConfigExtension>()
+        .ok_or(ExonError::Configuration(
+            "ExonConfigExtension not found in config options".to_string(),
+        ))?;
+
+    Ok(config)
+}
+
 extensions_options! {
     /// Exon config options.
     pub struct ExonConfigExtension {
@@ -49,6 +70,8 @@ extensions_options! {
         pub vcf_parse_formats: bool, default = false
         pub fasta_sequence_buffer_capacity: usize, default = FASTA_READER_SEQUENCE_CAPACITY
         pub fasta_large_utf8: bool, default = false
+        pub sam_parse_tags: bool, default = false
+        pub bam_parse_tags: bool, default = false
     }
 }
 
@@ -79,6 +102,8 @@ mod tests {
             super::FASTA_READER_SEQUENCE_CAPACITY
         );
         assert!(!exon_config.fasta_large_utf8);
+        assert!(!exon_config.sam_parse_tags);
+        assert!(!exon_config.bam_parse_tags);
 
         Ok(())
     }
@@ -92,6 +117,8 @@ mod tests {
         options.set("exon.vcf_parse_formats", "false")?;
         options.set("exon.fasta_sequence_buffer_capacity", "1024")?;
         options.set("exon.fasta_large_utf8", "true")?;
+        options.set("exon.sam_parse_tags", "true")?;
+        options.set("exon.bam_parse_tags", "true")?;
 
         let exon_config = config
             .options()
@@ -103,6 +130,8 @@ mod tests {
         assert!(!exon_config.vcf_parse_formats);
         assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
         assert!(exon_config.fasta_large_utf8);
+        assert!(exon_config.sam_parse_tags);
+        assert!(exon_config.bam_parse_tags);
 
         Ok(())
     }
@@ -116,6 +145,8 @@ mod tests {
         ctx.sql("SET exon.fasta_sequence_buffer_capacity = 1024")
             .await?;
         ctx.sql("SET exon.fasta_large_utf8 = true").await?;
+        ctx.sql("SET exon.sam_parse_tags = true").await?;
+        ctx.sql("SET exon.bam_parse_tags = true").await?;
 
         let state = ctx.state();
         let exon_config = state
@@ -129,6 +160,8 @@ mod tests {
         assert!(exon_config.vcf_parse_formats);
         assert_eq!(exon_config.fasta_sequence_buffer_capacity, 1024);
         assert!(exon_config.fasta_large_utf8);
+        assert!(exon_config.sam_parse_tags);
+        assert!(exon_config.bam_parse_tags);
 
         Ok(())
     }

@@ -15,23 +15,19 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder,
-        StructBuilder,
-    },
-    datatypes::{DataType, Field, Fields},
+    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder, Int64Builder},
     error::ArrowError,
 };
 use exon_common::ExonArrayBuilder;
+use exon_sam::TagsBuilder;
 use noodles::sam::{
-    alignment::{
-        record::{cigar::op::Kind, Cigar, Name},
-        record_buf::data::field::Value,
-    },
+    alignment::record::{cigar::op::Kind, Cigar, Name},
     Header,
 };
 
 const BATCH_SIZE: usize = 8192;
+
+use crate::BAMConfig;
 
 use super::indexed_async_batch_stream::SemiLazyRecord;
 
@@ -48,7 +44,7 @@ pub struct BAMArrayBuilder {
     sequences: GenericStringBuilder<i32>,
     quality_scores: GenericListBuilder<i32, Int64Builder>,
 
-    tags: GenericListBuilder<i32, StructBuilder>,
+    tags: TagsBuilder,
 
     projection: Vec<usize>,
 
@@ -59,18 +55,7 @@ pub struct BAMArrayBuilder {
 
 impl BAMArrayBuilder {
     /// Creates a new SAM array builder.
-    pub fn create(header: Arc<Header>, projection: Vec<usize>) -> Self {
-        let tag_field = Field::new("tag", DataType::Utf8, false);
-        let value_field = Field::new("value", DataType::Utf8, true);
-
-        let tag = StructBuilder::new(
-            Fields::from(vec![tag_field, value_field]),
-            vec![
-                Box::new(GenericStringBuilder::<i32>::new()),
-                Box::new(GenericStringBuilder::<i32>::new()),
-            ],
-        );
-
+    pub fn create(header: Arc<Header>, bam_config: Arc<BAMConfig>) -> Self {
         let reference_names = header
             .reference_sequences()
             .keys()
@@ -80,6 +65,13 @@ impl BAMArrayBuilder {
         let item_capacity = BATCH_SIZE;
 
         let quality_score_inner = Int64Builder::new();
+
+        let tags_builder = bam_config
+            .file_schema
+            .field_with_name("tags")
+            .map_or(TagsBuilder::default(), |field| {
+                TagsBuilder::try_from(field.data_type()).unwrap()
+            });
 
         Self {
             names: GenericStringBuilder::<i32>::new(),
@@ -96,9 +88,9 @@ impl BAMArrayBuilder {
             sequences: GenericStringBuilder::<i32>::new(),
             quality_scores: GenericListBuilder::new(quality_score_inner),
 
-            tags: GenericListBuilder::new(tag),
+            tags: tags_builder,
 
-            projection,
+            projection: bam_config.projection(),
 
             rows: 0,
 
@@ -209,93 +201,7 @@ impl BAMArrayBuilder {
                 }
                 10 => {
                     let data = record.record().data();
-                    let tags = data.keys();
-
-                    let tag_struct = self.tags.values();
-                    for tag in tags {
-                        let tag_str = std::str::from_utf8(tag.as_ref())?;
-                        // let tag_value = data.get(&tag);
-
-                        match data.get(&tag) {
-                            None => {
-                                tag_struct
-                                    .field_builder::<GenericStringBuilder<i32>>(0)
-                                    .unwrap()
-                                    .append_value(tag_str);
-
-                                tag_struct
-                                    .field_builder::<GenericStringBuilder<i32>>(1)
-                                    .unwrap()
-                                    .append_null();
-                            }
-                            Some(tag_value) => {
-                                if tag_value.is_int() {
-                                    let tag_value_str = tag_value.as_int().map(|v| v.to_string());
-
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(0)
-                                        .unwrap()
-                                        .append_value(tag_str);
-
-                                    tag_struct
-                                        .field_builder::<GenericStringBuilder<i32>>(1)
-                                        .unwrap()
-                                        .append_option(tag_value_str);
-                                } else {
-                                    match tag_value {
-                                        Value::String(tag_value_str) => {
-                                            tag_struct
-                                                .field_builder::<GenericStringBuilder<i32>>(0)
-                                                .unwrap()
-                                                .append_value(tag_str);
-
-                                            let tag_value_str =
-                                                std::str::from_utf8(tag_value_str.as_ref())?
-                                                    .to_string();
-                                            tag_struct
-                                                .field_builder::<GenericStringBuilder<i32>>(1)
-                                                .unwrap()
-                                                .append_value(tag_value_str);
-                                        }
-                                        Value::Character(tag_value_char) => {
-                                            tag_struct
-                                                .field_builder::<GenericStringBuilder<i32>>(0)
-                                                .unwrap()
-                                                .append_value(tag_str);
-
-                                            let tag_value_char = *tag_value_char as char;
-                                            let tag_value_str = tag_value_char.to_string();
-
-                                            tag_struct
-                                                .field_builder::<GenericStringBuilder<i32>>(1)
-                                                .unwrap()
-                                                .append_value(tag_value_str);
-                                        }
-                                        Value::Float(f) => {
-                                            tag_struct
-                                                .field_builder::<GenericStringBuilder<i32>>(0)
-                                                .unwrap()
-                                                .append_value(tag_str);
-
-                                            tag_struct
-                                                .field_builder::<GenericStringBuilder<i32>>(1)
-                                                .unwrap()
-                                                .append_value(f.to_string());
-                                        }
-                                        _ => {
-                                            return Err(ArrowError::InvalidArgumentError(format!(
-                                                "Invalid tag value {:?} for tag {}",
-                                                tag_value, tag_str
-                                            )))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        tag_struct.append(true);
-                    }
-                    self.tags.append(true);
+                    self.tags.append(data)?;
                 }
                 _ => {
                     return Err(ArrowError::InvalidArgumentError(format!(
@@ -327,7 +233,10 @@ impl BAMArrayBuilder {
                 7 => arrays.push(Arc::new(self.mate_references.finish())),
                 8 => arrays.push(Arc::new(self.sequences.finish())),
                 9 => arrays.push(Arc::new(self.quality_scores.finish())),
-                10 => arrays.push(Arc::new(self.tags.finish())),
+                10 => {
+                    let tags = self.tags.finish();
+                    arrays.push(Arc::new(tags))
+                }
                 _ => panic!("Invalid column index {} for SAM", col_idx),
             }
         }
