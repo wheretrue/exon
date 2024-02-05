@@ -1,4 +1,4 @@
-downoad-uniprot-bench: exon-benchmarks/data/uniprot_sprot.fasta
+download-uniprot-bench: exon-benchmarks/data/uniprot_sprot.fasta
 	mkdir -p exon-benchmarks/data
 	wget -O exon-benchmarks/data/uniprot_sprot.fasta.gz https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
 	gzip -k -d exon-benchmarks/data/uniprot_sprot.fasta.gz
@@ -24,7 +24,7 @@ test:
 coverage:
 	cargo tarpaulin --out Html
 
-TAG ?= latest
+TAG ?= HEAD
 
 .PHONY: benchmarks
 benchmarks:
