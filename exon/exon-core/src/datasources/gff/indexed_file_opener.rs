@@ -14,10 +14,7 @@
 
 use std::{ops::Range, sync::Arc};
 
-use datafusion::{
-    datasource::{listing::FileRange, physical_plan::FileOpener},
-    error::DataFusionError,
-};
+use datafusion::{datasource::physical_plan::FileOpener, error::DataFusionError};
 use exon_gff::{BatchReader, GFFConfig};
 use futures::{StreamExt, TryStreamExt};
 use noodles::core::Region;
@@ -25,7 +22,10 @@ use noodles_bgzf::VirtualPosition;
 use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
-use crate::{error::ExonError, streaming_bgzf::AsyncBGZFReader};
+use crate::{
+    datasources::indexed_file_utils::IndexOffsets, error::ExonError,
+    streaming_bgzf::AsyncBGZFReader,
+};
 
 #[derive(Debug)]
 pub struct IndexGffOpener {
@@ -56,11 +56,16 @@ impl FileOpener for IndexGffOpener {
         let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            let batch_stream = match file_meta.range {
-                Some(FileRange { start, end }) => {
+            let batch_stream = match file_meta.extensions {
+                Some(ref ext) => {
                     // The ranges are actually virtual positions
-                    let vp_start = VirtualPosition::from(start as u64);
-                    let vp_end = VirtualPosition::from(end as u64);
+
+                    let index_offsets = ext.downcast_ref::<IndexOffsets>().ok_or_else(|| {
+                        DataFusionError::Execution("Invalid index offsets".to_string())
+                    })?;
+
+                    let vp_start = index_offsets.start;
+                    let vp_end = index_offsets.end;
 
                     if vp_end.compressed() == 0 {
                         return Err(DataFusionError::Execution(

@@ -15,10 +15,7 @@
 use std::{ops::Range, sync::Arc};
 
 use datafusion::{
-    datasource::{
-        listing::FileRange,
-        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
-    },
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use exon_vcf::{IndexedAsyncBatchStream, VCFConfig};
@@ -30,7 +27,10 @@ use noodles::{
 use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
-use crate::{error::ExonError, streaming_bgzf::AsyncBGZFReader};
+use crate::{
+    datasources::indexed_file_utils::IndexOffsets, error::ExonError,
+    streaming_bgzf::AsyncBGZFReader,
+};
 
 /// A file opener for VCF files.
 #[derive(Debug)]
@@ -75,11 +75,17 @@ impl FileOpener for IndexedVCFOpener {
 
             let header_offset = vcf_reader.virtual_position();
 
-            let batch_stream = match file_meta.range {
-                Some(FileRange { start, end }) => {
+            let batch_stream = match file_meta.extensions {
+                Some(ref ext) => {
+                    let index_offsets =
+                        ext.downcast_ref::<IndexOffsets>()
+                            .ok_or(DataFusionError::Internal(
+                                "Expected index offsets in VCF file extensions".to_string(),
+                            ))?;
+
                     // The ranges are actually virtual positions in the bgzf file.
-                    let vp_start = VirtualPosition::from(start as u64);
-                    let vp_end = VirtualPosition::from(end as u64);
+                    let vp_start = index_offsets.start;
+                    let vp_end = index_offsets.end;
 
                     if vp_end.compressed() == 0 {
                         // If the compressed end is 0, we want to read the entire file.

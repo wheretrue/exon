@@ -15,19 +15,16 @@
 use std::{ops::Range, sync::Arc};
 
 use datafusion::{
-    datasource::{
-        listing::FileRange,
-        physical_plan::{FileMeta, FileOpenFuture, FileOpener},
-    },
+    datasource::physical_plan::{FileMeta, FileOpenFuture, FileOpener},
     error::DataFusionError,
 };
 use exon_bam::{BAMConfig, IndexedAsyncBatchStream};
 use futures::{StreamExt, TryStreamExt};
-use noodles::{bgzf::VirtualPosition, core::Region};
+use noodles::core::Region;
 use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
-use crate::streaming_bgzf::AsyncBGZFReader;
+use crate::{datasources::indexed_file_utils::IndexOffsets, streaming_bgzf::AsyncBGZFReader};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct IndexedBAMOpener {
@@ -61,18 +58,19 @@ impl FileOpener for IndexedBAMOpener {
             let header = first_bam_reader.read_header().await?;
             let header_offset = first_bam_reader.virtual_position();
 
-            let (vp_start, vp_end) = match file_meta.range {
-                Some(FileRange { start, end }) => {
-                    let vp_start = VirtualPosition::from(start as u64);
-                    let vp_end = VirtualPosition::from(end as u64);
-                    (vp_start, vp_end)
-                }
-                None => {
-                    return Err(DataFusionError::Execution(
-                        "Indexed BAM opener needs a range.".to_string(),
-                    ))
-                }
+            let offsets = if let Some(ref ext) = file_meta.extensions {
+                ext.downcast_ref::<IndexOffsets>()
+                    .ok_or(DataFusionError::Execution(
+                        "Missing index offsets for BAM file".to_string(),
+                    ))?
+            } else {
+                return Err(DataFusionError::Execution(
+                    "Missing extensions for BAM file".to_string(),
+                ));
             };
+
+            let vp_start = offsets.start;
+            let vp_end = offsets.end;
 
             let bgzf_reader = if vp_end.compressed() == 0 {
                 let stream = config
