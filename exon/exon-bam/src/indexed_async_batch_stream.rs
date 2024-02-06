@@ -167,33 +167,29 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<RecordBuf>> {
-        let mut record = RecordBuf::default();
-
+    async fn read_record(&mut self, record: &mut RecordBuf) -> std::io::Result<Option<()>> {
         if let Some(max_bytes) = self.max_bytes {
             if self.reader.virtual_position().uncompressed() >= max_bytes {
                 return Ok(None);
             }
         }
 
-        let bytes_read = self
-            .reader
-            .read_record_buf(&self.header, &mut record)
-            .await?;
+        let bytes_read = self.reader.read_record_buf(&self.header, record).await?;
 
         if bytes_read == 0 {
             Ok(None)
         } else {
-            Ok(Some(record))
+            Ok(Some(()))
         }
     }
 
     async fn read_record_batch(&mut self) -> ArrowResult<Option<arrow::record_batch::RecordBatch>> {
         let mut builder = BAMArrayBuilder::create(self.header.clone(), self.config.clone());
+        let mut record = RecordBuf::default();
 
         for i in 0..self.config.batch_size {
-            if let Some(record) = self.read_record().await? {
-                let semi_lazy_record = SemiLazyRecord::try_from(record)?;
+            if self.read_record(&mut record).await?.is_some() {
+                let semi_lazy_record = SemiLazyRecord::try_from(record.clone())?;
 
                 if semi_lazy_record.intersects(self.region_reference, &self.region_interval)? {
                     builder.append(&semi_lazy_record)?;

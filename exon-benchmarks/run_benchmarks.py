@@ -14,15 +14,16 @@
 """CLI script to support running exon benchmarks."""
 
 import argparse
-from pathlib import Path
-from string import Template
+import subprocess
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-import subprocess
+from pathlib import Path
+from string import Template
+
+from git import Repo
 
 PARENT = Path(__file__).parent
 
-from git import Repo
 
 BENCHMARK_CMD = [
     "hyperfine",
@@ -142,8 +143,15 @@ class Configuration:
         repo = Repo(self.repo_path)
 
         for tag in self.tags:
+            # Checkout the tag
             with checkout_commit(repo, tag):
                 print(f"Running benchmarks for tag {tag}")
+
+                # Create a release build
+                subprocess.run(
+                    ["cargo", "build", "--profile", "profiling"],
+                    check=True,
+                )
 
                 templated_command = [
                     Template(cmd).substitute(tag=tag, EXON_BENCHMARK_DIR=PARENT)

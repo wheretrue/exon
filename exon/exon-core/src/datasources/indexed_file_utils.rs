@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use datafusion::datasource::listing::{FileRange, PartitionedFile};
+use datafusion::datasource::listing::PartitionedFile;
 use noodles::{
     core::Region,
     csi::{binning_index::index::reference_sequence::bin::Chunk, BinningIndex},
@@ -113,6 +113,20 @@ pub async fn get_byte_range_for_file(
     chunks
 }
 
+pub(crate) struct IndexOffsets {
+    pub start: noodles_bgzf::VirtualPosition,
+    pub end: noodles_bgzf::VirtualPosition,
+}
+
+impl From<Chunk> for IndexOffsets {
+    fn from(chunk: Chunk) -> Self {
+        Self {
+            start: chunk.start(),
+            end: chunk.end(),
+        }
+    }
+}
+
 /// Augment a partitioned file with the byte ranges that need to be read for a given region
 pub(crate) async fn augment_partitioned_file_with_byte_range(
     object_store: Arc<dyn ObjectStore>,
@@ -127,15 +141,11 @@ pub(crate) async fn augment_partitioned_file_with_byte_range(
         .await?;
 
     for byte_range in byte_ranges {
+        let index_offsets = IndexOffsets::from(byte_range);
+
         let mut new_partition_file = partitioned_file.clone();
+        new_partition_file.extensions = Some(Arc::new(index_offsets));
 
-        let start = u64::from(byte_range.start());
-        let end = u64::from(byte_range.end());
-
-        new_partition_file.range = Some(FileRange {
-            start: start as i64,
-            end: end as i64,
-        });
         new_partition_files.push(new_partition_file);
     }
 
