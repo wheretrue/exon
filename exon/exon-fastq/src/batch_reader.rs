@@ -51,21 +51,20 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> ExonFastqResult<Option<noodles::fastq::Record>> {
-        let mut record = fastq::Record::default();
-
-        match self.reader.read_record(&mut record).await? {
+    async fn read_record(&mut self, record: &mut fastq::Record) -> ExonFastqResult<Option<()>> {
+        match self.reader.read_record(record).await? {
             0 => Ok(None),
-            _ => Ok(Some(record)),
+            _ => Ok(Some(())),
         }
     }
 
     async fn read_batch(&mut self, batch_size: usize) -> ExonFastqResult<Option<RecordBatch>> {
         let mut array = FASTQArrayBuilder::create();
+        let mut record = fastq::Record::default(); // Allocate once
 
         for _ in 0..batch_size {
-            match self.read_record().await? {
-                Some(record) => array.append(&record)?,
+            match self.read_record(&mut record).await? {
+                Some(_) => array.append(&record)?,
                 None => break,
             }
         }

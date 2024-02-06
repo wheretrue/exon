@@ -37,6 +37,9 @@ pub struct BatchReader<R> {
 
     /// Internal buffer for the sequence.
     sequence_buffer: Vec<u8>,
+
+    /// Internal buffer for the definition.
+    buf: String,
 }
 
 impl<R> BatchReader<R>
@@ -50,18 +53,18 @@ where
         Self {
             reader: noodles::fasta::AsyncReader::new(inner),
             config,
+            buf: String::with_capacity(50),
             sequence_buffer: Vec::with_capacity(buffer_size),
         }
     }
 
     async fn read_record(&mut self) -> ExonFastaResult<Option<noodles::fasta::Record>> {
-        let mut buf = String::with_capacity(50); // 50 is somewhat arbitrary
-
-        if self.reader.read_definition(&mut buf).await? == 0 {
+        self.buf.clear();
+        if self.reader.read_definition(&mut self.buf).await? == 0 {
             return Ok(None);
         }
 
-        let definition = Definition::from_str(&buf)?;
+        let definition = Definition::from_str(&self.buf)?;
 
         // Allow for options?
         // let mut sequence = Vec::with_capacity(self.config.fasta_sequence_buffer_capacity);
