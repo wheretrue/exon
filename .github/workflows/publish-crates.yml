@@ -51,7 +51,7 @@ jobs:
             tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
           fi
 
-          gh release upload $TAG target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
+          gh release upload $TAG target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
