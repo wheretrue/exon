@@ -36,19 +36,20 @@ jobs:
           toolchain: stable
           override: true
       - name: Build exon-cli
-        run: cargo build --release --manifest-path exon/exon-cli/Cargo.toml
+        run: cargo build --manifest-path exon/exon-cli/Cargo.toml
+
       - name: Upload Release Asset
         run: |
           # Upload the CLI binary under the release, use the target triple as the asset name
           # TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
           TAG="v0.8.6"
 
-          mv exon/exon-cli/target/release/exon-cli exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+          mv target/debug/exon-cli target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
 
           # Compress the binary
-          tar -czf exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+          tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
 
-          gh release upload $TAG exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
+          gh release upload $TAG target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
