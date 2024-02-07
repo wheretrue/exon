@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create Release
         run: |
-          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
+          TAG=$(git describe --tags --abbrev=0)
 
           gh release create $TAG -t $TAG -n "Release $TAG"
         env:
@@ -39,7 +39,7 @@ jobs:
       - name: Upload Release Asset
         run: |
           # Upload the CLI binary under the release, use the target triple as the asset name
-          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
+          TAG=$(git describe --tags --abbrev=0)
           gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }} -R exon/exon-cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,7 +60,7 @@ jobs:
       - name: Upload Release Asset
         run: |
           # Upload the CLI binary under the release, use the target triple as the asset name
-          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
+          TAG=$(git describe --tags --abbrev=0)
           gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }} -R exon/exon-cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
