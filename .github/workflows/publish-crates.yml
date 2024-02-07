@@ -41,6 +41,7 @@ jobs:
       - name: Build exon-cli
         run: cargo build --manifest-path exon/exon-cli/Cargo.toml
       - name: Upload Release Asset
+        shell: bash
         run: |
           TAG="v0.8.6"
           if [ "${{ runner.os }}" = "Windows" ]; then
