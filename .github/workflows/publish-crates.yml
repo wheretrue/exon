@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    # tags:
-    # - v*
+    tags:
+      - v*
 
 permissions:
   id-token: write
@@ -17,8 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create Release
         run: |
-          # TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
-          TAG="v0.8.6"
+          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
 
           gh release create $TAG -t $TAG -n "Release $TAG"
         env:
@@ -39,26 +38,25 @@ jobs:
           toolchain: stable
           override: true
       - name: Build exon-cli
-        run: cargo build --manifest-path exon/exon-cli/Cargo.toml
+        run: cargo build --release --manifest-path exon/exon-cli/Cargo.toml
       - name: Upload Release Asset
         shell: bash
         run: |
-          TAG="v0.8.6"
+          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
           if [ "${{ runner.os }}" = "Windows" ]; then
-            mv target/debug/exon-cli.exe target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
-            tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
+            mv target/release/exon-cli.exe target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
+            tar -czf target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
           else
-            mv target/debug/exon-cli target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
-            tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
+            mv target/release/exon-cli target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+            tar -czf target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
           fi
 
-          gh release upload $TAG target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
+          gh release upload $TAG target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     runs-on: ubuntu-latest
-    if: false # Disabled for now
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
