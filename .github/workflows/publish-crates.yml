@@ -24,8 +24,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-cli-linux:
-    runs-on: ubuntu-latest
+  build-cli:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
     needs: create_release
     steps:
       - uses: actions/checkout@v4
@@ -37,63 +40,18 @@ jobs:
           override: true
       - name: Build exon-cli
         run: cargo build --manifest-path exon/exon-cli/Cargo.toml
-
       - name: Upload Release Asset
         run: |
-          # Upload the CLI binary under the release, use the target triple as the asset name
-          # TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
           TAG="v0.8.6"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv target/debug/exon-cli.exe target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
+            tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
+          else
+            mv target/debug/exon-cli target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
+            tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
+          fi
 
-          mv target/debug/exon-cli target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
-
-          # Compress the binary
-          tar -czf target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}
-
-          gh release upload $TAG target/debug/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-cli-macos:
-    runs-on: macos-latest
-    needs: create_release
-    if: false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Build exon-cli
-        run: cargo build --release --manifest-path exon/exon-cli/Cargo.toml
-      - name: Upload Release Asset
-        run: |
-          # Upload the CLI binary under the release, use the target triple as the asset name
-          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
-          gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-cli-windows:
-    runs-on: windows-latest
-    needs: create_release
-    if: false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Build exon-cli
-        run: cargo build --release --manifest-path exon/exon-cli/Cargo.toml
-      - name: Upload Release Asset
-        run: |
-          # Upload the CLI binary under the release, use the target triple as the asset name
-          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
-          gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }} -R exon/exon-cli
+          gh release upload $TAG target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
