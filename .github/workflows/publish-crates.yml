@@ -42,7 +42,13 @@ jobs:
           # Upload the CLI binary under the release, use the target triple as the asset name
           # TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
           TAG="v0.8.6"
-          gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }} -R exon/exon-cli
+
+          mv exon/exon-cli/target/release/exon-cli exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+
+          # Compress the binary
+          tar -czf exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+
+          gh release upload $TAG exon/exon-cli/target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -64,7 +70,7 @@ jobs:
         run: |
           # Upload the CLI binary under the release, use the target triple as the asset name
           TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
-          gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }} -R exon/exon-cli
+          gh release upload $TAG exon/exon-cli/target/release/exon-cli -n exon-cli-${{ runner.os }}-${{ runner.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
