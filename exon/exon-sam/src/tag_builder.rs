@@ -189,6 +189,42 @@ impl TagsStructBuilder {
                             .unwrap()
                             .append_null();
                     }
+                    DataType::Int8 => {
+                        self.builder
+                            .field_builder::<Int8Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
+                    DataType::Int16 => {
+                        self.builder
+                            .field_builder::<Int16Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
+                    DataType::UInt16 => {
+                        self.builder
+                            .field_builder::<UInt16Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
+                    DataType::UInt32 => {
+                        self.builder
+                            .field_builder::<UInt32Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
+                    DataType::Int32 => {
+                        self.builder
+                            .field_builder::<Int32Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
+                    DataType::Float32 => {
+                        self.builder
+                            .field_builder::<Float32Builder>(i)
+                            .unwrap()
+                            .append_null();
+                    }
                     _ => {
                         return Err(ArrowError::InvalidArgumentError(format!(
                             "Invalid null data type {:?} for tag {}",
@@ -229,6 +265,22 @@ impl TagsStructBuilder {
                             )))
                         }
                     },
+                    DataType::Int8 => {
+                        if let Value::Int8(int) = tag_value {
+                            let i8_value = *int;
+                            self.builder
+                                .field_builder::<Int8Builder>(i)
+                                .unwrap()
+                                .append_value(i8_value);
+                        } else {
+                            return Err(ArrowError::InvalidArgumentError(format!(
+                                "Invalid tag value {:?} for tag {} a {}",
+                                tag_value,
+                                tag_name,
+                                f.data_type()
+                            )));
+                        }
+                    }
                     DataType::UInt8 => {
                         if let Value::UInt8(int) = tag_value {
                             let u8_value = *int;
