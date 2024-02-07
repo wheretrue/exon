@@ -4,9 +4,9 @@ name: Build R
 on:
   push:
     branches:
-    - main
+      - main
     tags-ignore:
-    - '*'
+      - '*'
 
 jobs:
   build:
@@ -20,26 +20,26 @@ jobs:
         r: [release]
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - uses: ./.github/actions/r_setup
+      - uses: ./.github/actions/r_setup
 
-    - shell: Rscript {0}
-      working-directory: ./exon-r/exonr/
-      run: |
-        fn = devtools::build(binary = TRUE, args = c('--preclean'))
-        print(fn)
+      - shell: Rscript {0}
+        working-directory: ./exon-r/exonr/
+        run: |
+          fn = devtools::build(binary = TRUE, args = c('--preclean'))
+          print(fn)
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: exonr-${{ matrix.os }}-${{ matrix.r }}
-        path: exon-r/exonr_*
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: exonr-${{ matrix.os }}-${{ matrix.r }}
+          path: exon-r/exonr_*
 
-    - name: print wd
-      run: print(getwd())
-      shell: Rscript {0}
+      - name: print wd
+        run: print(getwd())
+        shell: Rscript {0}
 
-    - name: print files
-      run: print(list.files("exon-r",recursive = TRUE,full.names=TRUE))
-      shell: Rscript {0}
+      - name: print files
+        run: print(list.files("exon-r",recursive = TRUE,full.names=TRUE))
+        shell: Rscript {0}

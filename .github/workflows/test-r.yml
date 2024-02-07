@@ -9,7 +9,7 @@ jobs:
     name: Test build
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/r_setup
       - shell: Rscript {0}
         working-directory: ./exon-r/exonr/
