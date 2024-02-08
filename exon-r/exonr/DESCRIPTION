@@ -10,8 +10,8 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Config/rextendr/version: 0.3.1
 Imports:
-    arrow (>= 12.0.1),
-    nanoarrow (>= 0.2.0),
+    arrow (>= 14.0.0.2),
+    nanoarrow (>= 0.4.0),
     R6 (>= 2.5.0)
 Suggests:
     testthat (>= 3.0.0),
