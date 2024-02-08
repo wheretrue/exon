@@ -105,7 +105,7 @@ impl RDataFrame {
         let stream = match runtime.block_on(async { self.0.clone().execute_stream().await }) {
             Ok(stream) => stream,
             Err(e) => {
-                return r_result_list::<(), Error>(Err(Error::Other("Error".to_string())));
+                return r_result_list::<(), Error>(Err(Error::Other(e.to_string())));
             }
         };
 
