@@ -1,4 +1,4 @@
-name: Release Crates
+name: Release
 
 on:
   push:
@@ -10,10 +10,55 @@ permissions:
   contents: write
 
 jobs:
+  # Create a GitHub release for this tag
+  create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Release
+        run: |
+          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
+
+          gh release create $TAG -t $TAG -n "Release $TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-cli:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+    needs: create_release
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build exon-cli
+        run: cargo build --release --manifest-path exon/exon-cli/Cargo.toml
+      - name: Upload Release Asset
+        shell: bash
+        run: |
+          TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv target/release/exon-cli.exe target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
+            tar -czf target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.exe
+          else
+            mv target/release/exon-cli target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+            tar -czf target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}
+          fi
+
+          gh release upload $TAG target/release/exon-cli-${{ runner.os }}-${{ runner.arch }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
