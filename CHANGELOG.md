@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## v0.9.0 (2024-02-07)
+
+### Feat
+
+- more datatypes (#390)
+- update fastx readers for speed (#388)
+- remove justfile (#382)
+- basic support for inferred BAM tag fields (#381)
+- support large strings (#377)
+
+### Fix
+
+- fix ignore on test (#378)
+
+### Refactor
+
+- use dedicated struct of bgzf offsets (#385)
+- move save out of exon-core (#379)
+
 ## v0.8.6 (2024-01-29)
 
 ### Refactor
