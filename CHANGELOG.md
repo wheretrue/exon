@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.9.2 (2024-02-08)
+
+### Feat
+
+- handle extra semiquote in gff (#399)
+
+### Refactor
+
+- **exonr**: use error (#396)
+
 ## v0.9.1 (2024-02-07)
 
 ## v0.9.0 (2024-02-07)
