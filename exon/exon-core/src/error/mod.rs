@@ -16,6 +16,7 @@ use std::{error::Error, fmt::Display, str::Utf8Error};
 
 use arrow::error::ArrowError;
 use datafusion::error::DataFusionError;
+use exon_gff::ExonGFFError;
 use noodles::bgzf::virtual_position::TryFromU64U16TupleError;
 
 use self::invalid_chrom::InvalidRegionNameError;
@@ -55,6 +56,9 @@ pub enum ExonError {
 
     /// Invalid Configuration
     Configuration(String),
+
+    /// Invalid GFF error
+    ExonGFFError(ExonGFFError),
 }
 
 impl From<DataFusionError> for ExonError {
@@ -122,6 +126,7 @@ impl Display for ExonError {
             ExonError::IOError(error) => write!(f, "IOError: {}", error),
             ExonError::InvalidFileType(error) => write!(f, "InvalidFileType: {}", error),
             ExonError::Configuration(error) => write!(f, "InvalidConfig: {}", error),
+            ExonError::ExonGFFError(error) => write!(f, "ExonGFFError: {}", error),
         }
     }
 }

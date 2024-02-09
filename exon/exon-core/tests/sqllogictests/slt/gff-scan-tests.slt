@@ -89,3 +89,8 @@ SELECT COUNT(*) AS cnt FROM new_gff WHERE gff_region_filter('chr1', seqname) = t
 
 statement ok
 DROP TABLE new_gff;
+
+query T
+COPY (SELECT * FROM gff_scan('$CARGO_MANIFEST_DIR/test-data/datasources/gff-prod/ecoli.gff')) TO '/tmp/test.parquet';
+----
+7

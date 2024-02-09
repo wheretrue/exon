@@ -1,0 +1,10 @@
+##gff-version  3
+# Sequence Data: seqnum=1;seqlen=5689156;seqhdr="NZ_CP037943.1 Escherichia coli strain CFSAN027343 chromosome, complete genome"
+# Model Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=50.68;transl_table=11;uses_sd=1
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	129	719	27.0	+	0	ID=1_1;partial=00;start_type=ATG;rbs_motif=AGGA;rbs_spacer=5-10bp;gc_cont=0.382;conf=99.80;score=26.99;cscore=8.27;sscore=18.72;rscore=10.52;uscore=4.30;tscore=3.91;
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	993	1856	128.0	-	0	ID=1_2;partial=00;start_type=ATG;rbs_motif=AGGAG/GGAGG;rbs_spacer=11-12bp;gc_cont=0.505;conf=100.00;score=128.00;cscore=116.99;sscore=11.01;rscore=6.29;uscore=-0.34;tscore=3.91;
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	1840	2976	152.4	-	0	ID=1_3;partial=00;start_type=ATG;rbs_motif=None;rbs_spacer=None;gc_cont=0.504;conf=100.00;score=152.39;cscore=157.76;sscore=-5.37;rscore=-8.14;uscore=-0.49;tscore=3.91;
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	3226	4455	203.4	+	0	ID=1_4;partial=00;start_type=ATG;rbs_motif=GGAG/GAGG;rbs_spacer=5-10bp;gc_cont=0.499;conf=99.99;score=203.44;cscore=185.82;sscore=17.62;rscore=10.85;uscore=2.86;tscore=3.91;
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	4601	5722	161.6	-	0	ID=1_5;partial=00;start_type=ATG;rbs_motif=GGA/GAG/AGG;rbs_spacer=5-10bp;gc_cont=0.540;conf=100.00;score=161.55;cscore=155.37;sscore=6.19;rscore=2.62;uscore=-0.34;tscore=3.91;
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	5798	7258	179.9	-	0	ID=1_6;partial=00;start_type=ATG;rbs_motif=None;rbs_spacer=None;gc_cont=0.513;conf=99.99;score=179.86;cscore=174.67;sscore=5.19;rscore=-8.14;uscore=-0.73;tscore=3.91;
+NZ_CP037943.1	Prodigal_v2.6.3	CDS	7258	7929	111.3	-	0	ID=1_7;partial=00;start_type=ATG;rbs_motif=GGAG/GAGG;rbs_spacer=5-10bp;gc_cont=0.473;conf=100.00;score=111.28;cscore=93.12;sscore=18.16;rscore=10.85;uscore=3.40;tscore=3.91;

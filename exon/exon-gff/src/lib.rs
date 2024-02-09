@@ -15,8 +15,10 @@
 mod array_builder;
 mod batch_reader;
 mod config;
+mod error;
 
 pub use array_builder::GFFArrayBuilder;
 pub use batch_reader::BatchReader;
 pub use config::new_gff_schema_builder;
 pub use config::GFFConfig;
+pub use error::{ExonGFFError, Result};
