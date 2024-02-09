@@ -236,8 +236,6 @@ impl TableProvider for ListingGFFTable {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        eprintln!("limit {:?}", limit);
-
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let regions = filters
