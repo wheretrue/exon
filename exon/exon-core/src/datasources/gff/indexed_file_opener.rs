@@ -14,6 +14,7 @@
 
 use std::{ops::Range, sync::Arc};
 
+use arrow::error::ArrowError;
 use datafusion::{datasource::physical_plan::FileOpener, error::DataFusionError};
 use exon_gff::{BatchReader, GFFConfig};
 use futures::{StreamExt, TryStreamExt};
@@ -121,6 +122,7 @@ impl FileOpener for IndexGffOpener {
                         BatchReader::new(bgzf_reader, config)
                             .with_region(region)
                             .into_stream()
+                            .map_err(ArrowError::from)
                     }
                 }
                 None => {

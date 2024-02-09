@@ -14,10 +14,12 @@
 
 use std::{str::FromStr, sync::Arc};
 
-use arrow::{error::ArrowError, error::Result as ArrowResult, record_batch::RecordBatch};
+use arrow::record_batch::RecordBatch;
 
 use futures::Stream;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
+
+use super::error::Result;
 
 use super::{array_builder::GFFArrayBuilder, GFFConfig};
 
@@ -50,17 +52,17 @@ where
         self
     }
 
-    pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch, ArrowError>> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<RecordBatch>> {
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),
                 Ok(None) => None,
-                Err(e) => Some((Err(ArrowError::ExternalError(Box::new(e))), reader)),
+                Err(e) => Some((Err(e), reader)),
             }
         })
     }
 
-    async fn read_line(&mut self) -> std::io::Result<Option<noodles::gff::Line>> {
+    async fn read_line(&mut self) -> Result<Option<noodles::gff::Line>> {
         loop {
             let mut buf = String::new();
             match self.reader.read_line(&mut buf).await {
@@ -73,29 +75,31 @@ where
                         buf.pop();
                     }
 
+                    // strip the right semi-colon if it's present
+                    if buf.ends_with(';') {
+                        buf.pop();
+                    }
+
                     let line = match noodles::gff::Line::from_str(&buf) {
                         Ok(line) => line,
                         Err(e) => match e {
                             noodles::gff::line::ParseError::InvalidDirective(_) => {
                                 continue;
                             }
-                            noodles::gff::line::ParseError::InvalidRecord(e) => {
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    format!("invalid record: {buf} error: {e}"),
-                                ))
+                            noodles::gff::line::ParseError::InvalidRecord(_) => {
+                                return Err(e.into());
                             }
                         },
                     };
                     buf.clear();
                     return Ok(Some(line));
                 }
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             };
         }
     }
 
-    fn filter(&self, record: &noodles::gff::Record) -> Result<bool, ArrowError> {
+    fn filter(&self, record: &noodles::gff::Record) -> Result<bool> {
         let chrom = record.reference_sequence_name();
 
         match &self.region {
@@ -116,7 +120,7 @@ where
         }
     }
 
-    async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
+    async fn read_batch(&mut self) -> Result<Option<RecordBatch>> {
         let mut gff_array_builder = GFFArrayBuilder::new();
         let mut batch_size = 0;
 

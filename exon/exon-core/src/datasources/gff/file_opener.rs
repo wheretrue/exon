@@ -14,6 +14,7 @@
 
 use std::sync::Arc;
 
+use arrow::error::ArrowError;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
@@ -52,11 +53,13 @@ impl FileOpener for GFFOpener {
             let stream_reader = get_result.into_stream().map_err(DataFusionError::from);
             let stream_reader = Box::pin(stream_reader);
 
-            let new_reader = file_compression_type.convert_stream(stream_reader).unwrap();
+            let new_reader = file_compression_type.convert_stream(stream_reader)?;
 
             let stream_reader = StreamReader::new(new_reader);
 
-            let gff_batch_reader = BatchReader::new(stream_reader, gff_config).into_stream();
+            let gff_batch_reader = BatchReader::new(stream_reader, gff_config)
+                .into_stream()
+                .map_err(ArrowError::from);
 
             Ok(gff_batch_reader.boxed())
         }))
