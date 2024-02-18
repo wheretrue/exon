@@ -1,18 +1,18 @@
 [package]
 description = "Executable benchmarks for exon"
 edition = "2021"
-homepage = {workspace = true}
+homepage = { workspace = true }
 keywords = ["exon", "bioinformatics", "rust"]
-license = {workspace = true}
+license = { workspace = true }
 name = "exon-benchmarks"
 readme = "README.md"
 version.workspace = true
 
 [dependencies]
-clap = {version = "4.5.0", features = ["derive"]}
-datafusion = {workspace = true}
-exon = {path = "../exon/exon-core", features = ["all"]}
-noodles = {workspace = true, features = ["core", "vcf", "bgzf"]}
-tokio = {version = "1", features = ["full"]}
+clap = { version = "4.5.0", features = ["derive"] }
+datafusion = { workspace = true }
+exon = { path = "../exon/exon-core", features = ["all"] }
+noodles = { workspace = true, features = ["core", "vcf", "bgzf"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"

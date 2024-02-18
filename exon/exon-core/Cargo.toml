@@ -1,50 +1,58 @@
 [package]
 description = "A platform for scientific data processing and analysis."
 edition = "2021"
-exclude = [
-  "test-data/*",
-]
-homepage = {workspace = true}
+exclude = ["test-data/*"]
+homepage = { workspace = true }
 keywords = ["biology", "science", "arrow"]
-license = {workspace = true}
+license = { workspace = true }
 name = "exon"
-readme = {workspace = true}
+readme = { workspace = true }
 version.workspace = true
 
 [dependencies]
-arrow = {workspace = true}
-async-trait = {workspace = true}
+arrow = { workspace = true }
+async-trait = { workspace = true }
 bytes = "1.5.0"
-datafusion = {workspace = true}
-exon-bam = {path = "../exon-bam", version = "0.9.3"}
-exon-bcf = {path = "../exon-bcf", version = "0.9.3"}
-exon-bed = {path = "../exon-bed", version = "0.9.3"}
-exon-common = {path = "../exon-common", version = "0.9.3"}
-exon-fasta = {path = "../exon-fasta", version = "0.9.3"}
-exon-fastq = {path = "../exon-fastq", version = "0.9.3"}
-exon-fcs = {path = "../exon-fcs", version = "0.9.3", optional = true}
-exon-genbank = {path = "../exon-genbank", version = "0.9.3", optional = true}
-exon-gff = {path = "../exon-gff", version = "0.9.3"}
-exon-gtf = {path = "../exon-gtf", version = "0.9.3"}
-exon-io = {path = "../exon-io", version = "0.9.3"}
-exon-mzml = {path = "../exon-mzml", version = "0.9.3", optional = true}
-exon-sam = {path = "../exon-sam", version = "0.9.3"}
-exon-vcf = {path = "../exon-vcf", version = "0.9.3"}
-futures = {workspace = true}
+datafusion = { workspace = true }
+exon-bam = { path = "../exon-bam", version = "0.9.3" }
+exon-bcf = { path = "../exon-bcf", version = "0.9.3" }
+exon-bed = { path = "../exon-bed", version = "0.9.3" }
+exon-common = { path = "../exon-common", version = "0.9.3" }
+exon-fasta = { path = "../exon-fasta", version = "0.9.3" }
+exon-fastq = { path = "../exon-fastq", version = "0.9.3" }
+exon-fcs = { path = "../exon-fcs", version = "0.9.3", optional = true }
+exon-genbank = { path = "../exon-genbank", version = "0.9.3", optional = true }
+exon-gff = { path = "../exon-gff", version = "0.9.3" }
+exon-gtf = { path = "../exon-gtf", version = "0.9.3" }
+exon-io = { path = "../exon-io", version = "0.9.3" }
+exon-mzml = { path = "../exon-mzml", version = "0.9.3", optional = true }
+exon-sam = { path = "../exon-sam", version = "0.9.3" }
+exon-vcf = { path = "../exon-vcf", version = "0.9.3" }
+futures = { workspace = true }
 itertools = "0.12.1"
-noodles = {workspace = true, features = ["bed", "tabix", "core", "async", "bcf", "vcf", "bgzf", "csi", "gtf"]}
-noodles-bgzf = {version = "0.26.0", features = ["libdeflate"]}
+noodles = { workspace = true, features = [
+  "bed",
+  "tabix",
+  "core",
+  "async",
+  "bcf",
+  "vcf",
+  "bgzf",
+  "csi",
+  "gtf",
+] }
+noodles-bgzf = { version = "0.26.0", features = ["libdeflate"] }
 num_cpus = "1.16.0"
-object_store = {workspace = true, features = ["aws"]}
-pin-project = {version = "1.1.4", optional = true}
-tokio = {workspace = true, features = ["rt-multi-thread"]}
-tokio-util = {workspace = true}
+object_store = { workspace = true, features = ["aws"] }
+pin-project = { version = "1.1.4", optional = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+tokio-util = { workspace = true }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-url = {workspace = true}
+url = { workspace = true }
 
 [dev-dependencies]
-exon-test = {path = "../exon-test"}
+exon-test = { path = "../exon-test" }
 sqllogictest = "0.19.1"
 
 [features]
