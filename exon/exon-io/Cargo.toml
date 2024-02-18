@@ -1,17 +1,17 @@
 [package]
 description = "IO utilities for Exon."
 edition = "2021"
-homepage = {workspace = true}
+homepage = { workspace = true }
 keywords = ["biology", "science", "arrow"]
-license = {workspace = true}
+license = { workspace = true }
 name = "exon-io"
-readme = {workspace = true}
-version = {workspace = true}
+readme = { workspace = true }
+version = { workspace = true }
 
 [dependencies]
 async-trait = "0.1.77"
-aws-config = {version = "1.1.5"}
-aws-credential-types = {version = "1.1.4"}
-object_store = {workspace = true, features = ["aws"]}
-tokio = {version = "1", features = ["io-util"]}
-url = {version = "2.5.0"}
+aws-config = { version = "1.1.5" }
+aws-credential-types = { version = "1.1.4" }
+object_store = { workspace = true, features = ["aws"] }
+tokio = { version = "1", features = ["io-util"] }
+url = { version = "2.5.0" }

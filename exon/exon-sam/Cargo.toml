@@ -6,14 +6,20 @@ license.workspace = true
 name = "exon-sam"
 readme.workspace = true
 repository.workspace = true
-version = {workspace = true}
+version = { workspace = true }
 
 [dependencies]
-arrow = {workspace = true}
-exon-common = {path = "../exon-common", version = "0.9.3"}
-futures = {workspace = true}
+arrow = { workspace = true }
+exon-common = { path = "../exon-common", version = "0.9.3" }
+futures = { workspace = true }
 itertools = "0.12.1"
-noodles = {workspace = true, features = ["core", "async", "bam", "sam", "bgzf"]}
-noodles-bgzf = {version = "0.26.0", features = ["libdeflate"]}
-object_store = {workspace = true}
-tokio = {workspace = true}
+noodles = { workspace = true, features = [
+  "core",
+  "async",
+  "bam",
+  "sam",
+  "bgzf",
+] }
+noodles-bgzf = { version = "0.26.0", features = ["libdeflate"] }
+object_store = { workspace = true }
+tokio = { workspace = true }

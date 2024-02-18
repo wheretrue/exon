@@ -4,7 +4,7 @@ name = "exon-examples"
 version.workspace = true
 
 [dependencies]
-arrow = {workspace = true}
-datafusion = {workspace = true}
-exon = {path = "../exon/exon-core", features = ["all"]}
-tokio = {version = "1", features = ["io-util"]}
+arrow = { workspace = true }
+datafusion = { workspace = true }
+exon = { path = "../exon/exon-core", features = ["all"] }
+tokio = { version = "1", features = ["io-util"] }

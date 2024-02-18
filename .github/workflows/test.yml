@@ -29,6 +29,21 @@ jobs:
           docker build --build-arg CARGO_BUILD_PROFILE=debug -t exon:latest -f Dockerfile .
           docker run -t exon:latest exon-cli -c "SELECT 1;"
 
+  toml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install toml-lint
+        run: |
+          cargo install taplo-cli
+
+      - name: Run taplo format
+        run: |
+          taplo format --check
+
   linux:
     runs-on: ubuntu-latest
     steps:

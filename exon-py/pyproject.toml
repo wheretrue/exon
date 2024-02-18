@@ -3,9 +3,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [project]
-authors = [
-  {name = "Trent Hauck", email = "trent@trenthauck.com"},
-]
+authors = [{ name = "Trent Hauck", email = "trent@trenthauck.com" }]
 classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.9",
@@ -38,19 +36,10 @@ Source = "https://github.com/unknown/exon-py"
 path = "exon_py/__about__.py"
 
 [tool.hatch.envs.default]
-dependencies = [
-  "coverage[toml]>=6.5",
-  "pytest",
-]
+dependencies = ["coverage[toml]>=6.5", "pytest"]
 [tool.hatch.envs.default.scripts]
-cov = [
-  "test-cov",
-  "cov-report",
-]
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-]
+cov = ["test-cov", "cov-report"]
+cov-report = ["- coverage combine", "coverage report"]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
 
@@ -58,26 +47,12 @@ test-cov = "coverage run -m pytest {args:tests}"
 python = ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
 
 [tool.hatch.envs.lint]
-dependencies = [
-  "black>=23.1.0",
-  "mypy>=1.0.0",
-  "ruff>=0.0.243",
-]
+dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
 detached = true
 [tool.hatch.envs.lint.scripts]
-all = [
-  "style",
-  "typing",
-]
-fmt = [
-  "black {args:.}",
-  "ruff --fix {args:.}",
-  "style",
-]
-style = [
-  "ruff {args:.}",
-  "black --check --diff {args:.}",
-]
+all = ["style", "typing"]
+fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
+style = ["ruff {args:.}", "black --check --diff {args:.}"]
 typing = "mypy --install-types --non-interactive {args:exon_py tests}"
 
 [tool.black]
@@ -86,16 +61,14 @@ skip-string-normalization = true
 target-version = ["py312"]
 
 [tool.ruff]
-exclude = [
-  "exon_py/proto/*",
-]
+exclude = ["exon_py/proto/*"]
 ignore = [
   # Allow non-abstract empty methods in abstract base classes
-  "B027", # Allow boolean positional values in function calls, like `dict.get(... True)`
-  "FBT003", # Ignore checks for possible passwords
+  "B027",    # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",  # Ignore checks for possible passwords
   "S105",
   "S106",
-  "S107", # Ignore complexity
+  "S107",    # Ignore complexity
   "C901",
   "PLR0911",
   "PLR0912",
@@ -149,9 +122,7 @@ ban-relative-imports = "all"
 
 [tool.coverage.run]
 branch = true
-omit = [
-  "exon_py/__about__.py",
-]
+omit = ["exon_py/__about__.py"]
 parallel = true
 source_pkgs = ["exon_py", "tests"]
 
@@ -160,8 +131,4 @@ exon_py = ["exon_py", "*/exon-py/exon_py"]
 tests = ["tests", "*/exon-py/tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
