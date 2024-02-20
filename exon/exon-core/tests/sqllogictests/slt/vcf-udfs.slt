@@ -1,0 +1,45 @@
+statement ok
+CREATE TABLE intervals (chrom TEXT, positions INT, region TEXT);
+
+statement ok
+INSERT INTO intervals (chrom, positions, region) VALUES ('1', 1, '1:1-1');
+INSERT INTO intervals (chrom, positions, region) VALUES ('1', 1, '1:1-1');
+INSERT INTO intervals (chrom, positions, region) VALUES ('1', 2, '1:1-2');
+INSERT INTO intervals (chrom, positions, region) VALUES ('2', 2, '2:1-2');
+INSERT INTO intervals (chrom, positions, region) VALUES ('2', 3, '2:2-3');
+
+query I
+SELECT region_match(chrom, positions, region) FROM intervals;
+----
+TRUE
+FALSE
+TRUE
+FALSE
+TRUE
+
+query I
+SELECT interval_match(positions, region) FROM intervals;
+----
+TRUE
+TRUE
+TRUE
+FALSE
+TRUE
+
+query I
+SELECT chrom_match(chrom, region) FROM intervals;
+----
+TRUE
+TRUE
+TRUE
+TRUE
+TRUE
+
+statement error
+SELECT region_match('a', 'b')
+
+statement error
+SELECT interval_match(1)
+
+statement error
+SELECT chrom_match('a')

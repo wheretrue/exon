@@ -67,9 +67,6 @@ pub mod udfs;
 /// Physical plan augmentations for Exon.
 pub mod physical_optimizer;
 
-/// Logical plan augmentations for Exon.
-pub mod logical_optimizer;
-
 /// Physical plan augmentations for Exon.
 pub mod physical_plan;
 
