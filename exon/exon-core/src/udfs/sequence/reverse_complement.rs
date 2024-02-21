@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,68 +12,105 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use arrow::{array::StringArray, datatypes::DataType};
+use datafusion::{
+    common::cast::as_string_array,
+    error::Result,
+    logical_expr::{ColumnarValue, ScalarUDFImpl, Volatility},
+    scalar::ScalarValue,
+};
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, StringArray};
-use datafusion::{common::cast::as_string_array, error::Result};
+#[derive(Debug)]
+pub(crate) struct ReverseComplement {
+    signature: datafusion::logical_expr::Signature,
+}
 
-/// Reverse complement a sequence.
-///
-/// # Arguments
-///
-/// * `args` - A slice of ArrayRefs. The first element should be a StringArray.
-///       The StringArray should contain sequences and be a single column.
-///
-/// # Example
-///
-/// ```rust
-/// use arrow::array::{ArrayRef, StringArray};
-/// use datafusion::{common::cast::as_string_array, error::Result};
-/// use std::sync::Arc;
-///
-/// let sequence_array = StringArray::from(vec![Some("ATCG"), None]);
-/// let array_ref = Arc::new(sequence_array) as ArrayRef;
-///
-/// let result = exon::udfs::sequence::reverse_complement(&[array_ref]).unwrap();
-///
-/// let string_result = as_string_array(&result).unwrap();
-/// let expected_sequence_array = StringArray::from(vec![Some("CGAT"), None]);
-///
-/// string_result
-///   .iter()
-///   .zip(expected_sequence_array.iter())
-///   .for_each(|(result, expected)| {
-///       assert_eq!(result, expected);
-///  });
-/// ```
-pub fn reverse_complement(args: &[ArrayRef]) -> Result<ArrayRef> {
-    if args.len() != 1 {
-        return Err(datafusion::error::DataFusionError::Execution(
-            "reverse_complement takes one argument".to_string(),
-        ));
+impl Default for ReverseComplement {
+    fn default() -> Self {
+        let signature =
+            datafusion::logical_expr::Signature::exact(vec![DataType::Utf8], Volatility::Immutable);
+
+        Self { signature }
+    }
+}
+
+impl ScalarUDFImpl for ReverseComplement {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 
-    let sequences = as_string_array(&args[0])?;
+    fn name(&self) -> &str {
+        "reverse_complement"
+    }
 
-    let array = sequences
-        .iter()
-        .map(|sequence| match sequence {
-            Some(sequence) => {
-                let mut reverse_complement = String::new();
-                for base in sequence.chars().rev() {
-                    match base {
-                        'A' => reverse_complement.push('T'),
-                        'T' => reverse_complement.push('A'),
-                        'C' => reverse_complement.push('G'),
-                        'G' => reverse_complement.push('C'),
-                        _ => reverse_complement.push(base),
-                    }
-                }
-                Some(reverse_complement)
+    fn signature(&self) -> &datafusion::logical_expr::Signature {
+        &self.signature
+    }
+
+    fn invoke(
+        &self,
+        args: &[datafusion::logical_expr::ColumnarValue],
+    ) -> Result<datafusion::logical_expr::ColumnarValue> {
+        match args.first() {
+            Some(ColumnarValue::Array(array)) => {
+                let array = as_string_array(array)?
+                    .iter()
+                    .map(|sequence| match sequence {
+                        Some(sequence) => {
+                            let mut reverse_complement = String::new();
+                            for base in sequence.chars().rev() {
+                                match base {
+                                    'A' => reverse_complement.push('T'),
+                                    'T' => reverse_complement.push('A'),
+                                    'C' => reverse_complement.push('G'),
+                                    'G' => reverse_complement.push('C'),
+                                    _ => reverse_complement.push(base),
+                                }
+                            }
+                            Some(reverse_complement)
+                        }
+                        None => None,
+                    })
+                    .collect::<StringArray>();
+
+                Ok(ColumnarValue::Array(Arc::new(array)))
             }
-            None => None,
-        })
-        .collect::<StringArray>();
+            Some(ColumnarValue::Scalar(s)) => match s {
+                ScalarValue::Utf8(Some(sequence)) => {
+                    let reverse_complement = sequence
+                        .chars()
+                        .rev()
+                        .map(|base| match base {
+                            'A' => 'T',
+                            'T' => 'A',
+                            'C' => 'G',
+                            'G' => 'C',
+                            _ => base,
+                        })
+                        .collect::<String>();
 
-    Ok(Arc::new(array))
+                    Ok(ColumnarValue::Scalar(ScalarValue::Utf8(Some(
+                        reverse_complement,
+                    ))))
+                }
+                _ => Err(datafusion::error::DataFusionError::Execution(
+                    "reverse_complement takes one string argument".to_string(),
+                )),
+            },
+            _ => Err(datafusion::error::DataFusionError::Execution(
+                "reverse_complement takes one string array argument".to_string(),
+            )),
+        }
+    }
+
+    fn return_type(&self, arg_types: &[DataType]) -> Result<DataType> {
+        if arg_types.len() != 1 {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "reverse_complement takes one argument".to_string(),
+            ));
+        }
+
+        Ok(DataType::Utf8)
+    }
 }

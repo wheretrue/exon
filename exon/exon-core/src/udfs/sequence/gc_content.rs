@@ -14,59 +14,91 @@
 
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, Float32Array};
-use datafusion::{common::cast::as_string_array, error::Result};
+use arrow::{array::Float32Array, datatypes::DataType};
+use datafusion::{
+    common::cast::as_string_array,
+    error::Result,
+    logical_expr::{ColumnarValue, ScalarUDFImpl, Volatility},
+    scalar::ScalarValue,
+};
 
-/// Compute the GC content of a sequence.
-///
-/// # Arguments
-///
-/// * `args` - A slice of ArrayRefs. The first element should be a StringArray.
-///       The StringArray should contain sequences and be a single column.
-///
-/// # Example
-///
-/// ```rust
-/// use arrow::array::{ArrayRef, Float32Array, StringArray};
-/// use datafusion::{common::cast::as_float32_array, error::Result};
-/// use std::sync::Arc;
-///
-/// let sequence_array = StringArray::from(vec![Some("ATCG"), None]);
-/// let array_ref = Arc::new(sequence_array) as ArrayRef;
-///
-/// let result = exon::udfs::sequence::gc_content(&[array_ref]).unwrap();
-/// let result = as_float32_array(&result).unwrap();
-///
-/// let expected = vec![Some(0.5), None];
-/// let expected = Float32Array::from(expected);
-///
-/// result
-///     .iter()
-///     .zip(expected.iter())
-///     .for_each(|(result, expected)| {
-///         assert_eq!(result, expected);
-///    });
-/// ```
-pub fn gc_content(args: &[ArrayRef]) -> Result<ArrayRef> {
-    if args.len() != 1 {
-        return Err(datafusion::error::DataFusionError::Execution(
-            "reverse_complement takes one argument".to_string(),
-        ));
+#[derive(Debug)]
+pub(crate) struct GCContent {
+    signature: datafusion::logical_expr::Signature,
+}
+
+impl Default for GCContent {
+    fn default() -> Self {
+        let signature =
+            datafusion::logical_expr::Signature::exact(vec![DataType::Utf8], Volatility::Immutable);
+
+        Self { signature }
+    }
+}
+
+impl ScalarUDFImpl for GCContent {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 
-    let sequences = as_string_array(&args[0])?;
+    fn name(&self) -> &str {
+        "gc_content"
+    }
 
-    let array = sequences
-        .iter()
-        .map(|sequence| match sequence {
-            Some(sequence) => {
-                let gc_count = sequence.chars().filter(|c| *c == 'G' || *c == 'C').count() as f32;
-                let total_count = sequence.len() as f32;
-                Some(gc_count / total_count)
+    fn signature(&self) -> &datafusion::logical_expr::Signature {
+        &self.signature
+    }
+
+    fn invoke(
+        &self,
+        args: &[datafusion::logical_expr::ColumnarValue],
+    ) -> Result<datafusion::logical_expr::ColumnarValue> {
+        match args.first() {
+            Some(ColumnarValue::Array(array)) => {
+                let f = as_string_array(array)?
+                    .iter()
+                    .map(|sequence| match sequence {
+                        Some(sequence) => {
+                            let gc_count =
+                                sequence.chars().filter(|c| *c == 'G' || *c == 'C').count() as f32;
+                            let total_count = sequence.len() as f32;
+                            Some(gc_count / total_count)
+                        }
+                        None => None,
+                    })
+                    .collect::<Float32Array>();
+
+                Ok(ColumnarValue::Array(Arc::new(f)))
             }
-            None => None,
-        })
-        .collect::<Float32Array>();
+            Some(ColumnarValue::Scalar(scalar)) => match scalar {
+                ScalarValue::Utf8(Some(sequence)) => {
+                    let gc_count =
+                        sequence.chars().filter(|c| *c == 'G' || *c == 'C').count() as f32;
+                    let total_count = sequence.len() as f32;
+                    let f = gc_count / total_count;
+                    Ok(ColumnarValue::Scalar(ScalarValue::Float32(Some(f))))
+                }
+                ScalarValue::Utf8(None) => Ok(ColumnarValue::Scalar(ScalarValue::Float32(None))),
+                _ => Err(datafusion::error::DataFusionError::Execution(
+                    "gc_content takes a string".to_string(),
+                )),
+            },
+            None => Err(datafusion::error::DataFusionError::Execution(
+                "Failed to get sequence".to_string(),
+            )),
+        }
+    }
 
-    Ok(Arc::new(array))
+    fn return_type(
+        &self,
+        arg_types: &[arrow::datatypes::DataType],
+    ) -> Result<arrow::datatypes::DataType> {
+        if arg_types.len() != 1 {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "gc_content takes one argument".to_string(),
+            ));
+        }
+
+        Ok(DataType::Float32)
+    }
 }

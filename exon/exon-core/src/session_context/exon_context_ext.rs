@@ -130,24 +130,11 @@ pub trait ExonSessionExt {
 
         // Register the mass spec UDFs
         #[cfg(feature = "mzml")]
-        for mass_spec_udf in crate::udfs::massspec::register_udfs() {
-            ctx.register_udf(mass_spec_udf);
-        }
+        crate::udfs::massspec::register_udfs(&ctx);
 
-        // Register the sequence UDFs
-        for sequence_udf in crate::udfs::sequence::register_udfs() {
-            ctx.register_udf(sequence_udf);
-        }
-
-        // Register the sam flag UDFs
-        for sam_udf in crate::udfs::sam::samflags::register_udfs() {
-            ctx.register_udf(sam_udf);
-        }
-
-        // Register the VCF UDFs
-        for vcf_udf in crate::udfs::vcf::register_vcf_udfs() {
-            ctx.register_udf(vcf_udf);
-        }
+        crate::udfs::sequence::register_udfs(&ctx);
+        crate::udfs::sam::samflags::register_udfs(&ctx);
+        crate::udfs::vcf::register_vcf_udfs(&ctx);
 
         // Register BAM region filter UDF
         register_bam_region_filter_udf(&ctx);

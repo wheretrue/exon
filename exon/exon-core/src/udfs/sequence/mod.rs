@@ -15,33 +15,20 @@
 mod gc_content;
 mod reverse_complement;
 
-use std::sync::Arc;
+use datafusion::{execution::context::SessionContext, logical_expr::ScalarUDF};
 
-use arrow::datatypes::DataType;
-use datafusion::{
-    logical_expr::{ScalarUDF, Volatility},
-    physical_plan::functions::make_scalar_function,
-    prelude::create_udf,
-};
-pub use gc_content::gc_content;
-pub use reverse_complement::reverse_complement;
+use gc_content::GCContent;
+use reverse_complement::ReverseComplement;
 
 /// Returns a vector of ScalarUDFs from the sequence module.
-pub fn register_udfs() -> Vec<ScalarUDF> {
-    vec![
-        create_udf(
-            "gc_content",
-            vec![DataType::Utf8],
-            Arc::new(DataType::Float32),
-            Volatility::Immutable,
-            make_scalar_function(gc_content),
-        ),
-        create_udf(
-            "reverse_complement",
-            vec![DataType::Utf8],
-            Arc::new(DataType::Utf8),
-            Volatility::Immutable,
-            make_scalar_function(reverse_complement),
-        ),
-    ]
+pub fn register_udfs(ctx: &SessionContext) {
+    let gc_content = GCContent::default();
+    let gc_content_scalar = ScalarUDF::from(gc_content);
+
+    ctx.register_udf(gc_content_scalar);
+
+    let reverse_complement = ReverseComplement::default();
+    let reverse_complement_scalar = ScalarUDF::from(reverse_complement);
+
+    ctx.register_udf(reverse_complement_scalar);
 }

@@ -18,76 +18,10 @@ use arrow::{array::ArrayRef, datatypes::DataType};
 use datafusion::{
     common::cast::as_int32_array,
     error::Result,
-    logical_expr::{ScalarUDF, Volatility},
-    physical_plan::functions::make_scalar_function,
-    prelude::create_udf,
+    execution::context::SessionContext,
+    logical_expr::{ScalarUDF, ScalarUDFImpl, Volatility},
 };
 use noodles::sam::alignment::record::Flags;
-
-/// Based on the SAM flags, determine if the read is segmented.
-///
-/// # Arguments
-///
-/// * `args` - A slice of ArrayRefs. The first element should be a Int32Array.
-///     The Int32Array should contain SAM flags and be a single column.
-pub fn is_segmented(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::SEGMENTED)
-}
-
-/// Based on the SAM flags, determine if the read is properly aligned.
-pub fn is_properly_aligned(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::PROPERLY_ALIGNED)
-}
-
-/// Based on the SAM flags, determine if the read is unmapped.
-pub fn is_unmapped(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::UNMAPPED)
-}
-
-/// Based on the SAM flags, determine if the mate is unmapped.
-pub fn is_mate_unmapped(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::MATE_UNMAPPED)
-}
-
-/// Based on the SAM flags, determine if the read is reverse complemented.
-pub fn is_reverse_complemented(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::REVERSE_COMPLEMENTED)
-}
-
-/// Based on the SAM flags, determine if the mate is reverse complemented.
-pub fn is_mate_reverse_complemented(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::MATE_REVERSE_COMPLEMENTED)
-}
-
-/// Based on the SAM flags, determine if the read is the first segment.
-pub fn is_first_segment(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::FIRST_SEGMENT)
-}
-
-/// Based on the SAM flags, determine if the read is the last segment.
-pub fn is_last_segment(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::LAST_SEGMENT)
-}
-
-/// Based on the SAM flags, determine if the secondary alignment.
-pub fn is_secondary(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::SECONDARY)
-}
-
-/// Based on the SAM flags, determine if the read is a quality check failure.
-pub fn is_qc_fail(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::QC_FAIL)
-}
-
-/// Based on the SAM flags, determine if the read is a PCR or optical duplicate.
-pub fn is_duplicate(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::DUPLICATE)
-}
-
-/// Based on the SAM flags, determine if the read is supplementary.
-pub fn is_supplementary(args: &[ArrayRef]) -> Result<ArrayRef> {
-    sam_flag_function(args, Flags::SUPPLEMENTARY)
-}
 
 fn sam_flag_function(args: &[ArrayRef], record_flag: Flags) -> Result<ArrayRef> {
     if args.len() != 1 {
@@ -112,93 +46,92 @@ fn sam_flag_function(args: &[ArrayRef], record_flag: Flags) -> Result<ArrayRef> 
     Ok(Arc::new(array))
 }
 
+#[derive(Debug)]
+pub struct SAMScalarUDF {
+    signature: datafusion::logical_expr::Signature,
+    flags: Flags,
+    name: String,
+}
+
+impl SAMScalarUDF {
+    fn new(flags: Flags, name: String) -> Self {
+        let type_signature = datafusion::logical_expr::TypeSignature::Exact(vec![DataType::Int32]);
+        let signature =
+            datafusion::logical_expr::Signature::new(type_signature, Volatility::Immutable);
+
+        Self {
+            flags,
+            signature,
+            name,
+        }
+    }
+}
+
+impl ScalarUDFImpl for SAMScalarUDF {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn signature(&self) -> &datafusion::logical_expr::Signature {
+        &self.signature
+    }
+
+    fn return_type(&self, _arg_types: &[DataType]) -> Result<DataType> {
+        Ok(DataType::Boolean)
+    }
+
+    fn invoke(
+        &self,
+        args: &[datafusion::physical_plan::ColumnarValue],
+    ) -> Result<datafusion::physical_plan::ColumnarValue> {
+        if args.len() != 1 {
+            return Err(datafusion::error::DataFusionError::Execution(format!(
+                "{} takes one argument",
+                self.name
+            )));
+        }
+
+        match &args[0] {
+            datafusion::physical_plan::ColumnarValue::Array(arr) => {
+                let array = sam_flag_function(&[arr.clone()], self.flags)?;
+                Ok(datafusion::physical_plan::ColumnarValue::Array(array))
+            }
+            _ => Err(datafusion::error::DataFusionError::Execution(
+                "flag scalar takes an array argument".to_string(),
+            )),
+        }
+    }
+}
+
 /// Returns a vector of SAM function UDFs.
-pub fn register_udfs() -> Vec<ScalarUDF> {
-    vec![
-        // create_udf(name, input_types, return_type, volatility, fun)
-        create_udf(
-            "is_segmented",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_segmented),
+pub fn register_udfs(ctx: &SessionContext) {
+    let udfs = vec![
+        SAMScalarUDF::new(Flags::SEGMENTED, "is_segmented".to_string()),
+        SAMScalarUDF::new(Flags::PROPERLY_ALIGNED, "is_properly_aligned".to_string()),
+        SAMScalarUDF::new(Flags::UNMAPPED, "is_unmapped".to_string()),
+        SAMScalarUDF::new(Flags::MATE_UNMAPPED, "is_mate_unmapped".to_string()),
+        SAMScalarUDF::new(
+            Flags::REVERSE_COMPLEMENTED,
+            "is_reverse_complemented".to_string(),
         ),
-        create_udf(
-            "is_properly_aligned",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_properly_aligned),
+        SAMScalarUDF::new(
+            Flags::MATE_REVERSE_COMPLEMENTED,
+            "is_mate_reverse_complemented".to_string(),
         ),
-        create_udf(
-            "is_unmapped",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_unmapped),
-        ),
-        create_udf(
-            "is_mate_unmapped",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_mate_unmapped),
-        ),
-        create_udf(
-            "is_reverse_complemented",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_reverse_complemented),
-        ),
-        create_udf(
-            "is_mate_reverse_complemented",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_mate_reverse_complemented),
-        ),
-        create_udf(
-            "is_first_segment",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_first_segment),
-        ),
-        create_udf(
-            "is_last_segment",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_last_segment),
-        ),
-        create_udf(
-            "is_secondary",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_secondary),
-        ),
-        create_udf(
-            "is_qc_fail",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_qc_fail),
-        ),
-        create_udf(
-            "is_duplicate",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_duplicate),
-        ),
-        create_udf(
-            "is_supplementary",
-            vec![DataType::Int32],
-            Arc::new(DataType::Boolean),
-            Volatility::Immutable,
-            make_scalar_function(is_supplementary),
-        ),
-    ]
+        SAMScalarUDF::new(Flags::FIRST_SEGMENT, "is_first_segment".to_string()),
+        SAMScalarUDF::new(Flags::LAST_SEGMENT, "is_last_segment".to_string()),
+        SAMScalarUDF::new(Flags::SECONDARY, "is_secondary".to_string()),
+        SAMScalarUDF::new(Flags::QC_FAIL, "is_qc_fail".to_string()),
+        SAMScalarUDF::new(Flags::DUPLICATE, "is_duplicate".to_string()),
+        SAMScalarUDF::new(Flags::SUPPLEMENTARY, "is_supplementary".to_string()),
+    ];
+
+    for udf in udfs {
+        let scalar_func = ScalarUDF::from(udf);
+        ctx.register_udf(scalar_func);
+    }
 }

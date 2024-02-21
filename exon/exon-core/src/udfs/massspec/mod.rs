@@ -15,12 +15,19 @@
 mod bin_vectors;
 mod contains_peak;
 
-use datafusion::logical_expr::ScalarUDF;
+use datafusion::{execution::context::SessionContext, logical_expr::ScalarUDF};
 
-/// Returns a vector of ScalarUDFs from the sequence module.
-pub fn register_udfs() -> Vec<ScalarUDF> {
-    vec![
-        bin_vectors::bin_vectors_udf(),
-        contains_peak::contains_peak_udf(),
-    ]
+use self::contains_peak::ContainsPeak;
+
+/// Register UDFs for the massspec module.
+pub fn register_udfs(ctx: &SessionContext) {
+    let contains_peak_udf_impl = ContainsPeak::default();
+    let contains_peak_udf = ScalarUDF::from(contains_peak_udf_impl);
+
+    ctx.register_udf(contains_peak_udf);
+
+    let bin_vectors_udf_impl = bin_vectors::BinVectors::default();
+    let bin_vectors_udf = ScalarUDF::from(bin_vectors_udf_impl);
+
+    ctx.register_udf(bin_vectors_udf);
 }

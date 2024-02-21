@@ -49,6 +49,9 @@ struct Args {
 
     #[clap(short, long, help = "Execute commands from file(s), then exit")]
     file: Vec<String>,
+
+    #[clap(long, help = "Enables console syntax highlighting")]
+    color: bool,
 }
 
 #[tokio::main]
@@ -66,6 +69,7 @@ pub async fn main() -> Result<()> {
         format: args.format,
         quiet: args.quiet,
         maxrows: args.maxrows,
+        color: args.color,
     };
 
     let commands = args.command;
