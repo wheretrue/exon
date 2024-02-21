@@ -28,18 +28,19 @@ exon-io = { path = "../exon-io", version = "0.9.3" }
 exon-mzml = { path = "../exon-mzml", version = "0.9.3", optional = true }
 exon-sam = { path = "../exon-sam", version = "0.9.3" }
 exon-vcf = { path = "../exon-vcf", version = "0.9.3" }
+exon-zarr = { path = "../exon-zarr", version = "0.9.3" }
 futures = { workspace = true }
 itertools = "0.12.1"
 noodles = { workspace = true, features = [
-  "bed",
-  "tabix",
-  "core",
-  "async",
-  "bcf",
-  "vcf",
-  "bgzf",
-  "csi",
-  "gtf",
+    "bed",
+    "tabix",
+    "core",
+    "async",
+    "bcf",
+    "vcf",
+    "bgzf",
+    "csi",
+    "gtf",
 ] }
 noodles-bgzf = { version = "0.26.0", features = ["libdeflate"] }
 num_cpus = "1.16.0"
@@ -61,6 +62,7 @@ fcs = ["dep:exon-fcs"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 fixtures = []
 genbank = ["dep:exon-genbank"]
+zarr = []
 mzml = ["dep:exon-mzml"]
 
 [[test]]

@@ -14,6 +14,7 @@ members = [
   "exon/exon-bam",
   "exon/exon-bcf",
   "exon/exon-bed",
+  "exon/exon-zarr",
   "exon/exon-common",
   "exon/exon-core",
   "exon/exon-fasta",

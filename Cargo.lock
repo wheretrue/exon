@@ -389,6 +389,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrow-zarr"
+version = "0.0.1"
+dependencies = [
+ "arrow",
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-cast",
+ "arrow-data",
+ "arrow-schema",
+ "async-trait",
+ "blosc",
+ "bzip2",
+ "dyn-clone",
+ "flate2",
+ "futures",
+ "futures-util",
+ "itertools 0.12.1",
+ "object_store",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "xz2",
+]
+
+[[package]]
 name = "async-compression"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1095,6 +1121,22 @@ checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
 ]
+
+[[package]]
+name = "blosc"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e35aa1ac22858b0fa4f4e74d96c84d93b86a27093989a3f2b812b00ff7c6d2fe"
+dependencies = [
+ "blosc-sys",
+ "libc",
+]
+
+[[package]]
+name = "blosc-sys"
+version = "1.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76569aca625203c979c5c37343cdfdf4d2f9f4fd5f6a4eb89b68e7f2549d37e9"
 
 [[package]]
 name = "brotli"
@@ -1816,6 +1858,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "545b22097d44f8a9581187cdf93de7a71e4722bf51200cfaba810865b49a495d"
+
+[[package]]
 name = "educe"
 version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1937,6 +1985,7 @@ dependencies = [
  "exon-sam",
  "exon-test",
  "exon-vcf",
+ "exon-zarr",
  "futures",
  "itertools 0.12.1",
  "noodles",
@@ -2181,6 +2230,16 @@ dependencies = [
  "noodles-bgzf",
  "object_store",
  "tokio",
+]
+
+[[package]]
+name = "exon-zarr"
+version = "0.9.3"
+dependencies = [
+ "arrow",
+ "arrow-zarr",
+ "futures",
+ "object_store",
 ]
 
 [[package]]

@@ -58,6 +58,10 @@ pub mod gtf;
 #[cfg(feature = "fcs")]
 pub mod fcs;
 
+/// Zarr module.
+// #[cfg(feature = "zarr")]
+pub mod zarr;
+
 /// File types.
 mod exon_file_type;
 
