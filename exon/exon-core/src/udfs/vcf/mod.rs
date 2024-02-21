@@ -192,7 +192,6 @@ impl ScalarUDFImpl for VCFChromMatch {
             .collect::<BooleanArray>();
 
         let col_value = ColumnarValue::Array(Arc::new(array) as ArrayRef);
-
         Ok(col_value)
     }
 }

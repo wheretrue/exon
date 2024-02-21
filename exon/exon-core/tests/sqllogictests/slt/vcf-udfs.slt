@@ -1,39 +1,35 @@
 statement ok
-CREATE TABLE intervals (chrom TEXT, positions INT, region TEXT);
+CREATE TABLE intervals (chrom TEXT, positions INT);
 
 statement ok
-INSERT INTO intervals (chrom, positions, region) VALUES ('1', 1, '1:1-1');
-INSERT INTO intervals (chrom, positions, region) VALUES ('1', 1, '1:1-1');
-INSERT INTO intervals (chrom, positions, region) VALUES ('1', 2, '1:1-2');
-INSERT INTO intervals (chrom, positions, region) VALUES ('2', 2, '2:1-2');
-INSERT INTO intervals (chrom, positions, region) VALUES ('2', 3, '2:2-3');
+INSERT INTO intervals (chrom, positions) VALUES ('1', 1), ('1', 1), ('1', 2), ('2', 2), ('2', 3);
 
 query I
-SELECT region_match(chrom, positions, region) FROM intervals;
+SELECT region_match(chrom, positions, '1:1-1') FROM intervals;
 ----
-TRUE
-FALSE
-TRUE
-FALSE
-TRUE
+true
+true
+false
+false
+false
 
 query I
-SELECT interval_match(positions, region) FROM intervals;
+SELECT interval_match(positions, '1-1') FROM intervals;
 ----
-TRUE
-TRUE
-TRUE
-FALSE
-TRUE
+true
+true
+false
+false
+false
 
 query I
-SELECT chrom_match(chrom, region) FROM intervals;
+SELECT chrom_match(chrom, '1') FROM intervals;
 ----
-TRUE
-TRUE
-TRUE
-TRUE
-TRUE
+true
+true
+true
+false
+false
 
 statement error
 SELECT region_match('a', 'b')

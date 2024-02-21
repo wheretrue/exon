@@ -63,7 +63,11 @@ impl ScalarUDFImpl for BinVectors {
     }
 
     fn return_type(&self, _arg_types: &[DataType]) -> DataFusionResult<DataType> {
-        Ok(DataType::Boolean)
+        Ok(DataType::List(Arc::new(Field::new(
+            "item",
+            DataType::Float64,
+            true,
+        ))))
     }
 
     fn invoke(

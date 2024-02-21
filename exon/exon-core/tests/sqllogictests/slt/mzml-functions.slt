@@ -21,8 +21,14 @@ SELECT bin_vectors(mz.mz, intensity.intensity, 200.0, 10, 1.0) AS bins FROM mzml
 ----
 [0.0, 0.0, 0.0, 0.0, 203667.40002441406, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+statement ok
+DROP TABLE mzml_table
+
+statement ok
+CREATE TABLE mzml_table AS SELECT [1.0, 2.0, 3.0] AS mz, [1.0, 2.0, 3.0] AS intensity;
+
 query T
-SELECT bin_vectors([1.0, 2.0, 3.0], [1.0, 2.0, 3.0], 1.0, 3, 1.0) AS bins;
+SELECT bin_vectors(mz, intensity, 1.0, 3, 1.0) AS bins FROM mzml_table;
 ----
 [1.0, 2.0, 3.0]
 
