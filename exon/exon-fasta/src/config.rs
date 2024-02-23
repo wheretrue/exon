@@ -16,9 +16,11 @@ use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
 use exon_common::TableSchema;
+use noodles::core::Region;
 use object_store::ObjectStore;
 
 /// Configuration for a FASTA data source.
+#[derive(Debug)]
 pub struct FASTAConfig {
     /// The number of rows to read at a time.
     pub batch_size: usize,
@@ -37,6 +39,9 @@ pub struct FASTAConfig {
 
     /// Whether or not to use a LargeUtf8 array for the sequence.
     pub use_large_utf8: bool,
+
+    /// An optional region to read from.
+    pub region: Option<Region>,
 }
 
 impl FASTAConfig {
@@ -49,7 +54,14 @@ impl FASTAConfig {
             projection: None,
             fasta_sequence_buffer_capacity: 384,
             use_large_utf8: false,
+            region: None,
         }
+    }
+
+    /// Create a new FASTA configuration with a given region.
+    pub fn with_region(mut self, region: Region) -> Self {
+        self.region = Some(region);
+        self
     }
 
     /// Create a new FASTA configuration with a given batch size.

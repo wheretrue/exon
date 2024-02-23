@@ -43,30 +43,12 @@ use crate::{
         ExonFileType,
     },
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+        file_scan_config_builder::FileScanConfigBuilder, infer_region,
+        object_store::pruned_partition_list,
     },
 };
 
 use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
-
-fn infer_region_from_scalar_udf(scalar_udf: &ScalarFunction) -> Option<Region> {
-    if scalar_udf.name() == "vcf_region_filter" {
-        if scalar_udf.args.len() == 2 || scalar_udf.args.len() == 3 {
-            match &scalar_udf.args[0] {
-                Expr::Literal(l) => {
-                    let region_str = l.to_string();
-                    let region = Region::from_str(region_str.as_str()).ok()?;
-                    Some(region)
-                }
-                _ => None,
-            }
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -326,7 +308,7 @@ impl TableProvider for ListingVCFTable {
             .iter()
             .filter_map(|f| {
                 if let Expr::ScalarFunction(s) = f {
-                    infer_region_from_scalar_udf(s)
+                    infer_region::infer_region_from_udf(s, "vcf_region_filter")
                 } else {
                     None
                 }

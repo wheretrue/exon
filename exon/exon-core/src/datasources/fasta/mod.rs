@@ -16,6 +16,7 @@ mod file_opener;
 mod scanner;
 mod udtf;
 
+mod indexed_file_opener;
 /// Table provider for FASTA files.
 pub mod table_provider;
 

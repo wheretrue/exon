@@ -35,3 +35,6 @@ pub mod start_end_region_physical_expr;
 
 /// A custom PhysicalPlanner that adds Exon-specific functionality.
 pub mod planner;
+
+/// A macro for extracting the region from a UDF.
+pub mod infer_region;

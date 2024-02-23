@@ -25,7 +25,7 @@ use datafusion::{
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
-    logical_expr::{expr::ScalarFunction, TableProviderFilterPushDown, TableType},
+    logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
 };
@@ -35,32 +35,18 @@ use futures::{StreamExt, TryStreamExt};
 use noodles::core::Region;
 
 use crate::{
-    datasources::indexed_file_utils::augment_partitioned_file_with_byte_range,
     datasources::{
-        hive_partition::filter_matches_partition_cols, indexed_file_utils::IndexedFile,
+        hive_partition::filter_matches_partition_cols,
+        indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
         ExonFileType,
     },
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+        file_scan_config_builder::FileScanConfigBuilder, infer_region,
+        object_store::pruned_partition_list,
     },
 };
 
 use super::{indexed_scanner::IndexedGffScanner, GFFScan};
-
-fn infer_region_from_scalar_udf(scalar_udf: &ScalarFunction) -> Option<Region> {
-    if scalar_udf.name() == "gff_region_filter" {
-        match &scalar_udf.args[0] {
-            Expr::Literal(l) => {
-                let region_str = l.to_string();
-                let region = Region::from_str(region_str.as_str()).ok()?;
-                Some(region)
-            }
-            _ => None,
-        }
-    } else {
-        None
-    }
-}
 
 #[derive(Debug, Clone)]
 /// Configuration for a GFF listing table
@@ -242,7 +228,7 @@ impl TableProvider for ListingGFFTable {
             .iter()
             .filter_map(|f| {
                 if let Expr::ScalarFunction(s) = f {
-                    infer_region_from_scalar_udf(s)
+                    infer_region::infer_region_from_udf(s, "gff_region_filter")
                 } else {
                     None
                 }

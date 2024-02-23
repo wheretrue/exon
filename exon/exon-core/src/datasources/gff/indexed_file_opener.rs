@@ -29,7 +29,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct IndexGffOpener {
+pub struct IndexedGffOpener {
     /// The configuration for the opener.
     config: Arc<GFFConfig>,
 
@@ -37,14 +37,14 @@ pub struct IndexGffOpener {
     region: Arc<Region>,
 }
 
-impl IndexGffOpener {
-    /// Create a new VCF file opener.
+impl IndexedGffOpener {
+    /// Create a new GFF file opener.
     pub fn new(config: Arc<GFFConfig>, region: Arc<Region>) -> Self {
         Self { config, region }
     }
 }
 
-impl FileOpener for IndexGffOpener {
+impl FileOpener for IndexedGffOpener {
     fn open(
         &self,
         file_meta: datafusion::datasource::physical_plan::FileMeta,
@@ -57,80 +57,72 @@ impl FileOpener for IndexGffOpener {
         let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            let batch_stream = match file_meta.extensions {
-                Some(ref ext) => {
-                    // The ranges are actually virtual positions
+            let index_offsets = file_meta
+                .extensions
+                .as_ref()
+                .and_then(|ext| ext.downcast_ref::<IndexOffsets>())
+                .ok_or(DataFusionError::Execution(
+                    "Invalid index offsets".to_string(),
+                ))?;
 
-                    let index_offsets = ext.downcast_ref::<IndexOffsets>().ok_or_else(|| {
-                        DataFusionError::Execution("Invalid index offsets".to_string())
-                    })?;
+            let vp_start = index_offsets.start;
+            let vp_end = index_offsets.end;
 
-                    let vp_start = index_offsets.start;
-                    let vp_end = index_offsets.end;
+            if vp_end.compressed() == 0 {
+                return Err(DataFusionError::Execution(
+                    "Invalid file range specified".to_string(),
+                ));
+            }
 
-                    if vp_end.compressed() == 0 {
-                        return Err(DataFusionError::Execution(
-                            "Invalid file range specified".to_string(),
-                        ));
-                    } else {
-                        let start = vp_start.compressed() as usize;
-                        let end = if vp_start.compressed() == vp_end.compressed() {
-                            file_meta.object_meta.size
-                        } else {
-                            vp_end.compressed() as usize
-                        };
-
-                        tracing::debug!(
-                            "Reading compressed range: {}..{} (uncompressed {}..{}) of {}",
-                            vp_start.compressed(),
-                            vp_end.compressed(),
-                            start,
-                            end,
-                            file_meta.location()
-                        );
-
-                        let get_options = GetOptions {
-                            range: Some(GetRange::Bounded(Range { start, end })),
-                            ..Default::default()
-                        };
-
-                        let get_response = config
-                            .object_store
-                            .get_opts(file_meta.location(), get_options)
-                            .await?;
-
-                        let stream = get_response.into_stream().map_err(DataFusionError::from);
-                        let stream_reader = StreamReader::new(Box::pin(stream));
-
-                        let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
-
-                        // If we're not at the start of the file, we need to seek to the uncompressed
-                        // offset. The compressed offset is always 0 in this case because we're
-                        // reading from a block boundary.
-                        if vp_start.uncompressed() > 0 {
-                            let marginal_start_vp =
-                                VirtualPosition::try_from((0, vp_start.uncompressed()))
-                                    .map_err(ExonError::from)?;
-
-                            async_reader
-                                .scan_to_virtual_position(marginal_start_vp)
-                                .await?;
-                        }
-
-                        let bgzf_reader = async_reader.into_inner();
-
-                        BatchReader::new(bgzf_reader, config)
-                            .with_region(region)
-                            .into_stream()
-                            .map_err(ArrowError::from)
-                    }
-                }
-                None => {
-                    return Err(DataFusionError::Execution(
-                        "No file range specified".to_string(),
-                    ))
-                }
+            let start = vp_start.compressed() as usize;
+            let end = if vp_start.compressed() == vp_end.compressed() {
+                file_meta.object_meta.size
+            } else {
+                vp_end.compressed() as usize
             };
+
+            tracing::debug!(
+                "Reading compressed range: {}..{} (uncompressed {}..{}) of {}",
+                vp_start.compressed(),
+                vp_end.compressed(),
+                start,
+                end,
+                file_meta.location()
+            );
+
+            let get_options = GetOptions {
+                range: Some(GetRange::Bounded(Range { start, end })),
+                ..Default::default()
+            };
+
+            let get_response = config
+                .object_store
+                .get_opts(file_meta.location(), get_options)
+                .await?;
+
+            let stream = get_response.into_stream().map_err(DataFusionError::from);
+            let stream_reader = StreamReader::new(Box::pin(stream));
+
+            let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
+
+            // If we're not at the start of the file, we need to seek to the uncompressed
+            // offset. The compressed offset is always 0 in this case because we're
+            // reading from a block boundary.
+            if vp_start.uncompressed() > 0 {
+                let marginal_start_vp = VirtualPosition::try_from((0, vp_start.uncompressed()))
+                    .map_err(ExonError::from)?;
+
+                async_reader
+                    .scan_to_virtual_position(marginal_start_vp)
+                    .await?;
+            }
+
+            let bgzf_reader = async_reader.into_inner();
+
+            let batch_stream = BatchReader::new(bgzf_reader, config)
+                .with_region(region)
+                .into_stream()
+                .map_err(ArrowError::from);
 
             Ok(batch_stream.boxed())
         }))
