@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2025 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,16 @@ use datafusion::{
 };
 use exon_fasta::FASTASchemaBuilder;
 
-use crate::{config::ExonConfigExtension, datasources::ScanFunction, ExonRuntimeEnvExt};
-
-use super::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions};
+use crate::{
+    config::ExonConfigExtension,
+    datasources::{
+        fasta::table_provider::{
+            ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions,
+        },
+        ScanFunction,
+    },
+    ExonRuntimeEnvExt,
+};
 
 /// A table function that returns a table provider for a FASTA file.
 pub struct FastaScanFunction {

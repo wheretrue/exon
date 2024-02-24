@@ -24,7 +24,7 @@ use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
 use crate::{
-    datasources::indexed_file_utils::IndexOffsets, error::ExonError,
+    datasources::indexed_file::indexed_bgzf_file::BGZFIndexedOffsets, error::ExonError,
     streaming_bgzf::AsyncBGZFReader,
 };
 
@@ -60,7 +60,7 @@ impl FileOpener for IndexedGffOpener {
             let index_offsets = file_meta
                 .extensions
                 .as_ref()
-                .and_then(|ext| ext.downcast_ref::<IndexOffsets>())
+                .and_then(|ext| ext.downcast_ref::<BGZFIndexedOffsets>())
                 .ok_or(DataFusionError::Execution(
                     "Invalid index offsets".to_string(),
                 ))?;

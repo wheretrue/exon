@@ -139,7 +139,7 @@ mod tests {
         let mut reader = AsyncBGZFReader::from_reader(stream_reader);
 
         let region = "1".parse()?;
-        let chunks = crate::datasources::indexed_file_utils::IndexedFile::Vcf
+        let chunks = crate::datasources::indexed_file::indexed_bgzf_file::IndexedBGZFFile::Vcf
             .get_byte_range_for_file(object_store.clone(), &object_meta, &region)
             .await?;
         let first_chunk = chunks.first().unwrap();

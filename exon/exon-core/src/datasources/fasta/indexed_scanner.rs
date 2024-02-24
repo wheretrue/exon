@@ -1,0 +1,120 @@
+use std::{any::Any, sync::Arc};
+
+use crate::datasources::ExonFileScanConfig;
+use arrow::datatypes::SchemaRef;
+use datafusion::{
+    datasource::physical_plan::{FileScanConfig, FileStream},
+    error::Result as DataFusionResult,
+    execution::SendableRecordBatchStream,
+    physical_plan::{
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning,
+    },
+};
+use exon_fasta::FASTAConfig;
+
+use super::indexed_file_opener::IndexedFASTAOpener;
+
+#[derive(Debug, Clone)]
+/// Implements a datafusion `ExecutionPlan` for indexed FASTA files.
+pub struct IndexedFASTAScanner {
+    /// The base configuration for the file scan.
+    base_config: FileScanConfig,
+
+    /// The projected schema for the scan.
+    projected_schema: SchemaRef,
+
+    /// Metrics for the execution plan.
+    metrics: ExecutionPlanMetricsSet,
+
+    /// The fasta reader capacity.
+    fasta_sequence_buffer_capacity: usize,
+}
+
+impl IndexedFASTAScanner {
+    pub fn new(base_config: FileScanConfig, fasta_sequence_buffer_capacity: usize) -> Self {
+        let (projected_schema, ..) = base_config.project();
+
+        Self {
+            base_config,
+            projected_schema,
+            metrics: ExecutionPlanMetricsSet::new(),
+            fasta_sequence_buffer_capacity,
+        }
+    }
+}
+
+impl DisplayAs for IndexedFASTAScanner {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let repr = format!(
+            "IndexedFASTAScanner: {}",
+            self.base_config.file_groups.len()
+        );
+        write!(f, "{}", repr)
+    }
+}
+
+impl ExecutionPlan for IndexedFASTAScanner {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn schema(&self) -> SchemaRef {
+        self.projected_schema.clone()
+    }
+
+    fn output_partitioning(&self) -> Partitioning {
+        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
+    }
+
+    fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
+        None
+    }
+
+    fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
+        vec![]
+    }
+
+    fn with_new_children(
+        self: Arc<Self>,
+        _children: Vec<Arc<dyn ExecutionPlan>>,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        Ok(self)
+    }
+
+    fn repartitioned(
+        &self,
+        target_partitions: usize,
+        _config: &datafusion::config::ConfigOptions,
+    ) -> DataFusionResult<Option<Arc<dyn ExecutionPlan>>> {
+        let file_groups = self.base_config.regroup_files_by_size(target_partitions);
+
+        match file_groups {
+            Some(file_groups) => {
+                let mut new_plan = self.clone();
+                new_plan.base_config.file_groups = file_groups;
+
+                Ok(Some(Arc::new(new_plan)))
+            }
+            None => Ok(None),
+        }
+    }
+
+    fn execute(
+        &self,
+        partition: usize,
+        context: Arc<datafusion::execution::context::TaskContext>,
+    ) -> DataFusionResult<datafusion::physical_plan::SendableRecordBatchStream> {
+        let object_store = context
+            .runtime_env()
+            .object_store(&self.base_config.object_store_url)?;
+
+        let config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_batch_size(context.session_config().batch_size())
+            .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity)
+            .with_projection(self.base_config.file_projection());
+
+        let opener = IndexedFASTAOpener::new(Arc::new(config));
+
+        let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
+        Ok(Box::pin(stream) as SendableRecordBatchStream)
+    }
+}

@@ -28,7 +28,7 @@ use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
 use crate::{
-    datasources::indexed_file_utils::IndexOffsets, error::ExonError,
+    datasources::indexed_file::indexed_bgzf_file::BGZFIndexedOffsets, error::ExonError,
     streaming_bgzf::AsyncBGZFReader,
 };
 
@@ -77,11 +77,11 @@ impl FileOpener for IndexedVCFOpener {
 
             let batch_stream = match file_meta.extensions {
                 Some(ref ext) => {
-                    let index_offsets =
-                        ext.downcast_ref::<IndexOffsets>()
-                            .ok_or(DataFusionError::Internal(
-                                "Expected index offsets in VCF file extensions".to_string(),
-                            ))?;
+                    let index_offsets = ext.downcast_ref::<BGZFIndexedOffsets>().ok_or(
+                        DataFusionError::Internal(
+                            "Expected index offsets in VCF file extensions".to_string(),
+                        ),
+                    )?;
 
                     // The ranges are actually virtual positions in the bgzf file.
                     let vp_start = index_offsets.start;

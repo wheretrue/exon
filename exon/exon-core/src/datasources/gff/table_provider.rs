@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, str::FromStr, sync::Arc};
+use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
@@ -37,7 +37,9 @@ use noodles::core::Region;
 use crate::{
     datasources::{
         hive_partition::filter_matches_partition_cols,
-        indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
+        indexed_file::indexed_bgzf_file::{
+            augment_partitioned_file_with_byte_range, IndexedBGZFFile,
+        },
         ExonFileType,
     },
     physical_plan::{
@@ -127,7 +129,6 @@ impl ListingGFFTableOptions {
     /// Infer the base schema for the table from the file schema
     pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let schema = new_gff_schema_builder();
-
         let schema = schema.add_partition_fields(self.table_partition_cols.clone());
 
         Ok(schema.build())
@@ -276,7 +277,7 @@ impl TableProvider for ListingGFFTable {
                     object_store.clone(),
                     &f,
                     region,
-                    &IndexedFile::Gff,
+                    &IndexedBGZFFile::Gff,
                 )
                 .await?;
 

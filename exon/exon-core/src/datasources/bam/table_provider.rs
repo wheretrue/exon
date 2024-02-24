@@ -14,6 +14,15 @@
 
 use std::{any::Any, sync::Arc};
 
+use crate::{
+    datasources::{
+        hive_partition::filter_matches_partition_cols,
+        indexed_file::indexed_bgzf_file::{
+            augment_partitioned_file_with_byte_range, IndexedBGZFFile,
+        },
+    },
+    physical_plan::{infer_region, object_store::pruned_partition_list},
+};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
@@ -34,6 +43,8 @@ use futures::{StreamExt, TryStreamExt};
 use noodles::{core::Region, sam::alignment::RecordBuf};
 use object_store::ObjectStore;
 use tokio_util::io::StreamReader;
+
+use super::{indexed_scanner::IndexedBAMScan, BAMScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a BAM listing table
@@ -60,16 +71,6 @@ impl ListingBAMTableConfig {
         }
     }
 }
-
-use crate::{
-    datasources::{
-        hive_partition::filter_matches_partition_cols,
-        indexed_file_utils::{augment_partitioned_file_with_byte_range, IndexedFile},
-    },
-    physical_plan::{infer_region, object_store::pruned_partition_list},
-};
-
-use super::{indexed_scanner::IndexedBAMScan, BAMScan};
 
 #[derive(Debug, Clone)]
 /// Listing options for a BAM table
@@ -363,7 +364,7 @@ impl TableProvider for ListingBAMTable {
                 object_store.clone(),
                 &f,
                 &region,
-                &IndexedFile::Bam,
+                &IndexedBGZFFile::Bam,
             )
             .await?;
 
