@@ -66,6 +66,7 @@ jobs:
         run: |
           pip install awscli
           pip install awscli-local
+          pip install urllib3==2.2.1
 
       - name: Run clippy
         run: |

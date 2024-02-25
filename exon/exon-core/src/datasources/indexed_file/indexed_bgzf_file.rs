@@ -24,13 +24,13 @@ use tokio_util::io::StreamReader;
 
 use datafusion::error::Result;
 
-pub enum IndexedFile {
+pub enum IndexedBGZFFile {
     Vcf,
     Bam,
     Gff,
 }
 
-impl IndexedFile {
+impl IndexedBGZFFile {
     pub async fn get_byte_range_for_file(
         &self,
         object_store: Arc<dyn ObjectStore>,
@@ -53,17 +53,16 @@ pub async fn get_byte_range_for_file(
     object_store: Arc<dyn ObjectStore>,
     object_meta: &ObjectMeta,
     region: &Region,
-    indexed_file: &IndexedFile,
+    indexed_file: &IndexedBGZFFile,
 ) -> Result<Vec<Chunk>> {
     let path = object_meta.location.clone().to_string() + indexed_file.index_file_extension();
     let path = Path::from(path);
 
     let index_bytes = object_store.get(&path).await?.bytes().await?;
-
     let cursor = std::io::Cursor::new(index_bytes);
 
     let chunks = match indexed_file {
-        IndexedFile::Vcf | IndexedFile::Gff => {
+        IndexedBGZFFile::Vcf | IndexedBGZFFile::Gff => {
             let index = noodles::tabix::Reader::new(cursor).read_index()?;
 
             let header = index.header().ok_or_else(|| {
@@ -87,7 +86,7 @@ pub async fn get_byte_range_for_file(
                 None => Ok(vec![]),
             }
         }
-        IndexedFile::Bam => {
+        IndexedBGZFFile::Bam => {
             let stream = object_store.get(&object_meta.location).await?.into_stream();
             let reader = StreamReader::new(stream);
             let mut bam_reader = noodles::bam::AsyncReader::new(reader);
@@ -113,12 +112,12 @@ pub async fn get_byte_range_for_file(
     chunks
 }
 
-pub(crate) struct IndexOffsets {
+pub(crate) struct BGZFIndexedOffsets {
     pub start: noodles_bgzf::VirtualPosition,
     pub end: noodles_bgzf::VirtualPosition,
 }
 
-impl From<Chunk> for IndexOffsets {
+impl From<Chunk> for BGZFIndexedOffsets {
     fn from(chunk: Chunk) -> Self {
         Self {
             start: chunk.start(),
@@ -132,7 +131,7 @@ pub(crate) async fn augment_partitioned_file_with_byte_range(
     object_store: Arc<dyn ObjectStore>,
     partitioned_file: &PartitionedFile,
     region: &Region,
-    indexed_file: &IndexedFile,
+    indexed_file: &IndexedBGZFFile,
 ) -> Result<Vec<PartitionedFile>> {
     let mut new_partition_files = vec![];
 
@@ -141,7 +140,7 @@ pub(crate) async fn augment_partitioned_file_with_byte_range(
         .await?;
 
     for byte_range in byte_ranges {
-        let index_offsets = IndexOffsets::from(byte_range);
+        let index_offsets = BGZFIndexedOffsets::from(byte_range);
 
         let mut new_partition_file = partitioned_file.clone();
         new_partition_file.extensions = Some(Arc::new(index_offsets));
@@ -160,7 +159,7 @@ mod tests {
     use noodles::bgzf::VirtualPosition;
     use object_store::{local::LocalFileSystem, ObjectStore};
 
-    use crate::datasources::indexed_file_utils::IndexedFile;
+    use crate::datasources::indexed_file::indexed_bgzf_file::IndexedBGZFFile;
 
     #[tokio::test]
     async fn test_byte_range_calculation() -> Result<(), Box<dyn std::error::Error>> {
@@ -171,7 +170,7 @@ mod tests {
 
         let region = "chr1:1-3388930".parse()?;
 
-        let chunks = IndexedFile::Vcf
+        let chunks = IndexedBGZFFile::Vcf
             .get_byte_range_for_file(object_store, &object_meta, &region)
             .await?;
 

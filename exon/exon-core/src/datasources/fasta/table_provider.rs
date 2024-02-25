@@ -16,9 +16,13 @@ use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crate::{
     config::ExonConfigExtension,
-    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    datasources::{
+        hive_partition::filter_matches_partition_cols, indexed_file::fai::compute_fai_range,
+        ExonFileType,
+    },
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+        file_scan_config_builder::FileScanConfigBuilder, infer_region,
+        object_store::pruned_partition_list,
     },
 };
 use arrow::datatypes::{Field, Schema, SchemaRef};
@@ -39,8 +43,10 @@ use datafusion::{
 use exon_common::TableSchema;
 use exon_fasta::FASTASchemaBuilder;
 use futures::TryStreamExt;
+use noodles::{core::Region, fasta::fai::Reader};
+use object_store::path::Path;
 
-use super::FASTAScan;
+use super::{indexed_scanner::IndexedFASTAScanner, FASTAScan};
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
@@ -79,6 +85,9 @@ pub struct ListingFASTATableOptions {
 
     /// The partition columns for the table
     table_partition_cols: Vec<Field>,
+
+    /// A region to optionally filter the table
+    region: Option<Arc<Region>>,
 }
 
 impl ListingFASTATableOptions {
@@ -90,6 +99,15 @@ impl ListingFASTATableOptions {
             file_extension,
             file_compression_type,
             table_partition_cols: Vec::new(),
+            region: None,
+        }
+    }
+
+    /// Set the region
+    pub fn with_region(self, region: Arc<Region>) -> Self {
+        Self {
+            region: Some(region),
+            ..self
         }
     }
 
@@ -146,13 +164,19 @@ impl ListingFASTATableOptions {
 
         let fasta_sequence_buffer_capacity = exon_settings.fasta_sequence_buffer_capacity;
 
-        let scan = FASTAScan::new(
-            conf.clone(),
-            self.file_compression_type,
-            fasta_sequence_buffer_capacity,
-        );
+        if self.region.is_some() {
+            let scan = IndexedFASTAScanner::new(conf.clone(), fasta_sequence_buffer_capacity);
 
-        Ok(Arc::new(scan))
+            Ok(Arc::new(scan))
+        } else {
+            let scan = FASTAScan::new(
+                conf.clone(),
+                self.file_compression_type,
+                fasta_sequence_buffer_capacity,
+            );
+
+            Ok(Arc::new(scan))
+        }
     }
 }
 
@@ -177,6 +201,28 @@ impl ListingFASTATable {
                 .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
     }
+
+    fn resolve_region(&self, filters: &[Expr]) -> Result<Option<Arc<Region>>> {
+        let region = filters.iter().find_map(|f| match f {
+            Expr::ScalarFunction(s) => {
+                infer_region::infer_region_from_udf(s, "fasta_region_filter")
+            }
+            _ => None,
+        });
+
+        match &self.options.region {
+            Some(region) => Ok(Some(region.clone())),
+            None => {
+                if let Some(region) = region {
+                    Ok(Some(Arc::new(region)))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+
+        // Ok(region)
+    }
 }
 
 #[async_trait]
@@ -199,7 +245,12 @@ impl TableProvider for ListingFASTATable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         let f = filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .map(|f| match f {
+                Expr::ScalarFunction(s) if s.name() == "fasta_region_filter" => {
+                    TableProviderFilterPushDown::Exact
+                }
+                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
+            })
             .collect();
 
         Ok(f)
@@ -220,6 +271,8 @@ impl TableProvider for ListingFASTATable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
+        let region = self.resolve_region(filters)?;
+
         let file_list = pruned_partition_list(
             state,
             &object_store,
@@ -232,21 +285,64 @@ impl TableProvider for ListingFASTATable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            Arc::clone(&self.table_schema.file_schema()?),
-            vec![file_list],
-        )
-        .projection_option(projection.cloned())
-        .table_partition_cols(self.options.table_partition_cols.clone())
-        .limit_option(limit)
-        .build();
+        if let Some(region) = &region {
+            // If there was a region, we need to create a set of file partitions augmented with the
+            // byte offsets of the region in the file
+            let mut file_partitions = Vec::new();
 
-        let plan = self
-            .options
-            .create_physical_plan(state, file_scan_config)
-            .await?;
+            for file in file_list {
+                let file_name = file.clone().object_meta.location;
+                // Add the .fai extension to the end of the file name
+                let index_file_path = Path::from(format!("{}.fai", file_name));
 
-        Ok(plan)
+                let index_bytes = object_store.get(&index_file_path).await?.bytes().await?;
+                let cursor = std::io::Cursor::new(index_bytes);
+
+                let index_records = Reader::new(cursor).read_index()?;
+
+                // TODO: coalesce the regions into contiguous blocks
+                for index_record in index_records {
+                    if let Some(range) = compute_fai_range(region, &index_record) {
+                        let mut indexed_partition = file.clone();
+                        indexed_partition.extensions = Some(Arc::new(range));
+                        file_partitions.push(indexed_partition);
+                    }
+                }
+            }
+
+            let file_scan_config = FileScanConfigBuilder::new(
+                object_store_url.clone(),
+                Arc::clone(&self.table_schema.file_schema()?),
+                vec![file_partitions],
+            )
+            .projection_option(projection.cloned())
+            .table_partition_cols(self.options.table_partition_cols.clone())
+            .limit_option(limit)
+            .build();
+
+            let plan = self
+                .options
+                .create_physical_plan(state, file_scan_config)
+                .await?;
+
+            Ok(plan)
+        } else {
+            let file_scan_config = FileScanConfigBuilder::new(
+                object_store_url.clone(),
+                Arc::clone(&self.table_schema.file_schema()?),
+                vec![file_list],
+            )
+            .projection_option(projection.cloned())
+            .table_partition_cols(self.options.table_partition_cols.clone())
+            .limit_option(limit)
+            .build();
+
+            let plan = self
+                .options
+                .create_physical_plan(state, file_scan_config)
+                .await?;
+
+            Ok(plan)
+        }
     }
 }

@@ -14,11 +14,15 @@
 
 mod file_opener;
 mod scanner;
-mod udtf;
+mod udtfs;
 
 /// Table provider for FASTA files.
 pub mod table_provider;
 
+mod indexed_file_opener;
+pub(crate) mod indexed_scanner;
+
 pub use self::file_opener::FASTAOpener;
 pub use self::scanner::FASTAScan;
-pub use self::udtf::FastaScanFunction;
+pub use self::udtfs::fasta_indexed_scan::FastaIndexedScanFunction;
+pub use self::udtfs::fasta_scan::FastaScanFunction;

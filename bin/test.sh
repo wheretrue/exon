@@ -39,7 +39,7 @@ sleep 2
 aws --endpoint-url=http://localhost:4566 s3 mb s3://test-bucket
 
 # Upload the test data.
-aws --endpoint-url=http://localhost:4566 s3api put-object --bucket test-bucket --key test.fasta --body ./exon/exon-core/test-data/datasources/fasta/test.fasta
+aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta/test.fasta s3://test-bucket/test.fasta
 
 # Make the bucket public.
 aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-bucket --acl public-read

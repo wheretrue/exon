@@ -24,7 +24,10 @@ use noodles::core::Region;
 use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 
-use crate::{datasources::indexed_file_utils::IndexOffsets, streaming_bgzf::AsyncBGZFReader};
+use crate::{
+    datasources::indexed_file::indexed_bgzf_file::BGZFIndexedOffsets,
+    streaming_bgzf::AsyncBGZFReader,
+};
 
 /// Implements a datafusion `FileOpener` for BAM files.
 pub struct IndexedBAMOpener {
@@ -59,7 +62,7 @@ impl FileOpener for IndexedBAMOpener {
             let header_offset = first_bam_reader.virtual_position();
 
             let offsets = if let Some(ref ext) = file_meta.extensions {
-                ext.downcast_ref::<IndexOffsets>()
+                ext.downcast_ref::<BGZFIndexedOffsets>()
                     .ok_or(DataFusionError::Execution(
                         "Missing index offsets for BAM file".to_string(),
                     ))?

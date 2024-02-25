@@ -28,7 +28,7 @@ use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::indexed_file_opener::IndexGffOpener;
+use super::indexed_file_opener::IndexedGffOpener;
 
 #[derive(Debug, Clone)]
 pub struct IndexedGffScanner {
@@ -115,13 +115,11 @@ impl ExecutionPlan for IndexedGffScanner {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        // let batch_size = context.session_config().batch_size();
-
         let config = GFFConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(context.session_config().batch_size())
             .with_projection(self.base_config.file_projection());
 
-        let opener = IndexGffOpener::new(Arc::new(config), self.region.clone());
+        let opener = IndexedGffOpener::new(Arc::new(config), self.region.clone());
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
         Ok(Box::pin(stream) as SendableRecordBatchStream)
