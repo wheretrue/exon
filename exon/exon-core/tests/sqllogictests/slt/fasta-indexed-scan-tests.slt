@@ -9,3 +9,8 @@ query III
 SELECT * FROM fasta_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta-indexed/test.fasta', 'a:3-4');
 ----
 a:3-4 NULL CG
+
+query III
+SELECT * FROM fasta_indexed_scan('s3://test-bucket/test-indexed.fasta', 'a:1-2');
+----
+a:1-2 NULL AT
