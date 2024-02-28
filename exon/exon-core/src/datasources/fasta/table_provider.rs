@@ -87,7 +87,7 @@ pub struct ListingFASTATableOptions {
     table_partition_cols: Vec<Field>,
 
     /// A region to optionally filter the table
-    region: Option<Arc<Region>>,
+    region: Option<Region>,
 }
 
 impl ListingFASTATableOptions {
@@ -104,7 +104,7 @@ impl ListingFASTATableOptions {
     }
 
     /// Set the region
-    pub fn with_region(self, region: Arc<Region>) -> Self {
+    pub fn with_region(self, region: Region) -> Self {
         Self {
             region: Some(region),
             ..self
@@ -202,7 +202,7 @@ impl ListingFASTATable {
         })
     }
 
-    fn resolve_region(&self, filters: &[Expr]) -> Result<Option<Arc<Region>>> {
+    fn resolve_region(&self, filters: &[Expr]) -> Result<Option<Region>> {
         let region = filters.iter().find_map(|f| match f {
             Expr::ScalarFunction(s) => {
                 infer_region::infer_region_from_udf(s, "fasta_region_filter")
@@ -214,7 +214,7 @@ impl ListingFASTATable {
             Some(region) => Ok(Some(region.clone())),
             None => {
                 if let Some(region) = region {
-                    Ok(Some(Arc::new(region)))
+                    Ok(Some(region))
                 } else {
                     Ok(None)
                 }

@@ -89,7 +89,7 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
         let region: Region = region_str.parse().map_err(ExonError::from)?;
 
         let listing_table_options =
-            ListingFASTATableOptions::new(compression_type).with_region(Arc::new(region));
+            ListingFASTATableOptions::new(compression_type).with_region(region);
 
         let listing_table_config =
             ListingFASTATableConfig::new(listing_table_url).with_options(listing_table_options);
