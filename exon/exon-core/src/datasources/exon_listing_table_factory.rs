@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::{option, str::FromStr, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
@@ -32,6 +32,7 @@ use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
     bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
     bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
+    cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
     fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
     gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
@@ -290,6 +291,21 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
+            ExonFileType::CRAM => {
+                let options = ListingCRAMTableOptions::new("".to_string())
+                    .with_table_partition_cols(table_partition_cols);
+
+                let table_schema = options.infer_schema(state, &table_path).await?;
+
+                let config = ListingCRAMTableConfig::new(table_path, Some(options));
+
+                let table = crate::datasources::cram::table_provider::ListingCRAMTable::try_new(
+                    config,
+                    table_schema,
+                )?;
+
+                Ok(Arc::new(table))
+            }
             #[cfg(feature = "fcs")]
             ExonFileType::FCS => {
                 let options = ListingFCSTableOptions::new(file_compression_type)
@@ -337,6 +353,9 @@ impl TableProviderFactory for ExonListingTableFactory {
             .runtime_env()
             .exon_register_object_store_url(url)
             .await?;
+
+        let options = &cmd.options;
+        eprintln!("options: {:?}", options);
 
         self.create_from_file_type(
             state,

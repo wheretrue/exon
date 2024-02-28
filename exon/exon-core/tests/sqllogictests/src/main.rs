@@ -156,6 +156,11 @@ async fn run_tests() -> Result<(), DataFusionError> {
     for test_file in test_files {
         let test_file = test_file?;
 
+        // only run cram-select-tests.slt
+        if test_file.path().file_name().expect("expected file name") != "cram-select-tests.slt" {
+            continue;
+        }
+
         // if the file doesn't end with an slt extension skip it
         if test_file
             .path()

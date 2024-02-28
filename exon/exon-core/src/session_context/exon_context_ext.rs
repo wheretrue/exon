@@ -108,6 +108,7 @@ pub trait ExonSessionExt {
             "BAM",
             "BCF",
             "BED",
+            "CRAM",
             "FAA",
             "FASTA",
             "FASTQ",

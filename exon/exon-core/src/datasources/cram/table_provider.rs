@@ -68,12 +68,6 @@ impl ListingCRAMTableConfig {
 
 #[derive(Debug, Clone)]
 pub struct ListingCRAMTableOptions {
-    /// True if the table is indexed.
-    indexed: bool,
-
-    /// The region to filter on.
-    region: Option<Region>,
-
     /// The partition columns for the table.
     table_partition_cols: Vec<Field>,
 
@@ -85,23 +79,9 @@ impl ListingCRAMTableOptions {
     /// Create a new CRAM listing table options.
     pub fn new(fasta_reference: String) -> Self {
         Self {
-            indexed: false,
-            region: None,
             table_partition_cols: Vec::new(),
             fasta_reference,
         }
-    }
-
-    /// Set the indexed flag for the table.
-    pub fn with_indexed(mut self, indexed: bool) -> Self {
-        self.indexed = indexed;
-        self
-    }
-
-    /// Set the region for the table.
-    pub fn with_region(mut self, region: Option<Region>) -> Self {
-        self.region = region;
-        self
     }
 
     /// Set the partition columns for the table.
