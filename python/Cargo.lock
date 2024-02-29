@@ -1294,7 +1294,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1330,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1345,7 +1345,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bcf"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bed"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1371,7 +1371,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1383,7 +1383,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1396,7 +1396,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1409,7 +1409,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fcs"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "byteorder",
@@ -1421,7 +1421,7 @@ dependencies = [
 
 [[package]]
 name = "exon-genbank"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1433,7 +1433,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1446,7 +1446,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1458,7 +1458,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -1470,7 +1470,7 @@ dependencies = [
 
 [[package]]
 name = "exon-mzml"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "base64",
@@ -1486,7 +1486,7 @@ dependencies = [
 
 [[package]]
 name = "exon-py"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "datafusion",
@@ -1497,7 +1497,7 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",
@@ -1511,7 +1511,7 @@ dependencies = [
 
 [[package]]
 name = "exon-vcf"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "arrow",
  "exon-common",

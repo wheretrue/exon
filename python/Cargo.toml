@@ -6,11 +6,12 @@ license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/wheretrue/exon"
 version = "0.11.0"
+description = "Python bindings for Exon"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-exon = { path = "../exon/exon-core", features = ["all"], version = "0.10" }
+exon = { path = "../exon/exon-core", features = ["all"], version = "0.11" }
 datafusion = { version = "36.0", features = ["parquet"] }
 arrow = { version = "50.0", features = ["pyarrow"] }
 pyo3 = "0.20"
