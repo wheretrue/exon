@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.11.0 (2024-02-28)
+
+### Feat
+
+- add more code to python (#414)
+- move python code into proper (#413)
+- add better read_fastq and read_fasta methods (#412)
+
 ## v0.10.0 (2024-02-25)
 
 ### Feat
