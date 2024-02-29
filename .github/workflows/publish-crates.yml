@@ -157,3 +157,8 @@ jobs:
         run: cargo publish --manifest-path exon/exon-core/Cargo.toml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish exon-py
+        run: cargo publish --manifest-path python/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

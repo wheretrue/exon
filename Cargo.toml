@@ -28,6 +28,7 @@ members = [
   "exon/exon-test",
   "exon/exon-vcf",
 ]
+exclude = ["python"]
 resolver = "2"
 
 [workspace.dependencies]
