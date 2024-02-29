@@ -90,6 +90,17 @@ pub struct ListingFASTATableOptions {
     region: Option<Region>,
 }
 
+impl Default for ListingFASTATableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: String::from(".fasta"),
+            file_compression_type: FileCompressionType::UNCOMPRESSED,
+            table_partition_cols: Vec::new(),
+            region: None,
+        }
+    }
+}
+
 impl ListingFASTATableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {

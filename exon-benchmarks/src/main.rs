@@ -17,7 +17,10 @@ use datafusion::{
     datasource::file_format::file_compression_type::FileCompressionType,
     prelude::{col, lit, SessionContext},
 };
-use exon::{new_exon_config, ExonRuntimeEnvExt, ExonSessionExt};
+use exon::{
+    datasources::fasta::table_provider::ListingFASTATableOptions, new_exon_config,
+    ExonRuntimeEnvExt, ExonSessionExt,
+};
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -182,11 +185,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::FASTACodonScan { path, compression }) => {
             let path = path.as_str();
-            let compression = compression.to_owned();
+
+            let fasta_options = ListingFASTATableOptions::new(compression.unwrap());
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.read_fasta(path, compression).await?;
+            let df = ctx.read_fasta(path, Some(fasta_options)).await?;
 
             let count = df.filter(col("sequence").ilike(lit("M%")))?.count().await?;
 
