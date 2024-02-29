@@ -43,8 +43,18 @@ use crate::{
             BCFScanFunction,
         },
         bed::BEDScanFunction,
-        fasta::{FastaIndexedScanFunction, FastaScanFunction},
-        fastq::FastqScanFunction,
+        fasta::{
+            table_provider::{
+                ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions,
+            },
+            FastaIndexedScanFunction, FastaScanFunction,
+        },
+        fastq::{
+            table_provider::{
+                ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions,
+            },
+            FastqScanFunction,
+        },
         gff::{GFFIndexedScanFunction, GFFScanFunction},
         gtf::GTFScanFunction,
         hmmdomtab::HMMDomTabScanFunction,
@@ -205,12 +215,8 @@ pub trait ExonSessionExt {
     async fn read_fasta(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::FASTA, file_compression_type)
-            .await;
-    }
+        fasta_listing_table_options: Option<ListingFASTATableOptions>,
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a BAM file.
     async fn read_bam(
@@ -234,17 +240,6 @@ pub trait ExonSessionExt {
     ) -> Result<DataFrame, ExonError> {
         return self
             .read_exon_table(table_path, ExonFileType::SAM, file_compression_type)
-            .await;
-    }
-
-    /// Read a FASTQ file.
-    async fn read_fastq(
-        &self,
-        table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::FASTQ, file_compression_type)
             .await;
     }
 
@@ -301,6 +296,13 @@ pub trait ExonSessionExt {
             .read_exon_table(table_path, ExonFileType::BED, file_compression_type)
             .await;
     }
+
+    /// Read a FASTQ file.
+    async fn read_fastq(
+        &self,
+        table_path: &str,
+        fastq_listing_table_options: Option<ListingFASTQTableOptions>,
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a GENBANK file.
     #[cfg(feature = "genbank")]
@@ -394,6 +396,45 @@ impl ExonSessionExt for SessionContext {
             .await?;
 
         let table = self.read_table(table)?;
+
+        Ok(table)
+    }
+
+    /// Read a FASTA file.
+    async fn read_fasta(
+        &self,
+        table_path: &str,
+        fasta_listing_table_options: Option<ListingFASTATableOptions>,
+    ) -> Result<DataFrame, ExonError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+        let options = fasta_listing_table_options.unwrap_or_default();
+
+        let state = self.state();
+        let table_schema = options.infer_schema(&state).await?;
+
+        let config = ListingFASTATableConfig::new(table_path).with_options(options);
+        let table = ListingFASTATable::try_new(config, table_schema)?;
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    /// Read a FASTQ file.
+    async fn read_fastq(
+        &self,
+        table_path: &str,
+        fastq_listing_table_options: Option<ListingFASTQTableOptions>,
+    ) -> Result<DataFrame, ExonError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+        let options = fastq_listing_table_options.unwrap_or_default();
+
+        let table_schema = options.infer_schema();
+
+        let config = ListingFASTQTableConfig::new(table_path).with_options(options);
+        let table = ListingFASTQTable::try_new(config, table_schema)?;
+
+        let table = self.read_table(Arc::new(table))?;
 
         Ok(table)
     }

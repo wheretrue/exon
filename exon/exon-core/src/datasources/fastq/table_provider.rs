@@ -81,6 +81,16 @@ pub struct ListingFASTQTableOptions {
     table_partition_cols: Vec<Field>,
 }
 
+impl Default for ListingFASTQTableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: String::from("fastq"),
+            file_compression_type: FileCompressionType::UNCOMPRESSED,
+            table_partition_cols: Vec::new(),
+        }
+    }
+}
+
 impl ListingFASTQTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
