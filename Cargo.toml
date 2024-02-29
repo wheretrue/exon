@@ -27,6 +27,7 @@ members = [
   "exon/exon-sam",
   "exon/exon-test",
   "exon/exon-vcf",
+  "exon/exon-py",
 ]
 resolver = "2"
 
