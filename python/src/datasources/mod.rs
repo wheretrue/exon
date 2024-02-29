@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod datasources;
-mod error;
-mod execution_results;
-mod file_compression_type;
-mod runtime;
-mod session_context;
-
-pub use session_context::connect;
+pub(crate) mod fastq;
