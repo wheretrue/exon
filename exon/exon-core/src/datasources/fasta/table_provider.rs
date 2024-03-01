@@ -20,7 +20,6 @@ use crate::{
         hive_partition::filter_matches_partition_cols, indexed_file::fai::compute_fai_range,
         ExonFileType,
     },
-    error::ExonError,
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder,
         infer_region,
@@ -36,7 +35,7 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::{context::SessionState, object_store::ObjectStoreUrl},
+    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -206,7 +205,7 @@ impl ListingFASTATable {
         }?;
 
         let regions_from_file = if let Some(region_file) = &self.config.options.region_file {
-            let region_url = parse_url(&region_file)?;
+            let region_url = parse_url(region_file)?;
             let object_store_url = url_to_object_store_url(&region_url)?;
 
             let object_store = session_context
@@ -299,7 +298,7 @@ impl TableProvider for ListingFASTATable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let regions = self.resolve_region(filters, &state).await?;
+        let regions = self.resolve_region(filters, state).await?;
 
         let file_list = pruned_partition_list(
             state,

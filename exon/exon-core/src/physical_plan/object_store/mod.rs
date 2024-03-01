@@ -193,9 +193,9 @@ pub(crate) fn url_to_object_store_url(url: &url::Url) -> Result<ObjectStoreUrl, 
 
     let host = url
         .host_str()
-        .ok_or_else(|| ExonError::ExecutionError(format!("Invalid URL: {}", url)))?;
+        .ok_or(ExonError::ExecutionError("No host in URL".to_string()))?;
 
-    Ok(ObjectStoreUrl::parse(&format!("{}://{}", scheme, host))?)
+    Ok(ObjectStoreUrl::parse(format!("{scheme}://{host}"))?)
 }
 
 #[cfg(test)]

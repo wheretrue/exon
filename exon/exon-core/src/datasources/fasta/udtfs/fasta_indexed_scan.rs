@@ -20,7 +20,7 @@ use datafusion::{
         listing::ListingTableUrl, TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
-    execution::{context::SessionContext, object_store::ObjectStoreUrl},
+    execution::context::SessionContext,
     logical_expr::Expr,
     scalar::ScalarValue,
 };
@@ -107,15 +107,8 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
             let region_url = parse_url(region_str.as_str())?;
             let object_store_url = url_to_object_store_url(&region_url)?;
 
-            let store = self
-                .ctx
-                .runtime_env()
-                .object_store(object_store_url)
-                .unwrap();
-
-            let region_path = Path::from_url_path(region_url.path()).map_err(|e| {
-                DataFusionError::Execution(format!("Unable to parse region path: {}", e))
-            })?;
+            let store = self.ctx.runtime_env().object_store(object_store_url)?;
+            let region_path = Path::from_url_path(region_url.path())?;
 
             store.head(&region_path).await.map_err(ExonError::from)
         });
