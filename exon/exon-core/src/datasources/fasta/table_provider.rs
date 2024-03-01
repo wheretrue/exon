@@ -20,9 +20,11 @@ use crate::{
         hive_partition::filter_matches_partition_cols, indexed_file::fai::compute_fai_range,
         ExonFileType,
     },
+    error::ExonError,
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, infer_region,
-        object_store::pruned_partition_list,
+        file_scan_config_builder::FileScanConfigBuilder,
+        infer_region,
+        object_store::{parse_url, pruned_partition_list, url_to_object_store_url},
     },
 };
 use arrow::datatypes::{Field, Schema, SchemaRef};
@@ -34,7 +36,7 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::context::SessionState,
+    execution::{context::SessionState, object_store::ObjectStoreUrl},
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -183,7 +185,7 @@ impl ListingFASTATable {
     async fn resolve_region<'a>(
         &self,
         filters: &[Expr],
-        object_store: &'a dyn ObjectStore,
+        session_context: &'a SessionState,
     ) -> Result<Option<Vec<Region>>> {
         let region = filters.iter().find_map(|f| match f {
             Expr::ScalarFunction(s) => {
@@ -204,9 +206,18 @@ impl ListingFASTATable {
         }?;
 
         let regions_from_file = if let Some(region_file) = &self.config.options.region_file {
-            let region_path = Path::from_url_path(region_file)?;
+            let region_url = parse_url(&region_file)?;
+            let object_store_url = url_to_object_store_url(&region_url)?;
 
-            let region_bytes = object_store.get(&region_path).await?.bytes().await?;
+            let object_store = session_context
+                .runtime_env()
+                .object_store(object_store_url)?;
+
+            let region_bytes = object_store
+                .get(&Path::from_url_path(region_url.path())?)
+                .await?
+                .bytes()
+                .await?;
 
             // iterate through the lines of the region file and parse them into regions, assume one region per line
             let regions = std::str::from_utf8(&region_bytes)
@@ -288,7 +299,7 @@ impl TableProvider for ListingFASTATable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let regions = self.resolve_region(filters, &object_store).await?;
+        let regions = self.resolve_region(filters, &state).await?;
 
         let file_list = pruned_partition_list(
             state,

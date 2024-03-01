@@ -115,6 +115,12 @@ impl From<Utf8Error> for ExonError {
     }
 }
 
+impl From<url::ParseError> for ExonError {
+    fn from(error: url::ParseError) -> Self {
+        ExonError::ExecutionError(format!("Error parsing URL: {}", error))
+    }
+}
+
 impl Display for ExonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

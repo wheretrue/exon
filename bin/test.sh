@@ -43,6 +43,7 @@ aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/dataso
 
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/test.fasta s3://test-bucket/test-indexed.fasta
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/test.fasta.fai s3://test-bucket/test-indexed.fasta.fai
+aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/region.txt s3://test-bucket/region.txt
 
 
 # Make the bucket public.
