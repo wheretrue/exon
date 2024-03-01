@@ -270,7 +270,7 @@ impl ExonListingTableFactory {
                 let schema = options.infer_schema();
 
                 let config: ListingFASTQTableConfig =
-                    ListingFASTQTableConfig::new(table_path).with_options(options);
+                    ListingFASTQTableConfig::new(table_path, options);
                 let table = ListingFASTQTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
@@ -285,7 +285,7 @@ impl ExonListingTableFactory {
                 let schema = options.infer_schema();
 
                 let config: ListingFASTQTableConfig =
-                    ListingFASTQTableConfig::new(table_path).with_options(options);
+                    ListingFASTQTableConfig::new(table_path, options);
                 let table = ListingFASTQTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))

@@ -431,7 +431,7 @@ impl ExonSessionExt for SessionContext {
 
         let table_schema = options.infer_schema();
 
-        let config = ListingFASTQTableConfig::new(table_path).with_options(options);
+        let config = ListingFASTQTableConfig::new(table_path, options);
         let table = ListingFASTQTable::try_new(config, table_schema)?;
 
         let table = self.read_table(Arc::new(table))?;
