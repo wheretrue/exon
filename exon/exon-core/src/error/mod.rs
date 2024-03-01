@@ -91,6 +91,12 @@ impl From<object_store::Error> for ExonError {
     }
 }
 
+impl From<object_store::path::Error> for ExonError {
+    fn from(error: object_store::path::Error) -> Self {
+        ExonError::ObjectStoreError(error.into())
+    }
+}
+
 impl From<TryFromU64U16TupleError> for ExonError {
     fn from(_error: TryFromU64U16TupleError) -> Self {
         ExonError::ExecutionError("Error creating virtual position".to_string())
@@ -112,6 +118,12 @@ impl From<InvalidRegionNameError> for ExonError {
 impl From<Utf8Error> for ExonError {
     fn from(error: Utf8Error) -> Self {
         ExonError::ExecutionError(format!("Error parsing string: {}", error))
+    }
+}
+
+impl From<url::ParseError> for ExonError {
+    fn from(error: url::ParseError) -> Self {
+        ExonError::ExecutionError(format!("Error parsing URL: {}", error))
     }
 }
 

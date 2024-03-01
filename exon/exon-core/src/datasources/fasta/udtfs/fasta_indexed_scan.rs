@@ -20,13 +20,13 @@ use datafusion::{
         listing::ListingTableUrl, TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
-    execution::{context::SessionContext, object_store::ObjectStoreUrl},
+    execution::context::SessionContext,
     logical_expr::Expr,
     scalar::ScalarValue,
 };
 use exon_fasta::FASTASchemaBuilder;
 use noodles::core::Region;
-use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+use object_store::{path::Path, ObjectStore};
 
 use crate::{
     config::ExonConfigExtension,
@@ -34,6 +34,7 @@ use crate::{
         ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions,
     },
     error::ExonError,
+    physical_plan::object_store::{parse_url, url_to_object_store_url},
     ExonRuntimeEnvExt,
 };
 
@@ -103,17 +104,11 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
         })?;
 
         let region_file_check = futures::executor::block_on(async {
-            let local_fs_url = ObjectStoreUrl::local_filesystem();
+            let region_url = parse_url(region_str.as_str())?;
+            let object_store_url = url_to_object_store_url(&region_url)?;
 
-            let local_fs = Arc::new(LocalFileSystem::new());
-
-            self.ctx
-                .runtime_env()
-                .register_object_store(local_fs_url.as_ref(), local_fs);
-
-            let store = self.ctx.runtime_env().object_store(local_fs_url).unwrap();
-
-            let region_path = Path::parse(region_str.as_str()).unwrap();
+            let store = self.ctx.runtime_env().object_store(object_store_url)?;
+            let region_path = Path::from_url_path(region_url.path())?;
 
             store.head(&region_path).await.map_err(ExonError::from)
         });

@@ -21,6 +21,7 @@ use std::{ops::Range, sync::Arc};
 use bytes::Bytes;
 use datafusion::{
     datasource::{listing::FileRange, physical_plan::FileMeta},
+    execution::object_store::ObjectStoreUrl,
     scalar::ScalarValue,
 };
 use object_store::{path::Path, ObjectStore};
@@ -30,6 +31,8 @@ use datafusion::{
     error::{DataFusionError, Result},
 };
 use futures::TryStreamExt;
+
+use crate::error::ExonError;
 
 /// Get a byte region from an object store.
 ///
@@ -166,6 +169,33 @@ fn parse_partition_key_values(
     }
 
     Ok(partition_key_values)
+}
+
+/// Parse a URL, but handle local file paths
+pub(crate) fn parse_url(input: &str) -> Result<url::Url, ExonError> {
+    // Check if the input already has a scheme
+    let url = if input.contains("://") {
+        url::Url::parse(input)?
+    } else {
+        // Assume it's a local file path and prepend with "file://"
+        url::Url::parse(&format!("file://{}", input))?
+    };
+
+    Ok(url)
+}
+
+pub(crate) fn url_to_object_store_url(url: &url::Url) -> Result<ObjectStoreUrl, ExonError> {
+    let scheme = url.scheme();
+
+    if scheme == "file" {
+        return Ok(ObjectStoreUrl::local_filesystem());
+    }
+
+    let host = url
+        .host_str()
+        .ok_or(ExonError::ExecutionError("No host in URL".to_string()))?;
+
+    Ok(ObjectStoreUrl::parse(format!("{scheme}://{host}"))?)
 }
 
 #[cfg(test)]

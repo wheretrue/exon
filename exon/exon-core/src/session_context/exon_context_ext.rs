@@ -21,10 +21,11 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::{context::SessionState, runtime_env::RuntimeEnv},
+    execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 use noodles::core::Region;
+use object_store::local::LocalFileSystem;
 
 #[cfg(feature = "mzml")]
 use crate::datasources::mzml::MzMLScanFunction;
@@ -199,6 +200,12 @@ pub trait ExonSessionExt {
             Arc::new(VCFIndexedScanFunction::new(ctx.clone())),
         );
         ctx.register_udtf("bcf_scan", Arc::new(BCFScanFunction::new(ctx.clone())));
+
+        // Register the local file system by default
+        ctx.runtime_env().register_object_store(
+            ObjectStoreUrl::local_filesystem().as_ref(),
+            Arc::new(LocalFileSystem::new()),
+        );
 
         ctx
     }
