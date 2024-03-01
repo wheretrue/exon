@@ -1,3 +1,17 @@
+// Copyright 2024 WHERE TRUE Technologies.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use std::{str::FromStr, sync::Arc};
 
 use datafusion::{
@@ -6,12 +20,13 @@ use datafusion::{
         listing::ListingTableUrl, TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
-    execution::context::SessionContext,
+    execution::{context::SessionContext, object_store::ObjectStoreUrl},
     logical_expr::Expr,
     scalar::ScalarValue,
 };
 use exon_fasta::FASTASchemaBuilder;
 use noodles::core::Region;
+use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
 
 use crate::{
     config::ExonConfigExtension,
@@ -43,19 +58,13 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
             ));
         };
 
-        let listing_table_url = ListingTableUrl::parse(path)?;
-        futures::executor::block_on(async {
-            self.ctx
-                .runtime_env()
-                .exon_register_object_store_url(listing_table_url.as_ref())
-                .await
-        })?;
-
         let Some(Expr::Literal(ScalarValue::Utf8(Some(region_str)))) = exprs.get(1) else {
             return Err(DataFusionError::Internal(
                 "this function requires the region to be specified as the second argument".into(),
             ));
         };
+
+        let listing_table_url = ListingTableUrl::parse(path)?;
 
         let passed_compression_type = exprs.get(2).and_then(|e| match e {
             Expr::Literal(ScalarValue::Utf8(Some(ref compression_type))) => {
@@ -86,13 +95,51 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
             .with_large_utf8(exon_settings.fasta_large_utf8)
             .build();
 
-        let region: Region = region_str.parse().map_err(ExonError::from)?;
+        futures::executor::block_on(async {
+            self.ctx
+                .runtime_env()
+                .exon_register_object_store_url(listing_table_url.as_ref())
+                .await
+        })?;
 
-        let listing_table_options =
-            ListingFASTATableOptions::new(compression_type).with_region(region);
+        let region_file_check = futures::executor::block_on(async {
+            let local_fs_url = ObjectStoreUrl::local_filesystem();
+
+            let local_fs = Arc::new(LocalFileSystem::new());
+
+            self.ctx
+                .runtime_env()
+                .register_object_store(local_fs_url.as_ref(), local_fs);
+
+            let store = self.ctx.runtime_env().object_store(local_fs_url).unwrap();
+
+            let region_path = Path::parse(region_str.as_str()).unwrap();
+
+            store.head(&region_path).await.map_err(ExonError::from)
+        });
+
+        let region = Region::from_str(region_str);
+
+        let mut listing_table_options = ListingFASTATableOptions::new(compression_type);
+
+        match (region_file_check, region) {
+            (Ok(_), _) => {
+                listing_table_options =
+                    listing_table_options.with_region_file(region_str.to_string());
+            }
+            (Err(_), Ok(region)) => {
+                listing_table_options = listing_table_options.with_region(vec![region]);
+            }
+            (Err(e), Err(_)) => {
+                eprintln!("Error: {}", e);
+                return Err(DataFusionError::Execution(
+                    "Region file or region must be specified.".to_string(),
+                ));
+            }
+        }
 
         let listing_table_config =
-            ListingFASTATableConfig::new(listing_table_url).with_options(listing_table_options);
+            ListingFASTATableConfig::new(listing_table_url, listing_table_options);
 
         let listing_table = ListingFASTATable::try_new(listing_table_config, fasta_schema)?;
 

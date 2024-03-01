@@ -42,6 +42,9 @@ pub struct FASTAConfig {
 
     /// An optional region to read from.
     pub region: Option<Region>,
+
+    /// An optional region file to read from.
+    pub region_file: Option<String>,
 }
 
 impl FASTAConfig {
@@ -55,12 +58,19 @@ impl FASTAConfig {
             fasta_sequence_buffer_capacity: 384,
             use_large_utf8: false,
             region: None,
+            region_file: None,
         }
     }
 
     /// Create a new FASTA configuration with a given region.
     pub fn with_region(mut self, region: Region) -> Self {
         self.region = Some(region);
+        self
+    }
+
+    /// Create a new FASTA configuration with a given region file.
+    pub fn with_region_file(mut self, region_file: String) -> Self {
+        self.region_file = Some(region_file);
         self
     }
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, fmt::Debug, sync::Arc};
+use std::{any::Any, fmt::Debug, str::FromStr, sync::Arc, vec};
 
 use crate::{
     config::ExonConfigExtension,
@@ -31,7 +31,6 @@ use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
@@ -44,7 +43,7 @@ use exon_common::TableSchema;
 use exon_fasta::FASTASchemaBuilder;
 use futures::TryStreamExt;
 use noodles::{core::Region, fasta::fai::Reader};
-use object_store::path::Path;
+use object_store::{path::Path, ObjectStore};
 
 use super::{indexed_scanner::IndexedFASTAScanner, FASTAScan};
 
@@ -52,24 +51,15 @@ use super::{indexed_scanner::IndexedFASTAScanner, FASTAScan};
 /// Configuration for a VCF listing table
 pub struct ListingFASTATableConfig {
     inner: ListingTableConfig,
-
-    options: Option<ListingFASTATableOptions>,
+    options: ListingFASTATableOptions,
 }
 
 impl ListingFASTATableConfig {
     /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
+    pub fn new(table_path: ListingTableUrl, options: ListingFASTATableOptions) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingFASTATableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
+            options,
         }
     }
 }
@@ -86,8 +76,11 @@ pub struct ListingFASTATableOptions {
     /// The partition columns for the table
     table_partition_cols: Vec<Field>,
 
-    /// A region to optionally filter the table
-    region: Option<Region>,
+    /// The region to read from
+    region: Option<Vec<Region>>,
+
+    /// The region file to read from
+    region_file: Option<String>,
 }
 
 impl Default for ListingFASTATableOptions {
@@ -97,6 +90,7 @@ impl Default for ListingFASTATableOptions {
             file_compression_type: FileCompressionType::UNCOMPRESSED,
             table_partition_cols: Vec::new(),
             region: None,
+            region_file: None,
         }
     }
 }
@@ -111,13 +105,22 @@ impl ListingFASTATableOptions {
             file_compression_type,
             table_partition_cols: Vec::new(),
             region: None,
+            region_file: None,
         }
     }
 
-    /// Set the region
-    pub fn with_region(self, region: Region) -> Self {
+    /// Set the region for the table
+    pub fn with_region(self, region: Vec<Region>) -> Self {
         Self {
             region: Some(region),
+            ..self
+        }
+    }
+
+    /// Set the region file for the table
+    pub fn with_region_file(self, region_file: String) -> Self {
+        Self {
+            region_file: Some(region_file),
             ..self
         }
     }
@@ -158,62 +161,30 @@ impl ListingFASTATableOptions {
             ..self
         }
     }
-
-    async fn create_physical_plan(
-        &self,
-        state: &SessionState,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let exon_settings = state
-            .config()
-            .options()
-            .extensions
-            .get::<ExonConfigExtension>()
-            .ok_or(DataFusionError::Execution(
-                "Exon settings must be configured.".to_string(),
-            ))?;
-
-        let fasta_sequence_buffer_capacity = exon_settings.fasta_sequence_buffer_capacity;
-
-        if self.region.is_some() {
-            let scan = IndexedFASTAScanner::new(conf.clone(), fasta_sequence_buffer_capacity);
-
-            Ok(Arc::new(scan))
-        } else {
-            let scan = FASTAScan::new(
-                conf.clone(),
-                self.file_compression_type,
-                fasta_sequence_buffer_capacity,
-            );
-
-            Ok(Arc::new(scan))
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A VCF listing table
 pub struct ListingFASTATable {
-    table_paths: Vec<ListingTableUrl>,
-
     table_schema: TableSchema,
 
-    options: ListingFASTATableOptions,
+    config: ListingFASTATableConfig,
 }
 
 impl ListingFASTATable {
     /// Create a new VCF listing table
     pub fn try_new(config: ListingFASTATableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
-            table_paths: config.inner.table_paths,
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
+            config,
         })
     }
 
-    fn resolve_region(&self, filters: &[Expr]) -> Result<Option<Region>> {
+    async fn resolve_region<'a>(
+        &self,
+        filters: &[Expr],
+        object_store: &'a dyn ObjectStore,
+    ) -> Result<Option<Vec<Region>>> {
         let region = filters.iter().find_map(|f| match f {
             Expr::ScalarFunction(s) => {
                 infer_region::infer_region_from_udf(s, "fasta_region_filter")
@@ -221,18 +192,53 @@ impl ListingFASTATable {
             _ => None,
         });
 
-        match &self.options.region {
-            Some(region) => Ok(Some(region.clone())),
+        let attached_regions = match &self.config.options.region {
+            Some(region) => Ok::<_, DataFusionError>(Some(region.to_vec())),
             None => {
                 if let Some(region) = region {
-                    Ok(Some(region))
+                    Ok(Some(vec![region]))
                 } else {
                     Ok(None)
                 }
             }
-        }
+        }?;
 
-        // Ok(region)
+        let regions_from_file = if let Some(region_file) = &self.config.options.region_file {
+            let region_path = Path::from_url_path(region_file)?;
+
+            let region_bytes = object_store.get(&region_path).await?.bytes().await?;
+
+            // iterate through the lines of the region file and parse them into regions, assume one region per line
+            let regions = std::str::from_utf8(&region_bytes)
+                .map_err(|e| {
+                    DataFusionError::Execution(format!("Error parsing region file: {}", e))
+                })?
+                .lines()
+                .map(|line| {
+                    // Strip any whitespace from the line
+                    let line = line.trim();
+
+                    let region = Region::from_str(line).unwrap();
+
+                    Ok(region)
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            Some(regions)
+        } else {
+            None
+        };
+
+        Ok(match (attached_regions, regions_from_file) {
+            (Some(attached_regions), Some(regions_from_file)) => {
+                let concatenated_regions = [attached_regions, regions_from_file].concat();
+
+                Some(concatenated_regions)
+            }
+            (Some(attached_regions), None) => Some(attached_regions),
+            (None, Some(regions_from_file)) => Some(regions_from_file),
+            (None, None) => None,
+        })
     }
 }
 
@@ -260,7 +266,7 @@ impl TableProvider for ListingFASTATable {
                 Expr::ScalarFunction(s) if s.name() == "fasta_region_filter" => {
                     TableProviderFilterPushDown::Exact
                 }
-                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
+                _ => filter_matches_partition_cols(f, &self.config.options.table_partition_cols),
             })
             .collect();
 
@@ -274,7 +280,7 @@ impl TableProvider for ListingFASTATable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
+        let object_store_url = if let Some(url) = self.config.inner.table_paths.first() {
             url.object_store()
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
@@ -282,21 +288,32 @@ impl TableProvider for ListingFASTATable {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
-        let region = self.resolve_region(filters)?;
+        let regions = self.resolve_region(filters, &object_store).await?;
 
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            &self.config.inner.table_paths[0],
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension.as_str(),
+            &self.config.options.table_partition_cols,
         )
         .await?
         .try_collect::<Vec<_>>()
         .await?;
 
-        if let Some(region) = &region {
+        let exon_settings = state
+            .config()
+            .options()
+            .extensions
+            .get::<ExonConfigExtension>()
+            .ok_or(DataFusionError::Execution(
+                "Exon settings must be configured.".to_string(),
+            ))?;
+
+        let fasta_sequence_buffer_capacity = exon_settings.fasta_sequence_buffer_capacity;
+
+        if let Some(regions) = &regions {
             // If there was a region, we need to create a set of file partitions augmented with the
             // byte offsets of the region in the file
             let mut file_partitions = Vec::new();
@@ -313,10 +330,12 @@ impl TableProvider for ListingFASTATable {
 
                 // TODO: coalesce the regions into contiguous blocks
                 for index_record in index_records {
-                    if let Some(range) = compute_fai_range(region, &index_record) {
-                        let mut indexed_partition = file.clone();
-                        indexed_partition.extensions = Some(Arc::new(range));
-                        file_partitions.push(indexed_partition);
+                    for region in regions {
+                        if let Some(range) = compute_fai_range(region, &index_record) {
+                            let mut indexed_partition = file.clone();
+                            indexed_partition.extensions = Some(Arc::new(range));
+                            file_partitions.push(indexed_partition);
+                        }
                     }
                 }
             }
@@ -327,16 +346,14 @@ impl TableProvider for ListingFASTATable {
                 vec![file_partitions],
             )
             .projection_option(projection.cloned())
-            .table_partition_cols(self.options.table_partition_cols.clone())
+            .table_partition_cols(self.config.options.table_partition_cols.clone())
             .limit_option(limit)
             .build();
 
-            let plan = self
-                .options
-                .create_physical_plan(state, file_scan_config)
-                .await?;
+            let scan =
+                IndexedFASTAScanner::new(file_scan_config.clone(), fasta_sequence_buffer_capacity);
 
-            Ok(plan)
+            Ok(Arc::new(scan))
         } else {
             let file_scan_config = FileScanConfigBuilder::new(
                 object_store_url.clone(),
@@ -344,16 +361,17 @@ impl TableProvider for ListingFASTATable {
                 vec![file_list],
             )
             .projection_option(projection.cloned())
-            .table_partition_cols(self.options.table_partition_cols.clone())
+            .table_partition_cols(self.config.options.table_partition_cols.clone())
             .limit_option(limit)
             .build();
 
-            let plan = self
-                .options
-                .create_physical_plan(state, file_scan_config)
-                .await?;
+            let scan = FASTAScan::new(
+                file_scan_config,
+                self.config.options.file_compression_type,
+                fasta_sequence_buffer_capacity,
+            );
 
-            Ok(plan)
+            Ok(Arc::new(scan))
         }
     }
 }
