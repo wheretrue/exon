@@ -23,7 +23,7 @@ use datafusion::{
         physical_plan::FileScanConfig,
         TableProvider,
     },
-    error::{DataFusionError, Result},
+    error::Result,
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
@@ -47,23 +47,15 @@ use super::FASTQScan;
 pub struct ListingFASTQTableConfig {
     inner: ListingTableConfig,
 
-    options: Option<ListingFASTQTableOptions>,
+    options: ListingFASTQTableOptions,
 }
 
 impl ListingFASTQTableConfig {
     /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
+    pub fn new(table_path: ListingTableUrl, options: ListingFASTQTableOptions) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingFASTQTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
+            options,
         }
     }
 }
@@ -139,25 +131,19 @@ impl ListingFASTQTableOptions {
 #[derive(Debug, Clone)]
 /// A FASTQ listing table
 pub struct ListingFASTQTable {
-    /// A list of paths to the files in the table
-    table_paths: Vec<ListingTableUrl>,
-
     /// The schema for the table
     table_schema: TableSchema,
 
-    /// The options for the table
-    options: ListingFASTQTableOptions,
+    /// The config for the table
+    config: ListingFASTQTableConfig,
 }
 
 impl ListingFASTQTable {
     /// Create a new VCF listing table
     pub fn try_new(config: ListingFASTQTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
-            table_paths: config.inner.table_paths,
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
+            config,
         })
     }
 }
@@ -182,7 +168,7 @@ impl TableProvider for ListingFASTQTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols))
             .collect())
     }
 
@@ -193,7 +179,7 @@ impl TableProvider for ListingFASTQTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
+        let object_store_url = if let Some(url) = self.config.inner.table_paths.first() {
             url.object_store()
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
@@ -204,10 +190,10 @@ impl TableProvider for ListingFASTQTable {
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            &self.config.inner.table_paths[0],
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension.as_str(),
+            &self.config.options.table_partition_cols,
         )
         .await?
         .try_collect::<Vec<_>>()
@@ -219,11 +205,15 @@ impl TableProvider for ListingFASTQTable {
             vec![file_list],
         )
         .projection_option(projection.cloned())
-        .table_partition_cols(self.options.table_partition_cols.clone())
+        .table_partition_cols(self.config.options.table_partition_cols.clone())
         .limit_option(limit)
         .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        let plan = self
+            .config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await?;
 
         Ok(plan)
     }

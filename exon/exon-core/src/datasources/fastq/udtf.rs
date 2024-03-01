@@ -51,12 +51,10 @@ impl TableFunctionImpl for FastqScanFunction {
 
         let fasta_schema = new_fastq_schema_builder().build();
 
-        let listing_table_options =
-            ListingFASTQTableOptions::new(listing_scan_function.file_compression_type);
+        let options = ListingFASTQTableOptions::new(listing_scan_function.file_compression_type);
 
         let listing_table_config =
-            ListingFASTQTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+            ListingFASTQTableConfig::new(listing_scan_function.listing_table_url, options);
 
         let listing_table = ListingFASTQTable::try_new(listing_table_config, fasta_schema)?;
 
