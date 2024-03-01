@@ -412,7 +412,7 @@ impl ExonSessionExt for SessionContext {
         let state = self.state();
         let table_schema = options.infer_schema(&state).await?;
 
-        let config = ListingFASTATableConfig::new(table_path).with_options(options);
+        let config = ListingFASTATableConfig::new(table_path, options);
         let table = ListingFASTATable::try_new(config, table_schema)?;
 
         let table = self.read_table(Arc::new(table))?;

@@ -233,7 +233,7 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let schema = options.infer_schema(state).await?;
 
-                let config = ListingFASTATableConfig::new(table_path).with_options(options);
+                let config = ListingFASTATableConfig::new(table_path, options);
                 let table = ListingFASTATable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
@@ -246,7 +246,7 @@ impl ExonListingTableFactory {
                     .with_file_extension(extension);
                 let schema = options.infer_schema(state).await?;
 
-                let config = ListingFASTATableConfig::new(table_path).with_options(options);
+                let config = ListingFASTATableConfig::new(table_path, options);
                 let table = ListingFASTATable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
@@ -259,7 +259,7 @@ impl ExonListingTableFactory {
                     .with_file_extension(extension);
                 let schema = options.infer_schema(state).await?;
 
-                let config = ListingFASTATableConfig::new(table_path).with_options(options);
+                let config = ListingFASTATableConfig::new(table_path, options);
                 let table = ListingFASTATable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
