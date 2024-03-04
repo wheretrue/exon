@@ -245,7 +245,7 @@ dependencies = [
  "arrow-data",
  "arrow-schema",
  "arrow-select",
- "base64",
+ "base64 0.21.7",
  "chrono",
  "comfy-table",
  "half",
@@ -1038,6 +1038,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9475866fec1451be56a3c2400fd081ff546538961565ccb5b7142cbd22bc7a51"
+
+[[package]]
 name = "base64-simd"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1627,7 +1633,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98f1c73f7801b2b8ba2297b3ad78ffcf6c1fc6b8171f502987eb9ad5cb244ee7"
 dependencies = [
  "arrow",
- "base64",
+ "base64 0.21.7",
  "datafusion-common",
  "datafusion-execution",
  "datafusion-expr",
@@ -1680,7 +1686,7 @@ dependencies = [
  "arrow-ord",
  "arrow-schema",
  "arrow-string",
- "base64",
+ "base64 0.21.7",
  "blake2",
  "blake3",
  "chrono",
@@ -2137,7 +2143,7 @@ name = "exon-mzml"
 version = "0.11.1"
 dependencies = [
  "arrow",
- "base64",
+ "base64 0.22.0",
  "byteorder",
  "exon-common",
  "flate2",
@@ -3353,7 +3359,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d139f545f64630e2e3688fd9f81c470888ab01edeb72d13b4e86c566f1130000"
 dependencies = [
  "async-trait",
- "base64",
+ "base64 0.21.7",
  "bytes",
  "chrono",
  "futures",
@@ -3458,7 +3464,7 @@ dependencies = [
  "arrow-ipc",
  "arrow-schema",
  "arrow-select",
- "base64",
+ "base64 0.21.7",
  "brotli",
  "bytes",
  "chrono",
@@ -3798,7 +3804,7 @@ version = "0.11.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "046cd98826c46c2ac8ddecae268eb5c2e58628688a5fc7a2643704a73faba95b"
 dependencies = [
- "base64",
+ "base64 0.21.7",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -3939,7 +3945,7 @@ version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c74cae0a4cf6ccbbf5f359f08efdf8ee7e1dc532573bf0db71968cb56b1448c"
 dependencies = [
- "base64",
+ "base64 0.21.7",
 ]
 
 [[package]]
@@ -3948,7 +3954,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35e4980fa29e4c4b212ffb3db068a564cbf560e51d3944b7c88bd8bf5bec64f4"
 dependencies = [
- "base64",
+ "base64 0.21.7",
  "rustls-pki-types",
 ]
 
