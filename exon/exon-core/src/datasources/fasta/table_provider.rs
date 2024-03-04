@@ -29,6 +29,7 @@ use crate::{
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    common::GetExt,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig, ListingTableUrl},
@@ -107,6 +108,22 @@ impl ListingFASTATableOptions {
             table_partition_cols: Vec::new(),
             region: None,
             region_file: None,
+        }
+    }
+
+    /// Get the extension when accounting for the compression type
+    pub fn file_extension(&self) -> String {
+        if self
+            .file_extension
+            .ends_with(&self.file_compression_type.get_ext())
+        {
+            self.file_extension.clone()
+        } else {
+            format!(
+                "{}{}",
+                self.file_extension,
+                self.file_compression_type.get_ext()
+            )
         }
     }
 
@@ -305,7 +322,7 @@ impl TableProvider for ListingFASTATable {
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            self.config.options.file_extension.as_str(),
+            &self.config.options.file_extension(),
             &self.config.options.table_partition_cols,
         )
         .await?

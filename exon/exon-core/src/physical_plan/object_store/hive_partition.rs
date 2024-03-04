@@ -52,6 +52,7 @@ pub(crate) async fn list_all_files<'a>(
         true => store.list(Some(path.prefix())),
         false => futures::stream::once(store.head(path.prefix())).boxed(),
     };
+    eprintln!("file_extension: {:?}", file_extension);
     Ok(list
         .try_filter(move |meta| {
             let path = &meta.location;
@@ -121,6 +122,7 @@ pub async fn pruned_partition_list<'a>(
             };
 
             let files = files.into_iter().filter(move |o| {
+                eprintln!("extensins: {:?}", file_extension);
                 let extension_match = o.location.as_ref().to_lowercase().ends_with(file_extension);
                 let glob_match = table_path.contains(&o.location, false);
 

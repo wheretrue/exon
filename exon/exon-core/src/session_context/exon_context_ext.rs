@@ -570,3 +570,91 @@ impl ExonSessionExt for SessionContext {
         Ok(df)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use datafusion::{
+        datasource::file_format::file_compression_type::FileCompressionType,
+        execution::context::SessionContext,
+    };
+
+    use crate::{
+        datasources::{
+            fasta::table_provider::ListingFASTATableOptions,
+            fastq::table_provider::ListingFASTQTableOptions,
+        },
+        session_context::ExonSessionExt,
+    };
+
+    #[tokio::test]
+    async fn test_read_fastq() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fastq_path = exon_test::test_path("fastq", "test.fq");
+
+        let df = ctx
+            .read_fastq(
+                fastq_path.to_str().unwrap(),
+                Some(ListingFASTQTableOptions::default().with_file_extension("fq".to_string())),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_fastq_gzip() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fastq_path = exon_test::test_path("fastq", "test.fq.gz");
+
+        let options = ListingFASTQTableOptions::new(FileCompressionType::GZIP)
+            .with_file_extension("fq".to_string());
+
+        let df = ctx
+            .read_fastq(fastq_path.to_str().unwrap(), Some(options))
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_fasta() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fasta_path = exon_test::test_path("fasta", "test.fa");
+
+        let df = ctx
+            .read_fasta(
+                fasta_path.to_str().unwrap(),
+                Some(ListingFASTATableOptions::default().with_file_extension("fa".to_string())),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_fasta_gzip() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fasta_path = exon_test::test_path("fasta", "test.fa.gz");
+
+        let options = ListingFASTATableOptions::new(FileCompressionType::GZIP)
+            .with_file_extension("fa".to_string());
+
+        let df = ctx
+            .read_fasta(fasta_path.to_str().unwrap(), Some(options))
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+}
