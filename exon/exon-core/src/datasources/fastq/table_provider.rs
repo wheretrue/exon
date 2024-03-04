@@ -216,8 +216,6 @@ impl TableProvider for ListingFASTQTable {
         .try_collect::<Vec<_>>()
         .await?;
 
-        eprintln!("file_list: {:?}", file_list);
-
         let file_scan_config = FileScanConfigBuilder::new(
             object_store_url.clone(),
             self.table_schema.file_schema()?,

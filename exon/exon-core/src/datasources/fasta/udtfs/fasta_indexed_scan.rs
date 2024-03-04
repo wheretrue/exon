@@ -125,8 +125,7 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
             (Err(_), Ok(region)) => {
                 listing_table_options = listing_table_options.with_region(vec![region]);
             }
-            (Err(e), Err(_)) => {
-                eprintln!("Error: {}", e);
+            (Err(_), Err(_)) => {
                 return Err(DataFusionError::Execution(
                     "Region file or region must be specified.".to_string(),
                 ));
