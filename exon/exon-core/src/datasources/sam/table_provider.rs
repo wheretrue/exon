@@ -87,7 +87,6 @@ impl ListingSAMTableOptions {
         state: &SessionState,
         table_path: &ListingTableUrl,
     ) -> datafusion::error::Result<TableSchema> {
-        eprintln!("tag as struct: {}", self.tag_as_struct);
         if !self.tag_as_struct {
             let builder = SAMSchemaBuilder::default()
                 .with_partition_fields(self.table_partition_cols.clone()); // TODO: get rid of clone
