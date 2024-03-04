@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v0.11.1 (2024-03-03)
+
+### Feat
+
+- support s3 region files (#420)
+- update (#418)
+- working with region file (#415)
+
+### Fix
+
+- fix tests (#421)
+
+### Refactor
+
+- cleanup for point release (#422)
+
 ## v0.11.0 (2024-02-28)
 
 ### Feat

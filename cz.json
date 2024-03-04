@@ -22,7 +22,6 @@
       "exon/exon-test/Cargo.toml",
       "exon/exon-vcf/Cargo.toml",
       "exon/exon-cli/Cargo.toml",
-      "python/Cargo.toml",
       ".github/workflows/build-cli-image.yml"
     ],
     "update_changelog_on_bump": true
