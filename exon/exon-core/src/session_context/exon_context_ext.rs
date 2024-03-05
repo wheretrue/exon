@@ -584,6 +584,7 @@ mod tests {
             fastq::table_provider::ListingFASTQTableOptions,
         },
         session_context::ExonSessionExt,
+        ExonRuntimeEnvExt,
     };
 
     #[tokio::test]
@@ -595,6 +596,15 @@ mod tests {
         let df = ctx
             .read_fastq(
                 fastq_path.to_str().unwrap(),
+                Some(ListingFASTQTableOptions::default().with_file_extension("fq".to_string())),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        let df = ctx
+            .read_fastq(
+                fastq_path.parent().ok_or("No Parent")?.to_str().unwrap(),
                 Some(ListingFASTQTableOptions::default().with_file_extension("fq".to_string())),
             )
             .await?;
@@ -637,6 +647,56 @@ mod tests {
 
         assert_eq!(df.count().await?, 2);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_fasta_s3() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        ctx.runtime_env()
+            .register_s3_object_store(&url::Url::parse("s3://test-bucket")?)
+            .await?;
+
+        let df = ctx
+            .read_fasta(
+                "s3://test-bucket/test.fa",
+                Some(ListingFASTATableOptions::default().with_file_extension("fa".to_string())),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_fasta_dir() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fasta_path = exon_test::test_path("fa", "test.fa");
+        let fasta_path = fasta_path.parent().ok_or("No parent")?;
+
+        let df = ctx
+            .read_fasta(
+                fasta_path.to_str().unwrap(),
+                Some(ListingFASTATableOptions::default().with_file_extension("fa".to_string())),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 4);
+
+        let df = ctx
+            .read_fasta(
+                fasta_path.to_str().unwrap(),
+                Some(
+                    ListingFASTATableOptions::new(FileCompressionType::GZIP)
+                        .with_file_extension("fa".to_string()),
+                ),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 4);
         Ok(())
     }
 
