@@ -1258,9 +1258,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.1"
+version = "4.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c918d541ef2913577a0f9566e9ce27cb35b6df072075769e0b26cb5a554520da"
+checksum = "b230ab84b0ffdf890d5a10abdbc8b83ae1c4918275daea1ab8801f71536b2651"
 dependencies = [
  "clap_builder",
  "clap_derive 4.5.0",
@@ -1268,9 +1268,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.1"
+version = "4.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f3e7391dad68afb0c2ede1bf619f579a3dc9c2ec67f089baa397123a2f3d1eb"
+checksum = "ae129e2e766ae0ec03484e609954119f123cc1fe650337e155d03b022f24f7b4"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2003,7 +2003,7 @@ dependencies = [
 name = "exon-benchmarks"
 version = "0.11.1"
 dependencies = [
- "clap 4.5.1",
+ "clap 4.5.2",
  "datafusion",
  "exon",
  "noodles",
@@ -2016,7 +2016,7 @@ dependencies = [
 name = "exon-cli"
 version = "0.11.1"
 dependencies = [
- "clap 4.5.1",
+ "clap 4.5.2",
  "datafusion",
  "datafusion-cli",
  "exon",
@@ -2877,7 +2877,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d8de370f98a6cb8a4606618e53e802f93b094ddec0f96988eaec2c27e6e9ce7"
 dependencies = [
- "clap 4.5.1",
+ "clap 4.5.2",
  "termcolor",
  "threadpool",
 ]
