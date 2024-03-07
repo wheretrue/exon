@@ -1,5 +1,4 @@
-# A bash script to run the tests, includes setup and teardown.
-# Use a trap to ensure the teardown is always run.
+#!/usr/bin/env bash
 
 set -e
 

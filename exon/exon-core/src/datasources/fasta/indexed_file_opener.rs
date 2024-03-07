@@ -28,9 +28,9 @@ use datafusion::{
 };
 use exon_fasta::FASTAConfig;
 use futures::{Stream, StreamExt, TryStreamExt};
-use object_store::{GetOptions, GetRange};
+use object_store::{GetOptions, GetRange, GetResultPayload};
 
-use crate::datasources::indexed_file::fai::FAIFileRange;
+use crate::datasources::indexed_file::{fai::FAIFileRange, region::RegionObjectStoreExtension};
 
 #[derive(Debug)]
 pub struct IndexedFASTAOpener {
@@ -79,36 +79,73 @@ impl FileOpener for IndexedFASTAOpener {
             let fai_file_range = file_meta
                 .extensions
                 .as_ref()
-                .and_then(|ext| ext.downcast_ref::<FAIFileRange>())
-                .ok_or(DataFusionError::Internal(
-                    "Expected FAIFileRange extension".to_string(),
-                ))?;
+                .and_then(|ext| ext.downcast_ref::<FAIFileRange>());
 
-            let get_options = GetOptions {
-                range: Some(GetRange::Bounded(std::ops::Range {
-                    start: fai_file_range.start as usize,
-                    end: fai_file_range.end as usize,
-                })),
-                ..Default::default()
-            };
+            match fai_file_range {
+                Some(fai_file_range) => {
+                    let get_options = GetOptions {
+                        range: Some(GetRange::Bounded(std::ops::Range {
+                            start: fai_file_range.start as usize,
+                            end: fai_file_range.end as usize,
+                        })),
+                        ..Default::default()
+                    };
 
-            let get_result = config
-                .object_store
-                .get_opts(file_meta.location(), get_options)
-                .await?;
+                    let get_result = config
+                        .object_store
+                        .get_opts(file_meta.location(), get_options)
+                        .await?;
 
-            let get_stream = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
-            let bytes: Vec<Bytes> = FileCompressionType::UNCOMPRESSED
-                .convert_stream(get_stream)?
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .collect::<Result<_, _>>()?;
+                    let get_stream =
+                        Box::pin(get_result.into_stream().map_err(DataFusionError::from));
 
-            let sequence = bytes.into_iter().flatten().collect::<Vec<u8>>();
-            let record_batch = record_batch_stream(&fai_file_range.region_name, &sequence, schema);
+                    let bytes: Vec<Bytes> = FileCompressionType::UNCOMPRESSED
+                        .convert_stream(get_stream)?
+                        .collect::<Vec<_>>()
+                        .await
+                        .into_iter()
+                        .collect::<Result<_, _>>()?;
 
-            return Ok(record_batch.boxed());
+                    let sequence = bytes.into_iter().flatten().collect::<Vec<u8>>();
+                    let record_batch =
+                        record_batch_stream(&fai_file_range.region_name, &sequence, schema);
+
+                    return Ok(record_batch.boxed());
+                }
+                None => {
+                    let region_extension = file_meta
+                        .extensions
+                        .as_ref()
+                        .and_then(|ext| ext.downcast_ref::<RegionObjectStoreExtension>())
+                        .ok_or(DataFusionError::Execution(
+                            "Region extension not found".to_string(),
+                        ))?;
+
+                    let get_result = config.object_store.get(file_meta.location()).await?;
+
+                    match get_result.payload {
+                        GetResultPayload::File(_, path) => {
+                            let mut reader = noodles::fasta::indexed_reader::Builder::default()
+                                .build_from_path(path)?;
+
+                            let record = reader.query(&region_extension.region)?;
+
+                            let sequence = record.sequence();
+
+                            let record_batch = record_batch_stream(
+                                &region_extension.region_name(),
+                                sequence.as_ref(),
+                                schema,
+                            );
+
+                            Ok(record_batch.boxed())
+                        }
+                        _ => Err(DataFusionError::Execution(
+                            "Direct region access only supported on local files.".to_string(),
+                        )),
+                    }
+                }
+            }
         }))
     }
 }

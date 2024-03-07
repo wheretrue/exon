@@ -14,3 +14,4 @@
 
 pub(crate) mod fai;
 pub(crate) mod indexed_bgzf_file;
+pub(crate) mod region;

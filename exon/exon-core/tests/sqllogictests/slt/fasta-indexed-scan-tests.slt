@@ -21,6 +21,13 @@ SELECT * FROM fasta_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fast
 a:1-2 NULL AT
 a:3-4 NULL CG
 
+# TODO: figure out why the gz file can't be found on github
+# query III
+# SELECT * FROM fasta_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta-indexed/test.fasta.gz', '$CARGO_MANIFEST_DIR/test-data/datasources/fasta-indexed/region.txt') ORDER BY id;
+# ----
+# a:1-2 NULL AT
+# a:3-4 NULL CG
+
 query III
 SELECT * FROM fasta_indexed_scan('s3://test-bucket/test-indexed.fasta', '$CARGO_MANIFEST_DIR/test-data/datasources/fasta-indexed/region.txt') ORDER BY id;
 ----
