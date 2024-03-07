@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use arrow::array::{ArrayBuilder, ArrayRef, GenericStringBuilder};
+use exon_common::DEFAULT_BATCH_SIZE;
 use noodles::fastq::Record;
 
 use crate::error::ExonFastqResult;
@@ -32,12 +33,24 @@ pub struct FASTQArrayBuilder {
 }
 
 impl FASTQArrayBuilder {
-    pub fn create() -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            names: GenericStringBuilder::<i32>::new(),
-            descriptions: GenericStringBuilder::<i32>::new(),
-            sequences: GenericStringBuilder::<i32>::new(),
-            quality_scores: GenericStringBuilder::<i32>::new(),
+            names: GenericStringBuilder::<i32>::with_capacity(
+                capacity,
+                capacity * DEFAULT_BATCH_SIZE,
+            ),
+            descriptions: GenericStringBuilder::<i32>::with_capacity(
+                capacity,
+                capacity * DEFAULT_BATCH_SIZE,
+            ),
+            sequences: GenericStringBuilder::<i32>::with_capacity(
+                capacity,
+                capacity * DEFAULT_BATCH_SIZE,
+            ),
+            quality_scores: GenericStringBuilder::<i32>::with_capacity(
+                capacity,
+                capacity * DEFAULT_BATCH_SIZE,
+            ),
         }
     }
 

@@ -59,7 +59,7 @@ where
     }
 
     async fn read_batch(&mut self, batch_size: usize) -> ExonFastqResult<Option<RecordBatch>> {
-        let mut array = FASTQArrayBuilder::create();
+        let mut array = FASTQArrayBuilder::with_capacity(batch_size);
         let mut record = fastq::Record::default(); // Allocate once
 
         for _ in 0..batch_size {
