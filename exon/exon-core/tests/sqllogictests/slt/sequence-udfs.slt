@@ -15,6 +15,11 @@ SELECT reverse_complement('ATCG')
 ----
 CGAT
 
+query I
+SELECT reverse_complement('atcg')
+----
+cgat
+
 statement ok
 DROP TABLE dna_sequences;
 
@@ -22,6 +27,11 @@ query I
 SELECT trim_polya('ATCGAAAA')
 ----
 ATCG
+
+query I
+SELECT trim_polya('atcgaaaa')
+----
+atcg
 
 query I
 SELECT length(trim_polya('ATCGAAAA'))

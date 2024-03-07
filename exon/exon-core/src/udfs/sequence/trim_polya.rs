@@ -37,17 +37,18 @@ impl Default for TrimPolyA {
 }
 
 /// Trim polyA tail from a sequence.
-fn trim_polya(sequence: &str) -> Result<String> {
+fn trim_polya(sequence: &str) -> String {
     let mut end = sequence.len();
 
     for c in sequence.chars().rev() {
-        if c != 'A' {
+        // if we hit something besides A or a, we're done
+        if c != 'A' && c != 'a' {
             break;
         }
         end -= 1;
     }
 
-    Ok(sequence[..end].to_string())
+    sequence[..end].to_string()
 }
 
 impl ScalarUDFImpl for TrimPolyA {
@@ -71,22 +72,14 @@ impl ScalarUDFImpl for TrimPolyA {
             Some(ColumnarValue::Array(array)) => {
                 let f = as_string_array(array)?
                     .iter()
-                    .map(|sequence| {
-                        match sequence {
-                            Some(sequence) => {
-                                let trimmed = trim_polya(sequence).map_err(|e| {
-                                    datafusion::error::DataFusionError::Execution(format!(
-                                        "Failed to trim polyA: {}",
-                                        e
-                                    ))
-                                });
-                                Some(trimmed)
-                            }
-                            None => None,
+                    .map(|sequence| match sequence {
+                        Some(sequence) => {
+                            let trimmed = trim_polya(sequence);
+                            Some(trimmed)
                         }
-                        .transpose()
+                        None => None,
                     })
-                    .collect::<Result<Vec<_>>>()?;
+                    .collect::<Vec<_>>();
 
                 Ok(ColumnarValue::Array(Arc::new(
                     GenericStringArray::<i32>::from(f),
@@ -94,13 +87,7 @@ impl ScalarUDFImpl for TrimPolyA {
             }
             Some(ColumnarValue::Scalar(scalar)) => match scalar {
                 ScalarValue::Utf8(Some(sequence)) => {
-                    let trimmed = trim_polya(sequence).map_err(|e| {
-                        datafusion::error::DataFusionError::Execution(format!(
-                            "Failed to trim polyA: {}",
-                            e
-                        ))
-                    })?;
-
+                    let trimmed = trim_polya(sequence);
                     Ok(ColumnarValue::Scalar(ScalarValue::Utf8(Some(trimmed))))
                 }
                 ScalarValue::Utf8(None) => Ok(ColumnarValue::Scalar(ScalarValue::Utf8(None))),

@@ -35,6 +35,24 @@ impl Default for ReverseComplement {
     }
 }
 
+fn reverse_complement(sequence: &str) -> String {
+    sequence
+        .chars()
+        .rev()
+        .map(|base| match base {
+            'A' => 'T',
+            'a' => 't',
+            'T' => 'A',
+            't' => 'a',
+            'C' => 'G',
+            'c' => 'g',
+            'G' => 'C',
+            'g' => 'c',
+            _ => base,
+        })
+        .collect::<String>()
+}
+
 impl ScalarUDFImpl for ReverseComplement {
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -58,16 +76,7 @@ impl ScalarUDFImpl for ReverseComplement {
                     .iter()
                     .map(|sequence| match sequence {
                         Some(sequence) => {
-                            let mut reverse_complement = String::new();
-                            for base in sequence.chars().rev() {
-                                match base {
-                                    'A' => reverse_complement.push('T'),
-                                    'T' => reverse_complement.push('A'),
-                                    'C' => reverse_complement.push('G'),
-                                    'G' => reverse_complement.push('C'),
-                                    _ => reverse_complement.push(base),
-                                }
-                            }
+                            let reverse_complement = reverse_complement(sequence);
                             Some(reverse_complement)
                         }
                         None => None,
@@ -78,17 +87,7 @@ impl ScalarUDFImpl for ReverseComplement {
             }
             Some(ColumnarValue::Scalar(s)) => match s {
                 ScalarValue::Utf8(Some(sequence)) => {
-                    let reverse_complement = sequence
-                        .chars()
-                        .rev()
-                        .map(|base| match base {
-                            'A' => 'T',
-                            'T' => 'A',
-                            'C' => 'G',
-                            'G' => 'C',
-                            _ => base,
-                        })
-                        .collect::<String>();
+                    let reverse_complement = reverse_complement(sequence);
 
                     Ok(ColumnarValue::Scalar(ScalarValue::Utf8(Some(
                         reverse_complement,
