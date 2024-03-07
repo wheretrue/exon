@@ -14,3 +14,30 @@ query I
 SELECT reverse_complement('ATCG')
 ----
 CGAT
+
+statement ok
+DROP TABLE dna_sequences;
+
+query I
+SELECT trim_polya('ATCGAAAA')
+----
+ATCG
+
+query I
+SELECT length(trim_polya('ATCGAAAA'))
+----
+4
+
+query I
+SELECT length(trim_polya('AAAA'))
+----
+0
+
+statement ok
+CREATE TABLE dna_sequences(sequence TEXT) AS VALUES ('ATCG'), ('AAA');
+
+query I
+SELECT length(trim_polya(sequence)) FROM dna_sequences
+----
+4
+0
