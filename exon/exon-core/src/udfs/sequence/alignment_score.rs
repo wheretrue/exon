@@ -14,17 +14,15 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{Float32Array, Int32Builder},
-    datatypes::DataType,
-};
+use arrow::{array::Int32Builder, datatypes::DataType};
 use datafusion::{
-    common::{cast::as_string_array, Column},
+    common::cast::as_string_array,
     error::Result,
     logical_expr::{ColumnarValue, ScalarUDFImpl, Volatility},
-    physical_optimizer::coalesce_batches::CoalesceBatches,
     scalar::ScalarValue,
 };
+
+use stringzilla::sz;
 
 #[derive(Debug)]
 pub(crate) struct AlignmentScore {
@@ -41,8 +39,6 @@ impl Default for AlignmentScore {
         Self { signature }
     }
 }
-
-use stringzilla::sz;
 
 impl ScalarUDFImpl for AlignmentScore {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -62,9 +58,11 @@ impl ScalarUDFImpl for AlignmentScore {
         args: &[datafusion::logical_expr::ColumnarValue],
     ) -> Result<datafusion::logical_expr::ColumnarValue> {
         if args.len() < 2 {
-            return Err(datafusion::error::DataFusionError::Execution(
-                "alignment_score takes at least two arguments".to_string(),
-            ));
+            return Err(datafusion::error::DataFusionError::Execution(format!(
+                "{} takes two arguments, but got {}",
+                self.name(),
+                args.len()
+            )));
         }
 
         let first = &args[0];
