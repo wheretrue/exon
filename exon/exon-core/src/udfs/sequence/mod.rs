@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod alignment_score;
 mod gc_content;
 mod quality_score_list_to_string;
 mod quality_score_string_to_list;
@@ -33,6 +34,10 @@ pub fn register_udfs(ctx: &SessionContext) {
     let gc_content = GCContent::default();
     let gc_content_scalar = ScalarUDF::from(gc_content);
     ctx.register_udf(gc_content_scalar);
+
+    let alignment_score = alignment_score::AlignmentScore::default();
+    let alignment_score_scalar = ScalarUDF::from(alignment_score);
+    ctx.register_udf(alignment_score_scalar);
 
     let quality_to_list = QualityScoreStringToList::default();
     let quality_to_list_scalar = ScalarUDF::from(quality_to_list);
