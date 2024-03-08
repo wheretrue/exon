@@ -44,10 +44,29 @@ SELECT length(trim_polya('AAAA'))
 0
 
 statement ok
-CREATE TABLE dna_sequences(sequence TEXT) AS VALUES ('ATCG'), ('AAA');
+CREATE TABLE dna_sequences(s1 TEXT, s2 TEXT) AS VALUES ('ATCG', 'ATCG'), ('AAA', 'ATCG');
 
 query I
-SELECT length(trim_polya(sequence)) FROM dna_sequences
+SELECT length(trim_polya(s1)) FROM dna_sequences
 ----
 4
 0
+
+query I
+SELECT alignment_score('ATCG', 'ATCG')
+----
+0
+
+query I
+SELECT alignment_score('ATCG', 'ATCGG')
+----
+-1
+
+query I
+SELECT alignment_score(s1, s2) score FROM dna_sequences
+----
+0
+-3
+
+statement ok
+DROP TABLE dna_sequences;
