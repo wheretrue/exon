@@ -17,7 +17,8 @@ use std::{any::Any, fmt::Debug, str::FromStr, sync::Arc, vec};
 use crate::{
     config::ExonConfigExtension,
     datasources::{
-        hive_partition::filter_matches_partition_cols, indexed_file::fai::compute_fai_range,
+        hive_partition::filter_matches_partition_cols,
+        indexed_file::{fai::compute_fai_range, region::RegionObjectStoreExtension},
         ExonFileType,
     },
     physical_plan::{
@@ -341,27 +342,46 @@ impl TableProvider for ListingFASTATable {
         let fasta_sequence_buffer_capacity = exon_settings.fasta_sequence_buffer_capacity;
 
         if let Some(regions) = &regions {
-            // If there was a region, we need to create a set of file partitions augmented with the
-            // byte offsets of the region in the file
+            // If we have regions, for local files, just add the region extension to the ObjectMeta
+            // for remote files, prequery the index and associate the faidx region
+
+            let url: &url::Url = object_store_url.as_ref();
+
             let mut file_partitions = Vec::new();
+            match url.scheme() {
+                "file" => {
+                    for file in file_list {
+                        for region in regions {
+                            let mut region_file = file.clone();
+                            let region_extension = RegionObjectStoreExtension::from(region);
 
-            for file in file_list {
-                let file_name = file.clone().object_meta.location;
-                // Add the .fai extension to the end of the file name
-                let index_file_path = Path::from(format!("{}.fai", file_name));
+                            region_file.extensions = Some(Arc::new(region_extension));
+                            file_partitions.push(region_file);
+                        }
+                    }
+                }
+                _ => {
+                    // If there was a region, we need to create a set of file partitions augmented with the
+                    // byte offsets of the region in the file
+                    for file in file_list {
+                        let file_name = file.clone().object_meta.location;
+                        // Add the .fai extension to the end of the file name
+                        let index_file_path = Path::from(format!("{}.fai", file_name));
 
-                let index_bytes = object_store.get(&index_file_path).await?.bytes().await?;
-                let cursor = std::io::Cursor::new(index_bytes);
+                        let index_bytes = object_store.get(&index_file_path).await?.bytes().await?;
+                        let cursor = std::io::Cursor::new(index_bytes);
 
-                let index_records = Reader::new(cursor).read_index()?;
+                        let index_records = Reader::new(cursor).read_index()?;
 
-                // TODO: coalesce the regions into contiguous blocks
-                for index_record in index_records {
-                    for region in regions {
-                        if let Some(range) = compute_fai_range(region, &index_record) {
-                            let mut indexed_partition = file.clone();
-                            indexed_partition.extensions = Some(Arc::new(range));
-                            file_partitions.push(indexed_partition);
+                        // TODO: coalesce the regions into contiguous blocks
+                        for index_record in index_records {
+                            for region in regions {
+                                if let Some(range) = compute_fai_range(region, &index_record) {
+                                    let mut indexed_partition = file.clone();
+                                    indexed_partition.extensions = Some(Arc::new(range));
+                                    file_partitions.push(indexed_partition);
+                                }
+                            }
                         }
                     }
                 }

@@ -19,6 +19,7 @@ use noodles::{
     fasta::fai::Record,
 };
 
+/// A file range object store extension.
 pub(crate) struct FAIFileRange {
     pub(crate) start: i64,
     pub(crate) end: i64,
