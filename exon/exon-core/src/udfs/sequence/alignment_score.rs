@@ -101,26 +101,24 @@ impl ScalarUDFImpl for AlignmentScore {
                 let second = second.to_array_of_size(first.len())?;
                 let second = as_string_array(&second)?;
 
-                let score = first
+                let mut score_builder = Int32Builder::with_capacity(first.len());
+
+                first
                     .iter()
                     .zip(second.iter())
-                    .map(|(a, b)| {
-                        let a = a.unwrap();
-                        let b = b.unwrap();
+                    .for_each(|(a, b)| match (a, b) {
+                        (Some(a), Some(b)) => {
+                            let s = sz::alignment_score(
+                                a.as_bytes(),
+                                b.as_bytes(),
+                                sz::unary_substitution_costs(),
+                                third,
+                            );
 
-                        let s = sz::alignment_score(
-                            a.as_bytes(),
-                            b.as_bytes(),
-                            sz::unary_substitution_costs(),
-                            third,
-                        );
-
-                        s as i32
-                    })
-                    .collect::<Vec<i32>>();
-
-                let mut score_builder = Int32Builder::with_capacity(score.len());
-                score_builder.append_slice(&score);
+                            score_builder.append_value(s as i32);
+                        }
+                        _ => score_builder.append_null(),
+                    });
 
                 Ok(ColumnarValue::Array(Arc::new(score_builder.finish())))
             }
@@ -147,26 +145,24 @@ impl ScalarUDFImpl for AlignmentScore {
                 let first = as_string_array(first)?;
                 let second = as_string_array(second)?;
 
-                let score = first
+                let mut score_builder = Int32Builder::with_capacity(first.len());
+
+                first
                     .iter()
                     .zip(second.iter())
-                    .map(|(a, b)| {
-                        let a = a.unwrap();
-                        let b = b.unwrap();
+                    .for_each(|(a, b)| match (a, b) {
+                        (Some(a), Some(b)) => {
+                            let s = sz::alignment_score(
+                                a.as_bytes(),
+                                b.as_bytes(),
+                                sz::unary_substitution_costs(),
+                                third,
+                            );
 
-                        let s = sz::alignment_score(
-                            a.as_bytes(),
-                            b.as_bytes(),
-                            sz::unary_substitution_costs(),
-                            third,
-                        );
-
-                        s as i32
-                    })
-                    .collect::<Vec<i32>>();
-
-                let mut score_builder = Int32Builder::with_capacity(score.len());
-                score_builder.append_slice(&score);
+                            score_builder.append_value(s as i32);
+                        }
+                        _ => score_builder.append_null(),
+                    });
 
                 Ok(ColumnarValue::Array(Arc::new(score_builder.finish())))
             }
