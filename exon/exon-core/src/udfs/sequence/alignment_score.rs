@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use arrow::{array::Int32Builder, datatypes::DataType};
+use arrow::{
+    array::{Array, Int32Builder},
+    datatypes::DataType,
+};
 use datafusion::{
     common::cast::as_string_array,
     error::Result,
@@ -31,8 +34,17 @@ pub(crate) struct AlignmentScore {
 
 impl Default for AlignmentScore {
     fn default() -> Self {
-        let signature = datafusion::logical_expr::Signature::exact(
-            vec![DataType::Utf8, DataType::Utf8],
+        let two_args =
+            datafusion::logical_expr::TypeSignature::Exact(vec![DataType::Utf8, DataType::Utf8]);
+
+        let three_args = datafusion::logical_expr::TypeSignature::Exact(vec![
+            DataType::Utf8,
+            DataType::Utf8,
+            DataType::Int64,
+        ]);
+
+        let signature = datafusion::logical_expr::Signature::one_of(
+            vec![two_args, three_args],
             Volatility::Immutable,
         );
 
@@ -59,7 +71,7 @@ impl ScalarUDFImpl for AlignmentScore {
     ) -> Result<datafusion::logical_expr::ColumnarValue> {
         if args.len() < 2 {
             return Err(datafusion::error::DataFusionError::Execution(format!(
-                "{} takes two arguments, but got {}",
+                "{} takes at least two arguments, but got {}",
                 self.name(),
                 args.len()
             )));
@@ -68,7 +80,50 @@ impl ScalarUDFImpl for AlignmentScore {
         let first = &args[0];
         let second = &args[1];
 
+        let third = match args.get(2) {
+            Some(third) => {
+                if let ColumnarValue::Scalar(ScalarValue::Int64(Some(third))) = third {
+                    *third as i8
+                } else {
+                    return Err(datafusion::error::DataFusionError::Execution(
+                        "alignment_score takes an optional third argument of type int32"
+                            .to_string(),
+                    ));
+                }
+            }
+            None => -1,
+        };
+
         match (first, second) {
+            (ColumnarValue::Array(first), ColumnarValue::Scalar(second)) => {
+                let first = as_string_array(first)?;
+
+                let second = second.to_array_of_size(first.len())?;
+                let second = as_string_array(&second)?;
+
+                let score = first
+                    .iter()
+                    .zip(second.iter())
+                    .map(|(a, b)| {
+                        let a = a.unwrap();
+                        let b = b.unwrap();
+
+                        let s = sz::alignment_score(
+                            a.as_bytes(),
+                            b.as_bytes(),
+                            sz::unary_substitution_costs(),
+                            third,
+                        );
+
+                        s as i32
+                    })
+                    .collect::<Vec<i32>>();
+
+                let mut score_builder = Int32Builder::with_capacity(score.len());
+                score_builder.append_slice(&score);
+
+                Ok(ColumnarValue::Array(Arc::new(score_builder.finish())))
+            }
             (ColumnarValue::Scalar(first), ColumnarValue::Scalar(second)) => {
                 match (first, second) {
                     (ScalarValue::Utf8(Some(first)), ScalarValue::Utf8(Some(second))) => {
@@ -76,7 +131,7 @@ impl ScalarUDFImpl for AlignmentScore {
                             first.as_bytes(),
                             second.as_bytes(),
                             sz::unary_substitution_costs(),
-                            -1,
+                            third,
                         );
 
                         Ok(ColumnarValue::Scalar(ScalarValue::Int32(Some(
@@ -103,7 +158,7 @@ impl ScalarUDFImpl for AlignmentScore {
                             a.as_bytes(),
                             b.as_bytes(),
                             sz::unary_substitution_costs(),
-                            -1,
+                            third,
                         );
 
                         s as i32
@@ -123,15 +178,8 @@ impl ScalarUDFImpl for AlignmentScore {
 
     fn return_type(
         &self,
-        arg_types: &[arrow::datatypes::DataType],
+        _arg_types: &[arrow::datatypes::DataType],
     ) -> Result<arrow::datatypes::DataType> {
-        if arg_types.len() != 2 {
-            return Err(datafusion::error::DataFusionError::Execution(format!(
-                "alignment_score takes two arguments, got {}",
-                arg_types.len()
-            )));
-        }
-
         Ok(DataType::Int32)
     }
 }

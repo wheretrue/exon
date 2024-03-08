@@ -58,6 +58,11 @@ SELECT alignment_score('ATCG', 'ATCG')
 0
 
 query I
+SELECT alignment_score('ATCG', 'AG', -2)
+----
+-4
+
+query I
 SELECT alignment_score('ATCG', 'ATCGG')
 ----
 -1
@@ -67,6 +72,12 @@ SELECT alignment_score(s1, s2) score FROM dna_sequences
 ----
 0
 -3
+
+query I
+SELECT alignment_score(s1, s2, -3) score FROM dna_sequences
+----
+0
+-5
 
 statement ok
 DROP TABLE dna_sequences;
