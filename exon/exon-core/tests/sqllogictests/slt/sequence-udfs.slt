@@ -79,5 +79,8 @@ SELECT alignment_score(s1, s2, -3) score FROM dna_sequences
 0
 -5
 
+statement error
+SELECT alignment_score('A', 'T', 'hi')
+
 statement ok
 DROP TABLE dna_sequences;
