@@ -17,7 +17,10 @@ use std::{any::Any, sync::Arc};
 use crate::datasources::ExonFileScanConfig;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
-    datasource::physical_plan::{FileScanConfig, FileStream},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType,
+        physical_plan::{FileScanConfig, FileStream},
+    },
     error::Result as DataFusionResult,
     execution::SendableRecordBatchStream,
     physical_plan::{
@@ -34,6 +37,9 @@ pub struct IndexedFASTAScanner {
     /// The base configuration for the file scan.
     base_config: FileScanConfig,
 
+    /// The compression type for the file.
+    file_compression_type: FileCompressionType,
+
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
 
@@ -45,12 +51,17 @@ pub struct IndexedFASTAScanner {
 }
 
 impl IndexedFASTAScanner {
-    pub fn new(base_config: FileScanConfig, fasta_sequence_buffer_capacity: usize) -> Self {
+    pub fn new(
+        base_config: FileScanConfig,
+        file_compression_type: FileCompressionType,
+        fasta_sequence_buffer_capacity: usize,
+    ) -> Self {
         let (projected_schema, ..) = base_config.project();
 
         Self {
             base_config,
             projected_schema,
+            file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
             fasta_sequence_buffer_capacity,
         }
@@ -126,7 +137,7 @@ impl ExecutionPlan for IndexedFASTAScanner {
             .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity)
             .with_projection(self.base_config.file_projection());
 
-        let opener = IndexedFASTAOpener::new(Arc::new(config));
+        let opener = IndexedFASTAOpener::new(Arc::new(config), self.file_compression_type);
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
         Ok(Box::pin(stream) as SendableRecordBatchStream)

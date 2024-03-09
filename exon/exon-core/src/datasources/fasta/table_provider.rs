@@ -397,8 +397,11 @@ impl TableProvider for ListingFASTATable {
             .limit_option(limit)
             .build();
 
-            let scan =
-                IndexedFASTAScanner::new(file_scan_config.clone(), fasta_sequence_buffer_capacity);
+            let scan = IndexedFASTAScanner::new(
+                file_scan_config.clone(),
+                self.config.options.file_compression_type,
+                fasta_sequence_buffer_capacity,
+            );
 
             Ok(Arc::new(scan))
         } else {

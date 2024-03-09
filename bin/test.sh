@@ -42,6 +42,8 @@ aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/dataso
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta/test.fasta s3://test-bucket/test.fa
 
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/test.fasta s3://test-bucket/test-indexed.fasta
+aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/test.fasta.gz s3://test-bucket/test-indexed.fasta.gz
+aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/test.fasta.gz.fai s3://test-bucket/test-indexed.fasta.gz.fai
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/test.fasta.fai s3://test-bucket/test-indexed.fasta.fai
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/fasta-indexed/region.txt s3://test-bucket/region.txt
 

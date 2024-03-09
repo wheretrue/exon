@@ -22,7 +22,8 @@ use arrow::{
 use bytes::Bytes;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType, physical_plan::FileOpener,
+        file_format::file_compression_type::{self, FileCompressionType},
+        physical_plan::FileOpener,
     },
     error::DataFusionError,
 };
@@ -36,11 +37,17 @@ use crate::datasources::indexed_file::{fai::FAIFileRange, region::RegionObjectSt
 pub struct IndexedFASTAOpener {
     /// The configuration for the opener.
     config: Arc<FASTAConfig>,
+
+    /// The file compression type.
+    file_compression_type: FileCompressionType,
 }
 
 impl IndexedFASTAOpener {
-    pub fn new(config: Arc<FASTAConfig>) -> Self {
-        Self { config }
+    pub fn new(config: Arc<FASTAConfig>, file_compression_type: FileCompressionType) -> Self {
+        Self {
+            config,
+            file_compression_type,
+        }
     }
 }
 
@@ -74,6 +81,7 @@ impl FileOpener for IndexedFASTAOpener {
     ) -> datafusion::error::Result<datafusion::datasource::physical_plan::FileOpenFuture> {
         let config = self.config.clone();
         let schema = self.config.file_schema.clone();
+        let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
             let fai_file_range = file_meta
@@ -99,7 +107,16 @@ impl FileOpener for IndexedFASTAOpener {
                     let get_stream =
                         Box::pin(get_result.into_stream().map_err(DataFusionError::from));
 
-                    let bytes: Vec<Bytes> = FileCompressionType::UNCOMPRESSED
+                    if file_compression_type
+                        != file_compression_type::FileCompressionType::UNCOMPRESSED
+                    {
+                        return Err(DataFusionError::Execution(
+                            "Indexed FASTA from remote storage only supports uncompressed files."
+                                .to_string(),
+                        ));
+                    }
+
+                    let bytes: Vec<Bytes> = file_compression_type
                         .convert_stream(get_stream)?
                         .collect::<Vec<_>>()
                         .await
