@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.12.0 (2024-03-10)
+
+### Feat
+
+- ic for alignment score (#433)
+- support local gzipped index (#432)
+- better reverse_complement (#431)
+- add polya trimming (#428)
+- add two new UDFs (#427)
+
+### Fix
+
+- remove unwraps
+
 ## v0.11.1 (2024-03-03)
 
 ### Feat
