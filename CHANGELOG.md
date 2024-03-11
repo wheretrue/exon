@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.13.0 (2024-03-10)
+
+### Feat
+
+- **exonr**: updating exonr version (#435)
+
 ## v0.12.0 (2024-03-10)
 
 ### Feat
