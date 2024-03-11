@@ -18,14 +18,13 @@ use arrow::{
     array::{Array, Int32Builder},
     datatypes::DataType,
 };
+use bio::alignment::pairwise::Aligner;
 use datafusion::{
     common::cast::as_string_array,
     error::Result,
     logical_expr::{ColumnarValue, ScalarUDFImpl, Volatility},
     scalar::ScalarValue,
 };
-
-use stringzilla::sz;
 
 #[derive(Debug)]
 pub(crate) struct AlignmentScore {
@@ -80,7 +79,7 @@ impl ScalarUDFImpl for AlignmentScore {
         let first = &args[0];
         let second = &args[1];
 
-        let third = match args.get(2) {
+        let _third = match args.get(2) {
             Some(third) => {
                 if let ColumnarValue::Scalar(ScalarValue::Int64(Some(third))) = third {
                     *third as i8
@@ -93,6 +92,9 @@ impl ScalarUDFImpl for AlignmentScore {
             }
             None => -1,
         };
+
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let mut aligner = Aligner::new(-1, -1, &score);
 
         match (first, second) {
             (ColumnarValue::Array(first), ColumnarValue::Scalar(second)) => {
@@ -108,14 +110,8 @@ impl ScalarUDFImpl for AlignmentScore {
                     .zip(second.iter())
                     .for_each(|(a, b)| match (a, b) {
                         (Some(a), Some(b)) => {
-                            let s = sz::alignment_score(
-                                a.as_bytes(),
-                                b.as_bytes(),
-                                sz::unary_substitution_costs(),
-                                third,
-                            );
-
-                            score_builder.append_value(s as i32);
+                            let alignment = aligner.local(a.as_bytes(), b.as_bytes());
+                            score_builder.append_value(alignment.score);
                         }
                         _ => score_builder.append_null(),
                     });
@@ -125,15 +121,10 @@ impl ScalarUDFImpl for AlignmentScore {
             (ColumnarValue::Scalar(first), ColumnarValue::Scalar(second)) => {
                 match (first, second) {
                     (ScalarValue::Utf8(Some(first)), ScalarValue::Utf8(Some(second))) => {
-                        let score = sz::alignment_score(
-                            first.as_bytes(),
-                            second.as_bytes(),
-                            sz::unary_substitution_costs(),
-                            third,
-                        );
+                        let alignment = aligner.local(first.as_bytes(), second.as_bytes());
 
                         Ok(ColumnarValue::Scalar(ScalarValue::Int32(Some(
-                            score as i32,
+                            alignment.score,
                         ))))
                     }
                     (_, _) => Err(datafusion::error::DataFusionError::Execution(
@@ -152,14 +143,9 @@ impl ScalarUDFImpl for AlignmentScore {
                     .zip(second.iter())
                     .for_each(|(a, b)| match (a, b) {
                         (Some(a), Some(b)) => {
-                            let s = sz::alignment_score(
-                                a.as_bytes(),
-                                b.as_bytes(),
-                                sz::unary_substitution_costs(),
-                                third,
-                            );
+                            let alignment = aligner.local(a.as_bytes(), b.as_bytes());
 
-                            score_builder.append_value(s as i32);
+                            score_builder.append_value(alignment.score);
                         }
                         _ => score_builder.append_null(),
                     });

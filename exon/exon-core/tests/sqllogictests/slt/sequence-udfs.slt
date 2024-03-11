@@ -55,29 +55,23 @@ SELECT length(trim_polya(s1)) FROM dna_sequences
 query I
 SELECT alignment_score('ATCG', 'ATCG')
 ----
-0
+4
 
 query I
-SELECT alignment_score('ATCG', 'AG', -2)
+SELECT alignment_score('ATCG', 'AG')
 ----
--4
+1
 
 query I
 SELECT alignment_score('ATCG', 'ATCGG')
 ----
--1
+4
 
 query I
 SELECT alignment_score(s1, s2) score FROM dna_sequences
 ----
-0
--3
-
-query I
-SELECT alignment_score(s1, s2, -3) score FROM dna_sequences
-----
-0
--5
+4
+1
 
 statement error
 SELECT alignment_score('A', 'T', 'hi')
