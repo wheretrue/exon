@@ -1,0 +1,16 @@
+[package]
+name = "exon-biorust-alignment"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+description = "An alignment library using parts removed from biorust."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fxhash = "0.2.1"
+lazy_static = "1.4.0"
+serde = { version = "1.0.197", features = ["derive"] }
