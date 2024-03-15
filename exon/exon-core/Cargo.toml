@@ -28,7 +28,6 @@ exon-io = { path = "../exon-io", version = "0.13.0" }
 exon-mzml = { path = "../exon-mzml", version = "0.13.0", optional = true }
 exon-sam = { path = "../exon-sam", version = "0.13.0" }
 exon-vcf = { path = "../exon-vcf", version = "0.13.0" }
-exon-biorust-alignment = { path = "../exon-biorust-alignment", version = "0.13.0" }
 futures = { workspace = true }
 itertools = "0.12.1"
 noodles = { workspace = true, features = [
@@ -51,6 +50,9 @@ tokio-util = { workspace = true }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 url = { workspace = true }
+fxhash = "0.2.1"
+lazy_static = "1.4.0"
+serde = { version = "1.0.197", features = ["derive"] }
 
 
 [dev-dependencies]

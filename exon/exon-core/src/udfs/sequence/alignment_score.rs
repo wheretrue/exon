@@ -25,7 +25,7 @@ use datafusion::{
     scalar::ScalarValue,
 };
 
-use exon_biorust_alignment::rust_bio_alignment::pairwise::Aligner;
+use crate::rust_bio_alignment::pairwise::Aligner;
 
 #[derive(Debug)]
 pub(crate) struct AlignmentScore {

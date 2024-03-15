@@ -1931,7 +1931,6 @@ dependencies = [
  "exon-bam",
  "exon-bcf",
  "exon-bed",
- "exon-biorust-alignment",
  "exon-common",
  "exon-fasta",
  "exon-fastq",
@@ -1945,12 +1944,15 @@ dependencies = [
  "exon-test",
  "exon-vcf",
  "futures",
+ "fxhash",
  "itertools 0.12.1",
+ "lazy_static",
  "noodles",
  "noodles-bgzf",
  "num_cpus",
  "object_store",
  "pin-project",
+ "serde",
  "sqllogictest",
  "tokio",
  "tokio-util",
@@ -2011,15 +2013,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "exon-biorust-alignment"
-version = "0.13.0"
-dependencies = [
- "fxhash",
- "lazy_static",
- "serde",
 ]
 
 [[package]]

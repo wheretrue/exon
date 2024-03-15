@@ -52,4 +52,4 @@ aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/dataso
 aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-bucket --acl public-read
 
 # Run the tests.
-cargo test --workspace --exclude exon-biorust-alignment
+cargo test
