@@ -18,13 +18,14 @@ use arrow::{
     array::{Array, Int32Builder},
     datatypes::DataType,
 };
-use bio::alignment::pairwise::Aligner;
 use datafusion::{
     common::cast::as_string_array,
     error::Result,
     logical_expr::{ColumnarValue, ScalarUDFImpl, Volatility},
     scalar::ScalarValue,
 };
+
+use crate::rust_bio_alignment::pairwise::Aligner;
 
 #[derive(Debug)]
 pub(crate) struct AlignmentScore {

@@ -85,6 +85,8 @@ pub mod error;
 /// Utilities for working with stream bgzf files.
 pub mod streaming_bgzf;
 
+pub(crate) mod rust_bio_alignment;
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
