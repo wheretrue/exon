@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.14.0 (2024-03-14)
+
+### Feat
+
+- update exon to v13 (#437)
+
+### Fix
+
+- remove rust bio dep (#439)
+
 ## v0.13.0 (2024-03-10)
 
 ### Feat
