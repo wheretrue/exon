@@ -15,6 +15,7 @@
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+use clap::Parser;
 use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::ScalarValue};
 use exon::ExonSessionExt;
 
@@ -61,17 +62,15 @@ impl ColumnType for DFColumnType {
 
 pub type DFOutput = DBOutput<DefaultColumnType>;
 
-struct TestOptions {
+#[derive(Debug, Parser)]
+struct Options {
     /// The path to the directory containing the test files.
+    #[clap(long, default_value = "tests/sqllogictests/slt/")]
     test_dir: PathBuf,
-}
 
-impl Default for TestOptions {
-    fn default() -> Self {
-        Self {
-            test_dir: PathBuf::from("tests/sqllogictests/slt/"),
-        }
-    }
+    /// A specific test to run.
+    #[clap(long)]
+    test_name: Option<String>,
 }
 
 pub struct ExonTextRunner {
@@ -144,9 +143,7 @@ impl sqllogictest::AsyncDB for ExonTextRunner {
     }
 }
 
-async fn run_tests() -> Result<(), DataFusionError> {
-    let test_options = TestOptions::default();
-
+async fn run_tests(test_options: &Options) -> Result<(), DataFusionError> {
     // Iterate through the test files and run the tests.
     let test_files = std::fs::read_dir(&test_options.test_dir)?;
 
@@ -156,9 +153,11 @@ async fn run_tests() -> Result<(), DataFusionError> {
     for test_file in test_files {
         let test_file = test_file?;
 
-        // only run cram-select-tests.slt
-        if test_file.path().file_name().expect("expected file name") != "cram-select-tests.slt" {
-            continue;
+        // if the filename matches the test_name only run that test
+        if let Some(ref test_name) = test_options.test_name {
+            if test_file.file_name().to_str().expect("expected file name") != test_name {
+                continue;
+            }
         }
 
         // if the file doesn't end with an slt extension skip it
@@ -196,5 +195,7 @@ pub async fn main() -> Result<(), DataFusionError> {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    run_tests().await
+    let test_options: Options = clap::Parser::parse();
+    eprintln!("Running tests with options: {:?}", test_options);
+    run_tests(&test_options).await
 }
