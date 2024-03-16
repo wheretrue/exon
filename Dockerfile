@@ -12,7 +12,7 @@ RUN if [ "$CARGO_BUILD_PROFILE" = "release" ]; \
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y libssl-dev ca-certificates procps && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libssl-dev libdeflate-dev ca-certificates procps && rm -rf /var/lib/apt/lists/*
 ARG CARGO_BUILD_PROFILE=release
 
 COPY --from=builder /usr/src/exon/target/$CARGO_BUILD_PROFILE/exon-cli /usr/local/bin/exon-cli
