@@ -26,7 +26,7 @@ pub(crate) struct CRAMSchemaBuilder {
     partition_fields: Vec<arrow::datatypes::Field>,
 
     /// The header to use for schema inference.
-    header: Option<String>,
+    _header: Option<String>,
 }
 
 impl Default for CRAMSchemaBuilder {
@@ -37,7 +37,7 @@ impl Default for CRAMSchemaBuilder {
                 Field::new("pos", arrow::datatypes::DataType::Int64, false),
             ],
             partition_fields: vec![],
-            header: None,
+            _header: None,
         }
     }
 }

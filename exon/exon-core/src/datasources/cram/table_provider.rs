@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, sync::Arc};
+use std::{any::Any, collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
@@ -29,7 +29,6 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 use futures::TryStreamExt;
-use noodles::core::Region;
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
@@ -53,12 +52,12 @@ pub struct ListingCRAMTableConfig {
     inner: ListingTableConfig,
 
     /// The options for the CRAM listing table.
-    options: Option<ListingCRAMTableOptions>,
+    options: ListingCRAMTableOptions,
 }
 
 impl ListingCRAMTableConfig {
     /// Create a new CRAM listing table configuration.
-    pub fn new(table_path: ListingTableUrl, options: Option<ListingCRAMTableOptions>) -> Self {
+    pub fn new(table_path: ListingTableUrl, options: ListingCRAMTableOptions) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
             options,
@@ -73,6 +72,21 @@ pub struct ListingCRAMTableOptions {
 
     /// FASTA Reference
     fasta_reference: String,
+}
+
+impl TryFrom<&HashMap<String, String>> for ListingCRAMTableOptions {
+    type Error = ExonError;
+
+    fn try_from(options: &HashMap<String, String>) -> Result<Self> {
+        let fasta_reference = options
+            .get("fasta_reference")
+            .ok_or(ExonError::ExecutionError(
+                "No fasta reference provided for CRAM table".to_string(),
+            ))?
+            .to_string();
+
+        Ok(Self::new(fasta_reference))
+    }
 }
 
 impl ListingCRAMTableOptions {
@@ -101,15 +115,7 @@ impl ListingCRAMTableOptions {
             return Err(ExonError::ExecutionError("No objects found".to_string()));
         }
 
-        let get_result = store.get(&objects[0].location).await?;
-
-        let stream_reader = Box::pin(get_result.into_stream().map_err(ExonError::from));
-        let stream_reader = StreamReader::new(stream_reader);
-        let mut cram_reader = noodles::cram::AsyncReader::new(stream_reader);
-
-        let header = cram_reader.read_file_header().await?;
-
-        let exon_settings = state
+        let _exon_settings = state
             .config()
             .options()
             .extensions
@@ -117,6 +123,17 @@ impl ListingCRAMTableOptions {
             .ok_or(ExonError::ExecutionError(
                 "Exon settings must be configured.".to_string(),
             ))?;
+
+        tracing::info!("Getting object from store: {:?}", objects[0].location);
+        let get_result = store.get(&objects[0].location).await?;
+
+        let stream_reader = Box::pin(get_result.into_stream().map_err(ExonError::from));
+        let stream_reader = StreamReader::new(stream_reader);
+
+        let mut cram_reader = noodles::cram::AsyncReader::new(stream_reader);
+
+        cram_reader.read_file_definition().await?;
+        let _header = cram_reader.read_file_header().await?;
 
         let mut cram_schema_builder = CRAMSchemaBuilder::default();
         let table_schema = cram_schema_builder.build()?;
@@ -178,11 +195,7 @@ impl ListingCRAMTable {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            options: config.options.ok_or_else(|| {
-                crate::error::ExonError::Configuration(
-                    "No options provided for CRAM listing table".to_string(),
-                )
-            })?,
+            options: config.options,
         })
     }
 }

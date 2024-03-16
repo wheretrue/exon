@@ -419,7 +419,7 @@ impl TableProvider for ListingVCFTable {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{collections::HashMap, sync::Arc};
 
     use crate::{
         datasources::{vcf::IndexedVCFScanner, ExonListingTableFactory},
@@ -662,6 +662,7 @@ mod tests {
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
                 Vec::new(),
+                &HashMap::new(),
             )
             .await?;
 

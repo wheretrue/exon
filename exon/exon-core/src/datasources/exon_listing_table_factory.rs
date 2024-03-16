@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{option, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
@@ -75,6 +75,7 @@ impl ExonListingTableFactory {
         file_compression_type: FileCompressionType,
         location: String,
         table_partition_cols: Vec<Field>,
+        options: &HashMap<String, String>,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let table_path = ListingTableUrl::parse(&location)?;
 
@@ -125,7 +126,6 @@ impl ExonListingTableFactory {
 
                 let options = ListingGFFTableOptions::new(file_compression_type, true)
                     .with_table_partition_cols(table_partition_cols);
-                tracing::info!("options: {:?}", options);
 
                 let file_schema = options.infer_schema().await?;
 
@@ -292,12 +292,12 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::CRAM => {
-                let options = ListingCRAMTableOptions::new("".to_string())
+                let options = ListingCRAMTableOptions::try_from(options)?
                     .with_table_partition_cols(table_partition_cols);
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingCRAMTableConfig::new(table_path, Some(options));
+                let config = ListingCRAMTableConfig::new(table_path, options);
 
                 let table = crate::datasources::cram::table_provider::ListingCRAMTable::try_new(
                     config,
@@ -355,7 +355,6 @@ impl TableProviderFactory for ExonListingTableFactory {
             .await?;
 
         let options = &cmd.options;
-        eprintln!("options: {:?}", options);
 
         self.create_from_file_type(
             state,
@@ -363,6 +362,7 @@ impl TableProviderFactory for ExonListingTableFactory {
             file_compression_type,
             cmd.location.clone(),
             table_partition_cols,
+            options,
         )
         .await
     }

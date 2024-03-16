@@ -238,6 +238,8 @@ impl TableProvider for ListingFASTQTable {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use datafusion::{
         datasource::file_format::file_compression_type::FileCompressionType,
         prelude::SessionContext,
@@ -262,6 +264,7 @@ mod tests {
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
                 Vec::new(),
+                &HashMap::new(),
             )
             .await?;
 

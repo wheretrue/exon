@@ -20,10 +20,7 @@ use datafusion::{
 };
 use exon_cram::{AsyncBatchStream, CRAMConfig};
 use futures::{StreamExt, TryStreamExt};
-use noodles::fasta::{
-    repository::{self, adapters::IndexedReader},
-    Repository,
-};
+use noodles::sam::Header;
 use tokio_util::io::StreamReader;
 
 #[derive(Debug)]
@@ -45,18 +42,19 @@ impl FileOpener for CRAMOpener {
 
         Ok(Box::pin(async move {
             let s = config.object_store.get(file_meta.location()).await?;
-            let s = s.into_stream();
 
-            let stream_reader = Box::pin(s.map_err(DataFusionError::from));
+            let s = s.into_stream().map_err(DataFusionError::from);
+
+            let stream_reader = Box::pin(s);
             let stream_reader = StreamReader::new(stream_reader);
 
             let mut cram_reader = noodles::cram::AsyncReader::new(stream_reader);
             cram_reader.read_file_definition().await?;
 
-            let header =
-                cram_reader.read_file_header().await?.parse().map_err(|_| {
-                    DataFusionError::Execution("Failed to parse header".to_string())
-                })?;
+            let header = cram_reader.read_file_header().await?;
+            let header: Header = header.parse().map_err(|_| {
+                DataFusionError::Execution("Failed to parse CRAM header".to_string())
+            })?;
 
             let batch_stream = AsyncBatchStream::new(cram_reader, header, config).into_stream();
 

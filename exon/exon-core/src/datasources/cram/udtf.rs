@@ -23,7 +23,6 @@ use datafusion::{
 
 use datafusion::error::Result as DataFusionResult;
 use exon_common::TableSchema;
-use object_store::path;
 
 use crate::error::ExonError;
 
@@ -36,7 +35,7 @@ pub struct CRAMScanFunction {
 
 impl CRAMScanFunction {
     /// Create a new `CRAMScanFunction`.
-    pub fn new(ctx: SessionContext) -> Self {
+    pub fn _new(ctx: SessionContext) -> Self {
         Self { ctx }
     }
 }
@@ -80,7 +79,7 @@ impl TableFunctionImpl for CRAMScanFunction {
         })?;
 
         let listing_table_config =
-            ListingCRAMTableConfig::new(listing_table_url, Some(listing_table_options));
+            ListingCRAMTableConfig::new(listing_table_url, listing_table_options);
 
         let listing_table = ListingCRAMTable::try_new(listing_table_config, schema)?;
 

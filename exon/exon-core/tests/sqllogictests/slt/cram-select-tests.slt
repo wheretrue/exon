@@ -1,9 +1,9 @@
 control substitution on
 
 statement ok
-CREATE EXTERNAL TABLE cram STORED AS CRAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/cram/test_input_1_a.cram'
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference '/Users/thauck/wheretrue/github.com/wheretrue/exon/exon-benchmarks/data/HG00096.alt_bwamem_GRCh38DH.20150718.GBR.low_coverage.cram') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/cram/test_input_1_a.cram';
 
 query I
-SELECT name FROM cram LIMIT 1;
+SELECT chrom FROM cram LIMIT 1;
 ----
-name
+r000

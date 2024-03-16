@@ -141,6 +141,8 @@ impl ExecutionPlan for FCSScan {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::{datasources::ExonListingTableFactory, ExonSessionExt};
 
     use datafusion::{
@@ -164,6 +166,7 @@ mod tests {
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
                 Vec::new(),
+                &HashMap::new(),
             )
             .await?;
 
