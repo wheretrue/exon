@@ -111,7 +111,11 @@ impl ScalarUDFImpl for SAMScalarUDF {
 pub fn register_udfs(ctx: &SessionContext) {
     let udfs = vec![
         SAMScalarUDF::new(Flags::SEGMENTED, "is_segmented".to_string()),
-        SAMScalarUDF::new(Flags::PROPERLY_ALIGNED, "is_properly_aligned".to_string()),
+        SAMScalarUDF::new(Flags::PROPERLY_SEGMENTED, "is_properly_aligned".to_string()),
+        SAMScalarUDF::new(
+            Flags::PROPERLY_SEGMENTED,
+            "is_properly_segmented".to_string(),
+        ),
         SAMScalarUDF::new(Flags::UNMAPPED, "is_unmapped".to_string()),
         SAMScalarUDF::new(Flags::MATE_UNMAPPED, "is_mate_unmapped".to_string()),
         SAMScalarUDF::new(
