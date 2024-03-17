@@ -49,6 +49,13 @@ impl CRAMConfig {
         }
     }
 
+    /// Get the projection, returning the identity projection if none is set.
+    pub fn projection(&self) -> Vec<usize> {
+        self.projection
+            .clone()
+            .unwrap_or_else(|| (0..self.file_schema.fields().len()).collect())
+    }
+
     /// Set the batch size.
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
         self.batch_size = batch_size;

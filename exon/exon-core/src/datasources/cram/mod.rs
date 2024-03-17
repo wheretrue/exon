@@ -14,6 +14,5 @@
 
 pub(crate) mod file_opener;
 pub(crate) mod scanner;
-pub(crate) mod schema_builder;
 pub(crate) mod table_provider;
 pub(crate) mod udtf;
