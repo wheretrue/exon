@@ -1945,7 +1945,7 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "noodles",
- "noodles-bgzf",
+ "noodles-bgzf 0.27.0",
  "num_cpus",
  "object_store",
  "pin-project",
@@ -1968,7 +1968,7 @@ dependencies = [
  "futures",
  "itertools 0.12.1",
  "noodles",
- "noodles-bgzf",
+ "noodles-bgzf 0.27.0",
  "object_store",
  "tokio",
 ]
@@ -2175,7 +2175,7 @@ dependencies = [
  "futures",
  "itertools 0.12.1",
  "noodles",
- "noodles-bgzf",
+ "noodles-bgzf 0.27.0",
  "object_store",
  "tokio",
 ]
@@ -2196,7 +2196,7 @@ dependencies = [
  "exon-common",
  "futures",
  "noodles",
- "noodles-bgzf",
+ "noodles-bgzf 0.27.0",
  "object_store",
  "tokio",
 ]
@@ -3056,7 +3056,7 @@ dependencies = [
  "noodles-bam",
  "noodles-bcf",
  "noodles-bed",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-cram",
  "noodles-csi",
@@ -3081,7 +3081,7 @@ dependencies = [
  "bytes",
  "futures",
  "indexmap 2.2.5",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
  "noodles-sam",
@@ -3097,7 +3097,7 @@ dependencies = [
  "byteorder",
  "futures",
  "indexmap 2.2.5",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
  "noodles-vcf",
@@ -3124,10 +3124,22 @@ dependencies = [
  "crossbeam-channel",
  "flate2",
  "futures",
- "libdeflater",
  "pin-project-lite",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "noodles-bgzf"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43ce62d1e012aa3793e17be1c286b8b71dad5a902a19524eb21729ed16113a9b"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "crossbeam-channel",
+ "flate2",
+ "libdeflater",
 ]
 
 [[package]]
@@ -3170,7 +3182,7 @@ dependencies = [
  "bit-vec",
  "byteorder",
  "indexmap 2.2.5",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "tokio",
 ]
@@ -3183,7 +3195,7 @@ checksum = "5e9e953e4e90e6c96e6a384598ebf2ab6d2f5add259ff05a194cf635e892c980"
 dependencies = [
  "bytes",
  "memchr",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "tokio",
 ]
@@ -3206,7 +3218,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14f8ec87fe3630f57d6d8ea24cbc2cbd0bfed1fe66238bda7a7c3fb6a36d3713"
 dependencies = [
  "indexmap 2.2.5",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
  "percent-encoding",
@@ -3218,7 +3230,7 @@ version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab70f06b15bbf2be2144fc6cbedd63666b23ba5fc2513a218973a01702457b2f"
 dependencies = [
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
 ]
@@ -3235,7 +3247,7 @@ dependencies = [
  "indexmap 2.2.5",
  "lexical-core",
  "memchr",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
  "tokio",
@@ -3250,7 +3262,7 @@ dependencies = [
  "bit-vec",
  "byteorder",
  "indexmap 2.2.5",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
  "tokio",
@@ -3265,7 +3277,7 @@ dependencies = [
  "futures",
  "indexmap 2.2.5",
  "memchr",
- "noodles-bgzf",
+ "noodles-bgzf 0.26.0",
  "noodles-core",
  "noodles-csi",
  "noodles-tabix",
