@@ -208,6 +208,8 @@ impl TableProvider for ListingHMMDomTabTable {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::{
         datasources::{ExonFileType, ExonListingTableFactory},
         ExonSessionExt,
@@ -232,6 +234,7 @@ mod tests {
                 FileCompressionType::UNCOMPRESSED,
                 table_path.to_string(),
                 Vec::new(),
+                &HashMap::new(),
             )
             .await?;
 

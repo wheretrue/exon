@@ -74,6 +74,9 @@ pub enum ExonFileType {
     /// GTF file format.
     GTF,
 
+    /// CRAM file format.
+    CRAM,
+
     /// Genbank file format.
     #[cfg(feature = "genbank")]
     GENBANK,
@@ -116,6 +119,7 @@ impl FromStr for ExonFileType {
             "GTF" => Ok(Self::GTF),
             #[cfg(feature = "fcs")]
             "FCS" => Ok(Self::FCS),
+            "CRAM" => Ok(Self::CRAM),
             _ => Err(ExonError::InvalidFileType(s)),
         }
     }
@@ -146,6 +150,7 @@ impl Display for ExonFileType {
             Self::GTF => write!(f, "GTF"),
             #[cfg(feature = "fcs")]
             Self::FCS => write!(f, "FCS"),
+            Self::CRAM => write!(f, "CRAM"),
         }
     }
 }
@@ -216,6 +221,7 @@ mod tests {
         assert_eq!(ExonFileType::FQ.to_string(), "FQ");
         assert_eq!(ExonFileType::FAA.to_string(), "FAA");
         assert_eq!(ExonFileType::FNA.to_string(), "FNA");
+        assert_eq!(ExonFileType::CRAM.to_string(), "CRAM");
     }
 
     #[test]

@@ -17,6 +17,7 @@ datafusion = { workspace = true }
 exon-bam = { path = "../exon-bam", version = "0.14.0" }
 exon-bcf = { path = "../exon-bcf", version = "0.14.0" }
 exon-bed = { path = "../exon-bed", version = "0.14.0" }
+exon-cram = { path = "../exon-cram", version = "0.14.0" }
 exon-common = { path = "../exon-common", version = "0.14.0" }
 exon-fasta = { path = "../exon-fasta", version = "0.14.0" }
 exon-fastq = { path = "../exon-fastq", version = "0.14.0" }
@@ -54,10 +55,10 @@ fxhash = "0.2.1"
 lazy_static = "1.4.0"
 serde = { version = "1.0.197", features = ["derive"] }
 
-
 [dev-dependencies]
 exon-test = { path = "../exon-test" }
 sqllogictest = "0.19.1"
+clap = { version = "4.4.8", features = ["derive", "env"] }
 
 [features]
 all = ["ffi", "genbank", "mzml", "fcs"]

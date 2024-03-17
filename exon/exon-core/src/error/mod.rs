@@ -127,6 +127,12 @@ impl From<url::ParseError> for ExonError {
     }
 }
 
+impl From<ExonError> for std::io::Error {
+    fn from(error: ExonError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
+    }
+}
+
 impl Display for ExonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

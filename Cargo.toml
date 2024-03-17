@@ -16,6 +16,7 @@ members = [
   "exon/exon-bed",
   "exon/exon-common",
   "exon/exon-core",
+  "exon/exon-cram",
   "exon/exon-fasta",
   "exon/exon-fastq",
   "exon/exon-fcs",
@@ -27,6 +28,7 @@ members = [
   "exon/exon-sam",
   "exon/exon-test",
   "exon/exon-vcf",
+  "exon/exon-cram",
 ]
 exclude = ["python"]
 resolver = "2"
