@@ -2043,6 +2043,7 @@ version = "0.14.0"
 dependencies = [
  "arrow",
  "exon-common",
+ "exon-sam",
  "futures",
  "noodles",
  "object_store",

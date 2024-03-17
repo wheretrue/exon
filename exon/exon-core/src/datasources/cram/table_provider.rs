@@ -28,7 +28,9 @@ use datafusion::{
     physical_plan::ExecutionPlan,
 };
 use exon_common::TableSchema;
-use futures::TryStreamExt;
+use exon_sam::SAMSchemaBuilder;
+use futures::{StreamExt, TryStreamExt};
+use noodles::sam::Header;
 use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
@@ -41,7 +43,7 @@ use crate::{
     },
 };
 
-use super::{scanner::CRAMScan, schema_builder::CRAMSchemaBuilder};
+use super::scanner::CRAMScan;
 
 const CRAM_EXTENSION: &str = "cram";
 
@@ -133,12 +135,29 @@ impl ListingCRAMTableOptions {
         let mut cram_reader = noodles::cram::AsyncReader::new(stream_reader);
 
         cram_reader.read_file_definition().await?;
-        let _header = cram_reader.read_file_header().await?;
+        let header = cram_reader.read_file_header().await?;
+        let header: Header = header
+            .to_owned()
+            .parse()
+            .map_err(|_| DataFusionError::Execution("Unable to parse header".to_string()))?;
 
-        let mut cram_schema_builder = CRAMSchemaBuilder::default();
-        let table_schema = cram_schema_builder.build()?;
+        let mut schema_builder = SAMSchemaBuilder::default();
 
-        Ok(table_schema)
+        let reference_sequence_repository = noodles::fasta::Repository::default();
+
+        if let Some(Ok(record)) = cram_reader
+            .records(&reference_sequence_repository, &header)
+            .next()
+            .await
+        {
+            schema_builder = schema_builder.with_tags_data_type_from_data(record.data())?;
+        } else {
+            return Err(ExonError::ExecutionError(
+                "No records found in CRAM file".to_string(),
+            ));
+        }
+
+        Ok(schema_builder.build())
     }
 
     pub async fn infer_schema<'a>(
