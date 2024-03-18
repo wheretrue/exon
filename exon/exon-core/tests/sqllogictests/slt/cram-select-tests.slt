@@ -6,4 +6,4 @@ CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference '/Users/thauc
 query I
 SELECT name, flag, reference, start, end, mapping_quality, cigar, mate_reference FROM cram LIMIT 1;
 ----
-r000 99 0 50 59 30 10M 0
+r000 99 insert 50 59 30 10M insert
