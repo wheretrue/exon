@@ -293,7 +293,8 @@ impl ExonListingTableFactory {
             }
             ExonFileType::CRAM => {
                 let options = ListingCRAMTableOptions::try_from(options)?
-                    .with_table_partition_cols(table_partition_cols);
+                    .with_table_partition_cols(table_partition_cols)
+                    .with_tag_as_struct(exon_config_extension.bam_parse_tags);
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
