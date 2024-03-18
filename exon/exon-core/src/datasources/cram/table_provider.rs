@@ -35,7 +35,6 @@ use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
-    config::ExonConfigExtension,
     datasources::hive_partition::filter_matches_partition_cols,
     error::{ExonError, Result},
     physical_plan::{
@@ -74,6 +73,9 @@ pub struct ListingCRAMTableOptions {
 
     /// FASTA Reference
     fasta_reference: String,
+
+    /// Whether to use the tag as struct.
+    tag_as_struct: bool,
 }
 
 impl TryFrom<&HashMap<String, String>> for ListingCRAMTableOptions {
@@ -97,7 +99,14 @@ impl ListingCRAMTableOptions {
         Self {
             table_partition_cols: Vec::new(),
             fasta_reference,
+            tag_as_struct: false,
         }
+    }
+
+    /// Set the the tag_as_struct option.
+    pub fn with_tag_as_struct(mut self, tag_as_struct: bool) -> Self {
+        self.tag_as_struct = tag_as_struct;
+        self
     }
 
     /// Set the partition columns for the table.
@@ -109,7 +118,6 @@ impl ListingCRAMTableOptions {
     /// Infer the schema from the file.
     async fn infer_schema_from_object_meta(
         &self,
-        state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
     ) -> Result<TableSchema> {
@@ -117,16 +125,14 @@ impl ListingCRAMTableOptions {
             return Err(ExonError::ExecutionError("No objects found".to_string()));
         }
 
-        let _exon_settings = state
-            .config()
-            .options()
-            .extensions
-            .get::<ExonConfigExtension>()
-            .ok_or(ExonError::ExecutionError(
-                "Exon settings must be configured.".to_string(),
-            ))?;
+        if !self.tag_as_struct {
+            let builder = SAMSchemaBuilder::default()
+                .with_partition_fields(self.table_partition_cols.clone());
+            let table_schema = builder.build();
 
-        tracing::info!("Getting object from store: {:?}", objects[0].location);
+            return Ok(table_schema);
+        }
+
         let get_result = store.get(&objects[0].location).await?;
 
         let stream_reader = Box::pin(get_result.into_stream().map_err(ExonError::from));
@@ -157,6 +163,8 @@ impl ListingCRAMTableOptions {
             ));
         }
 
+        schema_builder = schema_builder.with_partition_fields(self.table_partition_cols.clone());
+
         Ok(schema_builder.build())
     }
 
@@ -182,8 +190,7 @@ impl ListingCRAMTableOptions {
             .await
             .map_err(|e| DataFusionError::Execution(format!("Unable to get path info: {}", e)))?;
 
-        self.infer_schema_from_object_meta(state, &store, &files)
-            .await
+        self.infer_schema_from_object_meta(&store, &files).await
     }
 
     async fn create_physical_plan(
