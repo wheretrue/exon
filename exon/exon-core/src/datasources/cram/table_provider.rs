@@ -72,30 +72,23 @@ pub struct ListingCRAMTableOptions {
     table_partition_cols: Vec<Field>,
 
     /// FASTA Reference
-    fasta_reference: String,
+    fasta_reference: Option<String>,
 
     /// Whether to use the tag as struct.
     tag_as_struct: bool,
 }
 
-impl TryFrom<&HashMap<String, String>> for ListingCRAMTableOptions {
-    type Error = ExonError;
+impl From<&HashMap<String, String>> for ListingCRAMTableOptions {
+    fn from(options: &HashMap<String, String>) -> Self {
+        let fasta_reference = options.get("fasta_reference").map(|s| s.to_string());
 
-    fn try_from(options: &HashMap<String, String>) -> Result<Self> {
-        let fasta_reference = options
-            .get("fasta_reference")
-            .ok_or(ExonError::ExecutionError(
-                "No fasta reference provided for CRAM table".to_string(),
-            ))?
-            .to_string();
-
-        Ok(Self::new(fasta_reference))
+        Self::new(fasta_reference)
     }
 }
 
 impl ListingCRAMTableOptions {
     /// Create a new CRAM listing table options.
-    pub fn new(fasta_reference: String) -> Self {
+    pub fn new(fasta_reference: Option<String>) -> Self {
         Self {
             table_partition_cols: Vec::new(),
             fasta_reference,
@@ -149,7 +142,12 @@ impl ListingCRAMTableOptions {
 
         let mut schema_builder = SAMSchemaBuilder::default();
 
-        let reference_sequence_repository = noodles::fasta::Repository::default();
+        let reference_sequence_repository = match &self.fasta_reference {
+            Some(_reference) => {
+                todo!("work out how to get the reference sequence from the fasta file");
+            }
+            None => noodles::fasta::Repository::default(),
+        };
 
         if let Some(Ok(record)) = cram_reader
             .records(&reference_sequence_repository, &header)
