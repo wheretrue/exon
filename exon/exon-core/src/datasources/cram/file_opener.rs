@@ -56,7 +56,8 @@ impl FileOpener for CRAMOpener {
                 DataFusionError::Execution("Failed to parse CRAM header".to_string())
             })?;
 
-            let batch_stream = AsyncBatchStream::new(cram_reader, header, config).into_stream();
+            let batch_stream =
+                AsyncBatchStream::try_new(cram_reader, header, config)?.into_stream();
 
             Ok(batch_stream.boxed())
         }))

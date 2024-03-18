@@ -30,7 +30,7 @@ pub struct CRAMConfig {
     /// Any projections to apply to the resulting batches.
     pub projection: Option<Vec<usize>>,
     /// The FASTA reference to use.
-    pub reference: Option<String>,
+    pub fasta_reference: Option<String>,
 }
 
 impl CRAMConfig {
@@ -38,14 +38,14 @@ impl CRAMConfig {
     pub fn new(
         object_store: Arc<dyn ObjectStore>,
         file_schema: SchemaRef,
-        reference: Option<String>,
+        fasta_reference: Option<String>,
     ) -> Self {
         Self {
             batch_size: DEFAULT_BATCH_SIZE,
             object_store,
             file_schema,
             projection: None,
-            reference,
+            fasta_reference,
         }
     }
 

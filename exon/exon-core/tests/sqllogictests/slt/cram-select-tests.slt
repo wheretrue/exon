@@ -24,3 +24,26 @@ query I
 SELECT name, flag, reference, start, end, mapping_quality, cigar, mate_reference, tags FROM cram LIMIT 1;
 ----
 r000 99 insert 50 59 30 10M insert [{tag: PG, value: bull}]
+
+statement ok
+DROP TABLE cram;
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference '$CARGO_MANIFEST_DIR/test-data/datasources/cram/ce.fa') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/cram/0500_mapped.cram';
+
+query I
+SELECT name, flag, reference, start, end FROM cram LIMIT 1;
+----
+match 99 CHROMOSOME_I 1000 1099
+
+statement ok
+DROP TABLE cram;
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference '/does/not/exist') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/cram/0500_mapped.cram';
+
+statement error
+SELECT * FROM cram;
+
+statement ok
+DROP TABLE cram;
