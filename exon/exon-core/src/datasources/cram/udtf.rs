@@ -59,7 +59,7 @@ impl TableFunctionImpl for CRAMScanFunction {
         };
         let listing_table_url = ListingTableUrl::parse(cram_listing_location)?;
 
-        let Some(Expr::Literal(ScalarValue::Utf8(Some(ref fasta_repo)))) = exprs.get(1) else {
+        let Some(Expr::Literal(ScalarValue::Utf8(fasta_repo))) = exprs.get(1) else {
             return Err(ExonError::ExecutionError(
                 "CRAMScanFunction requires the fasta_repo to be specified as the second argument"
                     .to_string(),
@@ -68,7 +68,7 @@ impl TableFunctionImpl for CRAMScanFunction {
         };
 
         let listing_table_options =
-            super::table_provider::ListingCRAMTableOptions::new(fasta_repo.to_string());
+            super::table_provider::ListingCRAMTableOptions::new(fasta_repo.clone());
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options

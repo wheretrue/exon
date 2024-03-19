@@ -30,8 +30,8 @@ use datafusion::{
 use exon_common::TableSchema;
 use exon_sam::SAMSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
-use noodles::sam::Header;
-use object_store::{ObjectMeta, ObjectStore};
+use noodles::{fasta::repository::adapters::IndexedReader, sam::Header};
+use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
@@ -72,30 +72,23 @@ pub struct ListingCRAMTableOptions {
     table_partition_cols: Vec<Field>,
 
     /// FASTA Reference
-    fasta_reference: String,
+    fasta_reference: Option<String>,
 
     /// Whether to use the tag as struct.
     tag_as_struct: bool,
 }
 
-impl TryFrom<&HashMap<String, String>> for ListingCRAMTableOptions {
-    type Error = ExonError;
+impl From<&HashMap<String, String>> for ListingCRAMTableOptions {
+    fn from(options: &HashMap<String, String>) -> Self {
+        let fasta_reference = options.get("fasta_reference").map(|s| s.to_string());
 
-    fn try_from(options: &HashMap<String, String>) -> Result<Self> {
-        let fasta_reference = options
-            .get("fasta_reference")
-            .ok_or(ExonError::ExecutionError(
-                "No fasta reference provided for CRAM table".to_string(),
-            ))?
-            .to_string();
-
-        Ok(Self::new(fasta_reference))
+        Self::new(fasta_reference)
     }
 }
 
 impl ListingCRAMTableOptions {
     /// Create a new CRAM listing table options.
-    pub fn new(fasta_reference: String) -> Self {
+    pub fn new(fasta_reference: Option<String>) -> Self {
         Self {
             table_partition_cols: Vec::new(),
             fasta_reference,
@@ -149,7 +142,26 @@ impl ListingCRAMTableOptions {
 
         let mut schema_builder = SAMSchemaBuilder::default();
 
-        let reference_sequence_repository = noodles::fasta::Repository::default();
+        let reference_sequence_repository = match &self.fasta_reference {
+            Some(reference) => {
+                // Check if the reference exists, if not return an error
+                let p = Path::from(reference.clone());
+                if store.head(&p).await.is_err() {
+                    return Err(ExonError::ExecutionError(format!(
+                        "Reference file {} does not exist",
+                        reference
+                    )));
+                }
+
+                let index_reader = noodles::fasta::indexed_reader::Builder::default()
+                    .build_from_path(reference)?;
+
+                let index_reader = IndexedReader::new(index_reader);
+
+                noodles::fasta::Repository::new(index_reader)
+            }
+            None => noodles::fasta::Repository::default(),
+        };
 
         if let Some(Ok(record)) = cram_reader
             .records(&reference_sequence_repository, &header)
@@ -273,6 +285,17 @@ impl TableProvider for ListingCRAMTable {
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let object_store_url = self.table_paths[0].object_store();
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+
+        // Before we start the scan, check the fasta_reference if it exists
+        if let Some(r) = &self.options.fasta_reference {
+            let p = Path::from(r.clone());
+            if object_store.head(&p).await.is_err() {
+                return Err(DataFusionError::Execution(format!(
+                    "Reference file {} does not exist",
+                    r
+                )));
+            }
+        }
 
         let file_list = pruned_partition_list(
             state,

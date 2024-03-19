@@ -20,7 +20,7 @@ use arrow::{
 };
 use exon_common::{ExonArrayBuilder, DEFAULT_BATCH_SIZE};
 use futures::Stream;
-use noodles::cram::AsyncReader;
+use noodles::{cram::AsyncReader, fasta::repository::adapters::IndexedReader};
 use tokio::io::AsyncBufRead;
 
 use crate::{array_builder::CRAMArrayBuilder, CRAMConfig};
@@ -46,17 +46,29 @@ impl<R> AsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
 {
-    pub fn new(
+    pub fn try_new(
         reader: AsyncReader<R>,
         header: noodles::sam::Header,
         config: Arc<CRAMConfig>,
-    ) -> Self {
-        Self {
+    ) -> ArrowResult<Self> {
+        let reference_sequence_repository = match &config.fasta_reference {
+            Some(reference) => {
+                let index_reader = noodles::fasta::indexed_reader::Builder::default()
+                    .build_from_path(reference)?;
+
+                let index_reader = IndexedReader::new(index_reader);
+
+                noodles::fasta::Repository::new(index_reader)
+            }
+            None => noodles::fasta::Repository::default(),
+        };
+
+        Ok(Self {
             reader,
             header,
             config,
-            reference_sequence_repository: noodles::fasta::Repository::default(),
-        }
+            reference_sequence_repository,
+        })
     }
 
     async fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {

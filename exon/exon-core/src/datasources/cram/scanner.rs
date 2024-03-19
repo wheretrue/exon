@@ -38,14 +38,14 @@ pub struct CRAMScan {
     projected_schema: SchemaRef,
 
     /// The FASTA reference to use.
-    reference: String,
+    reference: Option<String>,
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
 }
 
 impl CRAMScan {
-    pub fn new(file_scan_config: FileScanConfig, reference: String) -> Self {
+    pub fn new(file_scan_config: FileScanConfig, reference: Option<String>) -> Self {
         let projected_schema = if let Some(p) = &file_scan_config.projection {
             Arc::new(file_scan_config.file_schema.project(p).unwrap())
         } else {
