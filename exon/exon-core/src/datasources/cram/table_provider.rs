@@ -31,7 +31,7 @@ use exon_common::TableSchema;
 use exon_sam::SAMSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{fasta::repository::adapters::IndexedReader, sam::Header};
-use object_store::{path::Path, ObjectMeta, ObjectStore};
+use object_store::{local::LocalFileSystem, path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
@@ -144,15 +144,6 @@ impl ListingCRAMTableOptions {
 
         let reference_sequence_repository = match &self.fasta_reference {
             Some(reference) => {
-                // Check if the reference exists, if not return an error
-                let p = Path::from(reference.clone());
-                if store.head(&p).await.is_err() {
-                    return Err(ExonError::ExecutionError(format!(
-                        "Reference file {} does not exist",
-                        reference
-                    )));
-                }
-
                 let index_reader = noodles::fasta::indexed_reader::Builder::default()
                     .build_from_path(reference)?;
 
@@ -288,12 +279,24 @@ impl TableProvider for ListingCRAMTable {
 
         // Before we start the scan, check the fasta_reference if it exists
         if let Some(r) = &self.options.fasta_reference {
-            let p = Path::from(r.clone());
-            if object_store.head(&p).await.is_err() {
-                return Err(DataFusionError::Execution(format!(
-                    "Reference file {} does not exist",
-                    r
-                )));
+            match url::Url::parse(r) {
+                Ok(u) => {
+                    let path = Path::from(u.path());
+                    object_store.head(&path).await?;
+
+                    if u.scheme() != "file" {
+                        return Err(DataFusionError::Execution(
+                            "Only file scheme is supported for fasta_reference".to_string(),
+                        ));
+                    } else {
+                        let path = Path::from(u.path());
+                        LocalFileSystem::default().head(&path).await?;
+                    }
+                }
+                Err(_) => {
+                    let path = Path::from(r.as_str());
+                    LocalFileSystem::default().head(&path).await?;
+                }
             }
         }
 

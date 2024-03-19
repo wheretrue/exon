@@ -47,3 +47,29 @@ SELECT * FROM cram;
 
 statement ok
 DROP TABLE cram;
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM LOCATION 's3://test-bucket/test_input_1_a.cram';
+
+query I
+SELECT name, flag, reference, start, end FROM cram LIMIT 1
+----
+r000 99 insert 50 59
+
+statement ok
+DROP TABLE cram;
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference 's3://test-bucket/ce.fa') LOCATION 's3://test-bucket/0500_mapped.cram';
+
+statement error
+SELECT * FROM cram;
+
+statement ok
+DROP TABLE cram;
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference '$CARGO_MANIFEST_DIR/test-data/datasources/cram/ce.fa') LOCATION 's3://test-bucket/0500_mapped.cram';
+
+statement ok
+SELECT name, flag, reference, start, end FROM cram LIMIT 1;
