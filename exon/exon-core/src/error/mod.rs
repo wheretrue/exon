@@ -15,7 +15,7 @@
 use std::{error::Error, fmt::Display, str::Utf8Error};
 
 use arrow::error::ArrowError;
-use datafusion::error::DataFusionError;
+use datafusion::{error::DataFusionError, sql::sqlparser::parser::ParserError};
 use exon_gff::ExonGFFError;
 use noodles::bgzf::virtual_position::TryFromU64U16TupleError;
 
@@ -59,6 +59,9 @@ pub enum ExonError {
 
     /// Invalid GFF error
     ExonGFFError(ExonGFFError),
+
+    /// SQL Parser error
+    ParserError(String),
 }
 
 impl From<DataFusionError> for ExonError {
@@ -133,6 +136,12 @@ impl From<ExonError> for std::io::Error {
     }
 }
 
+impl From<ParserError> for ExonError {
+    fn from(error: ParserError) -> Self {
+        ExonError::ParserError(format!("{}", error))
+    }
+}
+
 impl Display for ExonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -145,6 +154,7 @@ impl Display for ExonError {
             ExonError::InvalidFileType(error) => write!(f, "InvalidFileType: {}", error),
             ExonError::Configuration(error) => write!(f, "InvalidConfig: {}", error),
             ExonError::ExonGFFError(error) => write!(f, "ExonGFFError: {}", error),
+            ExonError::ParserError(error) => write!(f, "ParserError: {}", error),
         }
     }
 }

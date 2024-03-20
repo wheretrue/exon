@@ -95,14 +95,6 @@ impl ExecutionPlan for FASTQScan {
         self.projected_schema.clone()
     }
 
-    fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
-    }
-
-    fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
-        None
-    }
-
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
