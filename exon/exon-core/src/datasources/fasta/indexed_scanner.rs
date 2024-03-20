@@ -17,6 +17,7 @@ use std::{any::Any, sync::Arc};
 use crate::datasources::ExonFileScanConfig;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
@@ -24,7 +25,8 @@ use datafusion::{
     error::Result as DataFusionResult,
     execution::SendableRecordBatchStream,
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        Partitioning, PlanProperties,
     },
 };
 use exon_fasta::FASTAConfig;
@@ -48,6 +50,12 @@ pub struct IndexedFASTAScanner {
 
     /// The fasta reader capacity.
     fasta_sequence_buffer_capacity: usize,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl IndexedFASTAScanner {
@@ -56,7 +64,7 @@ impl IndexedFASTAScanner {
         file_compression_type: FileCompressionType,
         fasta_sequence_buffer_capacity: usize,
     ) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
@@ -64,6 +72,8 @@ impl IndexedFASTAScanner {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
             fasta_sequence_buffer_capacity,
+            properties,
+            statistics,
         }
     }
 }
@@ -88,6 +98,14 @@ impl ExecutionPlan for IndexedFASTAScanner {
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn with_new_children(

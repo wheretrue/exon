@@ -16,13 +16,14 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        Partitioning, PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_gtf::GTFConfig;
@@ -45,18 +46,26 @@ pub struct GTFScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl GTFScan {
     /// Create a new GTF scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 }
@@ -70,6 +79,14 @@ impl DisplayAs for GTFScan {
 impl ExecutionPlan for GTFScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn repartitioned(

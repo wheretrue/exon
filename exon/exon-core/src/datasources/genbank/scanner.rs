@@ -16,13 +16,14 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        Partitioning, PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_genbank::GenbankConfig;
@@ -45,20 +46,26 @@ pub struct GenbankScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl GenbankScan {
     /// Create a new Genbank scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let projected_schema = match &base_config.projection {
-            Some(p) => Arc::new(base_config.file_schema.project(p).unwrap()),
-            None => base_config.file_schema.clone(),
-        };
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
+
         Self {
             base_config,
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 }
@@ -99,6 +106,14 @@ impl ExecutionPlan for GenbankScan {
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn with_new_children(

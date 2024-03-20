@@ -21,10 +21,9 @@ use arrow::datatypes::SchemaRef;
 use datafusion::{
     common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
-    physical_expr::{EquivalenceProperties, LexOrdering},
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionMode,
-        ExecutionPlan, Partitioning, PlanProperties, SendableRecordBatchStream,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_bam::BAMConfig;
@@ -55,8 +54,7 @@ pub struct IndexedBAMScan {
 impl IndexedBAMScan {
     /// Create a new BAM scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
-        let (projected_schema, projected_statistics, properties) =
-            base_config.project_with_properties();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
@@ -64,7 +62,7 @@ impl IndexedBAMScan {
             metrics: ExecutionPlanMetricsSet::new(),
             region,
             properties,
-            statistics: projected_statistics,
+            statistics,
         }
     }
 }

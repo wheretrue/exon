@@ -16,12 +16,13 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning, PlanProperties,
         SendableRecordBatchStream,
     },
 };
@@ -44,18 +45,26 @@ pub struct HMMDomTabScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl HMMDomTabScan {
     /// Create a new HMMDomTab scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             projected_schema,
             base_config,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 }
@@ -131,5 +140,13 @@ impl ExecutionPlan for HMMDomTabScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 }

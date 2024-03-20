@@ -16,6 +16,7 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     config::ConfigOptions,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
@@ -24,7 +25,7 @@ use datafusion::{
     error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_fasta::FASTAConfig;
@@ -50,6 +51,12 @@ pub struct FASTAScan {
 
     /// The fasta reader capacity.
     fasta_sequence_buffer_capacity: usize,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl FASTAScan {
@@ -59,7 +66,7 @@ impl FASTAScan {
         file_compression_type: FileCompressionType,
         fasta_sequence_buffer_capacity: usize,
     ) -> Self {
-        let (projected_schema, _, _) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
@@ -67,6 +74,8 @@ impl FASTAScan {
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
             fasta_sequence_buffer_capacity,
+            properties,
+            statistics,
         }
     }
 
@@ -87,6 +96,14 @@ impl DisplayAs for FASTAScan {
 impl ExecutionPlan for FASTAScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn repartitioned(

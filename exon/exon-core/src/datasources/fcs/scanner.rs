@@ -16,12 +16,13 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning, PlanProperties,
         SendableRecordBatchStream,
     },
 };
@@ -38,24 +39,35 @@ use super::file_opener::FCSOpener;
 pub struct FCSScan {
     /// The base configuration for the file scan.
     base_config: FileScanConfig,
+
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
+
     /// The compression type of the file.
     file_compression_type: FileCompressionType,
+
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl FCSScan {
     /// Create a new FCS scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 }
@@ -73,6 +85,14 @@ impl DisplayAs for FCSScan {
 impl ExecutionPlan for FCSScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn repartitioned(

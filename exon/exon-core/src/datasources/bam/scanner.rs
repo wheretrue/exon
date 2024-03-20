@@ -16,10 +16,12 @@ use std::{any::Any, fmt, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
+    parquet::file::statistics,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_bam::BAMConfig;
@@ -43,18 +45,26 @@ pub struct BAMScan {
 
     /// An optional region filter for the scan.
     region_filter: Option<Region>,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl BAMScan {
     /// Create a new BAM scan.
     pub fn new(base_config: FileScanConfig) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
             region_filter: None,
+            properties,
+            statistics,
         }
     }
 
@@ -74,6 +84,14 @@ impl DisplayAs for BAMScan {
 impl ExecutionPlan for BAMScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn repartitioned(

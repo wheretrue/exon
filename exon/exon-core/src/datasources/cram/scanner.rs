@@ -16,10 +16,11 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_cram::CRAMConfig;
@@ -42,21 +43,25 @@ pub struct CRAMScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl CRAMScan {
-    pub fn new(file_scan_config: FileScanConfig, reference: Option<String>) -> Self {
-        let projected_schema = if let Some(p) = &file_scan_config.projection {
-            Arc::new(file_scan_config.file_schema.project(p).unwrap())
-        } else {
-            file_scan_config.file_schema.clone()
-        };
+    pub fn new(base_config: FileScanConfig, reference: Option<String>) -> Self {
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
-            base_config: file_scan_config,
+            base_config,
             projected_schema,
             reference,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 
@@ -74,6 +79,14 @@ impl DisplayAs for CRAMScan {
 impl ExecutionPlan for CRAMScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn repartitioned(
