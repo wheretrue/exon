@@ -55,11 +55,8 @@ pub struct IndexedBAMScan {
 impl IndexedBAMScan {
     /// Create a new BAM scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
-        let (projected_schema, projected_statistics, projected_output_ordering) =
-            base_config.project();
-
-        let properties =
-            Self::compute_properties(projected_schema, &projected_output_ordering, &base_config);
+        let (projected_schema, projected_statistics, properties) =
+            base_config.project_with_properties();
 
         Self {
             base_config,
@@ -69,25 +66,6 @@ impl IndexedBAMScan {
             properties,
             statistics: projected_statistics,
         }
-    }
-
-    fn compute_properties(
-        schema: SchemaRef,
-        orderings: &[LexOrdering],
-        file_scan_config: &FileScanConfig,
-    ) -> PlanProperties {
-        // Equivalence Properties
-        let eq_properties = EquivalenceProperties::new_with_orderings(schema, orderings);
-
-        PlanProperties::new(
-            eq_properties,
-            Self::output_partitioning_helper(file_scan_config),
-            ExecutionMode::Bounded,
-        )
-    }
-
-    fn output_partitioning_helper(file_scan_config: &FileScanConfig) -> Partitioning {
-        Partitioning::UnknownPartitioning(file_scan_config.file_groups.len())
     }
 }
 
