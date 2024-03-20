@@ -22,8 +22,12 @@ use datafusion::{
     },
     error::{DataFusionError, Result},
     execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
+    logical_expr::LogicalPlan as DfLogicalPlan,
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
+
+use crate::error::{ExonError, Result as ExonResult};
+
 use noodles::core::Region;
 use object_store::local::LocalFileSystem;
 
@@ -66,7 +70,6 @@ use crate::{
         },
         ExonFileType, ExonListingTableFactory,
     },
-    error::ExonError,
     new_exon_config,
     physical_plan::planner::ExonQueryPlanner,
     udfs::{
@@ -376,10 +379,24 @@ pub trait ExonSessionExt {
     ///
     /// File must be indexed and index file must be in the same directory as the VCF file.
     async fn query_vcf_file(&self, table_path: &str, query: &str) -> Result<DataFrame, ExonError>;
+
+    async fn execute_exome_logical_plan(&self, plan: DfLogicalPlan) -> ExonResult<DataFrame>;
 }
 
 #[async_trait]
 impl ExonSessionExt for SessionContext {
+    async fn execute_exome_logical_plan(&self, plan: DfLogicalPlan) -> ExonResult<DataFrame> {
+        match plan {
+            DfLogicalPlan::Copy(c) => {
+                todo!();
+            }
+            _ => {
+                let df = self.execute_logical_plan(plan).await?;
+                Ok(df)
+            }
+        }
+    }
+
     async fn read_exon_table(
         &self,
         table_path: &str,
