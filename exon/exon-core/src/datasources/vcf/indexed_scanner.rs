@@ -16,11 +16,12 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
     error::Result,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        Partitioning, PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_vcf::VCFConfig;
@@ -35,24 +36,35 @@ use super::file_opener::indexed_file_opener::IndexedVCFOpener;
 pub struct IndexedVCFScanner {
     /// The base configuration for the file scan.
     base_config: FileScanConfig,
+
     /// The projected schema for the scan.
     projected_schema: SchemaRef,
+
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
     /// The region to use for filtering.
     region: Arc<Region>,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl IndexedVCFScanner {
     /// Create a new VCF scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Result<Self> {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Ok(Self {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
             region: region.clone(),
+            properties,
+            statistics,
         })
     }
 
@@ -92,6 +104,14 @@ impl ExecutionPlan for IndexedVCFScanner {
         }
 
         Ok(Some(Arc::new(new_plan)))
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn schema(&self) -> SchemaRef {
