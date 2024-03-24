@@ -26,6 +26,9 @@ pub enum ExonFileType {
     /// FASTA file format.
     FASTA,
 
+    /// FASTA file format.
+    FA,
+
     /// FAA file format (FASTA with amino acids).
     FAA,
 
@@ -120,6 +123,7 @@ impl FromStr for ExonFileType {
             #[cfg(feature = "fcs")]
             "FCS" => Ok(Self::FCS),
             "CRAM" => Ok(Self::CRAM),
+            "FA" => Ok(Self::FASTA),
             _ => Err(ExonError::InvalidFileType(s)),
         }
     }
@@ -151,6 +155,7 @@ impl Display for ExonFileType {
             #[cfg(feature = "fcs")]
             Self::FCS => write!(f, "FCS"),
             Self::CRAM => write!(f, "CRAM"),
+            Self::FA => write!(f, "FA"),
         }
     }
 }
