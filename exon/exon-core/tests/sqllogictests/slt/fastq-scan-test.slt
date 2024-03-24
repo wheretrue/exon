@@ -56,6 +56,9 @@ SELECT name, sample FROM fastq_table WHERE sample = '1' LIMIT 2;
 SEQ_ID 1
 SEQ_ID2 1
 
+statement ok
+DROP TABLE fastq_table;
+
 query T
 SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq');
 ----
@@ -83,3 +86,17 @@ query T
 SELECT COUNT(*) FROM fastq_bgzip_table LIMIT 2;
 ----
 2
+
+statement ok
+DROP TABLE fastq_bgzip_table;
+
+statement ok
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ OPTIONS (file_extension 'fq') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fq/test.fq';
+
+query T
+SELECT COUNT(*) FROM fastq_table;
+----
+2
+
+statement ok
+DROP TABLE fastq_table;

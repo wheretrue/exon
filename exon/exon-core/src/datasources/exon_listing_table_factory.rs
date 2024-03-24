@@ -57,6 +57,8 @@ use super::genbank::table_provider::{
     ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
 };
 
+const FILE_EXTENSION_OPTION: &str = "file_extension";
+
 /// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
 #[derive(Debug, Clone, Default)]
 pub struct ExonListingTableFactory {}
@@ -229,55 +231,34 @@ impl ExonListingTableFactory {
                 let table = ListingBAMTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
             }
-            ExonFileType::FASTA => {
-                let options = ListingFASTATableOptions::new(file_compression_type)
-                    .with_table_partition_cols(table_partition_cols);
-                let schema = options.infer_schema(state).await?;
+            ExonFileType::FASTA | ExonFileType::FA | ExonFileType::FAA | ExonFileType::FNA => {
+                let extension = match options.get(FILE_EXTENSION_OPTION) {
+                    Some(file_extension) => match ExonFileType::from_str(file_extension) {
+                        Ok(file_type) => file_type.get_file_extension(file_compression_type),
+                        Err(e) => return Err(e.into()),
+                    },
+                    None => file_type.get_file_extension(file_compression_type),
+                };
 
-                let config = ListingFASTATableConfig::new(table_path, options);
-                let table = ListingFASTATable::try_new(config, schema)?;
-
-                Ok(Arc::new(table))
-            }
-            ExonFileType::FAA => {
-                let extension = ExonFileType::FAA.get_file_extension(file_compression_type);
-
-                let options = ListingFASTATableOptions::new(file_compression_type)
+                let table_options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
                     .with_file_extension(extension);
-                let schema = options.infer_schema(state).await?;
 
-                let config = ListingFASTATableConfig::new(table_path, options);
+                let schema = table_options.infer_schema(state).await?;
+
+                let config = ListingFASTATableConfig::new(table_path, table_options);
                 let table = ListingFASTATable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
             }
-            ExonFileType::FNA => {
-                let extension = ExonFileType::FNA.get_file_extension(file_compression_type);
-
-                let options = ListingFASTATableOptions::new(file_compression_type)
-                    .with_table_partition_cols(table_partition_cols)
-                    .with_file_extension(extension);
-                let schema = options.infer_schema(state).await?;
-
-                let config = ListingFASTATableConfig::new(table_path, options);
-                let table = ListingFASTATable::try_new(config, schema)?;
-
-                Ok(Arc::new(table))
-            }
-            ExonFileType::FASTQ => {
-                let options = ListingFASTQTableOptions::new(file_compression_type)
-                    .with_table_partition_cols(table_partition_cols);
-                let schema = options.infer_schema();
-
-                let config: ListingFASTQTableConfig =
-                    ListingFASTQTableConfig::new(table_path, options);
-                let table = ListingFASTQTable::try_new(config, schema)?;
-
-                Ok(Arc::new(table))
-            }
-            ExonFileType::FQ => {
-                let extension = ExonFileType::FQ.get_file_extension(file_compression_type);
+            ExonFileType::FASTQ | ExonFileType::FQ => {
+                let extension = match options.get(FILE_EXTENSION_OPTION) {
+                    Some(file_extension) => match ExonFileType::from_str(file_extension) {
+                        Ok(file_type) => file_type.get_file_extension(file_compression_type),
+                        Err(e) => return Err(e.into()),
+                    },
+                    None => file_type.get_file_extension(file_compression_type),
+                };
 
                 let options = ListingFASTQTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
