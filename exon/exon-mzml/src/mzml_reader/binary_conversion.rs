@@ -123,7 +123,7 @@ mod tests {
             }
         }
 
-        let tests = vec![
+        let tests = [
             TestData::new(Binary::new(Some(String::from("AAAAAAAALkAAAAAAAAAsQAAAAAAAACpAAAAAAAAAKEAAAAAAAAAmQAAAAAAAACRAAAAAAAAAIkAAAAAAAAAgQAAAAAAAABxAAAAAAAAAGEAAAAAAAAAUQAAAAAAAABBAAAAAAAAACEAAAAAAAAAAQAAAAAAAAPA/"))), CompressionType::NoCompression, DataType::Float64Bit, vec![15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0]),
             TestData::new(Binary::new(Some(String::from("eJxjYEABDhBKAEpLQGkFKK0CpTWgtA6UNoDSRg4AZlQDYw=="))), CompressionType::ZlibCompression, DataType::Float64Bit, vec![0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0])
         ];
