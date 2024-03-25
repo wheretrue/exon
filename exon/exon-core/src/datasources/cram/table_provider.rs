@@ -17,6 +17,7 @@ use std::{any::Any, collections::HashMap, sync::Arc};
 use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    common::Statistics,
     datasource::{
         listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
@@ -30,19 +31,27 @@ use datafusion::{
 use exon_common::TableSchema;
 use exon_sam::SAMSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
-use noodles::{fasta::repository::adapters::IndexedReader, sam::Header};
+use noodles::{
+    core::{region, Region},
+    fasta::repository::adapters::IndexedReader,
+    sam::Header,
+};
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
-    datasources::hive_partition::filter_matches_partition_cols,
+    datasources::{
+        hive_partition::filter_matches_partition_cols,
+        indexed_file::indexed_bgzf_file::augment_partitioned_file_with_byte_range,
+    },
     error::{ExonError, Result},
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+        file_scan_config_builder::FileScanConfigBuilder, infer_region,
+        object_store::pruned_partition_list,
     },
 };
 
-use super::scanner::CRAMScan;
+use super::{index::augment_file_with_crai_record_chunks, scanner::CRAMScan};
 
 const CRAM_EXTENSION: &str = "cram";
 
@@ -76,13 +85,20 @@ pub struct ListingCRAMTableOptions {
 
     /// Whether to use the tag as struct.
     tag_as_struct: bool,
+
+    /// If the CRAM file is indexed
+    indexed: bool,
+
+    /// The file extension for the indexed file.
+    file_extension: String,
 }
 
 impl From<&HashMap<String, String>> for ListingCRAMTableOptions {
     fn from(options: &HashMap<String, String>) -> Self {
         let fasta_reference = options.get("fasta_reference").map(|s| s.to_string());
+        let indexed = options.get("indexed").map(|s| s == "true").unwrap_or(false);
 
-        Self::new(fasta_reference)
+        Self::new(fasta_reference).with_indexed(indexed)
     }
 }
 
@@ -93,7 +109,15 @@ impl ListingCRAMTableOptions {
             table_partition_cols: Vec::new(),
             fasta_reference,
             tag_as_struct: false,
+            indexed: false,
+            file_extension: CRAM_EXTENSION.to_string(),
         }
+    }
+
+    /// Set the indexed option.
+    pub fn with_indexed(mut self, indexed: bool) -> Self {
+        self.indexed = indexed;
+        self
     }
 
     /// Set the the tag_as_struct option.
@@ -213,6 +237,17 @@ impl ListingCRAMTableOptions {
 
         Ok(Arc::new(scan))
     }
+
+    async fn create_physical_plan_with_region(
+        &self,
+        conf: FileScanConfig,
+        region: Arc<Region>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        todo!()
+        // let scan = IndexedCRAMScan::new(conf, self.fasta_reference.clone(), region.as_ref());
+
+        // Ok(Arc::new(scan))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -297,27 +332,101 @@ impl TableProvider for ListingCRAMTable {
             }
         }
 
-        let file_list = pruned_partition_list(
+        let regions = filters
+            .iter()
+            .filter_map(|f| {
+                if let Expr::ScalarFunction(s) = f {
+                    infer_region::infer_region_from_udf(s, "cram_region_filter")
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<Region>>();
+
+        if regions.is_empty() && self.options.indexed {
+            return Err(DataFusionError::Plan(
+                "An indexed CRAM file requires a region filter to be applied".to_string(),
+            ));
+        }
+
+        if !self.options.indexed {
+            let file_list = pruned_partition_list(
+                state,
+                &object_store,
+                &self.table_paths[0],
+                filters,
+                CRAM_EXTENSION,
+                &self.options.table_partition_cols,
+            )
+            .await?
+            .try_collect::<Vec<_>>()
+            .await?;
+
+            let file_schema = self.table_schema.file_schema()?;
+            let file_scan_config =
+                FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
+                    .projection_option(projection.cloned())
+                    .limit_option(limit)
+                    .table_partition_cols(self.options.table_partition_cols.clone())
+                    .build();
+
+            let table = self.options.create_physical_plan(file_scan_config).await?;
+
+            return Ok(table);
+        }
+
+        let mut file_list = pruned_partition_list(
             state,
             &object_store,
             &self.table_paths[0],
             filters,
-            CRAM_EXTENSION,
+            self.options.file_extension.as_str(),
             &self.options.table_partition_cols,
         )
-        .await?
-        .try_collect::<Vec<_>>()
         .await?;
 
-        let file_schema = self.table_schema.file_schema()?;
-        let file_scan_config =
-            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
-                .projection_option(projection.cloned())
-                .limit_option(limit)
-                .table_partition_cols(self.options.table_partition_cols.clone())
-                .build();
+        let mut file_partition_with_ranges = Vec::new();
+        let region = regions[0].clone();
 
-        let table = self.options.create_physical_plan(file_scan_config).await?;
+        while let Some(f) = file_list.next().await {
+            let f = f?;
+
+            let s = object_store.get(&f.object_meta.location).await?;
+
+            let s = s.into_stream().map_err(DataFusionError::from);
+            let stream_reader = Box::pin(s);
+            let stream_reader = StreamReader::new(stream_reader);
+
+            let mut cram_reader = noodles::cram::AsyncReader::new(stream_reader);
+            cram_reader.read_file_definition().await?;
+
+            let header = cram_reader.read_file_header().await?;
+            let header: Header = header.parse().map_err(|_| {
+                DataFusionError::Execution("Failed to parse CRAM header".to_string())
+            })?;
+
+            let file_byte_range =
+                augment_file_with_crai_record_chunks(object_store.clone(), &header, &f, &region)
+                    .await?;
+
+            file_partition_with_ranges.extend(file_byte_range);
+        }
+
+        let file_scan_config = FileScanConfig {
+            object_store_url: object_store_url.clone(),
+            file_schema: self.table_schema.file_schema()?,
+            file_groups: vec![file_partition_with_ranges],
+            statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
+            projection: projection.cloned(),
+            limit,
+            output_ordering: Vec::new(),
+            table_partition_cols: self.options.table_partition_cols.clone(),
+        };
+
+        let table = self
+            .options
+            .create_physical_plan_with_region(file_scan_config, Arc::new(region.clone()))
+            .await?;
 
         return Ok(table);
     }

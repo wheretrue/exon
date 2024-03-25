@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub(crate) mod file_opener;
+pub(crate) mod index;
 pub(crate) mod scanner;
 pub(crate) mod table_provider;
 pub(crate) mod udtf;

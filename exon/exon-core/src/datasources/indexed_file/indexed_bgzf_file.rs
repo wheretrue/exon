@@ -55,7 +55,11 @@ pub async fn get_byte_range_for_file(
     region: &Region,
     indexed_file: &IndexedBGZFFile,
 ) -> Result<Vec<Chunk>> {
-    let path = object_meta.location.clone().to_string() + indexed_file.index_file_extension();
+    let path = format!(
+        "{}{}",
+        object_meta.location,
+        indexed_file.index_file_extension()
+    );
     let path = Path::from(path);
 
     let index_bytes = object_store.get(&path).await?.bytes().await?;
