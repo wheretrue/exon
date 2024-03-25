@@ -12,7 +12,7 @@ version.workspace = true
 [dependencies]
 arrow = { workspace = true }
 async-trait = { workspace = true }
-bytes = "1.5.0"
+bytes = "1.6.0"
 datafusion = { workspace = true }
 exon-bam = { path = "../exon-bam", version = "0.14.0" }
 exon-bcf = { path = "../exon-bcf", version = "0.14.0" }
