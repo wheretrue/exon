@@ -58,7 +58,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 [dev-dependencies]
 exon-test = { path = "../exon-test" }
 sqllogictest = "0.19.1"
-clap = { version = "4.4.8", features = ["derive", "env"] }
+clap = { version = "4.5.4", features = ["derive", "env"] }
 
 [features]
 all = ["ffi", "genbank", "mzml", "fcs"]
