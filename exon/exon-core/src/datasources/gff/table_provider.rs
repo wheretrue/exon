@@ -36,6 +36,7 @@ use noodles::core::Region;
 
 use crate::{
     datasources::{
+        exon_file_type::get_file_extension_with_compression,
         hive_partition::filter_matches_partition_cols,
         indexed_file::indexed_bgzf_file::{
             augment_partitioned_file_with_byte_range, IndexedBGZFFile,
@@ -97,16 +98,35 @@ pub struct ListingGFFTableOptions {
 
 impl ListingGFFTableOptions {
     /// Create a new set of options
-    pub fn new(file_compression_type: FileCompressionType, indexed: bool) -> Self {
+    pub fn new(file_compression_type: FileCompressionType) -> Self {
         let file_extension = ExonFileType::GFF.get_file_extension(file_compression_type);
 
         Self {
             file_extension,
             file_compression_type,
             table_partition_cols: Vec::new(),
-            indexed,
+            indexed: false,
             region: None,
         }
+    }
+
+    /// Set the file extension
+    pub fn with_file_extension(self, file_extension: Option<String>) -> Self {
+        let file_extension = if let Some(file_extension) = file_extension {
+            get_file_extension_with_compression(&file_extension, self.file_compression_type)
+        } else {
+            ExonFileType::GFF.get_file_extension(self.file_compression_type)
+        };
+
+        Self {
+            file_extension,
+            ..self
+        }
+    }
+
+    /// Set if indexed
+    pub fn with_indexed(self, indexed: bool) -> Self {
+        Self { indexed, ..self }
     }
 
     /// Set the region

@@ -174,6 +174,19 @@ impl ExonFileType {
     }
 }
 
+pub fn get_file_extension_with_compression(
+    file_extension: &str,
+    file_compression_type: FileCompressionType,
+) -> String {
+    match file_compression_type {
+        FileCompressionType::UNCOMPRESSED => file_extension.to_string(),
+        FileCompressionType::GZIP => format!("{}.gz", file_extension),
+        FileCompressionType::ZSTD => format!("{}.zst", file_extension),
+        FileCompressionType::BZIP2 => format!("{}.bz2", file_extension),
+        FileCompressionType::XZ => format!("{}.xz", file_extension),
+    }
+}
+
 /// Infer the file type from the file extension.
 pub fn infer_file_type_and_compression(
     path: &str,
