@@ -1,7 +1,7 @@
 {
   "commitizen": {
     "name": "cz_conventional_commits",
-    "version": "0.14.0",
+    "version": "0.15.0",
     "tag_format": "v$version",
     "version_files": [
       "Cargo.toml",
@@ -10,6 +10,7 @@
       "exon/exon-bed/Cargo.toml",
       "exon/exon-common/Cargo.toml",
       "exon/exon-core/Cargo.toml",
+      "exon/exon-cram/Cargo.toml",
       "exon/exon-fasta/Cargo.toml",
       "exon/exon-fastq/Cargo.toml",
       "exon/exon-fcs/Cargo.toml",

@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.15.0 (2024-03-27)
+
+### Feat
+
+- add regex positional match (#453)
+- support options for file extension in fasta and fastq (#448)
+- **cram**: use reference if available
+- **cram**: return reference name vs stringified id (#446)
+- **cram**: support all fields (#443)
+- basic cram execution (#442)
+
 ## v0.14.0 (2024-03-14)
 
 ### Feat
