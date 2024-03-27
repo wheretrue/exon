@@ -15,8 +15,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use datafusion::{
-    datasource::file_format::file_compression_type::{self, FileCompressionType},
-    error::DataFusionError,
+    datasource::file_format::file_compression_type::FileCompressionType, error::DataFusionError,
 };
 
 use crate::error::ExonError;
