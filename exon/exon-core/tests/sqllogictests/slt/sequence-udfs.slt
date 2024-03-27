@@ -76,5 +76,24 @@ SELECT alignment_score(s1, s2) score FROM dna_sequences
 statement error
 SELECT alignment_score('A', 'T', 'hi')
 
+query I
+SELECT locate_regex('agctggagctacc', 'agc')
+----
+[{start: 1, end: 4, match: agc}, {start: 7, end: 10, match: agc}]
+
+query I
+SELECT locate_regex('agctggagctacc', 'a[atcg]c')
+----
+[{start: 1, end: 4, match: agc}, {start: 7, end: 10, match: agc}, {start: 11, end: 14, match: acc}]
+
+query I
+SELECT locate_regex(s1, 'A[TCG]C') FROM dna_sequences
+----
+[{start: 1, end: 4, match: ATC}]
+[]
+
+statement error Execution error: locate_regex takes different types of arguments, the a sequence and a pattern
+SELECT locate_regex('A[TCG]C', s1) FROM dna_sequences
+
 statement ok
 DROP TABLE dna_sequences;
