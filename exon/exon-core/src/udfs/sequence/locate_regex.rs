@@ -16,10 +16,7 @@ use core::str;
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        as_list_array, Array, GenericStringBuilder, Int32Array, Int32Builder, ListArray,
-        ListBuilder, StructBuilder,
-    },
+    array::{Array, GenericStringBuilder, Int32Builder, ListBuilder, StructBuilder},
     datatypes::{DataType, Field, Fields},
 };
 use datafusion::{
@@ -28,14 +25,13 @@ use datafusion::{
     logical_expr::{ColumnarValue, ScalarUDFImpl, Volatility},
     scalar::ScalarValue,
 };
-use noodles::bam::record::Data;
 
 #[derive(Debug)]
-pub(crate) struct Locate {
+pub(crate) struct LocateRegex {
     signature: datafusion::logical_expr::Signature,
 }
 
-impl Default for Locate {
+impl Default for LocateRegex {
     fn default() -> Self {
         let sequence = DataType::Utf8;
         let pattern = DataType::Utf8;
@@ -49,7 +45,16 @@ impl Default for Locate {
     }
 }
 
-impl ScalarUDFImpl for Locate {
+// a macro that is ok_or a DataFusionError
+macro_rules! ok_or {
+    ($e:expr, $msg:expr) => {
+        $e.ok_or(datafusion::error::DataFusionError::Execution(
+            $msg.to_string(),
+        ))
+    };
+}
+
+impl ScalarUDFImpl for LocateRegex {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -81,7 +86,63 @@ impl ScalarUDFImpl for Locate {
                 ColumnarValue::Array(sequence_arr),
                 ColumnarValue::Scalar(ScalarValue::Utf8(Some(pattern_scalar))),
             ) => {
-                todo!("Implement locate for array of sequences and a pattern");
+                let regex_pattern = regex::Regex::new(pattern_scalar).map_err(|e| {
+                    datafusion::error::DataFusionError::Execution(format!(
+                        "Error creating regex pattern: {}",
+                        e
+                    ))
+                })?;
+
+                let sequence_arr = as_string_array(sequence_arr)?;
+
+                let struct_builder = StructBuilder::from_fields(
+                    vec![
+                        Field::new("start", DataType::Int32, true),
+                        Field::new("end", DataType::Int32, true),
+                        Field::new("match", DataType::Utf8, true),
+                    ],
+                    1,
+                );
+
+                let mut list_builder =
+                    ListBuilder::with_capacity(struct_builder, sequence_arr.len());
+
+                for sequence in sequence_arr.iter() {
+                    if let Some(sequence) = sequence {
+                        let struct_builder = list_builder.values();
+
+                        for m in regex_pattern.find_iter(sequence) {
+                            let start_builder = ok_or!(
+                                struct_builder.field_builder::<Int32Builder>(0),
+                                "Error creating start builder"
+                            )?;
+                            start_builder.append_value((m.start() as i32) + 1);
+
+                            let end_builder = ok_or!(
+                                struct_builder.field_builder::<Int32Builder>(1),
+                                "Error creating end builder"
+                            )?;
+                            end_builder.append_value((m.end() as i32) + 1);
+
+                            let match_builder = ok_or!(
+                                struct_builder.field_builder::<GenericStringBuilder<i32>>(2),
+                                "Error creating match builder"
+                            )?;
+                            match_builder.append_value(&sequence[m.start()..m.end()]);
+
+                            struct_builder.append(true);
+                        }
+
+                        list_builder.append(true);
+                    } else {
+                        list_builder.append_null();
+                        continue;
+                    }
+                }
+
+                let list_array = list_builder.finish();
+
+                Ok(ColumnarValue::Array(Arc::new(list_array)))
             }
             (
                 ColumnarValue::Scalar(ScalarValue::Utf8(Some(scalar_arr))),
@@ -89,7 +150,6 @@ impl ScalarUDFImpl for Locate {
             ) => {
                 let regex_pattern = regex::Regex::new(pattern_scalar).unwrap();
 
-                // let builder = Int32Builder::new();
                 let struct_builder = StructBuilder::from_fields(
                     vec![
                         Field::new("start", DataType::Int32, true),
@@ -123,12 +183,10 @@ impl ScalarUDFImpl for Locate {
 
                 Ok(ColumnarValue::Array(Arc::new(list_array)))
             }
-            _ => {
-                return Err(datafusion::error::DataFusionError::Execution(format!(
-                    "{} takes different types of arguments",
-                    self.name()
-                )));
-            }
+            _ => Err(datafusion::error::DataFusionError::Execution(format!(
+                "{} takes different types of arguments, the a sequence and a pattern",
+                self.name()
+            ))),
         }
     }
 
