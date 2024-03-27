@@ -115,6 +115,11 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+      - name: Publish exon-cram
+        run: cargo publish --manifest-path exon/exon-cram/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Publish exon-fcs
         run: |
           cargo publish --manifest-path exon/exon-fcs/Cargo.toml

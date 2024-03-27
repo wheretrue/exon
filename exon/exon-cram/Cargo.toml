@@ -15,6 +15,6 @@ arrow = { workspace = true }
 exon-common = { path = "../exon-common", version = "0.15.0" }
 exon-sam = { path = "../exon-sam", version = "0.15.0" }
 futures = { workspace = true }
-noodles = { workspace = true, features = ["core", "async", "cram"] }
+noodles = { workspace = true, features = ["core", "async", "cram", "fasta"] }
 object_store = { workspace = true }
 tokio = { workspace = true }
