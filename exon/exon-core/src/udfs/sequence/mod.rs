@@ -14,6 +14,7 @@
 
 mod alignment_score;
 mod gc_content;
+mod locate;
 mod quality_score_list_to_string;
 mod quality_score_string_to_list;
 mod reverse_complement;
@@ -54,4 +55,8 @@ pub fn register_udfs(ctx: &SessionContext) {
     let reverse_complement = ReverseComplement::default();
     let reverse_complement_scalar = ScalarUDF::from(reverse_complement);
     ctx.register_udf(reverse_complement_scalar);
+
+    let locate = locate::Locate::default();
+    let locate_scalar = ScalarUDF::from(locate);
+    ctx.register_udf(locate_scalar);
 }

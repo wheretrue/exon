@@ -78,3 +78,9 @@ SELECT alignment_score('A', 'T', 'hi')
 
 statement ok
 DROP TABLE dna_sequences;
+
+
+query I
+SELECT locate('agctggagctacc', 'agc')
+----
+1
