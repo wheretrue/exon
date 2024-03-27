@@ -1,6 +1,28 @@
 control substitution on
 
 statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS GFF OPTIONS (file_extension '.gff3') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff3';
+
+query T
+SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
+----
+sq0 caat 8 13 NULL + NULL
+
+statement ok
+DROP TABLE gff_table;
+
+statement ok
+CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE GZIP OPTIONS (file_extension '.gff3') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff3.gz';
+
+query T
+SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
+----
+sq0 caat 8 13 NULL + NULL
+
+statement ok
+DROP TABLE gff_table;
+
+statement ok
 CREATE EXTERNAL TABLE gff_table STORED AS GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff';
 
 query T

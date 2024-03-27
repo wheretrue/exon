@@ -58,6 +58,8 @@ use super::genbank::table_provider::{
 };
 
 const FILE_EXTENSION_OPTION: &str = "file_extension";
+const INDEXED_OPTION: &str = "indexed";
+const INDEXED_TRUE_VALUE: &str = "true";
 
 /// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
 #[derive(Debug, Clone, Default)]
@@ -126,7 +128,8 @@ impl ExonListingTableFactory {
                     ));
                 }
 
-                let options = ListingGFFTableOptions::new(file_compression_type, true)
+                let options = ListingGFFTableOptions::new(file_compression_type)
+                    .with_indexed(true)
                     .with_table_partition_cols(table_partition_cols);
 
                 let file_schema = options.infer_schema().await?;
@@ -137,8 +140,13 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::GFF => {
-                let options = ListingGFFTableOptions::new(file_compression_type, false)
+                let options = ListingGFFTableOptions::new(file_compression_type)
+                    .with_indexed(
+                        options.get(INDEXED_OPTION) == Some(&INDEXED_TRUE_VALUE.to_string()),
+                    )
+                    .with_file_extension(options.get(FILE_EXTENSION_OPTION).cloned())
                     .with_table_partition_cols(table_partition_cols);
+
                 let file_schema = options.infer_schema().await?;
 
                 let config = ListingGFFTableConfig::new(table_path).with_options(options);

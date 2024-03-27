@@ -55,7 +55,8 @@ impl TableFunctionImpl for GFFScanFunction {
         let schema = new_gff_schema_builder().build();
 
         let listing_table_options =
-            ListingGFFTableOptions::new(listing_scan_function.file_compression_type, false);
+            ListingGFFTableOptions::new(listing_scan_function.file_compression_type)
+                .with_indexed(false);
 
         let listing_table_config =
             ListingGFFTableConfig::new(listing_scan_function.listing_table_url)
@@ -103,8 +104,9 @@ impl TableFunctionImpl for GFFIndexedScanFunction {
 
         let region = region_str.parse().map_err(ExonError::from)?;
 
-        let listing_table_options =
-            ListingGFFTableOptions::new(FileCompressionType::GZIP, true).with_region(region);
+        let listing_table_options = ListingGFFTableOptions::new(FileCompressionType::GZIP)
+            .with_indexed(true)
+            .with_region(region);
 
         let listing_table_config =
             ListingGFFTableConfig::new(listing_table_url).with_options(listing_table_options);

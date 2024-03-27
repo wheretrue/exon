@@ -15,7 +15,8 @@
 use std::{fmt::Display, str::FromStr};
 
 use datafusion::{
-    datasource::file_format::file_compression_type::FileCompressionType, error::DataFusionError,
+    datasource::file_format::file_compression_type::{self, FileCompressionType},
+    error::DataFusionError,
 };
 
 use crate::error::ExonError;
@@ -171,6 +172,19 @@ impl ExonFileType {
             (_, FileCompressionType::XZ) => format!("{}.xz", self),
         }
         .to_lowercase()
+    }
+}
+
+pub fn get_file_extension_with_compression(
+    file_extension: &str,
+    file_compression_type: FileCompressionType,
+) -> String {
+    match file_compression_type {
+        FileCompressionType::UNCOMPRESSED => file_extension.to_string(),
+        FileCompressionType::GZIP => format!("{}.gz", file_extension),
+        FileCompressionType::ZSTD => format!("{}.zst", file_extension),
+        FileCompressionType::BZIP2 => format!("{}.bz2", file_extension),
+        FileCompressionType::XZ => format!("{}.xz", file_extension),
     }
 }
 
