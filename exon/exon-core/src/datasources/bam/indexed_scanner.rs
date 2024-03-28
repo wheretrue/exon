@@ -19,10 +19,11 @@ use crate::datasources::ExonFileScanConfig;
 use super::indexed_file_opener::IndexedBAMOpener;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_bam::BAMConfig;
@@ -42,18 +43,26 @@ pub struct IndexedBAMScan {
 
     // A region filter for the scan.
     region: Arc<Region>,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl IndexedBAMScan {
     /// Create a new BAM scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
             region,
+            properties,
+            statistics,
         }
     }
 }
@@ -97,14 +106,6 @@ impl ExecutionPlan for IndexedBAMScan {
         self.projected_schema.clone()
     }
 
-    fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
-    }
-
-    fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
-        None
-    }
-
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
@@ -136,5 +137,13 @@ impl ExecutionPlan for IndexedBAMScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 }

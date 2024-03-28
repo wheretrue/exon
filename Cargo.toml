@@ -34,9 +34,10 @@ exclude = ["python"]
 resolver = "2"
 
 [workspace.dependencies]
-arrow = { version = "50.0.0" }
-async-trait = "0.1.79"
-datafusion = { version = "36", features = ["compression", "parquet"] }
+arrow = { version = "51.0.0" }
+async-trait = "0.1.78"
+# datafusion = { version = "36", features = ["compression", "parquet"] }
+datafusion = { version = "36", path = "/Users/thauck/personal/code/github.com/tshauck/arrow-datafusion/datafusion/core/" }
 futures = "0.3"
 noodles = { version = "0.66" }
 object_store = { version = "0.9" }

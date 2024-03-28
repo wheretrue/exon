@@ -55,6 +55,8 @@ fxhash = "0.2.1"
 lazy_static = "1.4.0"
 serde = { version = "1.0.197", features = ["derive"] }
 regex = "1.10.4"
+lightmotif = { version = "0.6.0", path = "/Users/thauck/personal/code/github.com/tshauck/lightmotif/lightmotif" }
+lightmotif-io = { version = "0.6.0" }
 
 [dev-dependencies]
 exon-test = { path = "../exon-test" }

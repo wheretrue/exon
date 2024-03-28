@@ -16,13 +16,14 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_gff::GFFConfig;
@@ -45,18 +46,26 @@ pub struct GFFScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl GFFScan {
     /// Create a new GFF scan.
     pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
-        let (projected_schema, _, _) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 }
@@ -70,6 +79,14 @@ impl DisplayAs for GFFScan {
 impl ExecutionPlan for GFFScan {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 
     fn repartitioned(
@@ -93,14 +110,6 @@ impl ExecutionPlan for GFFScan {
 
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
-    }
-
-    fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
-    }
-
-    fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
-        None
     }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
