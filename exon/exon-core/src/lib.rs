@@ -70,12 +70,6 @@ pub mod physical_optimizer;
 /// Physical plan augmentations for Exon.
 pub mod physical_plan;
 
-/// Logical plan augmentations for Exon.
-pub mod logical_plan;
-
-/// Parser for Exon.
-pub mod parser;
-
 /// Utilities for moving data across the FFI boundary.
 #[cfg(feature = "ffi")]
 pub mod ffi;

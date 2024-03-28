@@ -18,7 +18,6 @@ use arrow::datatypes::SchemaRef;
 use datafusion::{
     common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
-    parquet::file::statistics,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
         PlanProperties, SendableRecordBatchStream,

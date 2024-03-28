@@ -26,7 +26,7 @@ use datafusion::{
     execution::SendableRecordBatchStream,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, PlanProperties,
+        PlanProperties,
     },
 };
 use exon_fasta::FASTAConfig;

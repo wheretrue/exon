@@ -49,7 +49,7 @@ impl ExonFileScanConfig for FileScanConfig {
         let (schema, statistics, projected_output_ordering) = self.project();
 
         let eq_properties =
-            EquivalenceProperties::new_with_orderings(schema, &projected_output_ordering);
+            EquivalenceProperties::new_with_orderings(schema.clone(), &projected_output_ordering);
 
         let output_partitioning = Partitioning::UnknownPartitioning(self.file_groups.len());
 

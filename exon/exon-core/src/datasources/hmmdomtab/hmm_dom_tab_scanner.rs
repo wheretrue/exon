@@ -22,7 +22,7 @@ use datafusion::{
         physical_plan::{FileScanConfig, FileStream},
     },
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, Partitioning, PlanProperties,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, PlanProperties,
         SendableRecordBatchStream,
     },
 };
