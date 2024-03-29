@@ -25,7 +25,7 @@ use datafusion::{
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 
-use crate::{error::ExonError, udfs::sequence::motif::LightMotifFunctionFactory};
+use crate::{error::ExonError, udfs::sequence::motif::ExonFunctionFactory};
 
 use noodles::core::Region;
 use object_store::local::LocalFileSystem;
@@ -105,7 +105,7 @@ pub trait ExonSessionExt {
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let mut state = SessionState::new_with_config_rt(config, runtime)
-            .with_function_factory(Arc::new(LightMotifFunctionFactory {}));
+            .with_function_factory(Arc::new(ExonFunctionFactory {}));
 
         let sources = vec![
             "BAM",

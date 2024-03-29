@@ -62,6 +62,9 @@ pub enum ExonError {
 
     /// SQL Parser error
     ParserError(String),
+
+    /// Unsupported function
+    UnsupportedFunction(String),
 }
 
 impl From<DataFusionError> for ExonError {
@@ -155,6 +158,7 @@ impl Display for ExonError {
             ExonError::Configuration(error) => write!(f, "InvalidConfig: {}", error),
             ExonError::ExonGFFError(error) => write!(f, "ExonGFFError: {}", error),
             ExonError::ParserError(error) => write!(f, "ParserError: {}", error),
+            ExonError::UnsupportedFunction(error) => write!(f, "UnsupportedFunction: {}", error),
         }
     }
 }
