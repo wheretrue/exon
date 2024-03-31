@@ -26,7 +26,7 @@ use itertools::Itertools;
 /// Extension trait for [`FileScanConfig`] that adds whole file repartitioning.
 pub trait ExonFileScanConfig {
     /// Repartition the file groups into whole partitions.
-    fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>>;
+    fn regroup_files_by_size(&self, target_partitions: usize) -> Vec<Vec<PartitionedFile>>;
 
     /// Get the file schema projection.
     fn file_projection(&self) -> Vec<usize>;
@@ -36,12 +36,8 @@ pub trait ExonFileScanConfig {
 }
 
 impl ExonFileScanConfig for FileScanConfig {
-    fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>> {
-        if self.file_groups.is_empty() {
-            return None;
-        }
-
-        Some(regroup_files_by_size(&self.file_groups, target_partitions))
+    fn regroup_files_by_size(&self, target_partitions: usize) -> Vec<Vec<PartitionedFile>> {
+        regroup_files_by_size(&self.file_groups, target_partitions)
     }
 
     /// Get the schema, statistics, and plan properties for the scan.

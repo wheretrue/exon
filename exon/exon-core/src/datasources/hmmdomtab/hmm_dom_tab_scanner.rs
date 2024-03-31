@@ -75,7 +75,11 @@ impl DisplayAs for HMMDomTabScan {
         _t: datafusion::physical_plan::DisplayFormatType,
         f: &mut std::fmt::Formatter,
     ) -> std::fmt::Result {
-        write!(f, "HMMDomTabScan")
+        write!(
+            f,
+            "HMMDomTabScan: output_partitioning={}",
+            self.properties.output_partitioning(),
+        )
     }
 }
 
@@ -89,16 +93,20 @@ impl ExecutionPlan for HMMDomTabScan {
         target_partitions: usize,
         _config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
-        if target_partitions == 1 {
+        if target_partitions == 1 || self.base_config.file_groups.is_empty() {
             return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
         let mut new_plan = self.clone();
-        if let Some(repartitioned_file_groups) = file_groups {
-            new_plan.base_config.file_groups = repartitioned_file_groups;
-        }
+        new_plan.base_config.file_groups = file_groups;
+
+        new_plan.properties = new_plan.properties.with_partitioning(
+            datafusion::physical_plan::Partitioning::UnknownPartitioning(
+                new_plan.base_config.file_groups.len(),
+            ),
+        );
 
         Ok(Some(Arc::new(new_plan)))
     }

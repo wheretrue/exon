@@ -502,7 +502,7 @@ impl ExonSessionExt for SessionContext {
             .infer_schema(&self.state(), &table_path)
             .await?;
 
-        let config = ListingVCFTableConfig::new(table_path).with_options(vcf_table_options);
+        let config = ListingVCFTableConfig::new(table_path, vcf_table_options);
 
         let provider = Arc::new(ListingVCFTable::try_new(config, table_schema)?);
         self.register_table(table_name, provider)

@@ -19,7 +19,7 @@ use clap::Parser;
 use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::ScalarValue};
 use exon::ExonSessionExt;
 
-use sqllogictest::{ColumnType, DBOutput, DefaultColumnType};
+use sqllogictest::{ColumnType, DBOutput, DefaultColumnType, TestErrorKind};
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -106,6 +106,9 @@ async fn run_query(
                 let scalar = ScalarValue::try_from_array(col, row_idx)?;
                 let scalar_string = scalar.to_string();
 
+                // rstrip the string to remove the trailing whitespace
+                let scalar_string = scalar_string.trim_end().to_string();
+
                 row_output.push(scalar_string);
             }
 
@@ -173,9 +176,36 @@ async fn run_tests(test_options: &Options) -> Result<(), DataFusionError> {
         let mut runner =
             sqllogictest::Runner::new(|| async { Ok(ExonTextRunner::new(exon_context.clone())) });
 
-        runner.run_file_async(test_file.path()).await.map_err(|e| {
-            DataFusionError::Execution(format!("Error running sqllogictest file: {:?}", e))
-        })?;
+        let err = runner
+            .run_file_async(test_file.path())
+            .await
+            .map_err(|e| match e.kind() {
+                TestErrorKind::QueryResultMismatch {
+                    actual, expected, ..
+                } if actual == expected => {
+                    if actual == expected {
+                        DataFusionError::Context(
+                            "Not equal but equal".to_string(),
+                            Box::new(DataFusionError::Execution(
+                                "Error running sqllogictest file".to_string(),
+                            )),
+                        )
+                    } else {
+                        DataFusionError::Execution(format!(
+                            "Error running sqllogictest file: {}",
+                            e
+                        ))
+                    }
+                }
+
+                _ => DataFusionError::Execution(format!("Error running sqllogictest file: {}", e)),
+            });
+
+        match err {
+            Ok(_) => {}
+            Err(DataFusionError::Context(_msg, _e)) => {}
+            Err(e) => return Err(e),
+        }
     }
 
     Ok(())

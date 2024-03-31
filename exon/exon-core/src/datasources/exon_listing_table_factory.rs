@@ -210,7 +210,7 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
-                let config = ListingVCFTableConfig::new(table_path).with_options(vcf_options);
+                let config = ListingVCFTableConfig::new(table_path, vcf_options);
 
                 let table = ListingVCFTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
@@ -219,9 +219,11 @@ impl ExonListingTableFactory {
                 let vcf_options = ListingVCFTableOptions::new(file_compression_type, true)
                     .with_table_partition_cols(table_partition_cols);
 
+                eprintln!("VCF options: {:?}", vcf_options);
+
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
-                let config = ListingVCFTableConfig::new(table_path).with_options(vcf_options);
+                let config = ListingVCFTableConfig::new(table_path, vcf_options);
 
                 let table = ListingVCFTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))

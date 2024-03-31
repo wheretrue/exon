@@ -92,23 +92,22 @@ impl ExecutionPlan for SAMScan {
         target_partitions: usize,
         _config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
-        if target_partitions == 1 {
+        if target_partitions == 1 || self.base_config.file_groups.is_empty() {
             return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
-        if let Some(repartitioned_file_groups) = file_groups {
-            tracing::info!(
-                "Repartitioned {} file groups into {}",
-                self.base_config.file_groups.len(),
-                repartitioned_file_groups.len()
-            );
-            let mut new_plan = self.clone();
-            new_plan.base_config.file_groups = repartitioned_file_groups;
-            return Ok(Some(Arc::new(new_plan)));
-        }
 
-        Ok(None)
+        let mut new_plan = self.clone();
+        new_plan.base_config.file_groups = file_groups;
+
+        new_plan.properties = new_plan.properties.with_partitioning(
+            datafusion::physical_plan::Partitioning::UnknownPartitioning(
+                new_plan.base_config.file_groups.len(),
+            ),
+        );
+
+        Ok(Some(Arc::new(new_plan)))
     }
 
     fn schema(&self) -> SchemaRef {

@@ -84,7 +84,7 @@ pub async fn pruned_partition_list<'a>(
             .await?
             .map_ok(|o| o.into());
 
-        tracing::info!("pruned_partition_list: no partition columns, returning all files");
+        tracing::trace!("pruned_partition_list: no partition columns, returning all files");
 
         return Ok(Box::pin(files));
     }

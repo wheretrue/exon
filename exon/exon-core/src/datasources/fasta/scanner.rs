@@ -111,17 +111,22 @@ impl ExecutionPlan for FASTAScan {
         target_partitions: usize,
         _config: &ConfigOptions,
     ) -> Result<Option<Arc<dyn ExecutionPlan>>> {
+        if target_partitions == 1 || self.base_config.file_groups.is_empty() {
+            return Ok(None);
+        }
+
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
-        match file_groups {
-            Some(file_groups) => {
-                let mut new_plan = self.clone();
-                new_plan.base_config.file_groups = file_groups;
+        let mut new_plan = self.clone();
+        new_plan.base_config.file_groups = file_groups;
 
-                Ok(Some(Arc::new(new_plan)))
-            }
-            None => Ok(None),
-        }
+        new_plan.properties = new_plan.properties.with_partitioning(
+            datafusion::physical_plan::Partitioning::UnknownPartitioning(
+                new_plan.base_config.file_groups.len(),
+            ),
+        );
+
+        Ok(Some(Arc::new(new_plan)))
     }
 
     fn schema(&self) -> SchemaRef {
