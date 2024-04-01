@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,25 @@
 
 use std::{any::Any, fmt, sync::Arc};
 
-use crate::datasources::ExonFileScanConfig;
-
-use super::indexed_file_opener::IndexedBAMOpener;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
     common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
+    execution::SendableRecordBatchStream,
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        PlanProperties, SendableRecordBatchStream,
+        PlanProperties,
     },
 };
-use exon_bam::BAMConfig;
+use exon_cram::CRAMConfig;
 use noodles::core::Region;
 
+use crate::datasources::ExonFileScanConfig;
+
+use super::indexed_file_opener::IndexedCRAMOpener;
+
 #[derive(Debug, Clone)]
-/// Implements a datafusion `ExecutionPlan` for BAM files.
-pub struct IndexedBAMScan {
+pub(super) struct IndexedCRAMScan {
     /// The schema of the data source.
     projected_schema: SchemaRef,
 
@@ -40,6 +41,9 @@ pub struct IndexedBAMScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The FASTA reference to use.
+    reference: Option<String>,
 
     // A region filter for the scan.
     region: Arc<Region>,
@@ -51,9 +55,13 @@ pub struct IndexedBAMScan {
     statistics: Statistics,
 }
 
-impl IndexedBAMScan {
+impl IndexedCRAMScan {
     /// Create a new BAM scan.
-    pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
+    pub fn new(
+        base_config: FileScanConfig,
+        region: Arc<Region>,
+        reference: Option<String>,
+    ) -> Self {
         let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
@@ -63,18 +71,19 @@ impl IndexedBAMScan {
             region,
             properties,
             statistics,
+            reference,
         }
     }
 }
 
-impl DisplayAs for IndexedBAMScan {
+impl DisplayAs for IndexedCRAMScan {
     fn fmt_as(&self, t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
-        write!(f, "IndexedBAMScan: ")?;
+        write!(f, "IndexedCRAMScan: ")?;
         self.base_config.fmt_as(t, f)
     }
 }
 
-impl ExecutionPlan for IndexedBAMScan {
+impl ExecutionPlan for IndexedCRAMScan {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -128,11 +137,15 @@ impl ExecutionPlan for IndexedBAMScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = BAMConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size)
-            .with_projection(self.base_config.file_projection());
+        let config = CRAMConfig::new(
+            object_store,
+            self.base_config.file_schema.clone(),
+            self.reference.clone(),
+        )
+        .with_batch_size(batch_size)
+        .with_projection(self.base_config.file_projection());
 
-        let opener = IndexedBAMOpener::new(Arc::new(config), self.region.clone());
+        let opener = IndexedCRAMOpener::new(Arc::new(config), self.region.clone());
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
