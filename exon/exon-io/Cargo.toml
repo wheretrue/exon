@@ -2,6 +2,7 @@
 description = "IO utilities for Exon."
 edition = "2021"
 homepage = { workspace = true }
+repository = { workspace = true }
 keywords = ["biology", "science", "arrow"]
 license = { workspace = true }
 name = "exon-io"
