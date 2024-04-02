@@ -28,9 +28,10 @@ use noodles::{
     },
     fasta::repository::adapters::IndexedReader,
 };
+use object_store::{path::Path, ObjectStore};
 use tokio::io::{AsyncBufRead, AsyncSeek};
 
-use crate::{array_builder::CRAMArrayBuilder, CRAMConfig};
+use crate::{array_builder::CRAMArrayBuilder, CRAMConfig, ObjectStoreFastaRepositoryAdapter};
 
 pub struct IndexedAsyncBatchStream<R>
 where
@@ -57,7 +58,7 @@ impl<R> IndexedAsyncBatchStream<R>
 where
     R: AsyncBufRead + AsyncSeek + Unpin,
 {
-    pub fn try_new(
+    pub async fn try_new(
         reader: AsyncReader<R>,
         header: noodles::sam::Header,
         config: Arc<CRAMConfig>,
@@ -65,12 +66,15 @@ where
     ) -> ArrowResult<Self> {
         let reference_sequence_repository = match &config.fasta_reference {
             Some(reference) => {
-                let index_reader = noodles::fasta::indexed_reader::Builder::default()
-                    .build_from_path(reference)?;
+                let fasta_path = Path::from(reference.clone());
 
-                let index_reader = IndexedReader::new(index_reader);
+                let object_store_repo = ObjectStoreFastaRepositoryAdapter::try_new(
+                    config.object_store.clone(),
+                    fasta_path,
+                )
+                .await?;
 
-                noodles::fasta::Repository::new(index_reader)
+                noodles::fasta::Repository::new(object_store_repo)
             }
             None => noodles::fasta::Repository::default(),
         };

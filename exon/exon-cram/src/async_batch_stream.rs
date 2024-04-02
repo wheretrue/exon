@@ -20,16 +20,16 @@ use arrow::{
 };
 use exon_common::{ExonArrayBuilder, DEFAULT_BATCH_SIZE};
 use futures::Stream;
-use noodles::{cram::AsyncReader, fasta::repository::adapters::IndexedReader};
+use noodles::cram::AsyncReader;
+use object_store::{path::Path, ObjectStore};
 use tokio::io::AsyncBufRead;
 
-use crate::{array_builder::CRAMArrayBuilder, CRAMConfig};
+use crate::{array_builder::CRAMArrayBuilder, CRAMConfig, ObjectStoreFastaRepositoryAdapter};
 
 pub struct AsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
 {
-    /// The underlying stream of CRAM records.
     reader: AsyncReader<R>,
 
     /// The header.
@@ -46,19 +46,21 @@ impl<R> AsyncBatchStream<R>
 where
     R: AsyncBufRead + Unpin,
 {
-    pub fn try_new(
+    pub async fn try_new(
         reader: AsyncReader<R>,
+        object_store: Arc<dyn ObjectStore>,
         header: noodles::sam::Header,
         config: Arc<CRAMConfig>,
     ) -> ArrowResult<Self> {
         let reference_sequence_repository = match &config.fasta_reference {
             Some(reference) => {
-                let index_reader = noodles::fasta::indexed_reader::Builder::default()
-                    .build_from_path(reference)?;
+                let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
+                    object_store.clone(),
+                    Path::from(reference.clone()),
+                )
+                .await?;
 
-                let index_reader = IndexedReader::new(index_reader);
-
-                noodles::fasta::Repository::new(index_reader)
+                noodles::fasta::Repository::new(object_store_adapter)
             }
             None => noodles::fasta::Repository::default(),
         };

@@ -57,7 +57,9 @@ impl FileOpener for CRAMOpener {
             })?;
 
             let batch_stream =
-                AsyncBatchStream::try_new(cram_reader, header, config)?.into_stream();
+                AsyncBatchStream::try_new(cram_reader, config.object_store.clone(), header, config)
+                    .await?
+                    .into_stream();
 
             Ok(batch_stream.boxed())
         }))

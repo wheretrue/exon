@@ -76,7 +76,8 @@ impl FileOpener for IndexedCRAMOpener {
                 index_record.header.clone(),
                 config,
                 index_record.records.clone(),
-            )?
+            )
+            .await?
             .into_stream();
 
             Ok(batch_stream.boxed())

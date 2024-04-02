@@ -29,9 +29,10 @@ use datafusion::{
     physical_plan::ExecutionPlan,
 };
 use exon_common::TableSchema;
+use exon_cram::ObjectStoreFastaRepositoryAdapter;
 use exon_sam::SAMSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
-use noodles::{core::Region, fasta::repository::adapters::IndexedReader, sam::Header};
+use noodles::{core::Region, sam::Header};
 use object_store::{path::Path, ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
@@ -161,21 +162,13 @@ impl ListingCRAMTableOptions {
 
         let reference_sequence_repository = match &self.fasta_reference {
             Some(reference) => {
-                // Check if the reference exists, if not return an error
-                let p = Path::from(reference.clone());
-                if store.head(&p).await.is_err() {
-                    return Err(ExonError::ExecutionError(format!(
-                        "Reference file {} does not exist",
-                        reference
-                    )));
-                }
+                let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
+                    store.clone(),
+                    Path::from(reference.clone()),
+                )
+                .await?;
 
-                let index_reader = noodles::fasta::indexed_reader::Builder::default()
-                    .build_from_path(reference)?;
-
-                let index_reader = IndexedReader::new(index_reader);
-
-                noodles::fasta::Repository::new(index_reader)
+                noodles::fasta::Repository::new(object_store_adapter)
             }
             None => noodles::fasta::Repository::default(),
         };
