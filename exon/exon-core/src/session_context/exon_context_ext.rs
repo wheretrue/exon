@@ -25,7 +25,13 @@ use datafusion::{
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 
-use crate::{error::ExonError, udfs::sequence::motif::ExonFunctionFactory};
+use crate::{
+    error::ExonError,
+    udfs::{
+        sam::cram_region_filter::register_cram_region_filter_udf,
+        sequence::motif::ExonFunctionFactory,
+    },
+};
 
 use noodles::core::Region;
 use object_store::local::LocalFileSystem;
@@ -153,6 +159,9 @@ pub trait ExonSessionExt {
 
         // Register BAM region filter UDF
         register_bam_region_filter_udf(&ctx);
+
+        // Register CRAM region filter UDF
+        register_cram_region_filter_udf(&ctx);
 
         // Register VCF region filter UDF
         register_vcf_region_filter_udf(&ctx);

@@ -14,23 +14,25 @@
 
 use std::sync::Arc;
 
-use datafusion::{datasource::physical_plan::FileOpener, error::DataFusionError};
-use exon_cram::CRAMConfig;
-use futures::TryStreamExt;
-use noodles::{core::Region, cram::crai::Record};
-use tokio_util::io::StreamReader;
+use datafusion::{
+    datasource::physical_plan::{FileMeta, FileOpener},
+    error::DataFusionError,
+};
+use exon_cram::{CRAMConfig, IndexedAsyncBatchStream};
+use futures::StreamExt;
+use object_store::buffered;
+
+use crate::datasources::cram::index::CRAMIndexData;
 
 pub(super) struct IndexedCRAMOpener {
     /// The base configuration for the file opener.
     config: Arc<CRAMConfig>,
-    /// The specific region to open.
-    region: Arc<Region>,
 }
 
 impl IndexedCRAMOpener {
     /// Create a new indexed CRAM opener.
-    pub fn new(config: Arc<CRAMConfig>, region: Arc<Region>) -> Self {
-        Self { config, region }
+    pub fn new(config: Arc<CRAMConfig>) -> Self {
+        Self { config }
     }
 }
 
@@ -40,29 +42,44 @@ impl FileOpener for IndexedCRAMOpener {
         file_meta: datafusion::datasource::physical_plan::FileMeta,
     ) -> datafusion::error::Result<datafusion::datasource::physical_plan::FileOpenFuture> {
         let config = self.config.clone();
-        let region = self.region.clone();
 
         Ok(Box::pin(async move {
-            let get_request = config.object_store.get(file_meta.location()).await?;
-            let get_stream = get_request.into_stream();
+            let FileMeta {
+                extensions,
+                object_meta,
+                range: _,
+            } = file_meta;
 
-            let stream_reader = Box::pin(get_stream.map_err(DataFusionError::from));
-            let stream_reader = StreamReader::new(stream_reader);
-
-            let index_record = file_meta
-                .extensions
-                .map(|e| {
-                    let record = e.clone();
-                    let idx_record = record.downcast_ref::<Record>().cloned();
-
-                    idx_record
-                })
-                .flatten()
+            let index_record = extensions
+                .as_ref()
+                .and_then(|ext| ext.downcast_ref::<CRAMIndexData>())
                 .ok_or(DataFusionError::Execution(
-                    "Could not find index record in file meta".to_string(),
+                    "Invalid index offsets".to_string(),
                 ))?;
 
-            todo!()
+            tracing::info!(
+                offset = index_record.offset,
+                path = ?object_meta.location,
+                "Reading CRAM file with offset and landmark",
+            );
+
+            let buf_reader = buffered::BufReader::new(config.object_store.clone(), &object_meta);
+
+            let mut cram_reader = noodles::cram::AsyncReader::new(buf_reader);
+
+            cram_reader
+                .seek(std::io::SeekFrom::Start(index_record.offset))
+                .await?;
+
+            let batch_stream = IndexedAsyncBatchStream::try_new(
+                cram_reader,
+                index_record.header.clone(),
+                config,
+                index_record.records.clone(),
+            )?
+            .into_stream();
+
+            Ok(batch_stream.boxed())
         }))
     }
 }

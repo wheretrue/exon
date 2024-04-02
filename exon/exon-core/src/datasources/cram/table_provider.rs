@@ -101,13 +101,6 @@ impl From<&HashMap<String, String>> for ListingCRAMTableOptions {
 }
 
 impl ListingCRAMTableOptions {
-    /// Set the region filter for the table. If this is set, then also set the indexed option to true.
-    pub fn with_region(mut self, region: Option<Region>) -> Self {
-        self.region = region;
-        self.indexed = true;
-        self
-    }
-
     /// Set the FASTA reference.
     pub fn with_fasta_reference(mut self, fasta_reference: Option<String>) -> Self {
         self.fasta_reference = fasta_reference;
@@ -290,7 +283,7 @@ impl TableProvider for ListingCRAMTable {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        tracing::info!(
+        tracing::trace!(
             "cram table provider supports_filters_pushdown: {:?}",
             filters
         );

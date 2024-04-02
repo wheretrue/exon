@@ -16,8 +16,15 @@ use std::sync::Arc;
 
 use crate::error::Result as ExonResult;
 use datafusion::datasource::listing::PartitionedFile;
+use itertools::Itertools;
 use noodles::core::Region;
 use object_store::{path::Path, ObjectStore};
+
+pub(crate) struct CRAMIndexData {
+    pub header: noodles::sam::Header,
+    pub records: Vec<noodles::cram::crai::Record>,
+    pub offset: u64,
+}
 
 pub(crate) async fn augment_file_with_crai_record_chunks(
     object_store: Arc<dyn ObjectStore>,
@@ -33,7 +40,6 @@ pub(crate) async fn augment_file_with_crai_record_chunks(
 
     let index_records = noodles::cram::crai::Reader::new(cursor).read_index()?;
 
-    // break index_records into chunks of size 10.
     let chunks = index_records
         .iter()
         .filter(|r| {
@@ -56,9 +62,21 @@ pub(crate) async fn augment_file_with_crai_record_chunks(
             }
         })
         .into_iter()
-        .map(|record| {
+        .sorted_by(|a, b| a.offset().cmp(&b.offset()))
+        .group_by(|a| a.offset())
+        .into_iter()
+        .map(|(offset, records)| {
             let mut pf = partitioned_file.clone();
-            pf.extensions = Some(Arc::new(record.clone()));
+
+            let owned_records = records.map(|r| r.clone()).collect::<Vec<_>>();
+
+            let index_data = CRAMIndexData {
+                header: header.clone(),
+                offset,
+                records: owned_records,
+            };
+
+            pf.extensions = Some(Arc::new(index_data));
 
             pf
         })

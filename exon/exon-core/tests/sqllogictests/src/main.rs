@@ -226,6 +226,5 @@ pub async fn main() -> Result<(), DataFusionError> {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let test_options: Options = clap::Parser::parse();
-    eprintln!("Running tests with options: {:?}", test_options);
     run_tests(&test_options).await
 }

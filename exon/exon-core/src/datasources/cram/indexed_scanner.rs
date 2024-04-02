@@ -145,7 +145,7 @@ impl ExecutionPlan for IndexedCRAMScan {
         .with_batch_size(batch_size)
         .with_projection(self.base_config.file_projection());
 
-        let opener = IndexedCRAMOpener::new(Arc::new(config), self.region.clone());
+        let opener = IndexedCRAMOpener::new(Arc::new(config));
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

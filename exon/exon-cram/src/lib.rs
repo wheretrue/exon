@@ -15,9 +15,13 @@
 mod array_builder;
 mod async_batch_stream;
 mod config;
+mod indexed_async_batch_stream;
 
 /// CRAM configuration struct.
 pub use config::CRAMConfig;
 
 /// CRAM Batch Stream.
 pub use async_batch_stream::AsyncBatchStream;
+
+/// Indexed CRAM Batch Stream.
+pub use indexed_async_batch_stream::IndexedAsyncBatchStream;
