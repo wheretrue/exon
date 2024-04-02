@@ -18,10 +18,14 @@ use arrow::{
     array::RecordBatch,
     error::{ArrowError, Result as ArrowResult},
 };
+use coitrees::{BasicCOITree, Interval, IntervalTree};
 use exon_common::{ExonArrayBuilder, DEFAULT_BATCH_SIZE};
 use futures::Stream;
 use noodles::{
-    cram::{crai::Record, AsyncReader},
+    cram::{
+        crai::{self, Record},
+        AsyncReader,
+    },
     fasta::repository::adapters::IndexedReader,
 };
 use tokio::io::{AsyncBufRead, AsyncSeek};
@@ -45,7 +49,8 @@ where
     reference_sequence_repository: noodles::fasta::Repository,
 
     /// The CRAM index record.
-    index_records: Vec<Record>,
+    // index_records: Vec<Record>,
+    ranges: BasicCOITree<crai::Record, u32>,
 }
 
 impl<R> IndexedAsyncBatchStream<R>
@@ -70,12 +75,24 @@ where
             None => noodles::fasta::Repository::default(),
         };
 
+        let ranges = index_records
+            .iter()
+            .map(|r| {
+                let start = r.alignment_start().unwrap().get();
+                let end = start + r.alignment_span();
+
+                Interval::new(start as i32, end as i32, r.clone())
+            })
+            .collect::<Vec<_>>();
+
+        let trees = BasicCOITree::new(&ranges);
+
         Ok(Self {
             reader,
             header,
             config,
             reference_sequence_repository,
-            index_records,
+            ranges: trees,
         })
     }
 
@@ -108,7 +125,13 @@ where
             })
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
-            .flatten();
+            .flatten()
+            .filter(|record| {
+                let start = record.alignment_start().unwrap().get();
+                let end = start + record.alignment_end().unwrap().get();
+
+                self.ranges.query_count(start as i32, end as i32) > 0
+            });
 
         for record in records {
             array_builder.append(record)?;

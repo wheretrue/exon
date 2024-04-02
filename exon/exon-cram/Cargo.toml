@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 arrow = { workspace = true }
+coitrees = "0.4.0"
 exon-common = { path = "../exon-common", version = "0.15.0" }
 exon-sam = { path = "../exon-sam", version = "0.15.0" }
 futures = { workspace = true }

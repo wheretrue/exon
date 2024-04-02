@@ -25,7 +25,6 @@ use datafusion::{
     },
 };
 use exon_cram::CRAMConfig;
-use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
 
@@ -45,9 +44,6 @@ pub(super) struct IndexedCRAMScan {
     /// The FASTA reference to use.
     reference: Option<String>,
 
-    // A region filter for the scan.
-    region: Arc<Region>,
-
     /// The plan properties cache.
     properties: PlanProperties,
 
@@ -57,18 +53,13 @@ pub(super) struct IndexedCRAMScan {
 
 impl IndexedCRAMScan {
     /// Create a new BAM scan.
-    pub fn new(
-        base_config: FileScanConfig,
-        region: Arc<Region>,
-        reference: Option<String>,
-    ) -> Self {
+    pub fn new(base_config: FileScanConfig, reference: Option<String>) -> Self {
         let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
-            region,
             properties,
             statistics,
             reference,

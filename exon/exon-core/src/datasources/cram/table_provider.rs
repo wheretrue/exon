@@ -225,9 +225,8 @@ impl ListingCRAMTableOptions {
     async fn create_physical_plan_with_region(
         &self,
         conf: FileScanConfig,
-        region: Arc<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedCRAMScan::new(conf, region, self.fasta_reference.clone());
+        let scan = IndexedCRAMScan::new(conf, self.fasta_reference.clone());
 
         Ok(Arc::new(scan))
     }
@@ -436,7 +435,7 @@ impl TableProvider for ListingCRAMTable {
 
         let table = self
             .options
-            .create_physical_plan_with_region(file_scan_config, Arc::new(region.clone()))
+            .create_physical_plan_with_region(file_scan_config)
             .await?;
 
         return Ok(table);
