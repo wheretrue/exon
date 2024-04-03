@@ -18,4 +18,5 @@ exon-sam = { path = "../exon-sam", version = "0.15.0" }
 futures = { workspace = true }
 noodles = { workspace = true, features = ["core", "async", "cram", "fasta"] }
 object_store = { workspace = true }
+tracing = { workspace = true }
 tokio = { workspace = true }

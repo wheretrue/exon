@@ -12,14 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::HashMap, ops::Range, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
-use noodles::fasta::{
-    self, fai,
-    record::{Definition, Sequence},
-    repository::Adapter,
-};
-use object_store::{path::Path, GetOptions, GetRange, ObjectStore};
+use noodles::fasta::{self, fai, repository::Adapter};
+use object_store::{path::Path, ObjectStore};
 
 pub struct ObjectStoreFastaRepositoryAdapter {
     object_store: Arc<dyn ObjectStore>,
@@ -72,43 +68,39 @@ impl Adapter for ObjectStoreFastaRepositoryAdapter {
             return Some(Ok(record.clone()));
         }
 
-        let index_record = match self.index_records.get(name) {
+        let _index_record = match self.index_records.get(name) {
             Some(index_record) => index_record,
             None => return None,
         };
 
-        let start = index_record.offset() as usize;
-        let end = start + index_record.length() as usize;
-
-        let get_options = GetOptions {
-            range: Some(GetRange::Bounded(Range { start, end })),
-            ..Default::default()
-        };
-
-        // Use block_on to get the bytes from the object store.
-        let sequence_bytes = match futures::executor::block_on(async {
-            self.object_store
-                .get_opts(&self.fasta_path, get_options)
-                .await?
-                .bytes()
-                .await
-        }) {
-            Ok(bytes) => bytes,
-            Err(e) => return Some(Err(e.into())),
-        };
-
-        // https://github.com/zaeleus/noodles/blob/4f7254271f3dad76bae9994a866caa06511aaad7/noodles-fasta/src/reader.rs#L260C9-L262C62
-        let record_definition = Definition::new(name, None);
-        let sequence = Sequence::from(sequence_bytes);
-
-        let record = fasta::Record::new(record_definition, sequence);
-
-        eprintln!(
-            "Inserting record {}, into cache: {:?}",
-            name,
-            record.sequence().len()
+        tracing::info!(
+            fasta_path = &self.fasta_path.to_string(),
+            "Fetching FASTA record for CRAM Adapter"
         );
 
+        let sequence_bytes_result = futures::executor::block_on(async {
+            let byte_stream = self
+                .object_store
+                .get(&self.fasta_path)
+                .await?
+                .bytes()
+                .await?;
+
+            Ok(byte_stream)
+        });
+
+        let sequence_bytes = match sequence_bytes_result {
+            Ok(bytes) => bytes,
+            Err(e) => return Some(Err(e)),
+        };
+
+        let cursor = std::io::Cursor::new(sequence_bytes);
+        let mut fasta_reader = fasta::Reader::new(cursor);
+
+        let mut records = fasta_reader.records();
+        let record = records.next().unwrap().unwrap();
+
+        tracing::trace!(name = name, "Inserting record into cache");
         self.internal_cache.insert(name.to_string(), record.clone());
 
         Some(Ok(record))

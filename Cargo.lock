@@ -2089,6 +2089,7 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

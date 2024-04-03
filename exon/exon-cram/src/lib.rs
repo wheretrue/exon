@@ -14,9 +14,9 @@
 
 mod array_builder;
 mod async_batch_stream;
-mod async_repository;
 mod config;
 mod indexed_async_batch_stream;
+mod object_store_fasta_repository_adapter;
 
 /// CRAM configuration struct.
 pub use config::CRAMConfig;
@@ -28,4 +28,4 @@ pub use async_batch_stream::AsyncBatchStream;
 pub use indexed_async_batch_stream::IndexedAsyncBatchStream;
 
 /// Object store repository adapter.
-pub use async_repository::ObjectStoreFastaRepositoryAdapter;
+pub use object_store_fasta_repository_adapter::ObjectStoreFastaRepositoryAdapter;

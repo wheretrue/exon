@@ -21,14 +21,11 @@ use arrow::{
 use coitrees::{BasicCOITree, Interval, IntervalTree};
 use exon_common::{ExonArrayBuilder, DEFAULT_BATCH_SIZE};
 use futures::Stream;
-use noodles::{
-    cram::{
-        crai::{self, Record},
-        AsyncReader,
-    },
-    fasta::repository::adapters::IndexedReader,
+use noodles::cram::{
+    crai::{self, Record},
+    AsyncReader,
 };
-use object_store::{path::Path, ObjectStore};
+use object_store::path::Path;
 use tokio::io::{AsyncBufRead, AsyncSeek};
 
 use crate::{array_builder::CRAMArrayBuilder, CRAMConfig, ObjectStoreFastaRepositoryAdapter};

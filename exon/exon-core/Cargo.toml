@@ -48,7 +48,7 @@ object_store = { workspace = true, features = ["aws"] }
 pin-project = { version = "1.1.5", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-util = { workspace = true }
-tracing = "0.1.40"
+tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
 url = { workspace = true }
 fxhash = "0.2.1"
