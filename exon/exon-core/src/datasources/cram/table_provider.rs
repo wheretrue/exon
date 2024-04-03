@@ -24,7 +24,7 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
-    execution::context::SessionState,
+    execution::{context::SessionState, object_store::ObjectStoreUrl},
     logical_expr::{Expr, TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
 };
@@ -90,14 +90,17 @@ pub struct ListingCRAMTableOptions {
     region: Option<Region>,
 }
 
-impl From<&HashMap<String, String>> for ListingCRAMTableOptions {
-    fn from(options: &HashMap<String, String>) -> Self {
+impl TryFrom<&HashMap<String, String>> for ListingCRAMTableOptions {
+    type Error = ExonError;
+
+    fn try_from(options: &HashMap<String, String>) -> Result<Self, ExonError> {
         let fasta_reference = options.get("fasta_reference").map(|s| s.to_string());
+
         let indexed = options.get("indexed").map(|s| s == "true").unwrap_or(false);
 
-        Self::default()
+        Ok(Self::default()
             .with_fasta_reference(fasta_reference)
-            .with_indexed(indexed)
+            .with_indexed(indexed))
     }
 }
 
@@ -164,7 +167,7 @@ impl ListingCRAMTableOptions {
             Some(reference) => {
                 let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
                     store.clone(),
-                    Path::from(reference.clone()),
+                    reference.to_string(),
                 )
                 .await?;
 
@@ -304,17 +307,6 @@ impl TableProvider for ListingCRAMTable {
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let object_store_url = self.table_paths[0].object_store();
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
-
-        // Before we start the scan, check the fasta_reference if it exists
-        if let Some(r) = &self.options.fasta_reference {
-            let p = Path::from(r.clone());
-            if object_store.head(&p).await.is_err() {
-                return Err(DataFusionError::Execution(format!(
-                    "Reference file {} does not exist",
-                    r
-                )));
-            }
-        }
 
         if !self.options.indexed {
             let file_list = pruned_partition_list(

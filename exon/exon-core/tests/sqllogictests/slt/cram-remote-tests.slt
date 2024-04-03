@@ -1,0 +1,12 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference 's3://test-bucket/rand1k.fa', indexed 'true') LOCATION 's3://test-bucket/twolib.sorted.cram';
+
+query I
+SELECT * FROM cram WHERE cram_region_filter('rand1k', reference) = true LIMIT 1;
+----
+read1-1 0 rand1k 1 60 60 60M NULL TCCTAATTCTGGGTAACCGCCGCCTGAAGCCAAAAAATAAGCCGGAGCCAAGGGGGAGTC [] [{tag: AS, value: 60}, {tag: XS, value: 0}]
+
+statement ok
+DROP TABLE cram;

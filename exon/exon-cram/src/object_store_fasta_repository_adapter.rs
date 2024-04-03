@@ -27,8 +27,37 @@ pub struct ObjectStoreFastaRepositoryAdapter {
 impl ObjectStoreFastaRepositoryAdapter {
     pub async fn try_new(
         object_store: Arc<dyn ObjectStore>,
-        fasta_path: Path,
+        fasta_path: String,
     ) -> std::io::Result<Self> {
+        // if the fasta_path is on S3, we need to remove the s3:// and bucket
+        // prefix from the path
+
+        let fasta_path = if fasta_path.starts_with("s3://") {
+            let mut parts = fasta_path.split('/');
+            let _ = parts.next();
+            let _ = parts.next();
+            let bucket = parts.next().unwrap();
+            let key = parts.collect::<Vec<&str>>().join("/");
+
+            let key = key.trim_start_matches('/');
+            let key = key.trim_end_matches('/');
+
+            tracing::info!(key = &key, "Setting key to new key");
+            Path::parse(key)
+        } else {
+            Path::parse(fasta_path)
+        };
+
+        let fasta_path = match fasta_path {
+            Ok(path) => path,
+            Err(e) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("Invalid path: {}", e),
+                ))
+            }
+        };
+
         let index_path_string = format!("{}.fai", fasta_path);
         let index_path = Path::from(index_path_string);
 

@@ -63,11 +63,9 @@ where
     ) -> ArrowResult<Self> {
         let reference_sequence_repository = match &config.fasta_reference {
             Some(reference) => {
-                let fasta_path = Path::from(reference.clone());
-
                 let object_store_repo = ObjectStoreFastaRepositoryAdapter::try_new(
                     config.object_store.clone(),
-                    fasta_path,
+                    reference.to_string(),
                 )
                 .await?;
 

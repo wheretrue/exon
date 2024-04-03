@@ -56,7 +56,7 @@ where
             Some(reference) => {
                 let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
                     object_store.clone(),
-                    Path::from(reference.clone()),
+                    reference.clone(),
                 )
                 .await?;
 
