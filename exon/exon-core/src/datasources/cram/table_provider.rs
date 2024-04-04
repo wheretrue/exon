@@ -24,7 +24,7 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
-    execution::{context::SessionState, object_store::ObjectStoreUrl},
+    execution::context::SessionState,
     logical_expr::{Expr, TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
 };
@@ -33,7 +33,7 @@ use exon_cram::ObjectStoreFastaRepositoryAdapter;
 use exon_sam::SAMSchemaBuilder;
 use futures::{StreamExt, TryStreamExt};
 use noodles::{core::Region, sam::Header};
-use object_store::{path::Path, ObjectMeta, ObjectStore};
+use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{

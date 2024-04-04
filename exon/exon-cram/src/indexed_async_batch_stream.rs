@@ -25,7 +25,6 @@ use noodles::cram::{
     crai::{self, Record},
     AsyncReader,
 };
-use object_store::path::Path;
 use tokio::io::{AsyncBufRead, AsyncSeek};
 
 use crate::{array_builder::CRAMArrayBuilder, CRAMConfig, ObjectStoreFastaRepositoryAdapter};

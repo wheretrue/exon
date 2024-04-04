@@ -36,7 +36,7 @@ impl ObjectStoreFastaRepositoryAdapter {
             let mut parts = fasta_path.split('/');
             let _ = parts.next();
             let _ = parts.next();
-            let bucket = parts.next().unwrap();
+            let _bucket = parts.next().unwrap();
             let key = parts.collect::<Vec<&str>>().join("/");
 
             let key = key.trim_start_matches('/');

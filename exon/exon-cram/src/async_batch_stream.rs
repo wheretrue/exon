@@ -21,7 +21,7 @@ use arrow::{
 use exon_common::{ExonArrayBuilder, DEFAULT_BATCH_SIZE};
 use futures::Stream;
 use noodles::cram::AsyncReader;
-use object_store::{path::Path, ObjectStore};
+use object_store::ObjectStore;
 use tokio::io::AsyncBufRead;
 
 use crate::{array_builder::CRAMArrayBuilder, CRAMConfig, ObjectStoreFastaRepositoryAdapter};
