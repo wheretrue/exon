@@ -15,6 +15,6 @@ arrow = { workspace = true }
 exon-common = { path = "../exon-common", version = "0.15.0" }
 futures = { workspace = true }
 noodles = { workspace = true, features = ["core", "async", "vcf", "bgzf"] }
-noodles-bgzf = { version = "0.27.0", features = ["libdeflate"] }
+noodles-bgzf = { version = "0.28.0", features = ["libdeflate"] }
 object_store = { workspace = true }
 tokio = { workspace = true }
