@@ -45,6 +45,8 @@ impl HMMDomTabOpener {
 
 impl FileOpener for HMMDomTabOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
+        tracing::info!("Opening file: {:?}", file_meta.location());
+
         let gff_config = self.config.clone();
         let file_compression_type = self.file_compression_type;
 

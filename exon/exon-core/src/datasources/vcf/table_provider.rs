@@ -57,23 +57,15 @@ use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
 pub struct ListingVCFTableConfig {
     inner: ListingTableConfig,
 
-    options: Option<ListingVCFTableOptions>,
+    options: ListingVCFTableOptions,
 }
 
 impl ListingVCFTableConfig {
     /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
+    pub fn new(table_path: ListingTableUrl, options: ListingVCFTableOptions) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingVCFTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
+            options,
         }
     }
 }
@@ -247,9 +239,7 @@ impl ListingVCFTable {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
+            options: config.options,
         })
     }
 }
@@ -272,7 +262,7 @@ impl TableProvider for ListingVCFTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        tracing::info!(
+        tracing::trace!(
             "vcf table provider supports_filters_pushdown: {:?}",
             filters
         );

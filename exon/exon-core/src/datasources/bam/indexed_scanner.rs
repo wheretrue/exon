@@ -19,10 +19,11 @@ use crate::datasources::ExonFileScanConfig;
 use super::indexed_file_opener::IndexedBAMOpener;
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_bam::BAMConfig;
@@ -42,25 +43,34 @@ pub struct IndexedBAMScan {
 
     // A region filter for the scan.
     region: Arc<Region>,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl IndexedBAMScan {
     /// Create a new BAM scan.
     pub fn new(base_config: FileScanConfig, region: Arc<Region>) -> Self {
-        let (projected_schema, ..) = base_config.project();
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
             region,
+            properties,
+            statistics,
         }
     }
 }
 
 impl DisplayAs for IndexedBAMScan {
-    fn fmt_as(&self, _t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
-        write!(f, "IndexedBAMScan: {:?}", self.base_config)
+    fn fmt_as(&self, t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
+        write!(f, "IndexedBAMScan: ")?;
+        self.base_config.fmt_as(t, f)
     }
 }
 
@@ -74,35 +84,26 @@ impl ExecutionPlan for IndexedBAMScan {
         target_partitions: usize,
         _config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
-        if target_partitions == 1 {
+        if target_partitions == 1 || self.base_config.file_groups.is_empty() {
             return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
         let mut new_plan = self.clone();
-        if let Some(repartitioned_file_groups) = file_groups {
-            tracing::info!(
-                "Repartitioned {} file groups into {}",
-                self.base_config.file_groups.len(),
-                repartitioned_file_groups.len()
-            );
-            new_plan.base_config.file_groups = repartitioned_file_groups;
-        }
+        new_plan.base_config.file_groups = file_groups;
+
+        new_plan.properties = new_plan.properties.with_partitioning(
+            datafusion::physical_plan::Partitioning::UnknownPartitioning(
+                new_plan.base_config.file_groups.len(),
+            ),
+        );
 
         Ok(Some(Arc::new(new_plan)))
     }
 
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
-    }
-
-    fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
-    }
-
-    fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
-        None
     }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
@@ -136,5 +137,13 @@ impl ExecutionPlan for IndexedBAMScan {
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 }

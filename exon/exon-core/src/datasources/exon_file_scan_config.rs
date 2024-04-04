@@ -12,25 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::datasource::{listing::PartitionedFile, physical_plan::FileScanConfig};
+use std::sync::Arc;
+
+use arrow::datatypes::Schema;
+use datafusion::{
+    common::Statistics,
+    datasource::{listing::PartitionedFile, physical_plan::FileScanConfig},
+    physical_expr::EquivalenceProperties,
+    physical_plan::{ExecutionMode, Partitioning, PlanProperties},
+};
 use itertools::Itertools;
 
 /// Extension trait for [`FileScanConfig`] that adds whole file repartitioning.
 pub trait ExonFileScanConfig {
     /// Repartition the file groups into whole partitions.
-    fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>>;
+    fn regroup_files_by_size(&self, target_partitions: usize) -> Vec<Vec<PartitionedFile>>;
 
     /// Get the file schema projection.
     fn file_projection(&self) -> Vec<usize>;
+
+    /// Get the plan properties.
+    fn project_with_properties(&self) -> (Arc<Schema>, Statistics, PlanProperties);
 }
 
 impl ExonFileScanConfig for FileScanConfig {
-    fn regroup_files_by_size(&self, target_partitions: usize) -> Option<Vec<Vec<PartitionedFile>>> {
-        if self.file_groups.is_empty() {
-            return None;
-        }
+    fn regroup_files_by_size(&self, target_partitions: usize) -> Vec<Vec<PartitionedFile>> {
+        regroup_files_by_size(&self.file_groups, target_partitions)
+    }
 
-        Some(regroup_files_by_size(&self.file_groups, target_partitions))
+    /// Get the schema, statistics, and plan properties for the scan.
+    fn project_with_properties(&self) -> (Arc<Schema>, Statistics, PlanProperties) {
+        let (schema, statistics, projected_output_ordering) = self.project();
+
+        let eq_properties =
+            EquivalenceProperties::new_with_orderings(schema.clone(), &projected_output_ordering);
+
+        let output_partitioning = Partitioning::UnknownPartitioning(self.file_groups.len());
+
+        let properties =
+            PlanProperties::new(eq_properties, output_partitioning, ExecutionMode::Bounded);
+
+        (schema, statistics, properties)
     }
 
     fn file_projection(&self) -> Vec<usize> {

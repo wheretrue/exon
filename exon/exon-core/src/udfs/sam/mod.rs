@@ -13,4 +13,5 @@
 // limitations under the License.
 
 pub(crate) mod bam_region_filter;
+pub(crate) mod cram_region_filter;
 pub(crate) mod samflags;

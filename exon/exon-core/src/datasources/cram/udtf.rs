@@ -67,8 +67,8 @@ impl TableFunctionImpl for CRAMScanFunction {
             .into());
         };
 
-        let listing_table_options =
-            super::table_provider::ListingCRAMTableOptions::new(fasta_repo.clone());
+        let listing_table_options = super::table_provider::ListingCRAMTableOptions::default()
+            .with_fasta_reference(fasta_repo.clone());
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options

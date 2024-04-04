@@ -16,10 +16,11 @@ use std::{any::Any, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
+    common::Statistics,
     datasource::physical_plan::{FileScanConfig, FileStream},
     physical_plan::{
         metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
-        Partitioning, SendableRecordBatchStream,
+        PlanProperties, SendableRecordBatchStream,
     },
 };
 use exon_cram::CRAMConfig;
@@ -42,21 +43,25 @@ pub struct CRAMScan {
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The plan properties cache.
+    properties: PlanProperties,
+
+    /// The statistics for the scan.
+    statistics: Statistics,
 }
 
 impl CRAMScan {
-    pub fn new(file_scan_config: FileScanConfig, reference: Option<String>) -> Self {
-        let projected_schema = if let Some(p) = &file_scan_config.projection {
-            Arc::new(file_scan_config.file_schema.project(p).unwrap())
-        } else {
-            file_scan_config.file_schema.clone()
-        };
+    pub fn new(base_config: FileScanConfig, reference: Option<String>) -> Self {
+        let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
-            base_config: file_scan_config,
+            base_config,
             projected_schema,
             reference,
             metrics: ExecutionPlanMetricsSet::new(),
+            properties,
+            statistics,
         }
     }
 
@@ -76,26 +81,33 @@ impl ExecutionPlan for CRAMScan {
         self
     }
 
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,
         _config: &datafusion::config::ConfigOptions,
     ) -> datafusion::error::Result<Option<Arc<dyn ExecutionPlan>>> {
-        if target_partitions == 1 {
+        if target_partitions == 1 || self.base_config.file_groups.is_empty() {
             return Ok(None);
         }
 
         let file_groups = self.base_config.regroup_files_by_size(target_partitions);
 
         let mut new_plan = self.clone();
-        if let Some(repartitioned_file_groups) = file_groups {
-            tracing::info!(
-                "Repartitioned {} file groups into {}",
-                self.base_config.file_groups.len(),
-                repartitioned_file_groups.len()
-            );
-            new_plan.base_config.file_groups = repartitioned_file_groups;
-        }
+        new_plan.base_config.file_groups = file_groups;
+
+        new_plan.properties = new_plan.properties.with_partitioning(
+            datafusion::physical_plan::Partitioning::UnknownPartitioning(
+                new_plan.base_config.file_groups.len(),
+            ),
+        );
 
         Ok(Some(Arc::new(new_plan)))
     }
@@ -103,14 +115,6 @@ impl ExecutionPlan for CRAMScan {
     fn schema(&self) -> SchemaRef {
         tracing::trace!("CRAM schema: {:#?}", self.projected_schema);
         self.projected_schema.clone()
-    }
-
-    fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
-        Partitioning::UnknownPartitioning(self.base_config.file_groups.len())
-    }
-
-    fn output_ordering(&self) -> Option<&[datafusion::physical_expr::PhysicalSortExpr]> {
-        None
     }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {

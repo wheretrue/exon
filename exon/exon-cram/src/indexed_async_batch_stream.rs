@@ -15,21 +15,25 @@
 use std::sync::Arc;
 
 use arrow::{
+    array::RecordBatch,
     error::{ArrowError, Result as ArrowResult},
-    record_batch::RecordBatch,
 };
+use coitrees::{BasicCOITree, Interval, IntervalTree};
 use exon_common::{ExonArrayBuilder, DEFAULT_BATCH_SIZE};
 use futures::Stream;
-use noodles::cram::AsyncReader;
-use object_store::ObjectStore;
-use tokio::io::AsyncBufRead;
+use noodles::cram::{
+    crai::{self, Record},
+    AsyncReader,
+};
+use tokio::io::{AsyncBufRead, AsyncSeek};
 
 use crate::{array_builder::CRAMArrayBuilder, CRAMConfig, ObjectStoreFastaRepositoryAdapter};
 
-pub struct AsyncBatchStream<R>
+pub struct IndexedAsyncBatchStream<R>
 where
-    R: AsyncBufRead + Unpin,
+    R: AsyncBufRead + AsyncSeek + Unpin,
 {
+    /// The underlying stream of CRAM records.
     reader: AsyncReader<R>,
 
     /// The header.
@@ -38,38 +42,55 @@ where
     /// The CRAM config.
     config: Arc<CRAMConfig>,
 
-    /// The reference repository
+    /// The reference repository.
     reference_sequence_repository: noodles::fasta::Repository,
+
+    /// The CRAM index record.
+    // index_records: Vec<Record>,
+    ranges: BasicCOITree<crai::Record, u32>,
 }
 
-impl<R> AsyncBatchStream<R>
+impl<R> IndexedAsyncBatchStream<R>
 where
-    R: AsyncBufRead + Unpin,
+    R: AsyncBufRead + AsyncSeek + Unpin,
 {
     pub async fn try_new(
         reader: AsyncReader<R>,
-        object_store: Arc<dyn ObjectStore>,
         header: noodles::sam::Header,
         config: Arc<CRAMConfig>,
+        index_records: Vec<Record>,
     ) -> ArrowResult<Self> {
         let reference_sequence_repository = match &config.fasta_reference {
             Some(reference) => {
-                let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
-                    object_store.clone(),
-                    reference.clone(),
+                let object_store_repo = ObjectStoreFastaRepositoryAdapter::try_new(
+                    config.object_store.clone(),
+                    reference.to_string(),
                 )
                 .await?;
 
-                noodles::fasta::Repository::new(object_store_adapter)
+                noodles::fasta::Repository::new(object_store_repo)
             }
             None => noodles::fasta::Repository::default(),
         };
+
+        let ranges = index_records
+            .iter()
+            .map(|r| {
+                let start = r.alignment_start().unwrap().get();
+                let end = start + r.alignment_span();
+
+                Interval::new(start as i32, end as i32, r.clone())
+            })
+            .collect::<Vec<_>>();
+
+        let trees = BasicCOITree::new(&ranges);
 
         Ok(Self {
             reader,
             header,
             config,
             reference_sequence_repository,
+            ranges: trees,
         })
     }
 
@@ -77,34 +98,41 @@ where
         let mut array_builder =
             CRAMArrayBuilder::new(self.header.clone(), DEFAULT_BATCH_SIZE, &self.config);
 
-        if let Some(container) = self.reader.read_data_container().await? {
-            let records = container
-                .slices()
-                .iter()
-                .map(|slice| {
-                    let compression_header = container.compression_header();
-
-                    slice.records(compression_header).and_then(|mut records| {
-                        slice.resolve_records(
-                            &self.reference_sequence_repository,
-                            &self.header,
-                            compression_header,
-                            &mut records,
-                        )?;
-
-                        Ok(records)
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .flatten();
-
-            // iterate through the records and append them to the array builder
-            for record in records {
-                array_builder.append(record)?;
-            }
+        let container = if let Some(container) = self.reader.read_data_container().await? {
+            container
         } else {
             return Ok(None);
+        };
+
+        let records = container
+            .slices()
+            .iter()
+            .map(|slice| {
+                let compression_header = container.compression_header();
+
+                slice.records(compression_header).and_then(|mut records| {
+                    slice.resolve_records(
+                        &self.reference_sequence_repository,
+                        &self.header,
+                        compression_header,
+                        &mut records,
+                    )?;
+
+                    Ok(records)
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .filter(|record| {
+                let start = record.alignment_start().unwrap().get();
+                let end = start + record.alignment_end().unwrap().get();
+
+                self.ranges.query_count(start as i32, end as i32) > 0
+            });
+
+        for record in records {
+            array_builder.append(record)?;
         }
 
         let schema = self.config.projected_schema();

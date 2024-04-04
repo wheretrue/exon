@@ -24,6 +24,15 @@ use datafusion::{
     execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
+
+use crate::{
+    error::ExonError,
+    udfs::{
+        sam::cram_region_filter::register_cram_region_filter_udf,
+        sequence::motif::ExonFunctionFactory,
+    },
+};
+
 use noodles::core::Region;
 use object_store::local::LocalFileSystem;
 
@@ -66,7 +75,6 @@ use crate::{
         },
         ExonFileType, ExonListingTableFactory,
     },
-    error::ExonError,
     new_exon_config,
     physical_plan::planner::ExonQueryPlanner,
     udfs::{
@@ -102,7 +110,8 @@ pub trait ExonSessionExt {
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
-        let mut state = SessionState::new_with_config_rt(config, runtime);
+        let mut state = SessionState::new_with_config_rt(config, runtime)
+            .with_function_factory(Arc::new(ExonFunctionFactory {}));
 
         let sources = vec![
             "BAM",
@@ -150,6 +159,9 @@ pub trait ExonSessionExt {
 
         // Register BAM region filter UDF
         register_bam_region_filter_udf(&ctx);
+
+        // Register CRAM region filter UDF
+        register_cram_region_filter_udf(&ctx);
 
         // Register VCF region filter UDF
         register_vcf_region_filter_udf(&ctx);
@@ -499,7 +511,7 @@ impl ExonSessionExt for SessionContext {
             .infer_schema(&self.state(), &table_path)
             .await?;
 
-        let config = ListingVCFTableConfig::new(table_path).with_options(vcf_table_options);
+        let config = ListingVCFTableConfig::new(table_path, vcf_table_options);
 
         let provider = Arc::new(ListingVCFTable::try_new(config, table_schema)?);
         self.register_table(table_name, provider)

@@ -56,9 +56,10 @@ impl TableFunctionImpl for VCFScanFunction {
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_table_config =
-            ListingVCFTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ListingVCFTableConfig::new(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
         let listing_table = ListingVCFTable::try_new(listing_table_config, schema)?;
 
@@ -108,7 +109,7 @@ impl TableFunctionImpl for VCFIndexedScanFunction {
         })?;
 
         let listing_table_config =
-            ListingVCFTableConfig::new(listing_table_url).with_options(listing_table_options);
+            ListingVCFTableConfig::new(listing_table_url, listing_table_options);
 
         let listing_table = ListingVCFTable::try_new(listing_table_config, schema)?;
 

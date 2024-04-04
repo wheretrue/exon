@@ -4,7 +4,7 @@ statement ok
 CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
 
 query ok
-COPY fasta_table TO '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.parquet' (FORMAT parquet)
+COPY fasta_table TO '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.parquet' STORED AS PARQUET;
 ----
 2
 

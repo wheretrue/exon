@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,41 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, sync::Arc};
+use std::{any::Any, fmt, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
-
 use datafusion::{
     common::Statistics,
-    datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        physical_plan::{FileScanConfig, FileStream},
-    },
+    datasource::physical_plan::{FileScanConfig, FileStream},
+    execution::SendableRecordBatchStream,
     physical_plan::{
-        metrics::ExecutionPlanMetricsSet, DisplayAs, ExecutionPlan, PlanProperties,
-        SendableRecordBatchStream,
+        metrics::ExecutionPlanMetricsSet, DisplayAs, DisplayFormatType, ExecutionPlan,
+        PlanProperties,
     },
 };
-use exon_mzml::MzMLConfig;
+use exon_cram::CRAMConfig;
 
 use crate::datasources::ExonFileScanConfig;
 
-use super::file_opener::MzMLOpener;
+use super::indexed_file_opener::IndexedCRAMOpener;
 
 #[derive(Debug, Clone)]
-/// Implements a datafusion `ExecutionPlan` for MzML files.
-pub struct MzMLScan {
-    /// The base configuration for the file scan.
-    base_config: FileScanConfig,
-
-    /// The projected schema for the scan.
+pub(super) struct IndexedCRAMScan {
+    /// The schema of the data source.
     projected_schema: SchemaRef,
 
-    /// The compression type of the file.
-    file_compression_type: FileCompressionType,
+    /// The configuration for the file scan.
+    base_config: FileScanConfig,
 
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
+
+    /// The FASTA reference to use.
+    reference: Option<String>,
 
     /// The plan properties cache.
     properties: PlanProperties,
@@ -55,47 +51,32 @@ pub struct MzMLScan {
     statistics: Statistics,
 }
 
-impl MzMLScan {
-    /// Create a new MzML scan.
-    pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
+impl IndexedCRAMScan {
+    /// Create a new BAM scan.
+    pub fn new(base_config: FileScanConfig, reference: Option<String>) -> Self {
         let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
             base_config,
             projected_schema,
-            file_compression_type,
             metrics: ExecutionPlanMetricsSet::new(),
             properties,
             statistics,
+            reference,
         }
     }
 }
 
-impl DisplayAs for MzMLScan {
-    fn fmt_as(
-        &self,
-        _t: datafusion::physical_plan::DisplayFormatType,
-        f: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
-        write!(f, "MzMLScan")
+impl DisplayAs for IndexedCRAMScan {
+    fn fmt_as(&self, t: DisplayFormatType, f: &mut fmt::Formatter) -> std::fmt::Result {
+        write!(f, "IndexedCRAMScan: ")?;
+        self.base_config.fmt_as(t, f)
     }
 }
 
-impl ExecutionPlan for MzMLScan {
+impl ExecutionPlan for IndexedCRAMScan {
     fn as_any(&self) -> &dyn Any {
         self
-    }
-
-    fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
-    }
-
-    fn properties(&self) -> &PlanProperties {
-        &self.properties
-    }
-
-    fn statistics(&self) -> datafusion::error::Result<Statistics> {
-        Ok(self.statistics.clone())
     }
 
     fn repartitioned(
@@ -121,6 +102,10 @@ impl ExecutionPlan for MzMLScan {
         Ok(Some(Arc::new(new_plan)))
     }
 
+    fn schema(&self) -> SchemaRef {
+        self.projected_schema.clone()
+    }
+
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
@@ -143,14 +128,26 @@ impl ExecutionPlan for MzMLScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = MzMLConfig::new(object_store, self.base_config.file_schema.clone())
-            .with_batch_size(batch_size)
-            .with_some_projection(Some(self.base_config.file_projection()));
+        let config = CRAMConfig::new(
+            object_store,
+            self.base_config.file_schema.clone(),
+            self.reference.clone(),
+        )
+        .with_batch_size(batch_size)
+        .with_projection(self.base_config.file_projection());
 
-        let opener = MzMLOpener::new(Arc::new(config), self.file_compression_type);
+        let opener = IndexedCRAMOpener::new(Arc::new(config));
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 
         Ok(Box::pin(stream) as SendableRecordBatchStream)
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.properties
+    }
+
+    fn statistics(&self) -> datafusion::error::Result<Statistics> {
+        Ok(self.statistics.clone())
     }
 }

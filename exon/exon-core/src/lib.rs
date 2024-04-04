@@ -64,7 +64,7 @@ pub mod datasources;
 /// UDFs for Exon.
 pub mod udfs;
 
-/// Physical plan augmentations for Exon.
+/// Physical plan optimizations for Exon.
 pub mod physical_optimizer;
 
 /// Physical plan augmentations for Exon.
