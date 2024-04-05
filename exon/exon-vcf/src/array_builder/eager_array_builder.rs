@@ -22,7 +22,10 @@ use arrow::{
     datatypes::SchemaRef,
     error::ArrowError,
 };
-use noodles::vcf::Record;
+use noodles::vcf::{
+    variant::record::{AlternateBases, Filters, Ids},
+    Header, Record,
+};
 
 use super::{GenotypeBuilder, InfosBuilder};
 
@@ -39,6 +42,8 @@ pub struct VCFArrayBuilder {
     infos: InfosBuilder,
     formats: GenotypeBuilder,
 
+    header: Arc<Header>,
+
     projection: Vec<usize>,
 }
 
@@ -48,6 +53,7 @@ impl VCFArrayBuilder {
         schema: SchemaRef,
         capacity: usize,
         projection: Option<Vec<usize>>,
+        header: Arc<Header>,
     ) -> Result<Self, ArrowError> {
         let info_field = schema.field_with_name("info")?;
         let format_field = schema.field_with_name("formats")?;
@@ -75,6 +81,7 @@ impl VCFArrayBuilder {
             infos: InfosBuilder::try_new(info_field, capacity)?,
 
             formats: GenotypeBuilder::try_new(format_field, capacity)?,
+            header,
 
             projection,
         })
@@ -95,12 +102,16 @@ impl VCFArrayBuilder {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let chromosome: String = format!("{}", record.chromosome());
+                    let chromosome: String = format!("{}", record.reference_sequence_name());
                     self.chromosomes.append_value(chromosome);
                 }
                 1 => {
-                    let position: usize = record.position().into();
-                    self.positions.append_value(position as i64);
+                    if let Some(position) = record.variant_start() {
+                        let position = position?;
+                        self.positions.append_value(position.get() as i64);
+                    } else {
+                        self.positions.append_null();
+                    }
                 }
                 2 => {
                     for id in record.ids().iter() {
@@ -115,23 +126,28 @@ impl VCFArrayBuilder {
                 }
                 4 => {
                     for alt in record.alternate_bases().iter() {
+                        let alt = alt?;
                         self.alternates.values().append_value(alt.to_string());
                     }
 
                     self.alternates.append(true);
                 }
                 5 => {
-                    let quality = record.quality_score().map(f32::from);
-                    self.qualities.append_option(quality);
+                    let quality_score = record.quality_score().transpose()?;
+                    self.qualities.append_option(quality_score);
                 }
                 6 => {
-                    for filter in record.filters().iter() {
+                    let filters = record.filters();
+
+                    for filter in filters.iter(&self.header) {
+                        let filter = filter?;
                         self.filters.values().append_value(filter.to_string());
                     }
+
                     self.filters.append(true);
                 }
-                7 => self.infos.append_value(record.info())?,
-                8 => self.formats.append_value(record.genotypes())?,
+                7 => self.infos.append_value(&record.info())?,
+                8 => self.formats.append_value(record.samples())?,
                 _ => Err(ArrowError::InvalidArgumentError(
                     "Invalid column index".to_string(),
                 ))?,

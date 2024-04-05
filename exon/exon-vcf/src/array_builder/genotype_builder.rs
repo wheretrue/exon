@@ -22,12 +22,16 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
     error::ArrowError,
 };
-use noodles::vcf::record::{
-    genotypes::{
-        keys::Key,
-        sample::{value::Array, Value},
+use noodles::vcf::{
+    record::{
+        genotypes::{
+            keys::Key,
+            sample::{value::Array, Value},
+        },
+        Genotypes, Samples,
     },
-    Genotypes,
+    variant::record::samples::Sample,
+    Header,
 };
 
 /// Builder for the genotypes of a record batch.
@@ -118,8 +122,8 @@ impl GenotypeBuilder {
     ///
     /// It is important that the passed genotypes was parsed using the same header as the one used
     /// to create this builder. If not, some types may not match and the append will fail.
-    pub fn append_value(&mut self, genotypes: &Genotypes) -> Result<(), ArrowError> {
-        for genotype in genotypes.values() {
+    pub fn append_value(&mut self, samples: &Samples, header: &Header) -> Result<(), ArrowError> {
+        for sample in samples.iter() {
             for (i, field) in self.fields.clone().iter().enumerate() {
                 let field_name = field.name().to_string();
                 let field_type = field.data_type();
@@ -130,7 +134,8 @@ impl GenotypeBuilder {
                         field_name.as_str()
                     ))
                 })?;
-                let value = genotype.get(&key);
+
+                let value = sample.get(&header, &key).transpose()?;
 
                 match value {
                     None | Some(None) => match field_type {
@@ -285,7 +290,7 @@ impl GenotypeBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
+    use std::sync::Arc;
 
     use arrow::{
         array::Array,
@@ -297,10 +302,8 @@ mod tests {
             record::value::{map::format, Map},
             Number,
         },
-        record::{
-            genotypes::{self, sample::Value, Keys},
-            Genotypes,
-        },
+        record::{samples, Samples},
+        variant::record_buf::samples::sample::Value,
         Header,
     };
 
@@ -487,9 +490,7 @@ mod tests {
         let mut values = Vec::new();
 
         for (a, b, c, d, e) in test_table {
-            let key = genotypes::keys::Key::from_str(a).unwrap();
-
-            keys.push(genotypes::keys::Key::from_str(a).unwrap());
+            keys.push(a);
 
             let format = Map::builder()
                 .set_description("test")
@@ -516,7 +517,7 @@ mod tests {
 
         let gt_string = genotypes.to_string();
 
-        let gt = Genotypes::parse(&gt_string, &header).unwrap();
+        // let gt = Samples::parse(&gt_string, &header).unwrap();
 
         let field = Field::new(
             "formats",
@@ -529,7 +530,7 @@ mod tests {
         );
         let mut gb = GenotypeBuilder::try_new(&field, 0).unwrap();
 
-        gb.append_value(&gt).unwrap();
+        gb.append_value(&gt, &header).unwrap();
 
         let array = Arc::new(gb.finish());
 

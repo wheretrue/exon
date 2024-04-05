@@ -20,7 +20,10 @@ use arrow::{
 };
 use exon_common::ExonArrayBuilder;
 use futures::Stream;
-use noodles::core::{Position, Region};
+use noodles::{
+    core::{Position, Region},
+    vcf::Record,
+};
 use tokio::io::AsyncBufRead;
 
 use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
@@ -96,16 +99,19 @@ where
         })
     }
 
-    fn filter(&self, record: &noodles::vcf::lazy::Record) -> Result<bool, ArrowError> {
-        let chrom = record.chromosome();
+    fn filter(&self, record: &Record) -> Result<bool, ArrowError> {
+        let chrom = record.reference_sequence_name();
 
         let region_name = std::str::from_utf8(self.region.name())?;
         if chrom != region_name {
             return Ok(false);
         }
 
-        let position = Position::from_str(record.position())
-            .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+        let position = if let Some(position) = record.variant_start() {
+            position?
+        } else {
+            return Ok(false);
+        };
 
         let contains_position = self.region.interval().contains(position);
 
