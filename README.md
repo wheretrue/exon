@@ -2,12 +2,12 @@
     <img src="https://raw.githubusercontent.com/wheretrue/exon/main/.github/images/logo.svg" width="220px" alt="Exon" />
 </h1>
 
-Exon is an analysis toolkit for life-science applications. It features:
+Exon is an execution engine designed to work with bioinformatics data. It features:
 
+* SQL based access to bioinformatics data -- general DML and some DDL support
 * Support for many file formats from bioinformatics, proteomics, and others
 * Local filesystem and object storage support
 * Arrow FFI primitives for multi-language support
-* SQL based access to bioinformatics data -- general DML and some DDL support
 
 ## Installation
 
