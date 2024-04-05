@@ -9,7 +9,7 @@ name = 'exonr'
 
 [dependencies]
 arrow = { version = "50.0.0", features = ["ffi"] }
-datafusion = "37"
+datafusion = "36"
 exon = { version = "0.13", features = ["all"] }
 extendr-api = "0.6"
 tokio = { version = '1', features = ['rt'] }
