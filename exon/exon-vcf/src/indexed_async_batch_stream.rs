@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{
     error::{ArrowError, Result as ArrowResult},
@@ -20,10 +20,7 @@ use arrow::{
 };
 use exon_common::ExonArrayBuilder;
 use futures::Stream;
-use noodles::{
-    core::{Position, Region},
-    vcf::Record,
-};
+use noodles::{core::Region, vcf::Record};
 use tokio::io::AsyncBufRead;
 
 use super::{array_builder::LazyVCFArrayBuilder, config::VCFConfig};
@@ -74,14 +71,14 @@ where
         self
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
+    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
         if self.reader.virtual_position().uncompressed() as usize >= self.max_bytes {
             return Ok(None);
         }
 
-        let mut record = noodles::vcf::lazy::Record::default();
+        let mut record = noodles::vcf::Record::default();
 
-        match self.reader.read_lazy_record(&mut record).await {
+        match self.reader.read_record(&mut record).await {
             Ok(0) => Ok(None),
             Ok(_) => Ok(Some(record)),
             Err(e) => Err(e),
@@ -133,7 +130,7 @@ where
             match record {
                 Some(record) => {
                     if self.filter(&record)? {
-                        array_builder.append(&record)?;
+                        array_builder.append(record)?;
                         record_count += 1;
                     }
                 }
@@ -148,7 +145,7 @@ where
 
             match record {
                 Some(record) => {
-                    array_builder.append(&record)?;
+                    array_builder.append(record)?;
                 }
                 None => {
                     break;

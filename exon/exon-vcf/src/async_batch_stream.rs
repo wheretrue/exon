@@ -56,10 +56,10 @@ where
         }
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::lazy::Record>> {
-        let mut record = noodles::vcf::lazy::Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
+        let mut record = noodles::vcf::Record::default();
 
-        match self.reader.read_lazy_record(&mut record).await {
+        match self.reader.read_record(&mut record).await {
             Ok(0) => Ok(None),
             Ok(_) => Ok(Some(record)),
             Err(e) => Err(e),
@@ -90,7 +90,7 @@ where
 
             match record {
                 Some(record) => {
-                    array_builder.append(&record)?;
+                    array_builder.append(record)?;
                 }
                 None => {
                     break;

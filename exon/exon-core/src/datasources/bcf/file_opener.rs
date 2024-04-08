@@ -25,6 +25,8 @@ use object_store::GetResultPayload;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
 
+use crate::datasources::vcf;
+
 /// A file opener for BCF files.
 pub struct BCFOpener {
     /// The configuration for the opener.
@@ -61,7 +63,7 @@ impl FileOpener for BCFOpener {
             match get_result.payload {
                 GetResultPayload::File(file, path) => match region {
                     Some(region) => {
-                        let mut reader = bcf::Reader::new(file);
+                        let mut reader = bcf::io::Reader::new(file);
                         let header = reader.read_header()?;
 
                         let index = csi::read(path.with_extension("bcf.csi"))?;
@@ -76,7 +78,7 @@ impl FileOpener for BCFOpener {
 
                         let boxed_iter = Box::new(records.into_iter());
 
-                        let batch_adapter = BatchAdapter::new(boxed_iter, config);
+                        let batch_adapter = BatchAdapter::new(boxed_iter, config, header.into());
                         let batch_stream = futures::stream::iter(batch_adapter);
 
                         Ok(batch_stream.boxed())

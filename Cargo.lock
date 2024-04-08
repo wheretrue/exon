@@ -2000,7 +2000,6 @@ dependencies = [
  "lightmotif",
  "lightmotif-io",
  "noodles",
- "noodles-bgzf 0.27.0",
  "num_cpus",
  "object_store",
  "pin-project",
@@ -2024,7 +2023,6 @@ dependencies = [
  "futures",
  "itertools 0.12.1",
  "noodles",
- "noodles-bgzf 0.28.0",
  "object_store",
  "tokio",
 ]
@@ -2234,7 +2232,6 @@ dependencies = [
  "futures",
  "itertools 0.12.1",
  "noodles",
- "noodles-bgzf 0.27.0",
  "object_store",
  "tokio",
 ]
@@ -2255,7 +2252,6 @@ dependencies = [
  "exon-common",
  "futures",
  "noodles",
- "noodles-bgzf 0.27.0",
  "object_store",
  "tokio",
 ]
@@ -2915,24 +2911,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
-name = "libdeflate-sys"
-version = "1.19.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc9caa76c8cc6ee8c4efcf8f4514a812ebcad3aa7d3b548efe4d26da1203f177"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "libdeflater"
-version = "1.19.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "265a985bd31e5f22e2b2ac107cbed44c6ccf40ae236e46963cd00dd213e4bd03"
-dependencies = [
- "libdeflate-sys",
-]
-
-[[package]]
 name = "libflate"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3178,7 +3156,7 @@ dependencies = [
  "noodles-bam",
  "noodles-bcf",
  "noodles-bed",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-cram",
  "noodles-csi",
@@ -3203,7 +3181,7 @@ dependencies = [
  "bytes",
  "futures",
  "indexmap 2.2.6",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
  "noodles-sam",
@@ -3219,7 +3197,7 @@ dependencies = [
  "byteorder",
  "futures",
  "indexmap 2.2.6",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
  "noodles-vcf",
@@ -3237,19 +3215,6 @@ dependencies = [
 
 [[package]]
 name = "noodles-bgzf"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43ce62d1e012aa3793e17be1c286b8b71dad5a902a19524eb21729ed16113a9b"
-dependencies = [
- "byteorder",
- "bytes",
- "crossbeam-channel",
- "flate2",
- "libdeflater",
-]
-
-[[package]]
-name = "noodles-bgzf"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eff82b0fb78c11947b29ef50e8ddf0093813fa9e613af0e13dc53fc12b2dc3ea"
@@ -3259,7 +3224,6 @@ dependencies = [
  "crossbeam-channel",
  "flate2",
  "futures",
- "libdeflater",
  "pin-project-lite",
  "tokio",
  "tokio-util",
@@ -3305,7 +3269,7 @@ dependencies = [
  "bit-vec",
  "byteorder",
  "indexmap 2.2.6",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "tokio",
 ]
@@ -3318,7 +3282,7 @@ checksum = "59f7006eff28b06d2c2b1129f9dd2ba637163b92068617060433f22f557e6ce2"
 dependencies = [
  "bytes",
  "memchr",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "tokio",
 ]
@@ -3341,7 +3305,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9216634517bf888abb425b10f3df7857ee3f584d4e46c8d6a2bb2c84acc4e10e"
 dependencies = [
  "indexmap 2.2.6",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
  "percent-encoding",
@@ -3353,7 +3317,7 @@ version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99d4fabc2e574e80c00341685e8f4df37ae0b5a00a6fecccfd7c99eb45d5a4cf"
 dependencies = [
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
 ]
@@ -3370,7 +3334,7 @@ dependencies = [
  "indexmap 2.2.6",
  "lexical-core",
  "memchr",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
  "tokio",
@@ -3385,7 +3349,7 @@ dependencies = [
  "bit-vec",
  "byteorder",
  "indexmap 2.2.6",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
  "tokio",
@@ -3400,7 +3364,7 @@ dependencies = [
  "futures",
  "indexmap 2.2.6",
  "memchr",
- "noodles-bgzf 0.28.0",
+ "noodles-bgzf",
  "noodles-core",
  "noodles-csi",
  "noodles-tabix",
