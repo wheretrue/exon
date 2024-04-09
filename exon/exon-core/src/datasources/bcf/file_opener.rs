@@ -25,8 +25,6 @@ use object_store::GetResultPayload;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
 
-use crate::datasources::vcf;
-
 /// A file opener for BCF files.
 pub struct BCFOpener {
     /// The configuration for the opener.

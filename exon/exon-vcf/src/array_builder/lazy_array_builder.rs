@@ -62,7 +62,7 @@ pub struct LazyVCFArrayBuilder {
     rows: usize,
 }
 
-impl<'a> LazyVCFArrayBuilder {
+impl LazyVCFArrayBuilder {
     /// Creates a new `VCFArrayBuilder` from a `Schema`.
     pub fn create(
         schema: SchemaRef,
@@ -193,7 +193,7 @@ impl<'a> LazyVCFArrayBuilder {
                         let mut s = String::new();
                         for alt in alt_bases.iter() {
                             let alt = alt?;
-                            s = s + &alt;
+                            s += alt;
                         }
 
                         self.alternates.append(true);
@@ -329,9 +329,8 @@ impl<'a> LazyVCFArrayBuilder {
                                         Array::Character(ca) => {
                                             let mut si = Vec::new();
                                             for v in ca.iter() {
-                                                match v? {
-                                                    Some(v) => si.push(v.to_string()),
-                                                    None => {}
+                                                if let Some(v) = v? {
+                                                    si.push(v.to_string())
                                                 }
                                             }
 

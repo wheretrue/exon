@@ -21,6 +21,30 @@ PL  0,3,35
 statement ok
 DROP TABLE vcf_table;
 
+statement ok
+SET exon.vcf_parse_formats = true;
+
+statement ok
+SET exon.vcf_parse_info = true;
+
+statement ok
+CREATE EXTERNAL TABLE vcf_table STORED AS VCF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf';
+
+query T
+SELECT info FROM vcf_table LIMIT 2;
+----
+{INDEL:,IDV:,IMF:,DP:1,VDB:,RPB:,MQB:,BQB:,MQSB:,SGB:,MQ0F:0.0,I16:[1.0, 0.0, 0.0, 0.0, 26.0, 676.0, 0.0, 0.0, 60.0, 3600.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],QS:[1.0, 0.0]}
+{INDEL:,IDV:,IMF:,DP:1,VDB:,RPB:,MQB:,BQB:,MQSB:,SGB:,MQ0F:0.0,I16:[1.0, 0.0, 0.0, 0.0, 34.0, 1156.0, 0.0, 0.0, 60.0, 3600.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0],QS:[1.0, 0.0]}
+
+query T
+SELECT formats FROM vcf_table LIMIT 5;
+----
+[{PL: [0, 3, 26]}]
+[{PL: [0, 3, 34]}]
+[{PL: [0, 3, 33]}]
+[{PL: [0, 3, 34]}]
+[{PL: [0, 3, 35]}]
+
 query T
 SELECT COUNT(*) FROM vcf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf');
 ----

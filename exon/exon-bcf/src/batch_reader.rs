@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use exon_vcf::VCFArrayBuilder;
-use noodles::{bcf::Record, csi::binning_index::index::header, vcf::variant::RecordBuf};
+use noodles::{bcf::Record, vcf::variant::RecordBuf};
 use tokio::io::{AsyncBufRead, AsyncRead};
 
 use crate::config::BCFConfig;
