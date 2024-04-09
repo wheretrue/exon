@@ -25,13 +25,7 @@ use datafusion::{
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 
-use crate::{
-    error::ExonError,
-    udfs::{
-        sam::cram_region_filter::register_cram_region_filter_udf,
-        sequence::motif::ExonFunctionFactory,
-    },
-};
+use crate::{error::ExonError, udfs::sam::cram_region_filter::register_cram_region_filter_udf};
 
 use noodles::core::Region;
 use object_store::local::LocalFileSystem;
@@ -83,6 +77,8 @@ use crate::{
         vcf::vcf_region_filter::register_vcf_region_filter_udf,
     },
 };
+
+use super::function_factory::ExonFunctionFactory;
 
 /// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
 #[async_trait]

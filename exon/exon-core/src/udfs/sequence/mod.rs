@@ -15,11 +15,12 @@
 mod alignment_score;
 mod gc_content;
 mod locate_regex;
-pub(crate) mod motif;
 mod quality_score_list_to_string;
 mod quality_score_string_to_list;
 mod reverse_complement;
 mod trim_polya;
+
+pub(crate) mod motif;
 
 use datafusion::{execution::context::SessionContext, logical_expr::ScalarUDF};
 

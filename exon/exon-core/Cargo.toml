@@ -55,8 +55,8 @@ fxhash = "0.2.1"
 lazy_static = "1.4.0"
 serde = { version = "1.0.197", features = ["derive"] }
 regex = "1.10.4"
-lightmotif = { version = "0.6.0" }
-lightmotif-io = { version = "0.6.0" }
+lightmotif = { version = "0.6.0", optional = true }
+lightmotif-io = { version = "0.6.0", optional = true }
 coitrees = "0.4.0"
 
 [dev-dependencies]
@@ -65,12 +65,14 @@ sqllogictest = "0.19.1"
 clap = { version = "4", features = ["derive", "env"] }
 
 [features]
-all = ["ffi", "genbank", "mzml", "fcs"]
+all = ["ffi", "genbank", "mzml", "fcs", "motif-udfs"]
+default = ["ffi", "genbank", "mzml", "fcs"]
 fcs = ["dep:exon-fcs"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 fixtures = []
 genbank = ["dep:exon-genbank"]
 mzml = ["dep:exon-mzml"]
+motif-udfs = ["dep:lightmotif", "dep:lightmotif-io"]
 
 [[test]]
 harness = false
