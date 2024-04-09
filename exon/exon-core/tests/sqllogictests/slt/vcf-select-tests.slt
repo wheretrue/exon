@@ -45,6 +45,9 @@ SELECT formats FROM vcf_table LIMIT 5;
 [{PL: [0, 3, 34]}]
 [{PL: [0, 3, 35]}]
 
+statement ok
+DROP TABLE vcf_table;
+
 query T
 SELECT COUNT(*) FROM vcf_scan('$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf');
 ----
