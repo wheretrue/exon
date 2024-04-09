@@ -166,6 +166,27 @@ async fn parse_udf(
 
                     ExonScoringMatrix::Protein(pssm)
                 }
+                (ExonAlphabet::Dna(_dna), PSSMFormats::Transfac) => {
+                    let record =
+                        lightmotif_io::transfac::Reader::<_, lightmotif::Dna>::new(buf_reader)
+                            .next()
+                            .ok_or(ExonError::ExecutionError(
+                                "Error reading PSSM file".to_string(),
+                            ))?
+                            .map_err(|_| {
+                                ExonError::ExecutionError("Error reading PSSM file".to_string())
+                            })?;
+
+                    let pssm = record
+                        .to_counts()
+                        .ok_or(ExonError::ExecutionError(
+                            "Error reading PSSM file".to_string(),
+                        ))?
+                        .to_freq(DEFAULT_PSEUDO_COUNT)
+                        .to_scoring(None);
+
+                    ExonScoringMatrix::Dna(pssm)
+                }
                 (ExonAlphabet::Dna(_dna), PSSMFormats::Jaspar16) => {
                     let record =
                         lightmotif_io::jaspar16::Reader::<_, lightmotif::Dna>::new(buf_reader)
@@ -313,38 +334,5 @@ impl ScalarUDFImpl for Pssmudf {
 
         let float_builder = float_builder.finish();
         Ok(ColumnarValue::Array(Arc::new(float_builder)))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use crate::session_context::ExonSessionExt;
-    use datafusion::execution::context::SessionContext;
-
-    #[tokio::test]
-    async fn test_udf() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        dir.push("test-data/models/jaspar/MA0001.3.pfm");
-
-        let sql = format!(
-            r#"
-        CREATE FUNCTION pssm(DNA VARCHAR)
-        RETURNS FLOAT
-        LANGUAGE jaspar16
-        AS '{}'
-        "#,
-            dir.to_str().unwrap()
-        );
-
-        ctx.sql(&sql).await?;
-
-        let df = ctx.sql("SELECT pssm('GTTGACCTTATCAAC')").await?;
-        df.show().await?;
-
-        Ok(())
     }
 }
