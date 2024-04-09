@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{
     array::{ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder, Int64Builder},
@@ -21,9 +21,15 @@ use arrow::{
 };
 use exon_common::ExonArrayBuilder;
 use noodles::vcf::{
-    record::{AlternateBases, Chromosome, Genotypes, Info, Position, ReferenceBases},
+    variant::record::{
+        info::field::{value::Array as InfosArray, Value as InfosValue},
+        samples::series::{value::Array, Value as SamplesValue},
+        Filters, Ids, Info, Samples,
+    },
     Header,
 };
+
+use noodles::vcf::variant::record::AlternateBases;
 
 use super::{GenotypeBuilder, InfosBuilder};
 
@@ -75,7 +81,7 @@ impl LazyVCFArrayBuilder {
                 data_capacity,
             )),
             DataType::Struct(_) => {
-                InfosFormat::Struct(InfosBuilder::try_new(info_field, capacity)?)
+                InfosFormat::Struct(InfosBuilder::try_new(info_field, header.clone(), capacity)?)
             }
             _ => {
                 return Err(ArrowError::SchemaError(
@@ -141,29 +147,21 @@ impl LazyVCFArrayBuilder {
     }
 
     /// Appends a record to the builder.
-    pub fn append(&mut self, record: &noodles::vcf::lazy::Record) -> Result<(), ArrowError> {
+    pub fn append<T>(&mut self, record: T) -> Result<(), ArrowError>
+    where
+        T: noodles::vcf::variant::record::Record,
+    {
         for col_idx in self.projection.iter() {
             match col_idx {
                 0 => {
-                    let chromosome = Chromosome::from_str(record.chromosome()).map_err(|_| {
-                        ArrowError::ParseError(format!(
-                            "Could not parse chromosome: {}",
-                            record.chromosome()
-                        ))
-                    })?;
-
-                    self.chromosomes.append_value(chromosome.to_string());
+                    self.chromosomes
+                        .append_value(record.reference_sequence_name(&self.header)?);
                 }
                 1 => {
-                    let position = Position::from_str(record.position()).map_err(|_| {
-                        ArrowError::ParseError(format!(
-                            "Could not parse position: {}",
-                            record.position()
-                        ))
-                    })?;
+                    let variant_start = record.variant_start().transpose()?;
 
-                    let pos_usize: usize = position.into();
-                    self.positions.append_value(pos_usize as i64);
+                    self.positions
+                        .append_option(variant_start.map(|v| v.get() as i64));
                 }
                 2 => {
                     if record.ids().is_empty() {
@@ -177,104 +175,220 @@ impl LazyVCFArrayBuilder {
                     }
                 }
                 3 => {
-                    let reference_bases = ReferenceBases::from_str(record.reference_bases())
-                        .map_err(|_| {
-                            ArrowError::ParseError("Invalid reference bases".to_string())
-                        })?;
+                    let reference_bases = record.reference_bases();
 
-                    self.references.append_value(reference_bases.to_string());
+                    let mut s = String::new();
+                    for base in reference_bases.iter() {
+                        s.push(base?.into());
+                    }
+
+                    self.references.append_value(s);
                 }
-                4 => match record.alternate_bases() {
-                    "." => self.alternates.append_null(),
-                    _ => {
-                        let alternate_bases = AlternateBases::from_str(record.alternate_bases())
-                            .map_err(|_| {
-                                ArrowError::ParseError(format!(
-                                    "Invalid alternate bases: {}",
-                                    record.alternate_bases()
-                                ))
-                            })?;
+                4 => {
+                    let alt_bases = record.alternate_bases();
 
-                        for alt in alternate_bases.iter() {
-                            self.alternates.values().append_value(alt.to_string());
+                    if alt_bases.is_empty() {
+                        self.alternates.append_null();
+                    } else {
+                        let mut s = String::new();
+                        for alt in alt_bases.iter() {
+                            let alt = alt?;
+                            s += alt;
                         }
 
                         self.alternates.append(true);
                     }
-                },
-                5 => {
-                    let qs = record.quality_score();
-
-                    match qs {
-                        Some(qs) => match qs {
-                            "." => self.qualities.append_null(),
-                            _ => {
-                                let parsed_qs = qs.parse::<f32>().map_err(|_| {
-                                    ArrowError::ParseError(format!(
-                                        "Could not parse quality score: {qs}",
-                                        qs = qs
-                                    ))
-                                })?;
-
-                                self.qualities.append_value(parsed_qs);
-                            }
-                        },
-                        None => self.qualities.append_null(),
-                    }
                 }
-                6 => match record.filters() {
-                    Some(f) => {
-                        for filter in f.iter() {
-                            self.filters.values().append_value(filter);
-                        }
-                        self.filters.append(true);
+                5 => {
+                    let qs = record.quality_score().transpose()?;
+                    self.qualities.append_option(qs);
+                }
+                6 => {
+                    for filter in record.filters().iter(&self.header) {
+                        let filter = filter?;
+                        self.filters.values().append_value(filter);
                     }
-                    None => {
-                        self.filters.append_null();
-                    }
-                },
+
+                    self.filters.append(true);
+                }
                 7 => match self.infos {
                     InfosFormat::String(ref mut builder) => {
-                        builder.append_value(record.info().as_ref());
-                    }
-                    InfosFormat::Struct(ref mut builder) => match record.info().as_ref() {
-                        "." => builder.append_null(),
-                        _ => {
-                            let info =
-                                Info::try_from_str(record.info().as_ref(), self.header.infos())
-                                    .map_err(|_| {
-                                        ArrowError::ParseError(format!(
-                                            "Invalid info {}",
-                                            record.info().as_ref()
-                                        ))
-                                    })?;
+                        let info = record.info();
 
-                            builder.append_value(&info)?;
+                        let mut vs = Vec::new();
+                        for i in info.iter(&self.header) {
+                            let (key, value_option) = i?;
+                            let value = value_option.unwrap();
+
+                            let mut s = String::new();
+
+                            s.push_str(key);
+                            s.push('=');
+
+                            match value {
+                                InfosValue::String(v) => s.push_str(v),
+                                InfosValue::Character(v) => s.push(v),
+                                InfosValue::Float(v) => s.push_str(&v.to_string()),
+                                InfosValue::Flag => {
+                                    s.push_str("true");
+                                }
+                                InfosValue::Integer(v) => s.push_str(&v.to_string()),
+                                InfosValue::Array(arr) => match arr {
+                                    InfosArray::Character(arr) => {
+                                        let mut si = Vec::new();
+                                        for v in arr.iter() {
+                                            match v? {
+                                                Some(v) => si.push(v.to_string()),
+                                                None => {
+                                                    si.push(String::from("."));
+                                                }
+                                            }
+                                        }
+
+                                        let new_s = si.join(",");
+                                        s.push_str(&new_s);
+                                    }
+                                    InfosArray::Float(arr) => {
+                                        let mut si = Vec::new();
+                                        for v in arr.iter() {
+                                            match v? {
+                                                Some(v) => si.push(v.to_string()),
+                                                None => si.push(String::from(".")),
+                                            }
+                                        }
+
+                                        let new_s = si.join(",");
+                                        s.push_str(&new_s);
+                                    }
+                                    InfosArray::Integer(arr) => {
+                                        let mut si = Vec::new();
+                                        for v in arr.iter() {
+                                            match v? {
+                                                Some(v) => si.push(v.to_string()),
+                                                None => si.push(String::from('.')),
+                                            }
+                                        }
+
+                                        let new_s = si.join(",");
+                                        s.push_str(&new_s);
+                                    }
+                                    InfosArray::String(arr) => {
+                                        let mut si = Vec::new();
+                                        for v in arr.iter() {
+                                            match v? {
+                                                Some(v) => si.push(v.to_string()),
+                                                None => si.push(String::from(".")),
+                                            }
+                                        }
+                                        let new_s = si.join(",");
+                                        s.push_str(&new_s);
+                                    }
+                                },
+                            }
+
+                            vs.push(s);
                         }
-                    },
-                },
-                8 => match self.formats {
-                    FormatsFormat::String(ref mut builder) => {
-                        builder.append_value(record.genotypes().as_ref());
-                    }
-                    FormatsFormat::List(ref mut builder) => {
-                        let raw_genotypes = record.genotypes();
 
-                        if raw_genotypes.is_empty() {
+                        let s = vs.join(";");
+
+                        builder.append_value(s);
+                    }
+                    InfosFormat::Struct(ref mut builder) => {
+                        let info = record.info();
+
+                        if info.is_empty() {
                             builder.append_null();
                             continue;
                         }
 
-                        let genotypes = Genotypes::parse(raw_genotypes.as_ref(), &self.header)
-                            .map_err(|e| {
-                                ArrowError::ParseError(format!(
-                                    "Invalid genotypes {}, got error: {}",
-                                    record.genotypes().as_ref(),
-                                    e
-                                ))
-                            })?;
+                        builder.append_value(info)?;
+                    }
+                },
+                8 => match self.formats {
+                    FormatsFormat::String(ref mut builder) => {
+                        let samples = record.samples()?;
 
-                        builder.append_value(&genotypes)?;
+                        let mut s = String::new();
+                        for sample in samples.iter() {
+                            for si in sample.iter(&self.header) {
+                                let (key, value_option) = si?;
+                                let value = value_option.unwrap();
+
+                                s.push_str(key);
+                                s.push('\t');
+
+                                match value {
+                                    SamplesValue::String(v) => s.push_str(v),
+                                    SamplesValue::Character(v) => s.push(v),
+                                    SamplesValue::Float(v) => s.push_str(&v.to_string()),
+                                    SamplesValue::Genotype(gt) => {
+                                        s.push_str(format!("{:?}", gt).as_str());
+                                    }
+                                    SamplesValue::Integer(v) => s.push_str(&v.to_string()),
+                                    SamplesValue::Array(arr) => match arr {
+                                        Array::Character(ca) => {
+                                            let mut si = Vec::new();
+                                            for v in ca.iter() {
+                                                if let Some(v) = v? {
+                                                    si.push(v.to_string())
+                                                }
+                                            }
+
+                                            let new_s = si.join(",");
+                                            s.push_str(&new_s);
+                                        }
+                                        Array::Float(arr) => {
+                                            let mut si = Vec::new();
+                                            for v in arr.iter() {
+                                                match v? {
+                                                    Some(v) => si.push(v.to_string()),
+                                                    None => si.push(String::from(".")),
+                                                }
+                                            }
+
+                                            let new_s = si.join(",");
+                                            s.push_str(&new_s);
+                                        }
+                                        Array::Integer(arr) => {
+                                            let mut si = Vec::new();
+                                            for v in arr.iter() {
+                                                match v? {
+                                                    Some(v) => si.push(v.to_string()),
+                                                    None => si.push(String::from('.')),
+                                                }
+                                            }
+
+                                            let new_s = si.join(",");
+                                            s.push_str(&new_s);
+                                        }
+                                        Array::String(arr) => {
+                                            let mut si = Vec::new();
+                                            for v in arr.iter() {
+                                                match v? {
+                                                    Some(v) => si.push(v.to_string()),
+                                                    None => si.push(String::from('.')),
+                                                }
+                                            }
+
+                                            let new_s = si.join(",");
+                                            s.push_str(&new_s);
+                                        }
+                                    },
+                                }
+                            }
+                        }
+
+                        builder.append_value(s);
+                    }
+                    FormatsFormat::List(ref mut builder) => {
+                        let samples = record.samples()?;
+
+                        if samples.is_empty() {
+                            builder.append_null();
+                            continue;
+                        }
+
+                        builder.append_value(samples, &self.header)?;
                     }
                 },
                 _ => {

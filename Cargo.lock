@@ -2000,7 +2000,6 @@ dependencies = [
  "lightmotif",
  "lightmotif-io",
  "noodles",
- "noodles-bgzf",
  "num_cpus",
  "object_store",
  "pin-project",
@@ -2024,7 +2023,6 @@ dependencies = [
  "futures",
  "itertools 0.12.1",
  "noodles",
- "noodles-bgzf",
  "object_store",
  "tokio",
 ]
@@ -2234,7 +2232,6 @@ dependencies = [
  "futures",
  "itertools 0.12.1",
  "noodles",
- "noodles-bgzf",
  "object_store",
  "tokio",
 ]
@@ -2255,7 +2252,6 @@ dependencies = [
  "exon-common",
  "futures",
  "noodles",
- "noodles-bgzf",
  "object_store",
  "tokio",
 ]
@@ -2915,24 +2911,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
-name = "libdeflate-sys"
-version = "1.19.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc9caa76c8cc6ee8c4efcf8f4514a812ebcad3aa7d3b548efe4d26da1203f177"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "libdeflater"
-version = "1.19.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "265a985bd31e5f22e2b2ac107cbed44c6ccf40ae236e46963cd00dd213e4bd03"
-dependencies = [
- "libdeflate-sys",
-]
-
-[[package]]
 name = "libflate"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3171,9 +3149,9 @@ dependencies = [
 
 [[package]]
 name = "noodles"
-version = "0.66.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f806040f810a3f911dd67246d9361b9e3d149e2b5ed02da43f909835b25fa26"
+checksum = "59ff4cd91a2b4efece6e665b5a2a76f9f29ec0dfb53deef9e96d934d3b64dfdc"
 dependencies = [
  "noodles-bam",
  "noodles-bcf",
@@ -3193,9 +3171,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-bam"
-version = "0.57.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57a7ece1f74b93a96246c881a9e5710a6d2d1ff23f6503ac1c3ba04819c5f459"
+checksum = "09b409ee97c7941a3f10adbb02343f2f0127e5e7d7b5bb9ba73304d530d6c9aa"
 dependencies = [
  "bit-vec",
  "bstr",
@@ -3212,9 +3190,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-bcf"
-version = "0.47.0"
+version = "0.49.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7a534e7baf782919cfcf06b10b63df1f821fff75e352027e65e8006b1fe3a1b"
+checksum = "b61c80d82eddcbe0ecb39181370844a3fc1bdf035f6d3e97b61958b96fe784c7"
 dependencies = [
  "byteorder",
  "futures",
@@ -3237,16 +3215,15 @@ dependencies = [
 
 [[package]]
 name = "noodles-bgzf"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43ce62d1e012aa3793e17be1c286b8b71dad5a902a19524eb21729ed16113a9b"
+checksum = "eff82b0fb78c11947b29ef50e8ddf0093813fa9e613af0e13dc53fc12b2dc3ea"
 dependencies = [
  "byteorder",
  "bytes",
  "crossbeam-channel",
  "flate2",
  "futures",
- "libdeflater",
  "pin-project-lite",
  "tokio",
  "tokio-util",
@@ -3260,9 +3237,9 @@ checksum = "7336c3be652de4e05444c9b12a32331beb5ba3316e8872d92bfdd8ef3b06c282"
 
 [[package]]
 name = "noodles-cram"
-version = "0.57.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b4d34fb825a0bcffc231ceda3b4efc216feba4cc7ca9557e6f31c7ecd267715"
+checksum = "10b8bc3446b7b0ea42edefa3773ab5ccf96effc76bab5c29f5063beb81809d0e"
 dependencies = [
  "async-compression",
  "bitflags 2.5.0",
@@ -3285,9 +3262,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-csi"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "512e6c224fcffe4586e408b75f3f5e46fa6d5fe77a2db2afad6b3d085f6cd53a"
+checksum = "938d7d865a3fbb079c7855e76eb1ef0be5d285dc039fa7776622225c7f708411"
 dependencies = [
  "bit-vec",
  "byteorder",
@@ -3299,9 +3276,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-fasta"
-version = "0.34.0"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a838081c9f88c96c7a2c14c8c8a3303f282964b9e91fb53de2f3f9ef8c272b21"
+checksum = "59f7006eff28b06d2c2b1129f9dd2ba637163b92068617060433f22f557e6ce2"
 dependencies = [
  "bytes",
  "memchr",
@@ -3323,9 +3300,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-gff"
-version = "0.28.0"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a7b22b0e56f109d205a7684eb47e92e9e3dbf65818f0d104281a117ed8ec719"
+checksum = "9216634517bf888abb425b10f3df7857ee3f584d4e46c8d6a2bb2c84acc4e10e"
 dependencies = [
  "indexmap 2.2.6",
  "noodles-bgzf",
@@ -3336,9 +3313,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-gtf"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63d563aee968881bc73f634cd6df96cc0e97590b25f49ee737de068143ed176d"
+checksum = "99d4fabc2e574e80c00341685e8f4df37ae0b5a00a6fecccfd7c99eb45d5a4cf"
 dependencies = [
  "noodles-bgzf",
  "noodles-core",
@@ -3347,9 +3324,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-sam"
-version = "0.54.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8e1cf471985956a9cd12a8f363f2e8d3069dd843bc11f2920a82bb190f8c122"
+checksum = "df611024eaa2eb1c2a2ce7494c3476ce2d45fe5ccf743c390df849b880f98f10"
 dependencies = [
  "bitflags 2.5.0",
  "bstr",
@@ -3365,9 +3342,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-tabix"
-version = "0.37.0"
+version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb9ee8ea6d8b4aa9a26a7d29fc1a22dc9afcedb95683f340236ce415f66e531"
+checksum = "8678ba994f92170f6675ad9b839c0163ba10c866ef1a942e6ea83d4ec2ca052a"
 dependencies = [
  "bit-vec",
  "byteorder",
@@ -3380,9 +3357,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-vcf"
-version = "0.50.0"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0de3ecab40d63e5eabd2c64e34b84eb92d54e7a9e64d17f7ca2a3143f48a095c"
+checksum = "42b88ad4696f5dac448535d60a8c88694f41b9b7b140642995d3c9714f227667"
 dependencies = [
  "futures",
  "indexmap 2.2.6",

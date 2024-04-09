@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use exon_vcf::VCFArrayBuilder;
-use noodles::bcf::lazy;
+use noodles::{bcf::Record, vcf::variant::RecordBuf};
 use tokio::io::{AsyncBufRead, AsyncRead};
 
 use crate::config::BCFConfig;
@@ -33,10 +33,9 @@ where
     config: Arc<BCFConfig>,
 
     /// The VCF header.
-    header: noodles::vcf::Header,
-
-    /// The VCF header string maps.
-    string_maps: noodles::bcf::header::StringMaps,
+    header: Arc<noodles::vcf::Header>,
+    // The VCF header string maps.
+    // string_maps: noodles::bcf::header::StringMaps,
 }
 
 impl<R> BatchReader<R>
@@ -45,42 +44,41 @@ where
 {
     pub async fn new(inner: R, config: Arc<BCFConfig>) -> std::io::Result<Self> {
         let mut reader = noodles::bcf::AsyncReader::new(inner);
-        reader.read_file_format().await?;
+        // reader.read_file_format().await?;
 
-        let header_str = reader.read_header().await?;
-        let header = header_str.parse::<noodles::vcf::Header>().map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("invalid header: {e}"),
-            )
-        })?;
+        let header = reader.read_header().await?;
+        // let header = header_str.parse::<noodles::vcf::Header>().map_err(|e| {
+        //     std::io::Error::new(
+        //         std::io::ErrorKind::InvalidData,
+        //         format!("invalid header: {e}"),
+        //     )
+        // })?;
 
-        let string_maps = match header_str.parse() {
-            Ok(string_maps) => string_maps,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("invalid header: {e}"),
-                ))
-            }
-        };
+        // let string_maps = match header_str.parse() {
+        //     Ok(string_maps) => string_maps,
+        //     Err(e) => {
+        //         return Err(std::io::Error::new(
+        //             std::io::ErrorKind::InvalidData,
+        //             format!("invalid header: {e}"),
+        //         ))
+        //     }
+        // };
 
         Ok(Self {
             reader,
             config,
-            header,
-            string_maps,
+            header: Arc::new(header),
+            // string_maps,
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
-        let mut lazy_record = lazy::Record::default();
+    async fn read_record(&mut self) -> std::io::Result<Option<RecordBuf>> {
+        let mut lazy_record = Record::default();
 
-        match self.reader.read_lazy_record(&mut lazy_record).await? {
+        match self.reader.read_record(&mut lazy_record).await? {
             0 => Ok(None),
             _ => {
-                let vcf_record =
-                    lazy_record.try_into_vcf_record(&self.header, &self.string_maps)?;
+                let vcf_record = RecordBuf::try_from_variant_record(&self.header, &lazy_record)?;
 
                 Ok(Some(vcf_record))
             }
@@ -92,11 +90,12 @@ where
             self.config.file_schema.clone(),
             self.config.batch_size,
             None,
+            self.header.clone(),
         )?;
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
-                Some(record) => record_batch.append(&record)?,
+                Some(record) => record_batch.append(record)?,
                 None => break,
             }
         }
@@ -127,22 +126,27 @@ where
 
 pub struct BatchAdapter {
     /// The underlying record iterator.
-    record_iterator: Box<dyn Iterator<Item = Result<noodles::vcf::Record, std::io::Error>> + Send>,
+    record_iterator: Box<dyn Iterator<Item = Result<noodles::bcf::Record, std::io::Error>> + Send>,
 
     /// Configuration for how to batch records.
     config: Arc<BCFConfig>,
+
+    /// The header.
+    header: Arc<noodles::vcf::Header>,
 }
 
 impl BatchAdapter {
     pub fn new(
         record_iterator: Box<
-            dyn Iterator<Item = Result<noodles::vcf::Record, std::io::Error>> + Send,
+            dyn Iterator<Item = Result<noodles::bcf::Record, std::io::Error>> + Send,
         >,
         config: Arc<BCFConfig>,
+        header: Arc<noodles::vcf::Header>,
     ) -> Self {
         Self {
             record_iterator,
             config,
+            header,
         }
     }
 
@@ -150,12 +154,13 @@ impl BatchAdapter {
         let mut record_batch = VCFArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
-            None,
+            self.config.projection.as_deref(),
+            self.header.clone(),
         )?;
 
         for _ in 0..self.config.batch_size {
             match self.record_iterator.next() {
-                Some(Ok(record)) => record_batch.append(&record)?,
+                Some(Ok(record)) => record_batch.append(record)?,
                 Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
                 None => break,
             }

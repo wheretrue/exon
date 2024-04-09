@@ -18,8 +18,8 @@ use arrow::error::ArrowError;
 use datafusion::{datasource::physical_plan::FileOpener, error::DataFusionError};
 use exon_gff::{BatchReader, GFFConfig};
 use futures::{StreamExt, TryStreamExt};
+use noodles::bgzf::VirtualPosition;
 use noodles::core::Region;
-use noodles_bgzf::VirtualPosition;
 use object_store::{GetOptions, GetRange};
 use tokio_util::io::StreamReader;
 

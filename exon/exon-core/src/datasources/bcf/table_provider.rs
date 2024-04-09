@@ -131,12 +131,12 @@ impl ListingBCFTableOptions {
         let stream_reader = StreamReader::new(stream_reader);
 
         let mut bcf_reader = bcf::AsyncReader::new(stream_reader);
-        bcf_reader.read_file_format().await?;
+        // bcf_reader.read_file_format().await?;
 
-        let header_str = bcf_reader.read_header().await?;
-        let header = header_str
-            .parse::<noodles::vcf::Header>()
-            .map_err(|e| DataFusionError::Execution(e.to_string()))?;
+        let header = bcf_reader.read_header().await?;
+        // let header = header_str
+        //     .parse::<noodles::vcf::Header>()
+        //     .map_err(|e| DataFusionError::Execution(e.to_string()))?;
 
         let mut schema_builder = VCFSchemaBuilder::default()
             .with_header(header)

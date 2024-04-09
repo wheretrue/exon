@@ -117,8 +117,8 @@ pub async fn get_byte_range_for_file(
 }
 
 pub(crate) struct BGZFIndexedOffsets {
-    pub start: noodles_bgzf::VirtualPosition,
-    pub end: noodles_bgzf::VirtualPosition,
+    pub start: noodles::bgzf::VirtualPosition,
+    pub end: noodles::bgzf::VirtualPosition,
 }
 
 impl From<Chunk> for BGZFIndexedOffsets {
