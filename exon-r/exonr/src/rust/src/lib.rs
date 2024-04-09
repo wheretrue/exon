@@ -14,7 +14,6 @@
 
 use std::sync::Arc;
 
-use arrow::ffi_stream::export_reader_into_raw;
 use arrow::ffi_stream::FFI_ArrowArrayStream;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::DataFrame;
@@ -111,7 +110,11 @@ impl RDataFrame {
 
         let dataset_record_batch_stream = DataFrameRecordBatchStream::new(stream, runtime);
 
-        unsafe { export_reader_into_raw(Box::new(dataset_record_batch_stream), stream_out_ptr) }
+        let ffi_arr = FFI_ArrowArrayStream::new(Box::new(dataset_record_batch_stream));
+
+        unsafe {
+            std::ptr::write_unaligned(stream_out_ptr, ffi_arr);
+        }
 
         r_result_list::<(), Error>(Ok(()))
     }
