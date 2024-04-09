@@ -111,7 +111,7 @@ pub trait ExonSessionExt {
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
     fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
         let mut state = SessionState::new_with_config_rt(config, runtime)
-            .with_function_factory(Arc::new(ExonFunctionFactory {}));
+            .with_function_factory(Arc::new(ExonFunctionFactory::default()));
 
         let sources = vec![
             "BAM",
