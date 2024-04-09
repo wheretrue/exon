@@ -32,7 +32,7 @@ fn read_inferred_exon_table_inner(path: &str, stream_ptr: *mut FFI_ArrowArrayStr
     let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
     let config = new_exon_config();
-    let ctx = SessionContext::with_config_exon(config);
+    let ctx = ExonSessionExt::with_config_exon(config);
 
     rt.block_on(async {
         ctx.runtime_env()
