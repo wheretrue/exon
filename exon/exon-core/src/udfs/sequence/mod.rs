@@ -14,6 +14,7 @@
 
 mod alignment_score;
 mod gc_content;
+mod integer_encoding;
 mod locate_regex;
 mod quality_score_list_to_string;
 mod quality_score_string_to_list;
@@ -61,4 +62,8 @@ pub fn register_udfs(ctx: &SessionContext) {
     let locate_regex = locate_regex::LocateRegex::default();
     let locate_regex_udf = ScalarUDF::from(locate_regex);
     ctx.register_udf(locate_regex_udf);
+
+    let integer_encoding = integer_encoding::IntegerEncoding::default();
+    let integer_encoding_udf = ScalarUDF::from(integer_encoding);
+    ctx.register_udf(integer_encoding_udf);
 }

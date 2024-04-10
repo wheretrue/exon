@@ -131,3 +131,9 @@ query I
 SELECT ROUND(pssm(s1), 2) FROM (SELECT 'AGAACCAGCTGTGGAATG' s1) t
 ----
 20.64
+
+query I
+SELECT s1, integer_encoding(s1, 'ATCG') FROM (SELECT 'ATCG' s1 UNION ALL SELECT 'AAAA') t ORDER BY s1
+----
+AAAA [0, 0, 0, 0]
+ATCG [0, 1, 2, 3]
