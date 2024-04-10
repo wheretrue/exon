@@ -43,6 +43,7 @@ use crate::{
         },
         ExonFileType,
     },
+    error::Result as ExonResult,
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, infer_region,
         object_store::pruned_partition_list,
@@ -247,14 +248,18 @@ impl TableProvider for ListingGFFTable {
 
         let regions = filters
             .iter()
-            .filter_map(|f| {
+            .map(|f| {
                 if let Expr::ScalarFunction(s) = f {
-                    infer_region::infer_region_from_udf(s, "gff_region_filter")
+                    let r = infer_region::infer_region_from_udf(s, "gff_region_filter")?;
+                    Ok(r)
                 } else {
-                    None
+                    Ok(None)
                 }
             })
-            .collect::<Vec<Region>>();
+            .collect::<ExonResult<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
 
         let regions = if self.options.indexed {
             if regions.len() == 1 {

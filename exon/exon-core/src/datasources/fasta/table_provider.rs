@@ -185,17 +185,17 @@ impl ListingFASTATableOptions {
 #[derive(Debug, Clone)]
 /// A VCF listing table
 pub struct ListingFASTATable {
-    table_schema: TableSchema,
-
     config: ListingFASTATableConfig,
+
+    table_schema: TableSchema,
 }
 
 impl ListingFASTATable {
     /// Create a new VCF listing table
     pub fn try_new(config: ListingFASTATableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
-            table_schema,
             config,
+            table_schema,
         })
     }
 
@@ -204,23 +204,32 @@ impl ListingFASTATable {
         filters: &[Expr],
         session_context: &'a SessionState,
     ) -> Result<Option<Vec<Region>>> {
-        let region = filters.iter().find_map(|f| match f {
-            Expr::ScalarFunction(s) => {
-                infer_region::infer_region_from_udf(s, "fasta_region_filter")
-            }
-            _ => None,
-        });
+        if let Some(regions) = &self.config.options.region {
+            return Ok(Some(regions.clone()));
+        }
 
-        let attached_regions = match &self.config.options.region {
-            Some(region) => Ok::<_, DataFusionError>(Some(region.to_vec())),
-            None => {
-                if let Some(region) = region {
-                    Ok(Some(vec![region]))
-                } else {
-                    Ok(None)
+        let region_predicate = filters
+            .iter()
+            .map(|f| match f {
+                Expr::ScalarFunction(s) => {
+                    let r = infer_region::infer_region_from_udf(s, "fasta_region_filter");
+
+                    Some(r)
                 }
-            }
-        }?;
+                _ => Some(Ok(None)),
+            })
+            .next()
+            .flatten();
+
+        let attached_regions = if let Some(region) = &self.config.options.region {
+            Some(region.to_vec())
+        } else if let Some(Ok(Some(region))) = region_predicate {
+            Some(vec![region])
+        } else if let Some(Err(e)) = region_predicate {
+            return Err(e.into());
+        } else {
+            None
+        };
 
         let regions_from_file = if let Some(region_file) = &self.config.options.region_file {
             let region_url = parse_url(region_file)?;
@@ -317,6 +326,7 @@ impl TableProvider for ListingFASTATable {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let regions = self.resolve_region(filters, state).await?;
+        tracing::info!("Regions: {:?}", regions);
 
         let file_list = pruned_partition_list(
             state,

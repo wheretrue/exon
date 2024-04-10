@@ -1,6 +1,9 @@
 control substitution on
 
 statement ok
+SET exon.bam_parse_tags = true;
+
+statement ok
 CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bam/test.bam';
 
 query T
@@ -32,9 +35,9 @@ SELECT array_length(quality_score) FROM bam LIMIT 5;
 76
 
 query I
-SELECT tags FROM bam LIMIT 1;
+SELECT tags."NH", tags."HI", tags."AS", tags."nM", tags."NM", tags."XS", tags."RG" FROM bam LIMIT 1;
 ----
-[{tag: NH, value: 1}, {tag: HI, value: 1}, {tag: AS, value: 149}, {tag: nM, value: 1}, {tag: NM, value: 0}, {tag: XS, value: -}, {tag: RG, value: H7G9G.1}]
+1 1 149 1 0 45 H7G9G.1
 
 statement ok
 DROP TABLE bam;

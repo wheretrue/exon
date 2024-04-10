@@ -72,6 +72,7 @@ extensions_options! {
         pub fasta_large_utf8: bool, default = false
         pub sam_parse_tags: bool, default = false
         pub bam_parse_tags: bool, default = false
+        pub cram_parse_tags: bool, default = false
     }
 }
 
@@ -104,6 +105,7 @@ mod tests {
         assert!(!exon_config.fasta_large_utf8);
         assert!(!exon_config.sam_parse_tags);
         assert!(!exon_config.bam_parse_tags);
+        assert!(!exon_config.cram_parse_tags);
 
         Ok(())
     }
@@ -119,6 +121,7 @@ mod tests {
         options.set("exon.fasta_large_utf8", "true")?;
         options.set("exon.sam_parse_tags", "true")?;
         options.set("exon.bam_parse_tags", "true")?;
+        options.set("exon.cram_parse_tags", "true")?;
 
         let exon_config = config
             .options()
@@ -132,6 +135,7 @@ mod tests {
         assert!(exon_config.fasta_large_utf8);
         assert!(exon_config.sam_parse_tags);
         assert!(exon_config.bam_parse_tags);
+        assert!(exon_config.cram_parse_tags);
 
         Ok(())
     }
@@ -147,6 +151,7 @@ mod tests {
         ctx.sql("SET exon.fasta_large_utf8 = true").await?;
         ctx.sql("SET exon.sam_parse_tags = true").await?;
         ctx.sql("SET exon.bam_parse_tags = true").await?;
+        ctx.sql("SET exon.cram_parse_tags = true").await?;
 
         let state = ctx.state();
         let exon_config = state
@@ -162,6 +167,7 @@ mod tests {
         assert!(exon_config.fasta_large_utf8);
         assert!(exon_config.sam_parse_tags);
         assert!(exon_config.bam_parse_tags);
+        assert!(exon_config.cram_parse_tags);
 
         Ok(())
     }

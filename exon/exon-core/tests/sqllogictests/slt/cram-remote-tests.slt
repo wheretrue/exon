@@ -10,3 +10,27 @@ read1-1 0 rand1k 1 60 60 60M NULL TCCTAATTCTGGGTAACCGCCGCCTGAAGCCAAAAAATAAGCCGGA
 
 statement ok
 DROP TABLE cram;
+
+statement ok
+SET exon.cram_parse_tags = true;
+
+statement ok
+CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference 's3://test-bucket/rand1k.fa', indexed 'true') LOCATION 's3://test-bucket/twolib.sorted.cram';
+
+query I
+SELECT name, flag, reference, start, end, mapping_quality, cigar, mate_reference, sequence, quality_score FROM cram WHERE cram_region_filter('rand1k', reference) = true LIMIT 1;
+----
+read1-1 0 rand1k 1 60 60 60M NULL TCCTAATTCTGGGTAACCGCCGCCTGAAGCCAAAAAATAAGCCGGAGCCAAGGGGGAGTC []
+
+query I
+SELECT name, flag, reference, start, end, mapping_quality, cigar, mate_reference, sequence, quality_score FROM cram WHERE cram_region_filter('rand1k:1-100', reference, start, end) = true LIMIT 1;
+----
+read1-1 0 rand1k 1 60 60 60M NULL TCCTAATTCTGGGTAACCGCCGCCTGAAGCCAAAAAATAAGCCGGAGCCAAGGGGGAGTC []
+
+query I
+SELECT COUNT(*) FROM cram WHERE cram_region_filter('rand1k:100-1000', reference) = true;
+----
+0
+
+statement ok
+DROP TABLE cram;

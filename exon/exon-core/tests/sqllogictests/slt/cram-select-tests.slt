@@ -1,7 +1,7 @@
 control substitution on
 
 statement ok
-SET exon.bam_parse_tags = true;
+SET exon.cram_parse_tags = true;
 
 statement ok
 CREATE EXTERNAL TABLE cram STORED AS CRAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/cram/test_input_1_a.cram';
@@ -15,7 +15,7 @@ statement ok
 DROP TABLE cram;
 
 statement ok
-SET exon.bam_parse_tags = false;
+SET exon.cram_parse_tags = false;
 
 statement ok
 CREATE EXTERNAL TABLE cram STORED AS CRAM LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/cram/test_input_1_a.cram';
