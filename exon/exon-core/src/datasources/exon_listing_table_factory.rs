@@ -219,8 +219,6 @@ impl ExonListingTableFactory {
                 let vcf_options = ListingVCFTableOptions::new(file_compression_type, true)
                     .with_table_partition_cols(table_partition_cols);
 
-                eprintln!("VCF options: {:?}", vcf_options);
-
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
                 let config = ListingVCFTableConfig::new(table_path, vcf_options);

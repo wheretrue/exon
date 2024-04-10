@@ -14,20 +14,29 @@
 
 use std::str::FromStr;
 
-use datafusion::logical_expr::{expr::ScalarFunction, Expr};
+use datafusion::{
+    logical_expr::{expr::ScalarFunction, Expr},
+    scalar::ScalarValue,
+};
 use noodles::core::Region;
 
-pub(crate) fn infer_region_from_udf(scalar_udf: &ScalarFunction, name: &str) -> Option<Region> {
+use crate::error::Result as ExonResult;
+
+pub(crate) fn infer_region_from_udf(
+    scalar_udf: &ScalarFunction,
+    name: &str,
+) -> ExonResult<Option<Region>> {
     if scalar_udf.name() == name {
         match &scalar_udf.args[0] {
-            Expr::Literal(l) => {
-                let region_str = l.to_string();
-                let region = Region::from_str(region_str.as_str()).ok()?;
-                Some(region)
+            Expr::Literal(ScalarValue::Utf8(Some(s))) => {
+                let region = Region::from_str(s)?;
+                return Ok(Some(region));
             }
-            _ => None,
+            _ => {
+                return Ok(None);
+            }
         }
-    } else {
-        None
     }
+
+    Ok(None)
 }

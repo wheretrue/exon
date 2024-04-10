@@ -38,7 +38,7 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::hive_partition::filter_matches_partition_cols,
-    error::{ExonError, Result},
+    error::{ExonError, Result as ExonResult},
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, infer_region,
         object_store::pruned_partition_list,
@@ -134,7 +134,7 @@ impl ListingCRAMTableOptions {
         &self,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
-    ) -> Result<TableSchema> {
+    ) -> ExonResult<TableSchema> {
         if objects.is_empty() {
             return Err(ExonError::ExecutionError("No objects found".to_string()));
         }
@@ -197,7 +197,7 @@ impl ListingCRAMTableOptions {
         &self,
         state: &SessionState,
         table_path: &'a ListingTableUrl,
-    ) -> Result<TableSchema> {
+    ) -> ExonResult<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
 
         let files = exon_common::object_store_files_from_table_path(
@@ -251,7 +251,7 @@ pub struct ListingCRAMTable {
 
 impl ListingCRAMTable {
     /// Create a new CRAM listing table.
-    pub fn try_new(config: ListingCRAMTableConfig, table_schema: TableSchema) -> Result<Self> {
+    pub fn try_new(config: ListingCRAMTableConfig, table_schema: TableSchema) -> ExonResult<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
@@ -278,24 +278,27 @@ impl TableProvider for ListingCRAMTable {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        tracing::trace!(
-            "cram table provider supports_filters_pushdown: {:?}",
-            filters
-        );
-
-        Ok(filters
+        let pushdown = filters
             .iter()
             .map(|f| {
                 if let Expr::ScalarFunction(s) = f {
-                    if s.name() == "cram_region_filter" && (s.args.len() == 2 || s.args.len() == 3)
-                    {
-                        return TableProviderFilterPushDown::Exact;
+                    if s.name() == "cram_region_filter" {
+                        return Ok(TableProviderFilterPushDown::Exact);
                     }
                 }
 
-                filter_matches_partition_cols(f, &self.options.table_partition_cols)
+                let pt = filter_matches_partition_cols(f, &self.options.table_partition_cols);
+                Ok(pt)
             })
-            .collect())
+            .collect::<DataFusionResult<Vec<_>>>()?;
+
+        tracing::trace!(
+            "for filters {:?}, returning pushdown {:?}",
+            filters,
+            pushdown,
+        );
+
+        Ok(pushdown)
     }
 
     async fn scan(
@@ -334,16 +337,24 @@ impl TableProvider for ListingCRAMTable {
             return Ok(table);
         }
 
+        tracing::info!("for indexed CRAM, using filters: {:?}", filters);
+
         let regions = filters
             .iter()
-            .filter_map(|f| {
+            .map(|f| {
                 if let Expr::ScalarFunction(s) = f {
-                    infer_region::infer_region_from_udf(s, "cram_region_filter")
+                    let r = infer_region::infer_region_from_udf(s, "cram_region_filter")?;
+                    Ok(r)
                 } else {
-                    None
+                    Ok(None)
                 }
             })
-            .collect::<Vec<Region>>();
+            .collect::<ExonResult<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        tracing::info!("regions: {:?}", regions);
 
         let regions = if self.options.indexed {
             if regions.len() == 1 {
