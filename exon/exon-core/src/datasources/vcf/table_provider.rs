@@ -624,11 +624,15 @@ mod tests {
         ]);
         assert_eq!(schema.field(7).data_type(), &DataType::Struct(infos_fields));
 
-        let inner_item_fields = vec![Field::new(
-            "PL",
-            DataType::List(Arc::new(Field::new("item", DataType::Int32, true))),
-            true,
-        )];
+        let inner_item_fields = vec![
+            Field::new("GT", DataType::Utf8, true),
+            Field::new(
+                "PL",
+                DataType::List(Arc::new(Field::new("item", DataType::Int32, true))),
+                true,
+            ),
+            Field::new("PG", DataType::Int32, true),
+        ];
 
         let inner_struct = DataType::Struct(Fields::from(inner_item_fields));
         let inner_list = DataType::List(Arc::new(Field::new("item", inner_struct, true)));

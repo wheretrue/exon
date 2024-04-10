@@ -21,11 +21,16 @@ use arrow::{
     error::ArrowError,
 };
 use noodles::vcf::{
-    variant::record::samples::{
-        series::{value::Array, Value},
-        Sample,
+    variant::record::{
+        samples::{
+            series::{
+                value::{genotype::Phasing, Array},
+                Value,
+            },
+            Sample,
+        },
+        Samples as VCFSamples,
     },
-    variant::record::Samples as VCFSamples,
     Header,
 };
 
@@ -211,8 +216,41 @@ impl GenotypeBuilder {
                             .field_builder::<Float32Builder>(i)
                             .expect("expected a float32 builder")
                             .append_value(float_val),
-                        Value::Genotype(_gt) => {
-                            todo!("genotype not implemented")
+                        Value::Genotype(gt) => {
+                            let mut gt_strs = Vec::new();
+                            let mut previous_phasing = "/";
+
+                            for gtt in gt.iter() {
+                                let (allele, phasing) = gtt?;
+
+                                let allele_str =
+                                    allele.map_or(String::from("."), |v| v.to_string());
+
+                                // Determine the phasing symbol for the current allele based on the previous allele
+                                let phasing_str = match phasing {
+                                    Phasing::Unphased => "/",
+                                    Phasing::Phased => "|",
+                                };
+
+                                // For the first allele, don't prepend phasing symbol; otherwise, use the previous phasing
+                                if gt_strs.is_empty() {
+                                    gt_strs.push(allele_str);
+                                } else {
+                                    gt_strs.push(format!("{}{}", previous_phasing, allele_str));
+                                }
+
+                                // Update previous_phasing to the current allele's phasing for the next iteration
+                                previous_phasing = phasing_str;
+                            }
+
+                            let builder = self
+                                .inner
+                                .values()
+                                .field_builder::<GenericStringBuilder<i32>>(i)
+                                .expect("expected a string builder");
+
+                            let gt_str = gt_strs.join("");
+                            builder.append_value(&gt_str);
                         }
                         Value::Array(array) => match array {
                             Array::Float(float_array) => {
