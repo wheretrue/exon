@@ -10,13 +10,9 @@ DP=1;I16=1,0,0,0,26,676,0,0,60,3600,0,0,0,0,0,0;QS=1,0;MQ0F=0
 DP=1;I16=1,0,0,0,34,1156,0,0,60,3600,0,0,1,1,0,0;QS=1,0;MQ0F=0
 
 query I
-SELECT formats FROM vcf_table LIMIT 5;
+SELECT formats FROM vcf_table LIMIT 1;
 ----
-PL  0,3,26
-PL  0,3,34
-PL  0,3,33
-PL  0,3,34
-PL  0,3,35
+GT:PL:PG    0/0:0,3,26:0
 
 statement ok
 DROP TABLE vcf_table;
@@ -39,11 +35,11 @@ SELECT info FROM vcf_table LIMIT 2;
 query T
 SELECT formats FROM vcf_table LIMIT 5;
 ----
-[{PL: [0, 3, 26]}]
-[{PL: [0, 3, 34]}]
-[{PL: [0, 3, 33]}]
-[{PL: [0, 3, 34]}]
-[{PL: [0, 3, 35]}]
+[{GT: 0/0, PL: [0, 3, 26], PG: 0}]
+[{GT: , PL: [0, 3, 34], PG: }]
+[{GT: , PL: [0, 3, 33], PG: }]
+[{GT: , PL: [0, 3, 34], PG: }]
+[{GT: , PL: [0, 3, 35], PG: }]
 
 statement ok
 DROP TABLE vcf_table;

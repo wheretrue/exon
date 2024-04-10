@@ -23,7 +23,10 @@ use exon_common::ExonArrayBuilder;
 use noodles::vcf::{
     variant::record::{
         info::field::{value::Array as InfosArray, Value as InfosValue},
-        samples::series::{value::Array, Value as SamplesValue},
+        samples::series::{
+            value::{genotype::Phasing, Array},
+            Value as SamplesValue,
+        },
         Filters, Ids, Info, Samples,
     },
     Header,
@@ -308,23 +311,58 @@ impl LazyVCFArrayBuilder {
                     FormatsFormat::String(ref mut builder) => {
                         let samples = record.samples()?;
 
-                        let mut s = String::new();
+                        let mut column_names = Vec::new();
+                        for name in samples.column_names(&self.header) {
+                            let name = name?;
+                            column_names.push(name);
+                        }
+
+                        let mut sample_strings = Vec::new();
+
                         for sample in samples.iter() {
+                            let mut s = Vec::new();
+
                             for si in sample.iter(&self.header) {
-                                let (key, value_option) = si?;
+                                let (_, value_option) = si?;
                                 let value = value_option.unwrap();
 
-                                s.push_str(key);
-                                s.push('\t');
-
                                 match value {
-                                    SamplesValue::String(v) => s.push_str(v),
-                                    SamplesValue::Character(v) => s.push(v),
-                                    SamplesValue::Float(v) => s.push_str(&v.to_string()),
+                                    SamplesValue::String(v) => s.push(v.to_string()),
+                                    SamplesValue::Character(v) => s.push(v.to_string()),
+                                    SamplesValue::Float(v) => s.push(v.to_string()),
                                     SamplesValue::Genotype(gt) => {
-                                        s.push_str(format!("{:?}", gt).as_str());
+                                        let mut gt_strs = Vec::new();
+                                        let mut previous_phasing = "/";
+
+                                        for gtt in gt.iter() {
+                                            let (allele, phasing) = gtt?;
+
+                                            let allele_str =
+                                                allele.map_or(String::from("."), |v| v.to_string());
+
+                                            // Determine the phasing symbol for the current allele based on the previous allele
+                                            let phasing_str = match phasing {
+                                                Phasing::Unphased => "/",
+                                                Phasing::Phased => "|",
+                                            };
+
+                                            // For the first allele, don't prepend phasing symbol; otherwise, use the previous phasing
+                                            if gt_strs.is_empty() {
+                                                gt_strs.push(allele_str);
+                                            } else {
+                                                gt_strs.push(format!(
+                                                    "{}{}",
+                                                    previous_phasing, allele_str
+                                                ));
+                                            }
+
+                                            // Update previous_phasing to the current allele's phasing for the next iteration
+                                            previous_phasing = phasing_str;
+                                        }
+
+                                        s.push(gt_strs.join(""));
                                     }
-                                    SamplesValue::Integer(v) => s.push_str(&v.to_string()),
+                                    SamplesValue::Integer(v) => s.push(v.to_string()),
                                     SamplesValue::Array(arr) => match arr {
                                         Array::Character(ca) => {
                                             let mut si = Vec::new();
@@ -335,7 +373,7 @@ impl LazyVCFArrayBuilder {
                                             }
 
                                             let new_s = si.join(",");
-                                            s.push_str(&new_s);
+                                            s.push(new_s);
                                         }
                                         Array::Float(arr) => {
                                             let mut si = Vec::new();
@@ -347,7 +385,7 @@ impl LazyVCFArrayBuilder {
                                             }
 
                                             let new_s = si.join(",");
-                                            s.push_str(&new_s);
+                                            s.push(new_s);
                                         }
                                         Array::Integer(arr) => {
                                             let mut si = Vec::new();
@@ -359,7 +397,7 @@ impl LazyVCFArrayBuilder {
                                             }
 
                                             let new_s = si.join(",");
-                                            s.push_str(&new_s);
+                                            s.push(new_s);
                                         }
                                         Array::String(arr) => {
                                             let mut si = Vec::new();
@@ -371,14 +409,19 @@ impl LazyVCFArrayBuilder {
                                             }
 
                                             let new_s = si.join(",");
-                                            s.push_str(&new_s);
+                                            s.push(new_s);
                                         }
                                     },
                                 }
                             }
+
+                            sample_strings.push(s.join(":"));
                         }
 
-                        builder.append_value(s);
+                        let ss = column_names.join(":");
+                        let ss = format!("{}\t{}", ss, sample_strings.join("\t"));
+
+                        builder.append_value(ss);
                     }
                     FormatsFormat::List(ref mut builder) => {
                         let samples = record.samples()?;
