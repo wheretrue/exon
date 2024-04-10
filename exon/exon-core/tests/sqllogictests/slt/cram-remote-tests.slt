@@ -12,7 +12,7 @@ statement ok
 DROP TABLE cram;
 
 statement ok
-SET exon.bam_parse_tags = true;
+SET exon.cram_parse_tags = true;
 
 statement ok
 CREATE EXTERNAL TABLE cram STORED AS CRAM OPTIONS (fasta_reference 's3://test-bucket/rand1k.fa', indexed 'true') LOCATION 's3://test-bucket/twolib.sorted.cram';
