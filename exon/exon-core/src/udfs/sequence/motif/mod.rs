@@ -18,22 +18,18 @@ use arrow::{
     array::{Array, Float32Builder},
     datatypes::DataType,
 };
-use async_trait::async_trait;
 use datafusion::{
     common::cast::as_string_array,
     datasource::listing::ListingTableUrl,
-    execution::context::{FunctionFactory, RegisterFunction, SessionState},
+    execution::context::SessionState,
     logical_expr::{
-        ColumnarValue, CreateFunction, DefinitionStatement, ScalarUDFImpl, Signature, TypeSignature,
+        ColumnarValue, CreateFunctionBody, DefinitionStatement, OperateFunctionArg, ScalarUDFImpl,
+        Signature, TypeSignature,
     },
 };
 use lightmotif::*;
 
 use crate::error::ExonError;
-
-pub enum ExonFunctions {
-    Pssm,
-}
 
 pub enum PSSMFormats {
     Jaspar16,
@@ -61,172 +57,16 @@ impl FromStr for PSSMFormats {
     }
 }
 
-impl FromStr for ExonFunctions {
-    type Err = ExonError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "pssm" => Ok(Self::Pssm),
-            _ => Err(ExonError::UnsupportedFunction(s.to_string())),
-        }
-    }
-}
-
 const DEFAULT_PSEUDO_COUNT: f32 = 0.01;
 
-async fn parse_udf(
-    state: &SessionState,
-    func: &CreateFunction,
-) -> Result<impl ScalarUDFImpl, ExonError> {
-    let CreateFunction {
-        temporary: _,
-        name,
-        args,
-        return_type: _,
-        params,
-        schema: _,
-        or_replace: _,
-    } = func;
-
-    let function = ExonFunctions::from_str(name.as_str())?;
-
-    match function {
-        ExonFunctions::Pssm => {
-            let pssm_file = match &params.as_ {
-                Some(DefinitionStatement::DoubleDollarDef(s)) => s,
-                Some(DefinitionStatement::SingleQuotedDef(s)) => s,
-                None => {
-                    return Err(ExonError::ExecutionError(
-                        "pssm function requires a PSSM file".to_string(),
-                    ))
-                }
-            };
-
-            // Get the alphabet from the arguments, defaults to protein
-            let alphabet = if let Some(args) = args.as_ref() {
-                if args.len() != 1 {
-                    return Err(ExonError::ExecutionError(
-                        "pssm function requires exactly one argument".to_string(),
-                    ));
-                }
-
-                let arg = args.first().ok_or(ExonError::ExecutionError(
-                    "pssm function requires exactly one argument".to_string(),
-                ))?;
-
-                let name = arg.name.clone().ok_or(ExonError::ExecutionError(
-                    "pssm function requires named arguments".to_string(),
-                ))?;
-
-                if name.value == "DNA" {
-                    ExonAlphabet::Dna(Dna {})
-                } else {
-                    ExonAlphabet::Protein(Protein {})
-                }
-            } else {
-                ExonAlphabet::Protein(Protein {})
-            };
-
-            let table_listing_path = ListingTableUrl::parse(pssm_file)?;
-            let store = state.runtime_env().object_store(&table_listing_path)?;
-
-            let contents = store
-                .get(table_listing_path.prefix())
-                .await?
-                .bytes()
-                .await?;
-
-            let cursor = std::io::Cursor::new(contents);
-            let buf_reader = BufReader::new(cursor);
-
-            let pssm_format = params
-                .language
-                .as_ref()
-                .map(|s| s.value.as_str())
-                .unwrap_or("jaspar16");
-
-            let pssm_format = PSSMFormats::from_str(pssm_format)?;
-
-            let pssm = match (alphabet, pssm_format) {
-                (ExonAlphabet::Protein(_protein), PSSMFormats::Jaspar16) => {
-                    let record =
-                        lightmotif_io::jaspar16::Reader::<_, lightmotif::Protein>::new(buf_reader)
-                            .next()
-                            .ok_or(ExonError::ExecutionError(
-                                "Error reading PSSM file".to_string(),
-                            ))?
-                            .map_err(|_| {
-                                ExonError::ExecutionError("Error reading PSSM file".to_string())
-                            })?;
-
-                    let pssm = record
-                        .matrix()
-                        .to_freq(DEFAULT_PSEUDO_COUNT)
-                        .to_scoring(None);
-
-                    ExonScoringMatrix::Protein(pssm)
-                }
-                (ExonAlphabet::Dna(_dna), PSSMFormats::Jaspar16) => {
-                    let record =
-                        lightmotif_io::jaspar16::Reader::<_, lightmotif::Dna>::new(buf_reader)
-                            .next()
-                            .ok_or(ExonError::ExecutionError(
-                                "Error reading PSSM file".to_string(),
-                            ))?
-                            .map_err(|_| {
-                                ExonError::ExecutionError("Error reading PSSM file".to_string())
-                            })?;
-
-                    let pssm = record
-                        .matrix()
-                        .to_freq(DEFAULT_PSEUDO_COUNT)
-                        .to_scoring(None);
-
-                    ExonScoringMatrix::Dna(pssm)
-                }
-                _ => {
-                    return Err(ExonError::UnsupportedFunction(
-                        "Unsupported PSSM format".to_string(),
-                    ))
-                }
-            };
-
-            let signature = Signature::new(
-                TypeSignature::Exact(vec![DataType::Utf8]),
-                datafusion::logical_expr::Volatility::Stable,
-            );
-
-            Ok(Pssmudf::new(&func.name, signature, pssm))
-        }
-        #[allow(unreachable_patterns)]
-        _ => Err(ExonError::UnsupportedFunction(func.name.clone())),
-    }
-}
-
-#[derive(Default, Debug)]
-pub struct ExonFunctionFactory {}
-
-#[async_trait]
-impl FunctionFactory for ExonFunctionFactory {
-    async fn create(
-        &self,
-        state: &SessionState,
-        statement: CreateFunction,
-    ) -> datafusion::error::Result<RegisterFunction> {
-        let udf = parse_udf(state, &statement).await?;
-
-        Ok(RegisterFunction::Scalar(Arc::new(udf.into())))
-    }
-}
-
 #[derive(Debug)]
-enum ExonScoringMatrix {
+pub enum ExonScoringMatrix {
     Protein(lightmotif::ScoringMatrix<lightmotif::Protein>),
     Dna(lightmotif::ScoringMatrix<lightmotif::Dna>),
 }
 
 #[derive(Debug)]
-struct Pssmudf {
+pub struct Pssmudf {
     name: String,
     signature: Signature,
     pssm: ExonScoringMatrix,
@@ -316,35 +156,127 @@ impl ScalarUDFImpl for Pssmudf {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
+pub async fn create_pssm_function(
+    state: &SessionState,
+    name: &str,
+    params: &CreateFunctionBody,
+    args: &Option<Vec<OperateFunctionArg>>,
+) -> Result<Pssmudf, ExonError> {
+    let pssm_file = match &params.as_ {
+        Some(DefinitionStatement::DoubleDollarDef(s)) => s,
+        Some(DefinitionStatement::SingleQuotedDef(s)) => s,
+        None => {
+            return Err(ExonError::ExecutionError(
+                "pssm function requires a PSSM file".to_string(),
+            ))
+        }
+    };
 
-    use crate::session_context::ExonSessionExt;
-    use datafusion::execution::context::SessionContext;
+    // Get the alphabet from the arguments, defaults to protein
+    let alphabet = if let Some(args) = args.as_ref() {
+        if args.len() != 1 {
+            return Err(ExonError::ExecutionError(
+                "pssm function requires exactly one argument".to_string(),
+            ));
+        }
 
-    #[tokio::test]
-    async fn test_udf() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let arg = args.first().ok_or(ExonError::ExecutionError(
+            "pssm function requires exactly one argument".to_string(),
+        ))?;
 
-        let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        dir.push("test-data/models/jaspar/MA0001.3.pfm");
+        let name = arg.name.clone().ok_or(ExonError::ExecutionError(
+            "pssm function requires named arguments".to_string(),
+        ))?;
 
-        let sql = format!(
-            r#"
-        CREATE FUNCTION pssm(DNA VARCHAR)
-        RETURNS FLOAT
-        LANGUAGE jaspar16
-        AS '{}'
-        "#,
-            dir.to_str().unwrap()
-        );
+        if name.value == "DNA" {
+            ExonAlphabet::Dna(Dna {})
+        } else {
+            ExonAlphabet::Protein(Protein {})
+        }
+    } else {
+        ExonAlphabet::Protein(Protein {})
+    };
 
-        ctx.sql(&sql).await?;
+    let table_listing_path = ListingTableUrl::parse(pssm_file)?;
+    let store = state.runtime_env().object_store(&table_listing_path)?;
 
-        let df = ctx.sql("SELECT pssm('GTTGACCTTATCAAC')").await?;
-        df.show().await?;
+    let contents = store
+        .get(table_listing_path.prefix())
+        .await?
+        .bytes()
+        .await?;
 
-        Ok(())
-    }
+    let cursor = std::io::Cursor::new(contents);
+    let buf_reader = BufReader::new(cursor);
+
+    let pssm_format = params
+        .language
+        .as_ref()
+        .map(|s| s.value.as_str())
+        .unwrap_or("jaspar16");
+
+    let pssm_format = PSSMFormats::from_str(pssm_format)?;
+
+    let pssm = match (alphabet, pssm_format) {
+        (ExonAlphabet::Protein(_protein), PSSMFormats::Jaspar16) => {
+            let record = lightmotif_io::jaspar16::Reader::<_, lightmotif::Protein>::new(buf_reader)
+                .next()
+                .ok_or(ExonError::ExecutionError(
+                    "Error reading PSSM file".to_string(),
+                ))?
+                .map_err(|_| ExonError::ExecutionError("Error reading PSSM file".to_string()))?;
+
+            let pssm = record
+                .matrix()
+                .to_freq(DEFAULT_PSEUDO_COUNT)
+                .to_scoring(None);
+
+            ExonScoringMatrix::Protein(pssm)
+        }
+        (ExonAlphabet::Dna(_dna), PSSMFormats::Transfac) => {
+            let record = lightmotif_io::transfac::Reader::<_, lightmotif::Dna>::new(buf_reader)
+                .next()
+                .ok_or(ExonError::ExecutionError(
+                    "Error reading PSSM file".to_string(),
+                ))?
+                .map_err(|_| ExonError::ExecutionError("Error reading PSSM file".to_string()))?;
+
+            let pssm = record
+                .to_counts()
+                .ok_or(ExonError::ExecutionError(
+                    "Error reading PSSM file".to_string(),
+                ))?
+                .to_freq(DEFAULT_PSEUDO_COUNT)
+                .to_scoring(None);
+
+            ExonScoringMatrix::Dna(pssm)
+        }
+        (ExonAlphabet::Dna(_dna), PSSMFormats::Jaspar16) => {
+            let record = lightmotif_io::jaspar16::Reader::<_, lightmotif::Dna>::new(buf_reader)
+                .next()
+                .ok_or(ExonError::ExecutionError(
+                    "Error reading PSSM file".to_string(),
+                ))?
+                .map_err(|_| ExonError::ExecutionError("Error reading PSSM file".to_string()))?;
+
+            let pssm = record
+                .matrix()
+                .to_freq(DEFAULT_PSEUDO_COUNT)
+                .to_scoring(None);
+
+            ExonScoringMatrix::Dna(pssm)
+        }
+        _ => {
+            return Err(ExonError::UnsupportedFunction(
+                "Unsupported PSSM format".to_string(),
+            ))
+        }
+    };
+
+    let signature = Signature::new(
+        TypeSignature::Exact(vec![DataType::Utf8]),
+        datafusion::logical_expr::Volatility::Stable,
+    );
+
+    Ok(Pssmudf::new(name, signature, pssm))
 }

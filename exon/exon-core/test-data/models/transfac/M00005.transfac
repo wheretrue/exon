@@ -1,0 +1,51 @@
+AC  M00005
+XX
+ID  V$AP4_01
+XX
+DT  19.10.1992 (created); ewi.
+DT  16.10.1995 (updated); ewi.
+CO  Copyright (C), Biobase GmbH.
+XX
+NA  AP-4
+XX
+DE  activator protein 4
+XX
+BF  T00036; AP-4; Species: human, Homo sapiens.
+XX
+P0      A      C      G      T
+01      3      0      0      2      W
+02      1      1      3      0      G
+03      3      1      1      0      A
+04      2      1      2      0      R
+05      1      2      0      2      Y
+06      0      5      0      0      C
+07      5      0      0      0      A
+08      0      0      5      0      G
+09      0      5      0      0      C
+10      0      0      1      4      T
+11      0      1      4      0      G
+12      0      2      1      2      Y
+13      1      0      3      1      G
+14      0      0      5      0      G
+15      1      1      1      2      N
+16      1      4      0      0      C
+17      2      1      1      1      N
+18      0      0      3      2      K
+XX
+BA  5 elements from 5 genes
+XX
+BS  AGAACCAGCTGTGGAATG; R05143; 7; 18;; p.
+BS  AAAAACAGCTGTTGTCAT; R05144; 7; 18;; p.
+BS  TGCGTCAGCTGCAGCCCG; R05145; 7; 18;; p.
+BS  ACGGCCAGCTGCGGTCAG; R05146; 7; 18;; p.
+BS  TGACTCAGCGCGGGGCGT; R05147; 7; 18;; p.
+XX
+CC  compiled sequences
+XX
+RN  [1]; RE0001814.
+RX  PUBMED: 2833704.
+RA  Mermod N., Williams T. J., Tjian R.
+RT  Enhancer binding factors AP-4 and AP-1 act in concert to activate SV40 late transcription in vitro
+RL  Nature 332:557-561 (1988).
+XX
+//

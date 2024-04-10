@@ -13,5 +13,6 @@
 // limitations under the License.
 
 mod exon_context_ext;
+mod function_factory;
 
 pub use exon_context_ext::ExonSessionExt;
