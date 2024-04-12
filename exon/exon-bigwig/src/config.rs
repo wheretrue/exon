@@ -19,8 +19,7 @@ use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
 #[derive(Debug)]
-pub enum BigWigReadType {
-    Zoom((u32, String)),
+pub enum ValueReadType {
     Interval(String),
     Scan,
 }
@@ -41,7 +40,7 @@ pub struct BigWigConfig {
     pub projection: Option<Vec<usize>>,
 
     /// The type of read to perform.
-    pub read_type: BigWigReadType,
+    pub read_type: ValueReadType,
 }
 
 impl BigWigConfig {
@@ -59,19 +58,13 @@ impl BigWigConfig {
             object_store,
             file_schema: Arc::new(file_schema),
             projection: None,
-            read_type: BigWigReadType::Scan,
+            read_type: ValueReadType::Scan,
         }
-    }
-
-    /// Set the read type to zoom.
-    pub fn with_zoom(mut self, zoom: (u32, String)) -> Self {
-        self.read_type = BigWigReadType::Zoom(zoom);
-        self
     }
 
     /// Set the read type to interval.
     pub fn with_interval(mut self, interval: String) -> Self {
-        self.read_type = BigWigReadType::Interval(interval);
+        self.read_type = ValueReadType::Interval(interval);
         self
     }
 

@@ -13,4 +13,4 @@
 // limitations under the License.
 
 mod config;
-mod record_batch_reader;
+mod value_batch_reader;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use bigtools::{utils::reopen::ReopenableFile, BigWigRead, ChromInfo, Value};
 
@@ -20,8 +20,9 @@ use arrow::{
     array::RecordBatch,
     error::{ArrowError, Result as ArrowResult},
 };
+use noodles::core::{Position, Region};
 
-use crate::config::BigWigConfig;
+use crate::config::{BigWigConfig, ValueReadType};
 
 use self::array_builder::BigWigArrayBuilder;
 
@@ -42,7 +43,12 @@ impl RecordBatchReader {
             )
         })?;
 
-        let scanner = BigWigReadScanner::try_new(reader)?;
+        let interval = match config.read_type {
+            ValueReadType::Interval(ref interval) => Some(interval.clone()),
+            _ => None,
+        };
+
+        let scanner = BigWigReadScanner::try_new(reader, interval)?;
 
         Ok(Self { config, scanner })
     }
@@ -82,32 +88,80 @@ struct BigWigReadScanner {
 }
 
 impl BigWigReadScanner {
-    pub fn try_new(mut reader: BigWigRead<ReopenableFile>) -> ArrowResult<Self> {
-        let chroms = reader.chroms().to_vec();
+    pub fn try_new(
+        mut reader: BigWigRead<ReopenableFile>,
+        interval: Option<String>,
+    ) -> ArrowResult<Self> {
+        if let Some(interval) = interval {
+            let region = Region::from_str(interval.as_str()).map_err(|e| {
+                ArrowError::InvalidArgumentError(format!("invalid interval: {}", e))
+            })?;
 
-        if chroms.len() <= 0 {
-            return Err(ArrowError::InvalidArgumentError(
-                "no chromosomes found in bigwig file".to_string(),
-            ));
+            let name = std::str::from_utf8(region.name().as_ref()).unwrap();
+
+            let chroms = reader
+                .chroms()
+                .iter()
+                .filter(|c| c.name == name)
+                .map(|c| c.clone())
+                .collect::<Vec<ChromInfo>>();
+
+            let chrom = chroms.first().ok_or_else(|| {
+                ArrowError::InvalidArgumentError(format!("chromosome {} not found", name))
+            })?;
+
+            let start = region.interval().start().map_or(0, |s| s.get() as u32);
+            let end = region
+                .interval()
+                .end()
+                .map_or(chrom.length, |e| e.get() as u32);
+
+            let inter = reader.get_interval(&name, start, end).unwrap();
+
+            let records = inter.collect::<Result<Vec<Value>, _>>().map_err(|e| {
+                ArrowError::IoError(
+                    "failed to read bigwig records".to_string(),
+                    std::io::Error::new(std::io::ErrorKind::Other, e),
+                )
+            })?;
+
+            Ok(Self {
+                reader,
+                chroms,
+                current_records: records,
+                chrom_position: 0,
+                within_batch_position: 0,
+            })
+        } else {
+            let chroms = reader.chroms().to_vec();
+
+            if chroms.len() <= 0 {
+                return Err(ArrowError::InvalidArgumentError(
+                    "no chromosomes found in bigwig file".to_string(),
+                ));
+            }
+
+            let c = &chroms[0];
+            let chrom_name = &c.name;
+            let start = 0;
+            let end = c.length;
+
+            let inter = reader.get_interval(chrom_name, start, end).unwrap();
+            let records = inter.collect::<Result<Vec<Value>, _>>().map_err(|e| {
+                ArrowError::IoError(
+                    "failed to read bigwig records".to_string(),
+                    std::io::Error::new(std::io::ErrorKind::Other, e),
+                )
+            })?;
+
+            Ok(Self {
+                reader,
+                current_records: records,
+                chroms,
+                chrom_position: 0,
+                within_batch_position: 0,
+            })
         }
-
-        let c = &chroms[0];
-        let i = reader.get_interval(&c.name, 0, c.length).unwrap();
-
-        let records = i.collect::<Result<Vec<Value>, _>>().map_err(|e| {
-            ArrowError::IoError(
-                "failed to read bigwig records".to_string(),
-                std::io::Error::new(std::io::ErrorKind::Other, e),
-            )
-        })?;
-
-        Ok(Self {
-            reader,
-            current_records: records,
-            chroms,
-            chrom_position: 0,
-            within_batch_position: 0,
-        })
     }
 
     pub fn chrom_name(&self) -> &str {
@@ -150,7 +204,7 @@ mod tests {
 
     use object_store::local::LocalFileSystem;
 
-    use crate::record_batch_reader::RecordBatchReader;
+    use crate::value_batch_reader::RecordBatchReader;
 
     // Test reading from a bigwig file
     #[tokio::test]
@@ -161,16 +215,14 @@ mod tests {
             cargo_path
         );
 
-        eprintln!("file_path: {}", file_path);
-
         let object_store = Arc::new(LocalFileSystem::default());
-        let config = Arc::new(crate::config::BigWigConfig::new(object_store));
+        let config = crate::config::BigWigConfig::new(object_store).with_interval("1".to_string());
 
-        let mut reader = RecordBatchReader::try_new(&file_path, config)?;
+        let mut reader = RecordBatchReader::try_new(&file_path, Arc::new(config))?;
 
         let batch = reader.read_batch()?.ok_or("no batch")?;
 
-        assert_eq!(batch.num_rows(), 6);
+        assert_eq!(batch.num_rows(), 5);
         assert_eq!(batch.num_columns(), 4);
 
         Ok(())
