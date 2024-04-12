@@ -29,6 +29,7 @@ members = [
   "exon/exon-test",
   "exon/exon-vcf",
   "exon/exon-cram",
+  "exon/exon-bigwig",
 ]
 exclude = ["python"]
 resolver = "2"

@@ -1,0 +1,18 @@
+[package]
+description = "Subcrate of the `exon` crate for working with BigWig files."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "exon-bigwig"
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+arrow = { workspace = true }
+exon-common = { path = "../exon-common", version = "0.15.0" }
+futures = { workspace = true }
+bigtools = "0.4.2"
+object_store = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }

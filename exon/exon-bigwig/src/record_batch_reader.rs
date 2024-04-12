@@ -1,0 +1,145 @@
+// Copyright 2024 WHERE TRUE Technologies.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use std::sync::Arc;
+
+use bigtools::{utils::reopen::ReopenableFile, BigWigRead, ChromInfo, Value};
+
+use arrow::{
+    array::RecordBatch,
+    error::{ArrowError, Result as ArrowResult},
+};
+
+use crate::config::BigWigConfig;
+
+use self::array_builder::BigWigArrayBuilder;
+
+mod array_builder;
+
+pub struct RecordBatchReader {
+    config: Arc<BigWigConfig>,
+
+    scanner: BigWigReadScanner,
+}
+
+impl RecordBatchReader {
+    pub fn try_new(file_path: &str, config: Arc<BigWigConfig>) -> ArrowResult<Self> {
+        let reader = BigWigRead::open_file(file_path).map_err(|e| {
+            ArrowError::IoError(
+                "failed to open bigwig file".to_string(),
+                std::io::Error::new(std::io::ErrorKind::Other, e),
+            )
+        })?;
+
+        let scanner = BigWigReadScanner::try_new(reader)?;
+
+        Ok(Self { config, scanner })
+    }
+
+    pub fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
+        let mut record_batch = BigWigArrayBuilder::with_capacity(self.config.batch_size);
+
+        for (chrom, record) in self.scanner.by_ref().take(self.config.batch_size) {
+            record_batch.append(&chrom, record);
+        }
+
+        if record_batch.is_empty() {
+            return Ok(None);
+        }
+
+        let arrays = record_batch.finish();
+
+        let batch = RecordBatch::try_new(self.config.file_schema.clone(), arrays)?;
+
+        match &self.config.projection {
+            Some(projection) => {
+                let projected_batch = batch.project(&projection)?;
+
+                Ok(Some(projected_batch))
+            }
+            None => Ok(Some(batch)),
+        }
+    }
+}
+
+struct BigWigReadScanner {
+    reader: BigWigRead<ReopenableFile>,
+    chroms: Vec<ChromInfo>,
+    chrom_position: usize,
+    current_records: Vec<Value>,
+    within_batch_position: usize,
+}
+
+impl BigWigReadScanner {
+    pub fn try_new(mut reader: BigWigRead<ReopenableFile>) -> ArrowResult<Self> {
+        let chroms = reader.chroms().to_vec();
+
+        if chroms.len() <= 0 {
+            return Err(ArrowError::InvalidArgumentError(
+                "no chromosomes found in bigwig file".to_string(),
+            ));
+        }
+
+        let c = &chroms[0];
+        let i = reader.get_interval(&c.name, 0, c.length).unwrap();
+
+        let records = i.collect::<Result<Vec<Value>, _>>().map_err(|e| {
+            ArrowError::IoError(
+                "failed to read bigwig records".to_string(),
+                std::io::Error::new(std::io::ErrorKind::Other, e),
+            )
+        })?;
+
+        Ok(Self {
+            reader,
+            current_records: records,
+            chroms,
+            chrom_position: 0,
+            within_batch_position: 0,
+        })
+    }
+
+    pub fn chrom_name(&self) -> &str {
+        self.chroms[self.chrom_position].name.as_str()
+    }
+}
+
+impl Iterator for BigWigReadScanner {
+    type Item = (String, Value);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.within_batch_position >= self.current_records.len() {
+            self.chrom_position += 1;
+            if self.chrom_position >= self.chroms.len() {
+                return None;
+            }
+
+            let c = &self.chroms[self.chrom_position];
+            let i = self
+                .reader
+                .get_interval(&c.name, 0, c.length)
+                .unwrap()
+                .collect::<Result<Vec<Value>, _>>()
+                .unwrap();
+
+            self.current_records = i;
+            self.within_batch_position = 0;
+        }
+
+        let record = self.current_records[self.within_batch_position].clone();
+        self.within_batch_position += 1;
+
+        Some((self.chrom_name().to_string(), record))
+    }
+}
