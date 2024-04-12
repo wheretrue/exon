@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{DataType, Field, Fields, Schema, SchemaRef};
 use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
@@ -46,11 +46,18 @@ pub struct BigWigConfig {
 
 impl BigWigConfig {
     /// Create a new BigWig configuration.
-    pub fn new(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
+    pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
+        let file_schema = Schema::new(Fields::from_iter(vec![
+            Field::new("chrom", DataType::Utf8, false),
+            Field::new("start", DataType::Int32, false),
+            Field::new("end", DataType::Int32, false),
+            Field::new("value", DataType::Float32, false),
+        ]));
+
         Self {
             batch_size: DEFAULT_BATCH_SIZE,
             object_store,
-            file_schema,
+            file_schema: Arc::new(file_schema),
             projection: None,
             read_type: BigWigReadType::Scan,
         }

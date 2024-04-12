@@ -143,3 +143,36 @@ impl Iterator for BigWigReadScanner {
         Some((self.chrom_name().to_string(), record))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use object_store::local::LocalFileSystem;
+
+    use crate::record_batch_reader::RecordBatchReader;
+
+    // Test reading from a bigwig file
+    #[tokio::test]
+    async fn test_read_bigwig() -> Result<(), Box<dyn std::error::Error>> {
+        let cargo_path = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let file_path = format!(
+            "{}/../../exon/exon-core/src/datasources/bigwig/test.bw",
+            cargo_path
+        );
+
+        eprintln!("file_path: {}", file_path);
+
+        let object_store = Arc::new(LocalFileSystem::default());
+        let config = Arc::new(crate::config::BigWigConfig::new(object_store));
+
+        let mut reader = RecordBatchReader::try_new(&file_path, config)?;
+
+        let batch = reader.read_batch()?.ok_or("no batch")?;
+
+        assert_eq!(batch.num_rows(), 6);
+        assert_eq!(batch.num_columns(), 4);
+
+        Ok(())
+    }
+}
