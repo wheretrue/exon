@@ -10,7 +10,7 @@ readme = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-async-trait = "0.1.79"
+async-trait = "0.1.80"
 aws-config = { version = "1.1.10" }
 aws-credential-types = { version = "1.1.8" }
 object_store = { workspace = true, features = ["aws"] }
