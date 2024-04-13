@@ -28,3 +28,6 @@ pub mod sam;
 
 /// UDFs for GFF files.
 pub mod gff;
+
+mod bigwig_region_filter;
+pub use bigwig_region_filter::register_bigwig_region_filter_udf;

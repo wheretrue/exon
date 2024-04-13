@@ -80,7 +80,9 @@ mod runtime_env;
 pub use runtime_env::ExonRuntimeEnvExt;
 
 /// Error types for Exon.
-pub mod error;
+mod error;
+
+pub use error::Result;
 
 /// Utilities for working with stream bgzf files.
 pub mod streaming_bgzf;

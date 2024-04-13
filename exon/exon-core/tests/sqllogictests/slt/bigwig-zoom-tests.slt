@@ -8,3 +8,8 @@ SELECT name, start, end, total_items, bases_covered, max_value, min_value, sum_s
 ----
 1 0 400 0 54 1.5 0.10000000149011612 100.3899917602539 72.0999984741211
 10 200 600 0 100 2 2 400 200
+
+query T
+SELECT name, start, end, total_items, bases_covered, max_value, min_value, sum_squares, "sum" FROM bigwig_zoom WHERE bigwig_region_filter('1', name) = true
+----
+1 0 400 0 54 1.5 0.10000000149011612 100.3899917602539 72.0999984741211

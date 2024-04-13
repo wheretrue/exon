@@ -16,8 +16,10 @@ use std::{any::Any, sync::Arc};
 
 use crate::{
     datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    error::Result,
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
+        file_scan_config_builder::FileScanConfigBuilder, infer_region,
+        object_store::pruned_partition_list,
     },
 };
 use arrow::datatypes::{Field, SchemaRef};
@@ -29,7 +31,7 @@ use datafusion::{
         physical_plan::FileScanConfig,
         TableProvider,
     },
-    error::Result,
+    error::Result as DataFusionResult,
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
@@ -38,6 +40,7 @@ use datafusion::{
 use exon_bigwig::BigWigSchemaBuilder;
 use exon_common::TableSchema;
 use futures::TryStreamExt;
+use noodles::core::Region;
 
 use super::scanner::Scanner;
 
@@ -104,8 +107,19 @@ impl ListingBigWigTableOptions {
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let scan = Scanner::new(conf.clone(), self.reduction_level);
+
+        Ok(Arc::new(scan))
+    }
+
+    async fn create_physical_plan_with_region(
+        &self,
+        conf: FileScanConfig,
+        region: Region,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        let scan =
+            Scanner::new(conf.clone(), self.reduction_level).with_some_region_filter(Some(region));
 
         Ok(Arc::new(scan))
     }
@@ -149,10 +163,20 @@ impl TableProvider for ListingBigWigTable {
     fn supports_filters_pushdown(
         &self,
         filters: &[&Expr],
-    ) -> Result<Vec<TableProviderFilterPushDown>> {
+    ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            // .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .map(|f| match f {
+                Expr::ScalarFunction(scalar) => {
+                    if scalar.name() == "bigwig_region_filter" {
+                        TableProviderFilterPushDown::Exact
+                    } else {
+                        filter_matches_partition_cols(f, &self.options.table_partition_cols)
+                    }
+                }
+                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
+            })
             .collect())
     }
 
@@ -162,13 +186,11 @@ impl TableProvider for ListingBigWigTable {
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
-    ) -> Result<Arc<dyn ExecutionPlan>> {
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let object_store_url = if let Some(url) = self.table_paths.first() {
             url.object_store()
         } else {
-            return Err(datafusion::error::DataFusionError::Execution(
-                "No table paths found".to_string(),
-            ));
+            todo!()
         };
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
@@ -193,8 +215,54 @@ impl TableProvider for ListingBigWigTable {
                 .table_partition_cols(self.options.table_partition_cols.clone())
                 .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        let regions = filters
+            .iter()
+            .map(|f| {
+                if let Expr::ScalarFunction(s) = f {
+                    let r = infer_region::infer_region_from_udf(s, "bigwig_region_filter")?;
+                    Ok(r)
+                } else {
+                    Ok(None)
+                }
+            })
+            .collect::<crate::Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
 
-        Ok(plan)
+        if regions.is_empty() {
+            let plan = self.options.create_physical_plan(file_scan_config).await?;
+
+            Ok(plan)
+        } else if regions.len() == 1 {
+            tracing::info!(
+                "Creating physical plan with region: {:?}",
+                regions.first().unwrap()
+            );
+            let plan = self
+                .options
+                .create_physical_plan_with_region(
+                    file_scan_config.clone(),
+                    regions.first().unwrap().clone(),
+                )
+                .await?;
+
+            Ok(plan)
+        } else {
+            let mut plans = Vec::new();
+
+            for region in regions {
+                let plan = self
+                    .options
+                    .create_physical_plan_with_region(file_scan_config.clone(), region)
+                    .await?;
+
+                plans.push(plan);
+            }
+
+            let plan = datafusion::physical_plan::union::UnionExec::new(plans);
+
+            Ok(Arc::new(plan))
+        }
     }
 }

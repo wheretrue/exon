@@ -84,6 +84,12 @@ impl Scanner {
             statistics,
         }
     }
+
+    /// The region filter for the scan.
+    pub fn with_some_region_filter(mut self, region: Option<Region>) -> Self {
+        self.region_filter = region;
+        self
+    }
 }
 
 impl DisplayAs for Scanner {

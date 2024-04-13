@@ -246,7 +246,6 @@ impl TableProvider for ListingBAMTable {
         &self,
         filters: &[&Expr],
     ) -> Result<Vec<TableProviderFilterPushDown>> {
-        tracing::debug!("Filters for BAM table provider: {:?}", filters);
         Ok(filters
             .iter()
             .map(|f| match f {
