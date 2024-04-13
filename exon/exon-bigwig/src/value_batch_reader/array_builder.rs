@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, Float32Builder, GenericStringBuilder, Int32Builder};
 use bigtools::Value;
 
-pub struct BigWigArrayBuilder {
+pub struct ValueArrayBuilder {
     names: GenericStringBuilder<i32>,
     start: Int32Builder,
     end: Int32Builder,
@@ -26,7 +26,7 @@ pub struct BigWigArrayBuilder {
     n_rows: usize,
 }
 
-impl BigWigArrayBuilder {
+impl ValueArrayBuilder {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             names: GenericStringBuilder::<i32>::with_capacity(capacity, capacity),
@@ -46,10 +46,6 @@ impl BigWigArrayBuilder {
         self.value.append_value(value.value);
 
         self.n_rows += 1;
-    }
-
-    pub fn len(&self) -> usize {
-        self.n_rows
     }
 
     pub fn is_empty(&self) -> bool {

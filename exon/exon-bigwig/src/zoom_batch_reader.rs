@@ -14,29 +14,27 @@
 
 use std::{str::FromStr, sync::Arc};
 
-use bigtools::{utils::reopen::ReopenableFile, BigWigRead, ChromInfo, Value};
-
 use arrow::{
     array::RecordBatch,
     error::{ArrowError, Result as ArrowResult},
 };
+use bigtools::{utils::reopen::ReopenableFile, BigWigRead, ChromInfo, ZoomRecord};
 use noodles::core::Region;
 
 mod array_builder;
 mod config;
 
-use self::{array_builder::ValueArrayBuilder, config::ValueReadType};
+use self::array_builder::ZoomArrayBuilder;
+pub use self::config::BigWigZoomConfig;
 
-pub use self::config::BigWigValueConfig;
+pub struct ZoomRecordBatchReader {
+    config: Arc<BigWigZoomConfig>,
 
-pub struct ValueRecordBatchReader {
-    config: Arc<BigWigValueConfig>,
-
-    scanner: ValueScanner,
+    scanner: ZoomScanner,
 }
 
-impl ValueRecordBatchReader {
-    pub fn try_new(file_path: &str, config: Arc<BigWigValueConfig>) -> ArrowResult<Self> {
+impl ZoomRecordBatchReader {
+    pub fn try_new(file_path: &str, config: Arc<BigWigZoomConfig>) -> ArrowResult<Self> {
         let reader = BigWigRead::open_file(file_path).map_err(|e| {
             ArrowError::IoError(
                 "failed to open bigwig file".to_string(),
@@ -44,18 +42,18 @@ impl ValueRecordBatchReader {
             )
         })?;
 
-        let interval = match config.read_type {
-            ValueReadType::Interval(ref interval) => Some(interval.clone()),
-            _ => None,
-        };
-
-        let scanner = ValueScanner::try_new(reader, interval)?;
+        let scanner_config = config.clone();
+        let scanner = ZoomScanner::try_new(
+            reader,
+            scanner_config.reduction_level,
+            scanner_config.interval.clone(),
+        )?;
 
         Ok(Self { config, scanner })
     }
 
     pub fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
-        let mut record_batch = ValueArrayBuilder::with_capacity(self.config.batch_size);
+        let mut record_batch = ZoomArrayBuilder::with_capacity(self.config.batch_size);
 
         for (chrom, record) in self.scanner.by_ref().take(self.config.batch_size) {
             record_batch.append(&chrom, record);
@@ -80,17 +78,19 @@ impl ValueRecordBatchReader {
     }
 }
 
-struct ValueScanner {
+struct ZoomScanner {
     reader: BigWigRead<ReopenableFile>,
     chroms: Vec<ChromInfo>,
     chrom_position: usize,
-    current_records: Vec<Value>,
+    reduction_level: u32,
+    current_records: Vec<ZoomRecord>,
     within_batch_position: usize,
 }
 
-impl ValueScanner {
+impl ZoomScanner {
     pub fn try_new(
         mut reader: BigWigRead<ReopenableFile>,
+        reduction_level: u32,
         interval: Option<String>,
     ) -> ArrowResult<Self> {
         if let Some(interval) = interval {
@@ -117,9 +117,16 @@ impl ValueScanner {
                 .end()
                 .map_or(chrom.length, |e| e.get() as u32);
 
-            let inter = reader.get_interval(name, start, end).unwrap();
+            let inter = reader
+                .get_zoom_interval(name, start, end, reduction_level)
+                .map_err(|e| {
+                    ArrowError::IoError(
+                        e.to_string(),
+                        std::io::Error::new(std::io::ErrorKind::Other, e),
+                    )
+                })?;
 
-            let records = inter.collect::<Result<Vec<Value>, _>>().map_err(|e| {
+            let records = inter.collect::<Result<Vec<ZoomRecord>, _>>().map_err(|e| {
                 ArrowError::IoError(
                     "failed to read bigwig records".to_string(),
                     std::io::Error::new(std::io::ErrorKind::Other, e),
@@ -132,6 +139,7 @@ impl ValueScanner {
                 current_records: records,
                 chrom_position: 0,
                 within_batch_position: 0,
+                reduction_level,
             })
         } else {
             let chroms = reader.chroms().to_vec();
@@ -147,8 +155,10 @@ impl ValueScanner {
             let start = 0;
             let end = c.length;
 
-            let inter = reader.get_interval(chrom_name, start, end).unwrap();
-            let records = inter.collect::<Result<Vec<Value>, _>>().map_err(|e| {
+            let inter = reader
+                .get_zoom_interval(chrom_name, start, end, reduction_level)
+                .unwrap();
+            let records = inter.collect::<Result<Vec<ZoomRecord>, _>>().map_err(|e| {
                 ArrowError::IoError(
                     "failed to read bigwig records".to_string(),
                     std::io::Error::new(std::io::ErrorKind::Other, e),
@@ -161,6 +171,7 @@ impl ValueScanner {
                 chroms,
                 chrom_position: 0,
                 within_batch_position: 0,
+                reduction_level,
             })
         }
     }
@@ -170,8 +181,8 @@ impl ValueScanner {
     }
 }
 
-impl Iterator for ValueScanner {
-    type Item = (String, Value);
+impl Iterator for ZoomScanner {
+    type Item = (String, ZoomRecord);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.within_batch_position >= self.current_records.len() {
@@ -183,9 +194,9 @@ impl Iterator for ValueScanner {
             let c = &self.chroms[self.chrom_position];
             let i = self
                 .reader
-                .get_interval(&c.name, 0, c.length)
+                .get_zoom_interval(&c.name, 0, c.length, self.reduction_level)
                 .unwrap()
-                .collect::<Result<Vec<Value>, _>>()
+                .collect::<Result<Vec<ZoomRecord>, _>>()
                 .unwrap();
 
             self.current_records = i;
@@ -205,7 +216,7 @@ mod tests {
 
     use object_store::local::LocalFileSystem;
 
-    use crate::value_batch_reader::{config::BigWigValueConfig, ValueRecordBatchReader};
+    use crate::zoom_batch_reader::{config::BigWigZoomConfig, ZoomRecordBatchReader};
 
     // Test reading from a bigwig file
     #[tokio::test]
@@ -217,14 +228,14 @@ mod tests {
         );
 
         let object_store = Arc::new(LocalFileSystem::default());
-        let config = BigWigValueConfig::new(object_store).with_interval("1".to_string());
+        let config = BigWigZoomConfig::new(object_store).with_interval("1".to_string());
 
-        let mut reader = ValueRecordBatchReader::try_new(&file_path, Arc::new(config))?;
+        let mut reader = ZoomRecordBatchReader::try_new(&file_path, Arc::new(config))?;
 
         let batch = reader.read_batch()?.ok_or("no batch")?;
 
-        assert_eq!(batch.num_rows(), 5);
-        assert_eq!(batch.num_columns(), 4);
+        assert_eq!(batch.num_rows(), 1);
+        assert_eq!(batch.num_columns(), 9);
 
         Ok(())
     }

@@ -26,7 +26,7 @@ pub enum ValueReadType {
 
 /// Configuration for a BigWig datasource.
 #[derive(Debug)]
-pub struct BigWigConfig {
+pub struct BigWigValueConfig {
     /// The number of records to read at a time.
     pub batch_size: usize,
 
@@ -43,7 +43,7 @@ pub struct BigWigConfig {
     pub read_type: ValueReadType,
 }
 
-impl BigWigConfig {
+impl BigWigValueConfig {
     /// Create a new BigWig configuration.
     pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
         let file_schema = Schema::new(Fields::from_iter(vec![
