@@ -57,7 +57,8 @@ impl ValueRecordBatchReader {
     pub fn read_batch(&mut self) -> ArrowResult<Option<RecordBatch>> {
         let mut record_batch = ValueArrayBuilder::with_capacity(self.config.batch_size);
 
-        for (chrom, record) in self.scanner.by_ref().take(self.config.batch_size) {
+        for val in self.scanner.by_ref().take(self.config.batch_size) {
+            let (chrom, record) = val?;
             record_batch.append(&chrom, record);
         }
 
@@ -98,7 +99,7 @@ impl ValueScanner {
                 ArrowError::InvalidArgumentError(format!("invalid interval: {}", e))
             })?;
 
-            let name = std::str::from_utf8(region.name()).unwrap();
+            let name = std::str::from_utf8(region.name())?;
 
             let chroms = reader
                 .chroms()
@@ -117,7 +118,12 @@ impl ValueScanner {
                 .end()
                 .map_or(chrom.length, |e| e.get() as u32);
 
-            let inter = reader.get_interval(name, start, end).unwrap();
+            let inter = reader.get_interval(name, start, end).map_err(|e| {
+                ArrowError::IoError(
+                    e.to_string(),
+                    std::io::Error::new(std::io::ErrorKind::Other, e),
+                )
+            })?;
 
             let records = inter.collect::<Result<Vec<Value>, _>>().map_err(|e| {
                 ArrowError::IoError(
@@ -147,7 +153,13 @@ impl ValueScanner {
             let start = 0;
             let end = c.length;
 
-            let inter = reader.get_interval(chrom_name, start, end).unwrap();
+            let inter = reader.get_interval(chrom_name, start, end).map_err(|e| {
+                ArrowError::IoError(
+                    e.to_string(),
+                    std::io::Error::new(std::io::ErrorKind::Other, e),
+                )
+            })?;
+
             let records = inter.collect::<Result<Vec<Value>, _>>().map_err(|e| {
                 ArrowError::IoError(
                     "failed to read bigwig records".to_string(),
@@ -171,7 +183,7 @@ impl ValueScanner {
 }
 
 impl Iterator for ValueScanner {
-    type Item = (String, Value);
+    type Item = ArrowResult<(String, Value)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.within_batch_position >= self.current_records.len() {
@@ -184,7 +196,13 @@ impl Iterator for ValueScanner {
             let i = self
                 .reader
                 .get_interval(&c.name, 0, c.length)
-                .unwrap()
+                .map_err(|e| {
+                    ArrowError::IoError(
+                        e.to_string(),
+                        std::io::Error::new(std::io::ErrorKind::Other, e),
+                    )
+                })
+                .ok()?
                 .collect::<Result<Vec<Value>, _>>()
                 .unwrap();
 
@@ -195,7 +213,7 @@ impl Iterator for ValueScanner {
         let record = self.current_records[self.within_batch_position];
         self.within_batch_position += 1;
 
-        Some((self.chrom_name().to_string(), record))
+        Some(Ok((self.chrom_name().to_string(), record)))
     }
 }
 
