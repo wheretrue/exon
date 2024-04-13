@@ -57,6 +57,9 @@ pub mod cram;
 /// GTF module.
 pub mod gtf;
 
+/// BigWig module.
+pub mod bigwig;
+
 /// FCS module.
 #[cfg(feature = "fcs")]
 pub mod fcs;

@@ -14,9 +14,64 @@
 
 use std::sync::Arc;
 
-use arrow::datatypes::{DataType, Field, Fields, Schema, SchemaRef};
-use exon_common::DEFAULT_BATCH_SIZE;
+use arrow::{
+    datatypes::{DataType, Field, Schema, SchemaRef},
+    error::Result as ArrowResult,
+};
+use exon_common::{TableSchema, DEFAULT_BATCH_SIZE};
+use noodles::core::Region;
 use object_store::ObjectStore;
+
+pub struct BigWigSchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+}
+
+impl Default for BigWigSchemaBuilder {
+    fn default() -> Self {
+        let file_fields = vec![
+            Field::new("name", DataType::Utf8, false),
+            Field::new("start", DataType::Int32, false),
+            Field::new("end", DataType::Int32, false),
+            Field::new("total_items", DataType::Int32, false),
+            Field::new("bases_covered", DataType::Int32, false),
+            Field::new("max_value", DataType::Float64, false),
+            Field::new("min_value", DataType::Float64, false),
+            Field::new("sum_squares", DataType::Float64, false),
+            Field::new("sum", DataType::Float64, false),
+        ];
+
+        Self {
+            file_fields,
+            partition_fields: vec![],
+        }
+    }
+}
+
+impl BigWigSchemaBuilder {
+    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
+        Self {
+            file_fields,
+            partition_fields,
+        }
+    }
+
+    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
+        self.partition_fields.extend(fields);
+    }
+
+    /// Returns the schema and the projection indexes for the file's schema
+    pub fn build(self) -> TableSchema {
+        let mut fields = self.file_fields.clone();
+        fields.extend_from_slice(&self.partition_fields);
+
+        let schema = Schema::new(fields);
+
+        let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
+
+        TableSchema::new(Arc::new(schema), projection)
+    }
+}
 
 /// Configuration for a BigWig datasource.
 #[derive(Debug)]
@@ -34,7 +89,7 @@ pub struct BigWigZoomConfig {
     pub projection: Option<Vec<usize>>,
 
     /// The interval to read.
-    pub interval: Option<String>,
+    pub interval: Option<Region>,
 
     /// The reduction to apply.
     pub reduction_level: u32,
@@ -42,27 +97,22 @@ pub struct BigWigZoomConfig {
 
 impl BigWigZoomConfig {
     /// Create a new BigWig configuration.
-    pub fn new(object_store: Arc<dyn ObjectStore>) -> Self {
-        let file_schema = Schema::new(Fields::from_iter(vec![
-            Field::new("chrom", DataType::Utf8, false),
-            Field::new("start", DataType::Int32, false),
-            Field::new("end", DataType::Int32, false),
-            Field::new("total_items", DataType::Int32, false),
-            Field::new("bases_covered", DataType::Int32, false),
-            Field::new("max_value", DataType::Float64, false),
-            Field::new("min_value", DataType::Float64, false),
-            Field::new("sum_squares", DataType::Float64, false),
-            Field::new("sum", DataType::Float64, false),
-        ]));
-
+    pub fn new_with_schema(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
         Self {
             batch_size: DEFAULT_BATCH_SIZE,
             object_store,
-            file_schema: Arc::new(file_schema),
+            file_schema,
             projection: None,
             interval: None,
             reduction_level: 400,
         }
+    }
+
+    pub fn new(object_store: Arc<dyn ObjectStore>) -> ArrowResult<Self> {
+        let schema = BigWigSchemaBuilder::default().build();
+        let file_schema = schema.file_schema()?;
+
+        Ok(Self::new_with_schema(object_store, file_schema))
     }
 
     /// Get the reduction level.
@@ -71,8 +121,8 @@ impl BigWigZoomConfig {
     }
 
     /// Get the interval.
-    pub fn interval(&self) -> Option<&str> {
-        self.interval.as_deref()
+    pub fn interval(&self) -> Option<&Region> {
+        self.interval.as_ref()
     }
 
     /// Set the reduction level.
@@ -81,9 +131,15 @@ impl BigWigZoomConfig {
         self
     }
 
-    /// Set the read type to interval.
-    pub fn with_interval(mut self, interval: String) -> Self {
+    /// Set the interval.
+    pub fn with_interval(mut self, interval: Region) -> Self {
         self.interval = Some(interval);
+        self
+    }
+
+    /// Set the interval from an optional region.
+    pub fn with_some_interval(mut self, interval: Option<Region>) -> Self {
+        self.interval = interval;
         self
     }
 

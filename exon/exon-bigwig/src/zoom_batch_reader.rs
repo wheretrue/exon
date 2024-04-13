@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{
     array::RecordBatch,
@@ -25,7 +25,7 @@ mod array_builder;
 mod config;
 
 use self::array_builder::ZoomArrayBuilder;
-pub use self::config::BigWigZoomConfig;
+pub use self::config::{BigWigSchemaBuilder, BigWigZoomConfig};
 
 pub struct ZoomRecordBatchReader {
     config: Arc<BigWigZoomConfig>,
@@ -76,6 +76,17 @@ impl ZoomRecordBatchReader {
             None => Ok(Some(batch)),
         }
     }
+
+    /// Return a stream of record_batches.
+    pub fn into_stream(self) -> impl futures::Stream<Item = ArrowResult<RecordBatch>> {
+        futures::stream::unfold(self, |mut reader| async move {
+            match reader.read_batch() {
+                Ok(Some(batch)) => Some((Ok(batch), reader)),
+                Ok(None) => None,
+                Err(e) => Some((Err(e), reader)),
+            }
+        })
+    }
 }
 
 struct ZoomScanner {
@@ -91,14 +102,10 @@ impl ZoomScanner {
     pub fn try_new(
         mut reader: BigWigRead<ReopenableFile>,
         reduction_level: u32,
-        interval: Option<String>,
+        interval: Option<Region>,
     ) -> ArrowResult<Self> {
         if let Some(interval) = interval {
-            let region = Region::from_str(interval.as_str()).map_err(|e| {
-                ArrowError::InvalidArgumentError(format!("invalid interval: {}", e))
-            })?;
-
-            let name = std::str::from_utf8(region.name()).unwrap();
+            let name = std::str::from_utf8(interval.name()).unwrap();
 
             let chroms = reader
                 .chroms()
@@ -111,8 +118,8 @@ impl ZoomScanner {
                 ArrowError::InvalidArgumentError(format!("chromosome {} not found", name))
             })?;
 
-            let start = region.interval().start().map_or(0, |s| s.get() as u32);
-            let end = region
+            let start = interval.interval().start().map_or(0, |s| s.get() as u32);
+            let end = interval
                 .interval()
                 .end()
                 .map_or(chrom.length, |e| e.get() as u32);
@@ -212,7 +219,7 @@ impl Iterator for ZoomScanner {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
     use object_store::local::LocalFileSystem;
 
@@ -223,12 +230,14 @@ mod tests {
     async fn test_read_bigwig() -> Result<(), Box<dyn std::error::Error>> {
         let cargo_path = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let file_path = format!(
-            "{}/../../exon/exon-core/src/datasources/bigwig/test.bw",
+            "{}/../../exon/exon-core/test-data/datasources/bigwig/test.bw",
             cargo_path
         );
 
         let object_store = Arc::new(LocalFileSystem::default());
-        let config = BigWigZoomConfig::new(object_store).with_interval("1".to_string());
+
+        let region = noodles::core::Region::from_str("1:1-1000000").unwrap();
+        let config = BigWigZoomConfig::new(object_store)?.with_interval(region);
 
         let mut reader = ZoomRecordBatchReader::try_new(&file_path, Arc::new(config))?;
 

@@ -2038,6 +2038,7 @@ dependencies = [
  "exon-bam",
  "exon-bcf",
  "exon-bed",
+ "exon-bigwig",
  "exon-common",
  "exon-cram",
  "exon-fasta",

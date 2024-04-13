@@ -1,0 +1,10 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE bigwig_zoom STORED AS BIGWIG_ZOOM OPTIONS (reduction_level '400') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bigwig/test.bw';
+
+query T
+SELECT name, start, end, total_items, bases_covered, max_value, min_value, sum_squares, "sum" FROM bigwig_zoom
+----
+1 0 400 0 54 1.5 0.10000000149011612 100.3899917602539 72.0999984741211
+10 200 600 0 100 2 2 400 200

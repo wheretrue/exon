@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod value_batch_reader;
-mod zoom_batch_reader;
+mod value;
+mod zoom;
 
-pub use zoom_batch_reader::BigWigSchemaBuilder;
-pub use zoom_batch_reader::BigWigZoomConfig;
-pub use zoom_batch_reader::ZoomRecordBatchReader;
-
-pub use value_batch_reader::BigWigValueConfig;
-pub use value_batch_reader::ValueRecordBatchReader;
+pub use zoom::*;

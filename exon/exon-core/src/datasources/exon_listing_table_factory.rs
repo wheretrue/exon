@@ -32,6 +32,7 @@ use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
     bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
     bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
+    bigwig::ListingBigWigTableOptions,
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
     fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
@@ -293,6 +294,33 @@ impl ExonListingTableFactory {
                     config,
                     table_schema,
                 )?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::BigWigZoom => {
+                let reduction_level = options
+                    .get("reduction_level")
+                    .ok_or(datafusion::error::DataFusionError::Execution(
+                        "BigWigZoom files must have a reduction level".to_string(),
+                    ))?
+                    .parse::<u32>()
+                    .map_err(|e| {
+                        datafusion::error::DataFusionError::Execution(format!(
+                            "Failed to parse reduction level: {}",
+                            e
+                        ))
+                    })?;
+
+                let options = ListingBigWigTableOptions::new(reduction_level)
+                    .with_table_partition_cols(table_partition_cols);
+
+                let table_schema = options.infer_schema()?;
+
+                let config =
+                    crate::datasources::bigwig::ListingBigWigTableConfig::new(table_path, options);
+
+                let table =
+                    crate::datasources::bigwig::ListingBigWigTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }

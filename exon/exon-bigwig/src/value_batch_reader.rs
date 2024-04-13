@@ -230,7 +230,7 @@ mod tests {
     async fn test_read_bigwig() -> Result<(), Box<dyn std::error::Error>> {
         let cargo_path = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let file_path = format!(
-            "{}/../../exon/exon-core/src/datasources/bigwig/test.bw",
+            "{}/../../exon/exon-core/test-data/datasources/bigwig/test.bw",
             cargo_path
         );
 

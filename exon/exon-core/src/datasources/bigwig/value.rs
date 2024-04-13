@@ -11,13 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-mod value_batch_reader;
-mod zoom_batch_reader;
-
-pub use zoom_batch_reader::BigWigSchemaBuilder;
-pub use zoom_batch_reader::BigWigZoomConfig;
-pub use zoom_batch_reader::ZoomRecordBatchReader;
-
-pub use value_batch_reader::BigWigValueConfig;
-pub use value_batch_reader::ValueRecordBatchReader;
