@@ -30,6 +30,7 @@ exon-io = { path = "../exon-io", version = "0.15.0" }
 exon-mzml = { path = "../exon-mzml", version = "0.15.0", optional = true }
 exon-sam = { path = "../exon-sam", version = "0.15.0" }
 exon-vcf = { path = "../exon-vcf", version = "0.15.0" }
+exon-bigwig = { path = "../exon-bigwig", version = "0.15.0" }
 futures = { workspace = true }
 itertools = "0.12.1"
 noodles = { workspace = true, features = [

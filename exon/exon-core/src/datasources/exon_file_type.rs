@@ -80,6 +80,9 @@ pub enum ExonFileType {
     /// CRAM file format.
     CRAM,
 
+    /// BigWig Zoom file format.
+    BigWigZoom,
+
     /// Genbank file format.
     #[cfg(feature = "genbank")]
     GENBANK,
@@ -111,6 +114,7 @@ impl FromStr for ExonFileType {
             "BCF" => Ok(Self::BCF),
             "GFF" => Ok(Self::GFF),
             "BAM" => Ok(Self::BAM),
+            "BIGWIG_ZOOM" => Ok(Self::BigWigZoom),
             "INDEXED_BAM" => Ok(Self::IndexedBAM),
             "SAM" => Ok(Self::SAM),
             #[cfg(feature = "mzml")]
@@ -142,6 +146,7 @@ impl Display for ExonFileType {
             Self::IndexedBAM => write!(f, "INDEXED_BAM"),
             Self::IndexedGFF => write!(f, "INDEXED_GFF"),
             Self::BCF => write!(f, "BCF"),
+            Self::BigWigZoom => write!(f, "BIGWIG"),
             Self::GFF => write!(f, "GFF"),
             Self::BAM => write!(f, "BAM"),
             Self::SAM => write!(f, "SAM"),
@@ -163,14 +168,24 @@ impl Display for ExonFileType {
 impl ExonFileType {
     /// Get the file extension for the given file type with the given compression.
     pub fn get_file_extension(&self, file_compression_type: FileCompressionType) -> String {
+        let base_extension = self.get_base_file_extension();
+
         match (self, file_compression_type) {
-            (_, FileCompressionType::UNCOMPRESSED) => self.to_string(),
-            (_, FileCompressionType::GZIP) => format!("{}.gz", self),
-            (_, FileCompressionType::ZSTD) => format!("{}.zst", self),
-            (_, FileCompressionType::BZIP2) => format!("{}.bz2", self),
-            (_, FileCompressionType::XZ) => format!("{}.xz", self),
+            (_, FileCompressionType::UNCOMPRESSED) => base_extension,
+            (_, FileCompressionType::GZIP) => format!("{}.gz", base_extension),
+            (_, FileCompressionType::ZSTD) => format!("{}.zst", base_extension),
+            (_, FileCompressionType::BZIP2) => format!("{}.bz2", base_extension),
+            (_, FileCompressionType::XZ) => format!("{}.xz", base_extension),
         }
         .to_lowercase()
+    }
+
+    /// Get the default base extension for the file type.
+    pub fn get_base_file_extension(&self) -> String {
+        match self {
+            ExonFileType::BigWigZoom => "bw".to_string(),
+            _ => self.to_string().to_lowercase(),
+        }
     }
 }
 
@@ -240,6 +255,43 @@ mod tests {
         assert_eq!(ExonFileType::FAA.to_string(), "FAA");
         assert_eq!(ExonFileType::FNA.to_string(), "FNA");
         assert_eq!(ExonFileType::CRAM.to_string(), "CRAM");
+        assert_eq!(ExonFileType::BigWigZoom.to_string(), "BIGWIG");
+    }
+
+    #[test]
+    fn test_get_base_file_extension() {
+        assert_eq!(ExonFileType::FASTA.get_base_file_extension(), "fasta");
+        assert_eq!(ExonFileType::FASTQ.get_base_file_extension(), "fastq");
+        assert_eq!(ExonFileType::VCF.get_base_file_extension(), "vcf");
+        assert_eq!(
+            ExonFileType::IndexedVCF.get_base_file_extension(),
+            "indexed_vcf"
+        );
+        assert_eq!(ExonFileType::BCF.get_base_file_extension(), "bcf");
+        assert_eq!(ExonFileType::GFF.get_base_file_extension(), "gff");
+        assert_eq!(ExonFileType::BAM.get_base_file_extension(), "bam");
+        assert_eq!(
+            ExonFileType::IndexedBAM.get_base_file_extension(),
+            "indexed_bam"
+        );
+        assert_eq!(ExonFileType::SAM.get_base_file_extension(), "sam");
+        #[cfg(feature = "genbank")]
+        assert_eq!(ExonFileType::GENBANK.get_base_file_extension(), "genbank");
+        assert_eq!(
+            ExonFileType::HMMDOMTAB.get_base_file_extension(),
+            "hmmdomtab"
+        );
+        assert_eq!(ExonFileType::BED.get_base_file_extension(), "bed");
+        #[cfg(feature = "mzml")]
+        assert_eq!(ExonFileType::MZML.get_base_file_extension(), "mzml");
+        assert_eq!(ExonFileType::GTF.get_base_file_extension(), "gtf");
+        #[cfg(feature = "fcs")]
+        assert_eq!(ExonFileType::FCS.get_base_file_extension(), "fcs");
+        assert_eq!(ExonFileType::FQ.get_base_file_extension(), "fq");
+        assert_eq!(ExonFileType::FAA.get_base_file_extension(), "faa");
+        assert_eq!(ExonFileType::FNA.get_base_file_extension(), "fna");
+        assert_eq!(ExonFileType::CRAM.get_base_file_extension(), "cram");
+        assert_eq!(ExonFileType::BigWigZoom.get_base_file_extension(), "bw");
     }
 
     #[test]

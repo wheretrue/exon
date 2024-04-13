@@ -15,6 +15,7 @@
 mod value_batch_reader;
 mod zoom_batch_reader;
 
+pub use zoom_batch_reader::BigWigSchemaBuilder;
 pub use zoom_batch_reader::BigWigZoomConfig;
 pub use zoom_batch_reader::ZoomRecordBatchReader;
 
