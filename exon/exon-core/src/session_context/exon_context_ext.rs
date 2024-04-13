@@ -25,7 +25,12 @@ use datafusion::{
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 
-use crate::{error::ExonError, udfs::sam::cram_region_filter::register_cram_region_filter_udf};
+use crate::{
+    error::ExonError,
+    udfs::{
+        register_bigwig_region_filter_udf, sam::cram_region_filter::register_cram_region_filter_udf,
+    },
+};
 
 use noodles::core::Region;
 use object_store::local::LocalFileSystem;
@@ -165,6 +170,9 @@ pub trait ExonSessionExt {
 
         // Register GFF region filter UDF
         register_gff_region_filter_udf(&ctx);
+
+        // Register BigWig region filter UDF
+        register_bigwig_region_filter_udf(&ctx);
 
         // Register UDTFs
         ctx.register_udtf("fasta_scan", Arc::new(FastaScanFunction::new(ctx.clone())));
