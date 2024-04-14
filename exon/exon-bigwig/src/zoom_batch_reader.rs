@@ -25,7 +25,7 @@ mod array_builder;
 mod config;
 
 use self::array_builder::ZoomArrayBuilder;
-pub use self::config::{BigWigSchemaBuilder, BigWigZoomConfig};
+pub use self::config::{BigWigZoomConfig, SchemaBuilder};
 
 pub struct ZoomRecordBatchReader {
     config: Arc<BigWigZoomConfig>,

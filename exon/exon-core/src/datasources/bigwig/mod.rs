@@ -12,7 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod value;
-mod zoom;
-
-pub use zoom::*;
+pub(crate) mod value;
+pub(crate) mod zoom;

@@ -27,7 +27,7 @@ use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig as DataFusionListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -37,7 +37,7 @@ use datafusion::{
     physical_plan::ExecutionPlan,
     prelude::Expr,
 };
-use exon_bigwig::zoom_batch_reader::SchemaBuilder;
+use exon_bigwig::value_batch_reader::SchemaBuilder;
 use exon_common::TableSchema;
 use futures::TryStreamExt;
 use noodles::core::Region;
@@ -46,17 +46,17 @@ use super::scanner::Scanner;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
-pub struct ListingBigWigTableConfig {
-    inner: ListingTableConfig,
+pub struct ListingTableConfig {
+    inner: DataFusionListingTableConfig,
 
-    options: ListingBigWigTableOptions,
+    options: ListingTableOptions,
 }
 
-impl ListingBigWigTableConfig {
+impl ListingTableConfig {
     /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl, options: ListingBigWigTableOptions) -> Self {
+    pub fn new(table_path: ListingTableUrl, options: ListingTableOptions) -> Self {
         Self {
-            inner: ListingTableConfig::new(table_path),
+            inner: DataFusionListingTableConfig::new(table_path),
             options,
         }
     }
@@ -64,27 +64,23 @@ impl ListingBigWigTableConfig {
 
 #[derive(Debug, Clone)]
 /// Listing options for a BigWig table
-pub struct ListingBigWigTableOptions {
+pub struct ListingTableOptions {
     /// The file extension, including the compression type
     file_extension: String,
 
     /// A list of table partition columns
     table_partition_cols: Vec<Field>,
-
-    /// The reduction level for the BigWig scan
-    reduction_level: u32,
 }
 
-impl ListingBigWigTableOptions {
+impl ListingTableOptions {
     /// Create a new set of options
-    pub fn new(reduction_level: u32) -> Self {
+    pub fn new() -> Self {
         let file_extension =
-            ExonFileType::BigWigZoom.get_file_extension(FileCompressionType::UNCOMPRESSED);
+            ExonFileType::BigWigValue.get_file_extension(FileCompressionType::UNCOMPRESSED);
 
         Self {
             file_extension,
             table_partition_cols: Vec::new(),
-            reduction_level,
         }
     }
 
@@ -108,7 +104,7 @@ impl ListingBigWigTableOptions {
         &self,
         conf: FileScanConfig,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        let scan = Scanner::new(conf.clone(), self.reduction_level);
+        let scan = Scanner::new(conf.clone());
 
         Ok(Arc::new(scan))
     }
@@ -118,8 +114,7 @@ impl ListingBigWigTableOptions {
         conf: FileScanConfig,
         region: Region,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        let scan =
-            Scanner::new(conf.clone(), self.reduction_level).with_some_region_filter(Some(region));
+        let scan = Scanner::new(conf.clone()).with_some_region_filter(Some(region));
 
         Ok(Arc::new(scan))
     }
@@ -127,17 +122,17 @@ impl ListingBigWigTableOptions {
 
 #[derive(Debug, Clone)]
 /// A BigWig listing table
-pub struct ListingBigWigTable {
+pub struct ListingTable {
     table_paths: Vec<ListingTableUrl>,
 
     table_schema: TableSchema,
 
-    options: ListingBigWigTableOptions,
+    options: ListingTableOptions,
 }
 
-impl ListingBigWigTable {
+impl ListingTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingBigWigTableConfig, table_schema: TableSchema) -> Result<Self> {
+    pub fn try_new(config: ListingTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
@@ -147,7 +142,7 @@ impl ListingBigWigTable {
 }
 
 #[async_trait]
-impl TableProvider for ListingBigWigTable {
+impl TableProvider for ListingTable {
     fn as_any(&self) -> &dyn Any {
         self
     }

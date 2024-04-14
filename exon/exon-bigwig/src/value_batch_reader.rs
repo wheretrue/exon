@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use bigtools::{utils::reopen::ReopenableFile, BigWigRead, ChromInfo, Value};
 
@@ -28,6 +28,7 @@ mod config;
 use self::{array_builder::ValueArrayBuilder, config::ValueReadType};
 
 pub use self::config::BigWigValueConfig;
+pub use self::config::SchemaBuilder;
 
 pub struct ValueRecordBatchReader {
     config: Arc<BigWigValueConfig>,
@@ -79,6 +80,17 @@ impl ValueRecordBatchReader {
             None => Ok(Some(batch)),
         }
     }
+
+    /// Return a stream of record_batches.
+    pub fn into_stream(self) -> impl futures::Stream<Item = ArrowResult<RecordBatch>> {
+        futures::stream::unfold(self, |mut reader| async move {
+            match reader.read_batch() {
+                Ok(Some(batch)) => Some((Ok(batch), reader)),
+                Ok(None) => None,
+                Err(e) => Some((Err(e), reader)),
+            }
+        })
+    }
 }
 
 struct ValueScanner {
@@ -92,13 +104,9 @@ struct ValueScanner {
 impl ValueScanner {
     pub fn try_new(
         mut reader: BigWigRead<ReopenableFile>,
-        interval: Option<String>,
+        interval: Option<Region>,
     ) -> ArrowResult<Self> {
-        if let Some(interval) = interval {
-            let region = Region::from_str(interval.as_str()).map_err(|e| {
-                ArrowError::InvalidArgumentError(format!("invalid interval: {}", e))
-            })?;
-
+        if let Some(region) = interval {
             let name = std::str::from_utf8(region.name())?;
 
             let chroms = reader
@@ -219,8 +227,9 @@ impl Iterator for ValueScanner {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
+    use noodles::core::Region;
     use object_store::local::LocalFileSystem;
 
     use crate::value_batch_reader::{config::BigWigValueConfig, ValueRecordBatchReader};
@@ -235,7 +244,9 @@ mod tests {
         );
 
         let object_store = Arc::new(LocalFileSystem::default());
-        let config = BigWigValueConfig::new(object_store).with_interval("1".to_string());
+
+        let region = Region::from_str("1:1-1000")?;
+        let config = BigWigValueConfig::new(object_store).with_some_interval(Some(region));
 
         let mut reader = ValueRecordBatchReader::try_new(&file_path, Arc::new(config))?;
 

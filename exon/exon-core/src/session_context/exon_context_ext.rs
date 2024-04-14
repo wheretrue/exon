@@ -133,6 +133,7 @@ pub trait ExonSessionExt {
             "INDEXED_VCF",
             "SAM",
             "BIGWIG_ZOOM",
+            "BIGWIG_VALUE",
             "VCF",
             #[cfg(feature = "mzml")]
             "MZML",

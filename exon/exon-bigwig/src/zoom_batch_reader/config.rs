@@ -22,12 +22,12 @@ use exon_common::{TableSchema, DEFAULT_BATCH_SIZE};
 use noodles::core::Region;
 use object_store::ObjectStore;
 
-pub struct BigWigSchemaBuilder {
+pub struct SchemaBuilder {
     file_fields: Vec<Field>,
     partition_fields: Vec<Field>,
 }
 
-impl Default for BigWigSchemaBuilder {
+impl Default for SchemaBuilder {
     fn default() -> Self {
         let file_fields = vec![
             Field::new("name", DataType::Utf8, false),
@@ -48,7 +48,7 @@ impl Default for BigWigSchemaBuilder {
     }
 }
 
-impl BigWigSchemaBuilder {
+impl SchemaBuilder {
     pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
         Self {
             file_fields,
@@ -109,7 +109,7 @@ impl BigWigZoomConfig {
     }
 
     pub fn new(object_store: Arc<dyn ObjectStore>) -> ArrowResult<Self> {
-        let schema = BigWigSchemaBuilder::default().build();
+        let schema = SchemaBuilder::default().build();
         let file_schema = schema.file_schema()?;
 
         Ok(Self::new_with_schema(object_store, file_schema))

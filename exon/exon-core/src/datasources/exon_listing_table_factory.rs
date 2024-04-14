@@ -32,7 +32,7 @@ use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
     bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
     bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
-    bigwig::ListingBigWigTableOptions,
+    bigwig,
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
     fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
@@ -297,6 +297,17 @@ impl ExonListingTableFactory {
 
                 Ok(Arc::new(table))
             }
+            ExonFileType::BigWigValue => {
+                let options = super::bigwig::value::ListingTableOptions::new()
+                    .with_table_partition_cols(table_partition_cols);
+
+                let table_schema = options.infer_schema()?;
+
+                let config = bigwig::value::ListingTableConfig::new(table_path, options);
+                let table = bigwig::value::ListingTable::try_new(config, table_schema)?;
+
+                Ok(Arc::new(table))
+            }
             ExonFileType::BigWigZoom => {
                 let reduction_level = options
                     .get("reduction_level")
@@ -311,16 +322,13 @@ impl ExonListingTableFactory {
                         ))
                     })?;
 
-                let options = ListingBigWigTableOptions::new(reduction_level)
+                let options = bigwig::zoom::ListingBigWigTableOptions::new(reduction_level)
                     .with_table_partition_cols(table_partition_cols);
 
                 let table_schema = options.infer_schema()?;
 
-                let config =
-                    crate::datasources::bigwig::ListingBigWigTableConfig::new(table_path, options);
-
-                let table =
-                    crate::datasources::bigwig::ListingBigWigTable::try_new(config, table_schema)?;
+                let config = bigwig::zoom::ListingBigWigTableConfig::new(table_path, options);
+                let table = bigwig::zoom::ListingBigWigTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }

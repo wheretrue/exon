@@ -13,3 +13,24 @@ query T
 SELECT name, start, end, total_items, bases_covered, max_value, min_value, sum_squares, "sum" FROM bigwig_zoom WHERE bigwig_region_filter('1', name) = true
 ----
 1 0 400 0 54 1.5 0.10000000149011612 100.3899917602539 72.0999984741211
+
+statement ok
+DROP TABLE bigwig_zoom;
+
+statement ok
+CREATE EXTERNAL TABLE bigwig_value STORED AS BIGWIG_VALUE LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bigwig/test.bw';
+
+query T
+SELECT * FROM bigwig_value
+----
+1 0 1 0.1
+1 1 2 0.2
+1 2 3 0.3
+1 100 150 1.4
+1 150 151 1.5
+10 200 300 2
+
+query T
+SELECT * FROM bigwig_value WHERE bigwig_region_filter('10', name) = true
+----
+10 200 300 2
