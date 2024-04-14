@@ -83,6 +83,9 @@ pub enum ExonFileType {
     /// BigWig Zoom file format.
     BigWigZoom,
 
+    /// BigWig Value file format.
+    BigWigValue,
+
     /// Genbank file format.
     #[cfg(feature = "genbank")]
     GENBANK,
@@ -115,6 +118,7 @@ impl FromStr for ExonFileType {
             "GFF" => Ok(Self::GFF),
             "BAM" => Ok(Self::BAM),
             "BIGWIG_ZOOM" => Ok(Self::BigWigZoom),
+            "BIGWIG_VALUE" => Ok(Self::BigWigValue),
             "INDEXED_BAM" => Ok(Self::IndexedBAM),
             "SAM" => Ok(Self::SAM),
             #[cfg(feature = "mzml")]
@@ -146,7 +150,8 @@ impl Display for ExonFileType {
             Self::IndexedBAM => write!(f, "INDEXED_BAM"),
             Self::IndexedGFF => write!(f, "INDEXED_GFF"),
             Self::BCF => write!(f, "BCF"),
-            Self::BigWigZoom => write!(f, "BIGWIG"),
+            Self::BigWigZoom => write!(f, "BIGWIG_ZOOM"),
+            Self::BigWigValue => write!(f, "BIGWIG_VALUE"),
             Self::GFF => write!(f, "GFF"),
             Self::BAM => write!(f, "BAM"),
             Self::SAM => write!(f, "SAM"),
@@ -184,6 +189,7 @@ impl ExonFileType {
     pub fn get_base_file_extension(&self) -> String {
         match self {
             ExonFileType::BigWigZoom => "bw".to_string(),
+            ExonFileType::BigWigValue => "bw".to_string(),
             _ => self.to_string().to_lowercase(),
         }
     }
@@ -255,7 +261,8 @@ mod tests {
         assert_eq!(ExonFileType::FAA.to_string(), "FAA");
         assert_eq!(ExonFileType::FNA.to_string(), "FNA");
         assert_eq!(ExonFileType::CRAM.to_string(), "CRAM");
-        assert_eq!(ExonFileType::BigWigZoom.to_string(), "BIGWIG");
+        assert_eq!(ExonFileType::BigWigZoom.to_string(), "BIGWIG_ZOOM");
+        assert_eq!(ExonFileType::BigWigValue.to_string(), "BIGWIG_VALUE");
     }
 
     #[test]

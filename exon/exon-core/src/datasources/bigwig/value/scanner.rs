@@ -37,7 +37,7 @@ use datafusion::{
         PlanProperties, SendableRecordBatchStream,
     },
 };
-use exon_bigwig::zoom_batch_reader::BigWigZoomConfig;
+use exon_bigwig::value_batch_reader::BigWigValueConfig;
 use noodles::core::Region;
 
 use crate::datasources::ExonFileScanConfig;
@@ -59,9 +59,6 @@ pub struct Scanner {
     /// An optional region filter for the scan.
     region_filter: Option<Region>,
 
-    /// The resolution level for the zoom.
-    reduction_level: u32,
-
     /// The plan properties cache.
     properties: PlanProperties,
 
@@ -71,7 +68,7 @@ pub struct Scanner {
 
 impl Scanner {
     /// Create a new BCF scan.
-    pub fn new(base_config: FileScanConfig, resolution: u32) -> Self {
+    pub fn new(base_config: FileScanConfig) -> Self {
         let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
@@ -79,7 +76,6 @@ impl Scanner {
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
             region_filter: None,
-            reduction_level: resolution,
             properties,
             statistics,
         }
@@ -94,7 +90,7 @@ impl Scanner {
 
 impl DisplayAs for Scanner {
     fn fmt_as(&self, t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "BigWigScanner ")?;
+        write!(f, "BigWigValueScanner ")?;
         self.base_config.fmt_as(t, f)
     }
 }
@@ -138,11 +134,11 @@ impl ExecutionPlan for Scanner {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = BigWigZoomConfig::new_with_schema(object_store, self.projected_schema.clone())
-            .with_batch_size(batch_size)
-            .with_reduction_level(self.reduction_level)
-            .with_some_interval(self.region_filter.clone())
-            .with_some_projection(Some(self.base_config.file_projection()));
+        let config =
+            BigWigValueConfig::new_with_schema(object_store, self.projected_schema.clone())
+                .with_batch_size(batch_size)
+                .with_some_interval(self.region_filter.clone())
+                .with_some_projection(Some(self.base_config.file_projection()));
 
         let opener = FileOpener::new(Arc::new(config));
 

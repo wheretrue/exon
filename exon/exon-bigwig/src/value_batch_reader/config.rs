@@ -15,12 +15,59 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, Fields, Schema, SchemaRef};
-use exon_common::DEFAULT_BATCH_SIZE;
+use exon_common::{TableSchema, DEFAULT_BATCH_SIZE};
+use noodles::core::Region;
 use object_store::ObjectStore;
+
+pub struct SchemaBuilder {
+    file_fields: Vec<Field>,
+    partition_fields: Vec<Field>,
+}
+
+impl Default for SchemaBuilder {
+    fn default() -> Self {
+        let file_fields = vec![
+            Field::new("name", DataType::Utf8, false),
+            Field::new("start", DataType::Int32, false),
+            Field::new("end", DataType::Int32, false),
+            Field::new("value", DataType::Float32, false),
+        ];
+
+        Self {
+            file_fields,
+            partition_fields: vec![],
+        }
+    }
+}
+
+impl SchemaBuilder {
+    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
+        Self {
+            file_fields,
+            partition_fields,
+        }
+    }
+
+    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
+        self.partition_fields.extend(fields);
+    }
+
+    /// Returns the schema and the projection indexes for the file's schema
+    pub fn build(self) -> TableSchema {
+        let mut fields = self.file_fields.clone();
+        fields.extend_from_slice(&self.partition_fields);
+
+        let schema = Schema::new(fields);
+
+        let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
+
+        TableSchema::new(Arc::new(schema), projection)
+    }
+}
 
 #[derive(Debug)]
 pub enum ValueReadType {
-    Interval(String),
+    Interval(Region),
     Scan,
 }
 
@@ -62,9 +109,25 @@ impl BigWigValueConfig {
         }
     }
 
+    /// Create a new BigWig configuration.
+    pub fn new_with_schema(object_store: Arc<dyn ObjectStore>, file_schema: SchemaRef) -> Self {
+        Self {
+            batch_size: DEFAULT_BATCH_SIZE,
+            object_store,
+            file_schema,
+            projection: None,
+            read_type: ValueReadType::Scan,
+        }
+    }
+
     /// Set the read type to interval.
-    pub fn with_interval(mut self, interval: String) -> Self {
-        self.read_type = ValueReadType::Interval(interval);
+    pub fn with_some_interval(mut self, interval: Option<Region>) -> Self {
+        if let Some(interval) = interval {
+            self.read_type = ValueReadType::Interval(interval);
+        } else {
+            self.read_type = ValueReadType::Scan;
+        }
+
         self
     }
 

@@ -23,12 +23,12 @@ use object_store::GetResultPayload;
 
 pub struct FileOpener {
     /// The configuration for the file scan.
-    config: Arc<exon_bigwig::BigWigZoomConfig>,
+    config: Arc<exon_bigwig::zoom_batch_reader::BigWigZoomConfig>,
 }
 
 impl FileOpener {
     /// Create a new file opener.
-    pub fn new(config: Arc<exon_bigwig::BigWigZoomConfig>) -> Self {
+    pub fn new(config: Arc<exon_bigwig::zoom_batch_reader::BigWigZoomConfig>) -> Self {
         Self { config }
     }
 }
@@ -42,10 +42,11 @@ impl FileOpenerTrait for FileOpener {
 
             match get_result.payload {
                 GetResultPayload::File(_, path_buf) => {
-                    let batch_reader = exon_bigwig::ZoomRecordBatchReader::try_new(
-                        &path_buf.display().to_string(),
-                        config.clone(),
-                    )?;
+                    let batch_reader =
+                        exon_bigwig::zoom_batch_reader::ZoomRecordBatchReader::try_new(
+                            &path_buf.display().to_string(),
+                            config.clone(),
+                        )?;
 
                     let batch_stream = batch_reader.into_stream();
 
