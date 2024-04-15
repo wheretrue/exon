@@ -29,13 +29,13 @@ use url::Url;
 use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
 
 use super::{
-    bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
+    bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
     bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
     bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
     bigwig,
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
     exon_listing_table_options::ExonListingConfig,
-    fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
+    fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
     gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
     gtf::table_provider::{ListingGTFTable, ListingGTFTableConfig, ListingGTFTableOptions},
@@ -95,7 +95,7 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingBAMTableConfig::new(table_path).with_options(options);
+                let config = ExonListingConfig::new_with_options(table_path, options);
                 let table = ListingBAMTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
@@ -229,14 +229,14 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedBAM => {
-                let bam_options = ListingBAMTableOptions::default()
+                let options = ListingBAMTableOptions::default()
                     .with_indexed(true)
                     .with_table_partition_cols(table_partition_cols)
                     .with_tag_as_struct(exon_config_extension.bam_parse_tags);
 
-                let table_schema = bam_options.infer_schema(state, &table_path).await?;
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
+                let config = ExonListingConfig::new_with_options(table_path, options);
 
                 let table = ListingBAMTable::try_new(config, table_schema)?;
                 Ok(Arc::new(table))
@@ -256,7 +256,7 @@ impl ExonListingTableFactory {
 
                 let schema = table_options.infer_schema(state).await?;
 
-                let config = ListingFASTATableConfig::new(table_path, table_options);
+                let config = ExonListingConfig::new_with_options(table_path, table_options);
                 let table = ListingFASTATable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))

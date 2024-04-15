@@ -15,7 +15,9 @@
 use std::sync::Arc;
 
 use crate::{
-    config::extract_config_from_state, datasources::ScanFunction, error::ExonError,
+    config::extract_config_from_state,
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    error::ExonError,
     ExonRuntimeEnvExt,
 };
 use datafusion::{
@@ -27,7 +29,7 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 
-use super::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions};
+use super::table_provider::{ListingBAMTable, ListingBAMTableOptions};
 
 /// A table function that returns a table provider for a BAM file.
 #[derive(Default)]
@@ -56,11 +58,10 @@ impl TableFunctionImpl for BAMScanFunction {
         let state = self.ctx.state();
         let config = extract_config_from_state(&state)?;
 
-        let listing_table_options =
-            ListingBAMTableOptions::default().with_tag_as_struct(config.bam_parse_tags);
+        let options = ListingBAMTableOptions::default().with_tag_as_struct(config.bam_parse_tags);
 
         let schema = futures::executor::block_on(async {
-            let schema = listing_table_options
+            let schema = options
                 .infer_schema(&self.ctx.state(), &listing_scan_function.listing_table_url)
                 .await?;
 
@@ -68,8 +69,7 @@ impl TableFunctionImpl for BAMScanFunction {
         })?;
 
         let listing_table_config =
-            ListingBAMTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+            ExonListingConfig::new_with_options(listing_scan_function.listing_table_url, options);
 
         let listing_table = ListingBAMTable::try_new(listing_table_config, schema)?;
 
@@ -117,20 +117,19 @@ impl TableFunctionImpl for BAMIndexedScanFunction {
         let state = self.ctx.state();
         let config = extract_config_from_state(&state)?;
 
-        let listing_table_options = ListingBAMTableOptions::default()
+        let options = ListingBAMTableOptions::default()
             .with_region(Some(region))
             .with_tag_as_struct(config.bam_parse_tags);
 
         let schema = futures::executor::block_on(async {
-            let schema = listing_table_options
+            let schema = options
                 .infer_schema(&self.ctx.state(), &listing_table_url)
                 .await?;
 
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_table_config =
-            ListingBAMTableConfig::new(listing_table_url).with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(listing_table_url, options);
 
         let listing_table = ListingBAMTable::try_new(listing_table_config, schema)?;
 

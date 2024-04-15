@@ -27,7 +27,7 @@ use datafusion::{
 use crate::{
     datasources::{
         bam::table_provider::ListingBAMTableOptions, bigwig,
-        sam::table_provider::ListingSAMTableOptions,
+        exon_listing_table_options::ExonListingConfig, sam::table_provider::ListingSAMTableOptions,
     },
     error::ExonError,
     udfs::{
@@ -261,7 +261,7 @@ pub trait ExonSessionExt {
     async fn read_bam(
         &self,
         table_path: &str,
-        options: ListingVCFTableOptions,
+        options: ListingBAMTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a SAM file.
@@ -377,7 +377,7 @@ impl ExonSessionExt for SessionContext {
 
         let table_schema = options.infer_schema(&self.state()).await?;
 
-        let config = ListingFASTATableConfig::new(table_path, options);
+        let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingFASTATable::try_new(config, table_schema)?;
 
         let table = self.read_table(Arc::new(table))?;

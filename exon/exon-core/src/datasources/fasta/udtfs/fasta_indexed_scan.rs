@@ -30,8 +30,9 @@ use object_store::{path::Path, ObjectStore};
 
 use crate::{
     config::ExonConfigExtension,
-    datasources::fasta::table_provider::{
-        ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions,
+    datasources::{
+        exon_listing_table_options::ExonListingConfig,
+        fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
     },
     error::ExonError,
     physical_plan::object_store::{parse_url, url_to_object_store_url},
@@ -133,7 +134,7 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
         }
 
         let listing_table_config =
-            ListingFASTATableConfig::new(listing_table_url, listing_table_options);
+            ExonListingConfig::new_with_options(listing_table_url, listing_table_options);
 
         let listing_table = ListingFASTATable::try_new(listing_table_config, fasta_schema)?;
 

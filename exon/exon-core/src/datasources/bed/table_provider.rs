@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, sync::Arc};
+use std::{any::Any, fs::File, sync::Arc};
 
 use crate::{
     datasources::{
@@ -65,6 +65,10 @@ impl ExonListingOptions for ListingBEDTableOptions {
 
     fn file_extension(&self) -> &str {
         &self.file_extension
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        self.file_compression_type
     }
 
     async fn create_physical_plan(
