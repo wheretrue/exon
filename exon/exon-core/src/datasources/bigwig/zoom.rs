@@ -16,4 +16,4 @@ mod file_opener;
 mod scanner;
 mod table_provider;
 
-pub use table_provider::{ListingBigWigTable, ListingBigWigTableConfig, ListingBigWigTableOptions};
+pub use table_provider::{ListingTable, ListingTableConfig, ListingTableOptions};

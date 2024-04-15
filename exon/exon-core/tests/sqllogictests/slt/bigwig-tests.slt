@@ -34,3 +34,24 @@ query T
 SELECT * FROM bigwig_value WHERE bigwig_region_filter('10', name) = true
 ----
 10 200 300 2
+
+statement ok
+DROP TABLE bigwig_value;
+
+statement ok
+CREATE EXTERNAL TABLE bigwig_value STORED AS BIGWIG_VALUE PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/bigwig-partition';
+
+query T
+SELECT * FROM bigwig_value WHERE sample = '1' and bigwig_region_filter('1', name) = true
+----
+1 0 1 0.1 1
+1 1 2 0.2 1
+1 2 3 0.3 1
+1 100 150 1.4 1
+1 150 151 1.5 1
+
+query T
+SELECT sample, COUNT(*) FROM bigwig_value GROUP BY sample ORDER BY sample
+----
+1 6
+2 6

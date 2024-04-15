@@ -27,7 +27,7 @@ use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
+        listing::{ListingTableConfig as DataFusionListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
         TableProvider,
     },
@@ -46,17 +46,17 @@ use super::scanner::Scanner;
 
 #[derive(Debug, Clone)]
 /// Configuration for a VCF listing table
-pub struct ListingBigWigTableConfig {
-    inner: ListingTableConfig,
+pub struct ListingTableConfig {
+    inner: DataFusionListingTableConfig,
 
-    options: ListingBigWigTableOptions,
+    options: ListingTableOptions,
 }
 
-impl ListingBigWigTableConfig {
+impl ListingTableConfig {
     /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl, options: ListingBigWigTableOptions) -> Self {
+    pub fn new(table_path: ListingTableUrl, options: ListingTableOptions) -> Self {
         Self {
-            inner: ListingTableConfig::new(table_path),
+            inner: DataFusionListingTableConfig::new(table_path),
             options,
         }
     }
@@ -64,7 +64,7 @@ impl ListingBigWigTableConfig {
 
 #[derive(Debug, Clone)]
 /// Listing options for a BigWig table
-pub struct ListingBigWigTableOptions {
+pub struct ListingTableOptions {
     /// The file extension, including the compression type
     file_extension: String,
 
@@ -75,7 +75,7 @@ pub struct ListingBigWigTableOptions {
     reduction_level: u32,
 }
 
-impl ListingBigWigTableOptions {
+impl ListingTableOptions {
     /// Create a new set of options
     pub fn new(reduction_level: u32) -> Self {
         let file_extension =
@@ -127,17 +127,17 @@ impl ListingBigWigTableOptions {
 
 #[derive(Debug, Clone)]
 /// A BigWig listing table
-pub struct ListingBigWigTable {
+pub struct ListingTable {
     table_paths: Vec<ListingTableUrl>,
 
     table_schema: TableSchema,
 
-    options: ListingBigWigTableOptions,
+    options: ListingTableOptions,
 }
 
-impl ListingBigWigTable {
+impl ListingTable {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingBigWigTableConfig, table_schema: TableSchema) -> Result<Self> {
+    pub fn try_new(config: ListingTableConfig, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_paths: config.inner.table_paths,
             table_schema,
@@ -147,7 +147,7 @@ impl ListingBigWigTable {
 }
 
 #[async_trait]
-impl TableProvider for ListingBigWigTable {
+impl TableProvider for ListingTable {
     fn as_any(&self) -> &dyn Any {
         self
     }

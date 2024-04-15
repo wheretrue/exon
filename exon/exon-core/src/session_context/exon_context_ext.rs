@@ -26,6 +26,7 @@ use datafusion::{
 };
 
 use crate::{
+    datasources::bigwig,
     error::ExonError,
     udfs::{
         register_bigwig_region_filter_udf, sam::cram_region_filter::register_cram_region_filter_udf,
@@ -237,6 +238,20 @@ pub trait ExonSessionExt {
         file_type: &str,
     ) -> Result<(), DataFusionError>;
 
+    /// Read a BigWig zoom file.
+    async fn read_bigwig_zoom(
+        &self,
+        table_path: &str,
+        options: bigwig::zoom::ListingTableOptions,
+    ) -> Result<DataFrame, ExonError>;
+
+    /// Read a BigWig file.
+    async fn read_bigwig_view(
+        &self,
+        table_path: &str,
+        options: bigwig::value::ListingTableOptions,
+    ) -> Result<DataFrame, ExonError>;
+
     /// Read a FASTA file.
     async fn read_fasta(
         &self,
@@ -427,6 +442,42 @@ impl ExonSessionExt for SessionContext {
         Ok(table)
     }
 
+    /// Read a BigWig zoom file.
+    async fn read_bigwig_zoom(
+        &self,
+        table_path: &str,
+        options: bigwig::zoom::ListingTableOptions,
+    ) -> Result<DataFrame, ExonError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema()?;
+
+        let config = bigwig::zoom::ListingTableConfig::new(table_path, options);
+        let table = bigwig::zoom::ListingTable::try_new(config, table_schema)?;
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    /// Read a BigWig view file.
+    async fn read_bigwig_view(
+        &self,
+        table_path: &str,
+        options: bigwig::value::ListingTableOptions,
+    ) -> Result<DataFrame, ExonError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema()?;
+
+        let config = bigwig::value::ListingTableConfig::new(table_path, options);
+        let table = bigwig::value::ListingTable::try_new(config, table_schema)?;
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
     /// Read a FASTA file.
     async fn read_fasta(
         &self,
@@ -601,7 +652,7 @@ mod tests {
 
     use crate::{
         datasources::{
-            fasta::table_provider::ListingFASTATableOptions,
+            bigwig, fasta::table_provider::ListingFASTATableOptions,
             fastq::table_provider::ListingFASTQTableOptions,
         },
         session_context::ExonSessionExt,
@@ -667,6 +718,41 @@ mod tests {
             .await?;
 
         assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bigwig_zoom_file() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let bigwig_path = exon_test::test_path("bigwig", "test.bw");
+
+        let df = ctx
+            .read_bigwig_zoom(
+                bigwig_path.to_str().unwrap(),
+                bigwig::zoom::ListingTableOptions::new(400),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_bigwig_view_file() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let bigwig_path = exon_test::test_path("bigwig", "test.bw");
+
+        let df = ctx
+            .read_bigwig_view(
+                bigwig_path.to_str().unwrap(),
+                bigwig::value::ListingTableOptions::default(),
+            )
+            .await?;
+        assert_eq!(df.count().await?, 6);
 
         Ok(())
     }

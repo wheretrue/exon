@@ -322,13 +322,13 @@ impl ExonListingTableFactory {
                         ))
                     })?;
 
-                let options = bigwig::zoom::ListingBigWigTableOptions::new(reduction_level)
+                let options = bigwig::zoom::ListingTableOptions::new(reduction_level)
                     .with_table_partition_cols(table_partition_cols);
 
                 let table_schema = options.infer_schema()?;
 
-                let config = bigwig::zoom::ListingBigWigTableConfig::new(table_path, options);
-                let table = bigwig::zoom::ListingBigWigTable::try_new(config, table_schema)?;
+                let config = bigwig::zoom::ListingTableConfig::new(table_path, options);
+                let table = bigwig::zoom::ListingTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))
             }

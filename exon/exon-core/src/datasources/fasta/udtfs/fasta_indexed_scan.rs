@@ -119,7 +119,6 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
 
         match (region_file_check, region) {
             (Ok(_), _) => {
-                eprintln!("Region file not found. Using region from argument.");
                 listing_table_options =
                     listing_table_options.with_region_file(region_str.to_string());
             }
