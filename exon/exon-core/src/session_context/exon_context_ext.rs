@@ -26,8 +26,18 @@ use datafusion::{
 
 use crate::{
     datasources::{
-        bam::table_provider::ListingBAMTableOptions, bigwig,
-        exon_listing_table_options::ExonListingConfig, sam::table_provider::ListingSAMTableOptions,
+        bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
+        bcf::table_provider::ListingBCFTableOptions,
+        bed::table_provider::ListingBEDTableOptions,
+        bigwig,
+        exon_listing_table_options::ExonListingConfig,
+        genbank::table_provider::ListingGenbankTableOptions,
+        gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
+        gtf::table_provider::ListingGTFTableOptions,
+        hmmdomtab::table_provider::ListingHMMDomTabTableOptions,
+        mzml::table_provider::ListingMzMLTableOptions,
+        sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
+        vcf::ListingVCFTable,
     },
     error::ExonError,
     udfs::{
@@ -52,9 +62,7 @@ use crate::{
         bcf::BCFScanFunction,
         bed::BEDScanFunction,
         fasta::{
-            table_provider::{
-                ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions,
-            },
+            table_provider::{ListingFASTATable, ListingFASTATableOptions},
             FastaIndexedScanFunction, FastaScanFunction,
         },
         fastq::{
@@ -282,35 +290,35 @@ pub trait ExonSessionExt {
     async fn read_bcf(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingBCFTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a GFF file.
     async fn read_gff(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingGFFTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a GTF file.
     async fn read_gtf(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingGTFTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a BED file.
     async fn read_bed(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingBEDTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a FASTQ file.
     async fn read_fastq(
         &self,
         table_path: &str,
-        fastq_listing_table_options: Option<ListingFASTQTableOptions>,
+        options: ListingFASTQTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a GENBANK file.
@@ -318,14 +326,14 @@ pub trait ExonSessionExt {
     async fn read_genbank(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingGenbankTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a HMMER DOMTAB file.
     async fn read_hmm_dom_tab(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingHMMDomTabTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a MZML file.
@@ -333,18 +341,103 @@ pub trait ExonSessionExt {
     async fn read_mzml(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
+        options: ListingMzMLTableOptions,
     ) -> Result<DataFrame, ExonError>;
 }
 
 #[async_trait]
 impl ExonSessionExt for SessionContext {
+    async fn read_bam(
+        &self,
+        table_path: &str,
+        options: ListingBAMTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingBAMTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_bcf(
+        &self,
+        table_path: &str,
+        options: ListingBCFTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingVCFTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_gff(
+        &self,
+        table_path: &str,
+        options: ListingGFFTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema().await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingGFFTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_sam(
+        &self,
+        table_path: &str,
+        options: ListingSAMTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingSAMTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_vcf(
+        &self,
+        table_path: &str,
+        options: ListingVCFTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingVCFTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
     async fn read_exon_table(
         &self,
         table_path: &str,
         file_type: ExonFileType,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
+    ) -> crate::Result<DataFrame> {
         let session_state = self.state();
 
         let file_compression_type =
@@ -425,10 +518,9 @@ impl ExonSessionExt for SessionContext {
     async fn read_fastq(
         &self,
         table_path: &str,
-        fastq_listing_table_options: Option<ListingFASTQTableOptions>,
+        options: ListingFASTQTableOptions,
     ) -> Result<DataFrame, ExonError> {
         let table_path = ListingTableUrl::parse(table_path)?;
-        let options = fastq_listing_table_options.unwrap_or_default();
 
         let table_schema = options.infer_schema();
 
@@ -504,7 +596,7 @@ mod tests {
         let df = ctx
             .read_fastq(
                 fastq_path.to_str().unwrap(),
-                Some(ListingFASTQTableOptions::default().with_file_extension("fq".to_string())),
+                ListingFASTQTableOptions::default().with_file_extension("fq".to_string()),
             )
             .await?;
 
@@ -513,7 +605,7 @@ mod tests {
         let df = ctx
             .read_fastq(
                 fastq_path.parent().ok_or("No Parent")?.to_str().unwrap(),
-                Some(ListingFASTQTableOptions::default().with_file_extension("fq".to_string())),
+                ListingFASTQTableOptions::default().with_file_extension("fq".to_string()),
             )
             .await?;
 
@@ -532,7 +624,7 @@ mod tests {
             .with_file_extension("fq".to_string());
 
         let df = ctx
-            .read_fastq(fastq_path.to_str().unwrap(), Some(options))
+            .read_fastq(fastq_path.to_str().unwrap(), options)
             .await?;
 
         assert_eq!(df.count().await?, 2);

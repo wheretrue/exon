@@ -50,6 +50,13 @@ pub trait ExonIndexedListingOptions: ExonListingOptions {
 
     fn regions(&self) -> Vec<Region>;
 
+    fn coalesce_regions(&self, regions: Vec<Region>) -> Vec<Region> {
+        let mut all_regions = self.regions().clone();
+        all_regions.extend(regions);
+
+        all_regions
+    }
+
     async fn create_physical_plan_with_regions(
         &self,
         conf: FileScanConfig,

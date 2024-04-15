@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, fs::File, sync::Arc};
+use std::{any::Any, sync::Arc};
 
 use crate::{
     datasources::{
@@ -28,12 +28,10 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::{self, FileCompressionType},
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
+        file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
-    error::{DataFusionError, Result},
+    error::Result,
     execution::{context::SessionState, object_store::ObjectStoreUrl},
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},

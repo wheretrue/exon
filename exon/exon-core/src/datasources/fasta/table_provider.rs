@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, fmt::Debug, str::FromStr, sync::Arc, vec};
+use std::{any::Any, fmt::Debug, sync::Arc, vec};
 
 use crate::{
     config::ExonConfigExtension,
@@ -26,20 +26,15 @@ use crate::{
         ExonFileType,
     },
     physical_plan::{
-        file_scan_config_builder::FileScanConfigBuilder,
-        infer_region,
-        object_store::{parse_url, pruned_partition_list, url_to_object_store_url},
+        file_scan_config_builder::FileScanConfigBuilder, infer_region,
+        object_store::pruned_partition_list,
     },
 };
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     common::GetExt,
-    datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        TableProvider,
-    },
+    datasource::{file_format::file_compression_type::FileCompressionType, TableProvider},
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
@@ -49,10 +44,7 @@ use datafusion::{
 use exon_common::TableSchema;
 use exon_fasta::FASTASchemaBuilder;
 use futures::TryStreamExt;
-use noodles::{
-    core::{region, Region},
-    fasta::fai::Reader,
-};
+use noodles::{core::Region, fasta::fai::Reader};
 use object_store::{path::Path, ObjectStore};
 
 use super::{indexed_scanner::IndexedFASTAScanner, FASTAScan};

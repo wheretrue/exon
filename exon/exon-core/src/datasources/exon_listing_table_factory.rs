@@ -30,7 +30,7 @@ use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRu
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
-    bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
+    bcf::table_provider::{ListingBCFTable, ListingBCFTableOptions},
     bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
     bigwig,
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
@@ -42,8 +42,8 @@ use super::{
     hmmdomtab::table_provider::{
         ListingHMMDomTabTable, ListingHMMDomTabTableConfig, ListingHMMDomTabTableOptions,
     },
-    sam::table_provider::{ListingSAMTable, ListingSAMTableConfig, ListingSAMTableOptions},
-    vcf::{ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions},
+    sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
+    vcf::{ListingVCFTable, ListingVCFTableOptions},
 };
 
 #[cfg(feature = "fcs")]
@@ -96,7 +96,7 @@ impl ExonListingTableFactory {
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
                 let config = ExonListingConfig::new_with_options(table_path, options);
-                let table = ListingBAMTable::try_new(config, table_schema)?;
+                let table = ListingBAMTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -118,8 +118,8 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingSAMTableConfig::new(table_path).with_options(options);
-                let table = ListingSAMTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingSAMTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -136,8 +136,8 @@ impl ExonListingTableFactory {
 
                 let file_schema = options.infer_schema().await?;
 
-                let config = ListingGFFTableConfig::new(table_path).with_options(options);
-                let table = ListingGFFTable::try_new(config, file_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGFFTable::new(config, file_schema);
 
                 Ok(Arc::new(table))
             }
@@ -151,8 +151,8 @@ impl ExonListingTableFactory {
 
                 let file_schema = options.infer_schema().await?;
 
-                let config = ListingGFFTableConfig::new(table_path).with_options(options);
-                let table = ListingGFFTable::try_new(config, file_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGFFTable::new(config, file_schema);
 
                 Ok(Arc::new(table))
             }
@@ -202,8 +202,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingBCFTableConfig::new(table_path).with_options(options);
-                let table = ListingBCFTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingBCFTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -212,9 +212,9 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
-                let config = ListingVCFTableConfig::new(table_path, vcf_options);
+                let config = ExonListingConfig::new_with_options(table_path, vcf_options);
 
-                let table = ListingVCFTable::try_new(config, table_schema)?;
+                let table = ListingVCFTable::new(config, table_schema);
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedVCF => {
@@ -223,9 +223,9 @@ impl ExonListingTableFactory {
 
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
-                let config = ListingVCFTableConfig::new(table_path, vcf_options);
+                let config = ExonListingConfig::new_with_options(table_path, vcf_options);
 
-                let table = ListingVCFTable::try_new(config, table_schema)?;
+                let table = ListingVCFTable::new(config, table_schema);
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedBAM => {
@@ -238,7 +238,7 @@ impl ExonListingTableFactory {
 
                 let config = ExonListingConfig::new_with_options(table_path, options);
 
-                let table = ListingBAMTable::try_new(config, table_schema)?;
+                let table = ListingBAMTable::new(config, table_schema);
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA | ExonFileType::FA | ExonFileType::FAA | ExonFileType::FNA => {

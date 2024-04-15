@@ -14,7 +14,7 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Field, Schema, SchemaRef};
+use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
@@ -26,7 +26,7 @@ use datafusion::{
     error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
-    physical_plan::{empty::EmptyExec, ExecutionPlan},
+    physical_plan::ExecutionPlan,
     prelude::Expr,
 };
 use exon_common::TableSchema;
@@ -38,6 +38,9 @@ use tokio_util::io::StreamReader;
 use crate::{
     config::ExonConfigExtension,
     datasources::{
+        exon_listing_table_options::{
+            ExonIndexedListingOptions, ExonListingConfig, ExonListingOptions,
+        },
         hive_partition::filter_matches_partition_cols,
         indexed_file::indexed_bgzf_file::{
             augment_partitioned_file_with_byte_range, IndexedBGZFFile,
@@ -88,6 +91,65 @@ pub struct ListingVCFTableOptions {
 
     /// A list of table partition columns
     table_partition_cols: Vec<Field>,
+}
+
+impl Default for ListingVCFTableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: ExonFileType::VCF.get_file_extension(FileCompressionType::UNCOMPRESSED),
+            indexed: false,
+            region: None,
+            file_compression_type: FileCompressionType::UNCOMPRESSED,
+            table_partition_cols: Vec::new(),
+        }
+    }
+}
+
+impl ExonListingOptions for ListingVCFTableOptions {
+    fn table_partition_cols(&self) -> Vec<Field> {
+        self.table_partition_cols
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        self.file_compression_type
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = VCFScan::new(conf, self.file_compression_type)?;
+
+        Ok(Arc::new(scan))
+    }
+}
+
+impl ExonIndexedListingOptions for ListingVCFTableOptions {
+    fn indexed(&self) -> bool {
+        self.indexed
+    }
+
+    fn regions(&self) -> Vec<Region> {
+        if let Some(region) = &self.region {
+            vec![region.clone()]
+        } else {
+            Vec::new()
+        }
+    }
+
+    async fn create_physical_plan_with_regions(
+        &self,
+        conf: FileScanConfig,
+        region: Vec<Region>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = IndexedVCFScanner::new(conf, Arc::new(region[0].clone()))?;
+
+        Ok(Arc::new(scan))
+    }
 }
 
 impl ListingVCFTableOptions {
@@ -203,50 +265,28 @@ impl ListingVCFTableOptions {
         self.infer_schema_from_object_meta(state, &store, &files)
             .await
     }
-
-    async fn create_physical_plan_with_region(
-        &self,
-        conf: FileScanConfig,
-        region: Arc<Region>,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedVCFScanner::new(conf, region)?;
-
-        Ok(Arc::new(scan))
-    }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = VCFScan::new(conf, self.file_compression_type)?;
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A VCF listing table
-pub struct ListingVCFTable {
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingVCFTable<T> {
     table_schema: TableSchema,
 
-    options: ListingVCFTableOptions,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingVCFTable {
+impl<T> ListingVCFTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingVCFTableConfig, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             table_schema,
-            options: config.options,
-        })
+            config,
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingVCFTable {
+impl<T: ExonIndexedListingOptions> TableProvider for ListingVCFTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -277,7 +317,7 @@ impl TableProvider for ListingVCFTable {
                     }
                 }
 
-                filter_matches_partition_cols(f, &self.options.table_partition_cols)
+                filter_matches_partition_cols(f, &self.config.options.table_partition_cols())
             })
             .collect())
     }
@@ -289,13 +329,16 @@ impl TableProvider for ListingVCFTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
-        } else {
-            return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
-        };
+        let url = self
+            .config
+            .inner
+            .table_paths
+            .first()
+            .ok_or(DataFusionError::Execution(
+                "No table paths found in the configuration".to_string(),
+            ))?;
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let regions = filters
             .iter()
@@ -312,15 +355,8 @@ impl TableProvider for ListingVCFTable {
             .flatten()
             .collect::<Vec<_>>();
 
-        let regions = if self.options.indexed {
-            if !regions.is_empty() {
-                regions
-            } else {
-                match self.options.region.clone() {
-                    Some(region) => vec![region],
-                    None => regions,
-                }
-            }
+        let regions = if self.config.options.indexed() {
+            self.config.options.regions()
         } else {
             regions
         };
@@ -331,7 +367,7 @@ impl TableProvider for ListingVCFTable {
             ));
         }
 
-        if regions.is_empty() && self.options.indexed {
+        if regions.is_empty() && self.config.options.indexed() {
             return Err(DataFusionError::Plan(
                 "INDEXED_VCF table requires a region filter. See the UDF 'vcf_region_filter'."
                     .to_string(),
@@ -342,10 +378,10 @@ impl TableProvider for ListingVCFTable {
             let file_list = pruned_partition_list(
                 state,
                 &object_store,
-                &self.table_paths[0],
+                url,
                 filters,
-                self.options.file_extension.as_str(),
-                &self.options.table_partition_cols,
+                self.config.options.file_extension(),
+                &self.config.options.table_partition_cols(),
             )
             .await?
             .try_collect::<Vec<_>>()
@@ -353,13 +389,17 @@ impl TableProvider for ListingVCFTable {
 
             let file_schema = self.table_schema.file_schema()?;
             let file_scan_config =
-                FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
+                FileScanConfigBuilder::new(url.object_store(), file_schema, vec![file_list])
                     .projection_option(projection.cloned())
                     .limit_option(limit)
-                    .table_partition_cols(self.options.table_partition_cols.clone())
+                    .table_partition_cols(self.config.options.table_partition_cols())
                     .build();
 
-            let table = self.options.create_physical_plan(file_scan_config).await?;
+            let table = self
+                .config
+                .options
+                .create_physical_plan(file_scan_config)
+                .await?;
 
             return Ok(table);
         }
@@ -367,10 +407,10 @@ impl TableProvider for ListingVCFTable {
         let mut file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            self.config.inner.table_paths.first().unwrap(),
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension(),
+            &self.config.options.table_partition_cols(),
         )
         .await?;
 
@@ -393,19 +433,17 @@ impl TableProvider for ListingVCFTable {
         }
 
         let file_schema = self.table_schema.file_schema()?;
-        let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
-            file_schema,
-            vec![file_partitions],
-        )
-        .projection_option(projection.cloned())
-        .limit_option(limit)
-        .table_partition_cols(self.options.table_partition_cols.clone())
-        .build();
+        let file_scan_config =
+            FileScanConfigBuilder::new(url.object_store(), file_schema, vec![file_partitions])
+                .projection_option(projection.cloned())
+                .limit_option(limit)
+                .table_partition_cols(self.config.options.table_partition_cols())
+                .build();
 
         let table = self
+            .config
             .options
-            .create_physical_plan_with_region(file_scan_config, Arc::new(regions[0].clone()))
+            .create_physical_plan_with_regions(file_scan_config, regions)
             .await?;
 
         return Ok(table);

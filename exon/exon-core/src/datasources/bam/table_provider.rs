@@ -31,10 +31,8 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
-        TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
@@ -233,11 +231,11 @@ pub struct ListingBAMTable<T> {
 
 impl<T> ListingBAMTable<T> {
     /// Create a new BAM listing table
-    pub fn try_new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             config,
             table_schema,
-        })
+        }
     }
 }
 

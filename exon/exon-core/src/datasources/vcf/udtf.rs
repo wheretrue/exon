@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, error::ExonError};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    error::ExonError,
+};
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
@@ -27,7 +30,7 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 
-use super::table_provider::{ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions};
+use super::table_provider::{ListingVCFTable, ListingVCFTableOptions};
 
 /// A table function that returns a table provider for a VCF file.
 pub struct VCFScanFunction {
@@ -56,12 +59,12 @@ impl TableFunctionImpl for VCFScanFunction {
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_table_config = ListingVCFTableConfig::new(
+        let listing_table_config = ExonListingConfig::new_with_options(
             listing_scan_function.listing_table_url,
             listing_table_options,
         );
 
-        let listing_table = ListingVCFTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingVCFTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }
@@ -109,9 +112,9 @@ impl TableFunctionImpl for VCFIndexedScanFunction {
         })?;
 
         let listing_table_config =
-            ListingVCFTableConfig::new(listing_table_url, listing_table_options);
+            ExonListingConfig::new_with_options(listing_table_url, listing_table_options);
 
-        let listing_table = ListingVCFTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingVCFTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

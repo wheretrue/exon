@@ -14,7 +14,11 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, error::ExonError, ExonRuntimeEnvExt};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    error::ExonError,
+    ExonRuntimeEnvExt,
+};
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
@@ -27,7 +31,7 @@ use datafusion::{
 };
 use exon_gff::new_gff_schema_builder;
 
-use super::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions};
+use super::table_provider::{ListingGFFTable, ListingGFFTableOptions};
 
 /// A table function that returns a table provider for a GFF file.
 pub struct GFFScanFunction {
@@ -58,11 +62,12 @@ impl TableFunctionImpl for GFFScanFunction {
             ListingGFFTableOptions::new(listing_scan_function.file_compression_type)
                 .with_indexed(false);
 
-        let listing_table_config =
-            ListingGFFTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
-        let listing_table = ListingGFFTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingGFFTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }
@@ -109,10 +114,10 @@ impl TableFunctionImpl for GFFIndexedScanFunction {
             .with_region(region);
 
         let listing_table_config =
-            ListingGFFTableConfig::new(listing_table_url).with_options(listing_table_options);
+            ExonListingConfig::new_with_options(listing_table_url, listing_table_options);
 
         let schema = new_gff_schema_builder().build();
-        let listing_table = ListingGFFTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingGFFTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

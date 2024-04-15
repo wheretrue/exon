@@ -71,7 +71,7 @@ impl TableFunctionImpl for BAMScanFunction {
         let listing_table_config =
             ExonListingConfig::new_with_options(listing_scan_function.listing_table_url, options);
 
-        let listing_table = ListingBAMTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingBAMTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }
@@ -131,7 +131,7 @@ impl TableFunctionImpl for BAMIndexedScanFunction {
 
         let listing_table_config = ExonListingConfig::new_with_options(listing_table_url, options);
 
-        let listing_table = ListingBAMTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingBAMTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

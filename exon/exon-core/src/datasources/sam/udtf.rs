@@ -14,8 +14,11 @@
 
 use std::sync::Arc;
 
-use super::table_provider::{ListingSAMTable, ListingSAMTableConfig, ListingSAMTableOptions};
-use crate::{config::extract_config_from_state, datasources::ScanFunction};
+use super::table_provider::{ListingSAMTable, ListingSAMTableOptions};
+use crate::{
+    config::extract_config_from_state,
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -54,11 +57,12 @@ impl TableFunctionImpl for SAMScanFunction {
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_table_config =
-            ListingSAMTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
-        let listing_table = ListingSAMTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingSAMTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }
