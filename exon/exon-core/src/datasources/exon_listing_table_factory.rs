@@ -31,9 +31,10 @@ use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRu
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
     bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
-    bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
+    bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
     bigwig,
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
+    exon_listing_table_options::ExonListingConfig,
     fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
     gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
@@ -105,7 +106,7 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema()?;
 
-                let config = ListingBEDTableConfig::new(table_path).with_options(options);
+                let config = ExonListingConfig::new_with_options(table_path, options);
                 let table = ListingBEDTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))

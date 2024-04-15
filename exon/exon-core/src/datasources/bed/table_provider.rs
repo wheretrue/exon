@@ -15,7 +15,11 @@
 use std::{any::Any, sync::Arc};
 
 use crate::{
-    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    datasources::{
+        exon_listing_table_options::{ExonListingConfig, ExonListingOptions},
+        hive_partition::filter_matches_partition_cols,
+        ExonFileType,
+    },
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
@@ -24,13 +28,13 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
+        file_format::file_compression_type::{self, FileCompressionType},
         listing::{ListingTableConfig, ListingTableUrl},
         physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::context::SessionState,
+    execution::{context::SessionState, object_store::ObjectStoreUrl},
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -40,32 +44,6 @@ use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use super::BEDScan;
-
-#[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingBEDTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingBEDTableOptions>,
-}
-
-impl ListingBEDTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingBEDTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 /// Listing options for a BED table
@@ -78,6 +56,31 @@ pub struct ListingBEDTableOptions {
 
     /// A list of table partition columns
     table_partition_cols: Vec<Field>,
+}
+
+impl ExonListingOptions for ListingBEDTableOptions {
+    fn table_partition_cols(&self) -> Vec<Field> {
+        self.table_partition_cols()
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = BEDScan::new(conf.clone(), self.file_compression_type);
+
+        Ok(Arc::new(scan))
+    }
+}
+
+impl Default for ListingBEDTableOptions {
+    fn default() -> Self {
+        Self::new(FileCompressionType::UNCOMPRESSED)
+    }
 }
 
 impl ListingBEDTableOptions {
@@ -107,42 +110,28 @@ impl ListingBEDTableOptions {
 
         Ok(schema_builder.build())
     }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BEDScan::new(conf.clone(), self.file_compression_type);
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A BED listing table
-pub struct ListingBEDTable {
-    table_paths: Vec<ListingTableUrl>,
+pub struct ListingBEDTable<T: Send + ExonListingOptions> {
+    config: ExonListingConfig<T>,
 
     table_schema: TableSchema,
-
-    options: ListingBEDTableOptions,
 }
 
-impl ListingBEDTable {
+impl<T: Send + ExonListingOptions> ListingBEDTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingBEDTableConfig, table_schema: TableSchema) -> Result<Self> {
+    pub fn try_new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
-            table_paths: config.inner.table_paths,
+            config,
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
         })
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingBEDTable {
+impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -161,7 +150,7 @@ impl TableProvider for ListingBEDTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -172,21 +161,22 @@ impl TableProvider for ListingBEDTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
+        let first_path = if let Some(url) = self.config.inner.table_paths.first() {
+            url
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
+        let object_store_url = ObjectStoreUrl::parse(&first_path)?;
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            &first_path,
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension(),
+            &self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
@@ -197,10 +187,14 @@ impl TableProvider for ListingBEDTable {
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())
                 .limit_option(limit)
-                .table_partition_cols(self.options.table_partition_cols.clone())
+                .table_partition_cols(self.config.options.table_partition_cols())
                 .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        let plan = self
+            .config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await?;
 
         Ok(plan)
     }

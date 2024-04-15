@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    ExonRuntimeEnvExt,
+};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -23,7 +26,7 @@ use datafusion::{
 };
 use exon_bed::BEDSchemaBuilder;
 
-use super::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions};
+use super::table_provider::{ListingBEDTable, ListingBEDTableOptions};
 
 /// A table function that returns a table provider for a BED file.
 pub struct BEDScanFunction {
@@ -52,9 +55,10 @@ impl TableFunctionImpl for BEDScanFunction {
         let listing_table_options =
             ListingBEDTableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_table_config =
-            ListingBEDTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
         let listing_table = ListingBEDTable::try_new(listing_table_config, schema)?;
 

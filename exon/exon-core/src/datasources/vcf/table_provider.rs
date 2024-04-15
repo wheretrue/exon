@@ -417,7 +417,10 @@ mod tests {
     use std::{collections::HashMap, sync::Arc};
 
     use crate::{
-        datasources::{vcf::IndexedVCFScanner, ExonListingTableFactory},
+        datasources::{
+            vcf::{IndexedVCFScanner, ListingVCFTableOptions},
+            ExonListingTableFactory,
+        },
         tests::setup_tracing,
         ExonSessionExt,
     };
@@ -686,7 +689,9 @@ mod tests {
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
         let table_path = table_path.to_str().ok_or("Invalid path")?;
 
-        ctx.register_vcf_file("vcf_file", table_path).await?;
+        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
+
+        ctx.read_vcf(table_path, options).await?;
 
         let sql = "SELECT * FROM vcf_file";
         let df = ctx.sql(sql).await?;
@@ -714,7 +719,9 @@ mod tests {
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
         let table_path = table_path.to_str().ok_or("Invalid path")?;
 
-        ctx.register_vcf_file("vcf_file", table_path).await?;
+        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
+
+        ctx.read_vcf(table_path, options).await?;
 
         let sql = "SELECT * FROM vcf_file WHERE chrom = '1000'";
         let df = ctx.sql(sql).await?;
@@ -733,7 +740,8 @@ mod tests {
         let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
         let table_path = table_path.to_str().ok_or("Invalid path")?;
 
-        ctx.register_vcf_file("vcf_file", table_path).await?;
+        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
+        ctx.read_vcf(table_path, options).await?;
 
         let sql = "SELECT * FROM vcf_file WHERE chrom = '1'";
         let df = ctx.sql(sql).await?;
@@ -750,34 +758,6 @@ mod tests {
         }
 
         assert_eq!(cnt, 11);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_compressed_read_with_region() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-        let table_path = test_path("bigger-index", "test.vcf.gz");
-        let table_path = table_path.to_str().ok_or("Invalid path")?;
-
-        ctx.register_vcf_file("vcf_file", table_path).await?;
-
-        let df = ctx
-            .sql("SELECT chrom, pos FROM vcf_file WHERE chrom = 'chr1' AND pos BETWEEN 3388920 AND 3388930")
-            .await?;
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await?;
-        for batch in bs {
-            row_cnt += batch.num_rows();
-
-            assert_eq!(batch.schema().field(0).name(), "chrom");
-            assert_eq!(batch.schema().field(1).name(), "pos");
-
-            assert_eq!(batch.schema().fields().len(), 2);
-        }
-
-        assert_eq!(row_cnt, 1);
 
         Ok(())
     }

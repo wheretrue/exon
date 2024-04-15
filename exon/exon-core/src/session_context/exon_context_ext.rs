@@ -18,7 +18,6 @@ use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
-        TableProvider,
     },
     error::{DataFusionError, Result},
     execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
@@ -26,14 +25,16 @@ use datafusion::{
 };
 
 use crate::{
-    datasources::bigwig,
+    datasources::{
+        bam::table_provider::ListingBAMTableOptions, bigwig,
+        sam::table_provider::ListingSAMTableOptions,
+    },
     error::ExonError,
     udfs::{
         register_bigwig_region_filter_udf, sam::cram_region_filter::register_cram_region_filter_udf,
     },
 };
 
-use noodles::core::Region;
 use object_store::local::LocalFileSystem;
 
 #[cfg(feature = "mzml")]
@@ -48,10 +49,7 @@ use crate::datasources::genbank::GenbankScanFunction;
 use crate::{
     datasources::{
         bam::{BAMIndexedScanFunction, BAMScanFunction},
-        bcf::{
-            table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
-            BCFScanFunction,
-        },
+        bcf::BCFScanFunction,
         bed::BEDScanFunction,
         fasta::{
             table_provider::{
@@ -69,10 +67,7 @@ use crate::{
         gtf::GTFScanFunction,
         hmmdomtab::HMMDomTabScanFunction,
         sam::SAMScanFunction,
-        vcf::{
-            ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions, VCFIndexedScanFunction,
-            VCFScanFunction,
-        },
+        vcf::{ListingVCFTableOptions, VCFIndexedScanFunction, VCFScanFunction},
         ExonFileType, ExonListingTableFactory,
     },
     new_exon_config,
@@ -230,6 +225,9 @@ pub trait ExonSessionExt {
         ctx
     }
 
+    /// Infer the file type and compression, then read the file.
+    async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError>;
+
     /// Register a Exon table from the given path of a certain type and optional compression type.
     async fn register_exon_table(
         &self,
@@ -256,87 +254,57 @@ pub trait ExonSessionExt {
     async fn read_fasta(
         &self,
         table_path: &str,
-        fasta_listing_table_options: Option<ListingFASTATableOptions>,
+        options: ListingFASTATableOptions,
     ) -> Result<DataFrame, ExonError>;
 
     /// Read a BAM file.
     async fn read_bam(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::BAM, file_compression_type)
-            .await;
-    }
-
-    /// Infer the file type and compression, then read the file.
-    async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError>;
+        options: ListingVCFTableOptions,
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a SAM file.
     async fn read_sam(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::SAM, file_compression_type)
-            .await;
-    }
+        options: ListingSAMTableOptions,
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a VCF file.
     async fn read_vcf(
         &self,
         table_path: &str,
-        file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::VCF, file_compression_type)
-            .await;
-    }
+        options: ListingVCFTableOptions,
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a BCF file.
     async fn read_bcf(
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::BCF, file_compression_type)
-            .await;
-    }
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a GFF file.
     async fn read_gff(
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::GFF, file_compression_type)
-            .await;
-    }
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a GTF file.
     async fn read_gtf(
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        self.read_exon_table(table_path, ExonFileType::GTF, file_compression_type)
-            .await
-    }
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a BED file.
     async fn read_bed(
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::BED, file_compression_type)
-            .await;
-    }
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a FASTQ file.
     async fn read_fastq(
@@ -351,22 +319,14 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::GENBANK, file_compression_type)
-            .await;
-    }
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a HMMER DOMTAB file.
     async fn read_hmm_dom_tab(
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::HMMDOMTAB, file_compression_type)
-            .await;
-    }
+    ) -> Result<DataFrame, ExonError>;
 
     /// Read a MZML file.
     #[cfg(feature = "mzml")]
@@ -374,41 +334,7 @@ pub trait ExonSessionExt {
         &self,
         table_path: &str,
         file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError> {
-        return self
-            .read_exon_table(table_path, ExonFileType::MZML, file_compression_type)
-            .await;
-    }
-
-    /// Register a VCF file.
-    async fn register_vcf_file(
-        &self,
-        table_name: &str,
-        table_path: &str,
-    ) -> Result<Option<Arc<dyn TableProvider>>, DataFusionError>;
-
-    /// Query a BCF file.
-    ///
-    /// File must be indexed and index file must be in the same directory as the BCF file.
-    async fn query_bcf_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError>;
-
-    /// Query a BAM file.
-    ///
-    /// File must be indexed and index file must be in the same directory as the BAM file.
-    // async fn query_bam_file(
-    //     &self,
-    //     table_path: &str,
-    //     query: &str,
-    // ) -> Result<DataFrame, DataFusionError>;
-
-    /// Query a gzipped indexed VCF file.
-    ///
-    /// File must be indexed and index file must be in the same directory as the VCF file.
-    async fn query_vcf_file(&self, table_path: &str, query: &str) -> Result<DataFrame, ExonError>;
+    ) -> Result<DataFrame, ExonError>;
 }
 
 #[async_trait]
@@ -438,6 +364,23 @@ impl ExonSessionExt for SessionContext {
             .await?;
 
         let table = self.read_table(table)?;
+
+        Ok(table)
+    }
+
+    async fn read_fasta(
+        &self,
+        table_path: &str,
+        options: ListingFASTATableOptions,
+    ) -> Result<DataFrame, ExonError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state()).await?;
+
+        let config = ListingFASTATableConfig::new(table_path, options);
+        let table = ListingFASTATable::try_new(config, table_schema)?;
+
+        let table = self.read_table(Arc::new(table))?;
 
         Ok(table)
     }
@@ -472,26 +415,6 @@ impl ExonSessionExt for SessionContext {
 
         let config = bigwig::value::ListingTableConfig::new(table_path, options);
         let table = bigwig::value::ListingTable::try_new(config, table_schema)?;
-
-        let table = self.read_table(Arc::new(table))?;
-
-        Ok(table)
-    }
-
-    /// Read a FASTA file.
-    async fn read_fasta(
-        &self,
-        table_path: &str,
-        fasta_listing_table_options: Option<ListingFASTATableOptions>,
-    ) -> Result<DataFrame, ExonError> {
-        let table_path = ListingTableUrl::parse(table_path)?;
-        let options = fasta_listing_table_options.unwrap_or_default();
-
-        let state = self.state();
-        let table_schema = options.infer_schema(&state).await?;
-
-        let config = ListingFASTATableConfig::new(table_path, options);
-        let table = ListingFASTATable::try_new(config, table_schema)?;
 
         let table = self.read_table(Arc::new(table))?;
 
@@ -553,93 +476,6 @@ impl ExonSessionExt for SessionContext {
         let table = self.read_table(table)?;
 
         Ok(table)
-    }
-
-    async fn register_vcf_file(
-        &self,
-        table_name: &str,
-        table_path: &str,
-    ) -> Result<Option<Arc<dyn TableProvider>>, DataFusionError> {
-        let vcf_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
-
-        let table_path = ListingTableUrl::parse(table_path)?;
-
-        let table_schema = vcf_table_options
-            .infer_schema(&self.state(), &table_path)
-            .await?;
-
-        let config = ListingVCFTableConfig::new(table_path, vcf_table_options);
-
-        let provider = Arc::new(ListingVCFTable::try_new(config, table_schema)?);
-        self.register_table(table_name, provider)
-    }
-
-    async fn query_vcf_file(&self, table_path: &str, query: &str) -> Result<DataFrame, ExonError> {
-        let region: Region = query.parse().map_err(|e| {
-            DataFusionError::Execution(format!(
-                "Failed to parse query '{}' as region: {}",
-                query, e
-            ))
-        })?;
-
-        self.register_vcf_file("vcf_file", table_path).await?;
-
-        let name = std::str::from_utf8(region.name())?;
-        let interval = region.interval();
-        let lower_bound = interval.start();
-        let upper_bound = interval.end();
-
-        let sql = match (lower_bound, upper_bound) {
-            (Some(lb), Some(ub)) => format!(
-                "SELECT * FROM vcf_file WHERE chrom = '{}' AND pos BETWEEN {} AND {}",
-                name, lb, ub
-            ),
-            (Some(lb), None) => {
-                format!(
-                    "SELECT * FROM vcf_file WHERE chrom = '{}' AND pos >= {}",
-                    name, lb
-                )
-            }
-            (None, Some(ub)) => {
-                format!(
-                    "SELECT * FROM vcf_file WHERE chrom = '{}' AND pos <= {}",
-                    name, ub
-                )
-            }
-            (None, None) => format!("SELECT * FROM vcf_file WHERE chrom = '{}'", name),
-        };
-
-        let resp = self.sql(&sql).await?;
-
-        Ok(resp)
-    }
-
-    async fn query_bcf_file(
-        &self,
-        table_path: &str,
-        query: &str,
-    ) -> Result<DataFrame, DataFusionError> {
-        let region = query.parse().map_err(|e| {
-            DataFusionError::Execution(format!(
-                "Failed to parse query '{}' as region: {}",
-                query, e
-            ))
-        })?;
-
-        let listing_url = ListingTableUrl::parse(table_path)?;
-
-        let state = self.state();
-
-        let options = ListingBCFTableOptions::default().with_region(region);
-
-        let schema = options.infer_schema(&state, &listing_url).await?;
-        let config = ListingBCFTableConfig::new(listing_url).with_options(options);
-
-        let table = ListingBCFTable::try_new(config, schema)?;
-
-        let df = self.read_table(Arc::new(table))?;
-
-        Ok(df)
     }
 }
 
@@ -713,7 +549,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 fasta_path.to_str().unwrap(),
-                Some(ListingFASTATableOptions::default().with_file_extension("fa".to_string())),
+                ListingFASTATableOptions::default().with_file_extension("fa".to_string()),
             )
             .await?;
 
@@ -768,7 +604,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 "s3://test-bucket/test.fa",
-                Some(ListingFASTATableOptions::default().with_file_extension("fa".to_string())),
+                ListingFASTATableOptions::default().with_file_extension("fa".to_string()),
             )
             .await?;
 
@@ -787,7 +623,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 fasta_path.to_str().unwrap(),
-                Some(ListingFASTATableOptions::default().with_file_extension("fa".to_string())),
+                ListingFASTATableOptions::default().with_file_extension("fa".to_string()),
             )
             .await?;
 
@@ -796,10 +632,8 @@ mod tests {
         let df = ctx
             .read_fasta(
                 fasta_path.to_str().unwrap(),
-                Some(
-                    ListingFASTATableOptions::new(FileCompressionType::GZIP)
-                        .with_file_extension("fa".to_string()),
-                ),
+                ListingFASTATableOptions::new(FileCompressionType::GZIP)
+                    .with_file_extension("fa".to_string()),
             )
             .await?;
 
@@ -817,7 +651,7 @@ mod tests {
             .with_file_extension("fa".to_string());
 
         let df = ctx
-            .read_fasta(fasta_path.to_str().unwrap(), Some(options))
+            .read_fasta(fasta_path.to_str().unwrap(), options)
             .await?;
 
         assert_eq!(df.count().await?, 2);
