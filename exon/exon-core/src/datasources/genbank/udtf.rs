@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    ExonRuntimeEnvExt,
+};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -23,9 +26,7 @@ use datafusion::{
 };
 use exon_genbank::schema;
 
-use super::table_provider::{
-    ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
-};
+use super::table_provider::{ListingGenbankTable, ListingGenbankTableOptions};
 
 /// A table function that returns a table provider for a Genbank file.
 pub struct GenbankScanFunction {
@@ -54,11 +55,12 @@ impl TableFunctionImpl for GenbankScanFunction {
         let listing_table_options =
             ListingGenbankTableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_table_config =
-            ListingGenbankTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
-        let listing_table = ListingGenbankTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingGenbankTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

@@ -37,11 +37,9 @@ use super::{
     exon_listing_table_options::ExonListingConfig,
     fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
     fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
-    gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
-    gtf::table_provider::{ListingGTFTable, ListingGTFTableConfig, ListingGTFTableOptions},
-    hmmdomtab::table_provider::{
-        ListingHMMDomTabTable, ListingHMMDomTabTableConfig, ListingHMMDomTabTableOptions,
-    },
+    gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
+    gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
+    hmmdomtab::table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
     sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
     vcf::{ListingVCFTable, ListingVCFTableOptions},
 };
@@ -50,14 +48,10 @@ use super::{
 use super::fcs::table_provider::{ListingFCSTable, ListingFCSTableConfig, ListingFCSTableOptions};
 
 #[cfg(feature = "mzml")]
-use super::mzml::table_provider::{
-    ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions,
-};
+use super::mzml::table_provider::{ListingMzMLTable, ListingMzMLTableOptions};
 
 #[cfg(feature = "genbank")]
-use super::genbank::table_provider::{
-    ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
-};
+use super::genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions};
 
 const FILE_EXTENSION_OPTION: &str = "file_extension";
 const INDEXED_OPTION: &str = "indexed";
@@ -107,7 +101,7 @@ impl ExonListingTableFactory {
                 let table_schema = options.infer_schema()?;
 
                 let config = ExonListingConfig::new_with_options(table_path, options);
-                let table = ListingBEDTable::try_new(config, table_schema)?;
+                let table = ListingBEDTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -162,8 +156,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let schema = options.infer_schema().await?;
 
-                let config = ListingMzMLTableConfig::new(table_path).with_options(options);
-                let table = ListingMzMLTable::try_new(config, schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingMzMLTable::new(config, schema);
 
                 Ok(Arc::new(table))
             }
@@ -172,8 +166,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = options.infer_schema().await?;
 
-                let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
-                let table = ListingHMMDomTabTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingHMMDomTabTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -182,8 +176,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = options.infer_schema();
 
-                let config = ListingGTFTableConfig::new(table_path).with_options(options);
-                let table = ListingGTFTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGTFTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -192,8 +186,8 @@ impl ExonListingTableFactory {
                 let options = ListingGenbankTableOptions::new(file_compression_type);
                 let schema = options.infer_schema().await?;
 
-                let config = ListingGenbankTableConfig::new(table_path).with_options(options);
-                let table = ListingGenbankTable::try_new(config, schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGenbankTable::new(config, schema);
 
                 Ok(Arc::new(table))
             }

@@ -105,13 +105,14 @@ impl Default for ListingVCFTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingVCFTableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
         self.table_partition_cols
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
+    fn file_extension(&self) -> String {
+        self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -128,6 +129,7 @@ impl ExonListingOptions for ListingVCFTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonIndexedListingOptions for ListingVCFTableOptions {
     fn indexed(&self) -> bool {
         self.indexed
@@ -286,7 +288,7 @@ impl<T> ListingVCFTable<T> {
 }
 
 #[async_trait]
-impl<T: ExonIndexedListingOptions> TableProvider for ListingVCFTable<T> {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -380,7 +382,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingVCFTable<T> {
                 &object_store,
                 url,
                 filters,
-                self.config.options.file_extension(),
+                &self.config.options.file_extension(),
                 &self.config.options.table_partition_cols(),
             )
             .await?
@@ -392,7 +394,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingVCFTable<T> {
                 FileScanConfigBuilder::new(url.object_store(), file_schema, vec![file_list])
                     .projection_option(projection.cloned())
                     .limit_option(limit)
-                    .table_partition_cols(self.config.options.table_partition_cols())
+                    .table_partition_cols(self.config.options.table_partition_cols().to_vec())
                     .build();
 
             let table = self
@@ -409,7 +411,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingVCFTable<T> {
             &object_store,
             self.config.inner.table_paths.first().unwrap(),
             filters,
-            self.config.options.file_extension(),
+            &self.config.options.file_extension(),
             &self.config.options.table_partition_cols(),
         )
         .await?;
@@ -437,7 +439,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingVCFTable<T> {
             FileScanConfigBuilder::new(url.object_store(), file_schema, vec![file_partitions])
                 .projection_option(projection.cloned())
                 .limit_option(limit)
-                .table_partition_cols(self.config.options.table_partition_cols())
+                .table_partition_cols(self.config.options.table_partition_cols().to_vec())
                 .build();
 
         let table = self

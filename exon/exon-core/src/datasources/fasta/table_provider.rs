@@ -68,13 +68,14 @@ pub struct ListingFASTATableOptions {
     region_file: Option<String>,
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingFASTATableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
         self.table_partition_cols
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
+    fn file_extension(&self) -> String {
+        self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -85,12 +86,13 @@ impl ExonListingOptions for ListingFASTATableOptions {
         &self,
         conf: datafusion::datasource::physical_plan::FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTAScan::new(conf, self.file_compression_type(), 2000);
+        let scan = FASTAScan::new(conf, self.file_compression_type().clone(), 2000);
 
         Ok(Arc::new(scan))
     }
 }
 
+#[async_trait]
 impl ExonIndexedListingOptions for ListingFASTATableOptions {
     fn indexed(&self) -> bool {
         self.region.is_some() || self.region_file.is_some()
@@ -105,16 +107,17 @@ impl ExonIndexedListingOptions for ListingFASTATableOptions {
         conf: datafusion::datasource::physical_plan::FileScanConfig,
         _region: Vec<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedFASTAScanner::new(conf, self.file_compression_type(), 2000);
+        let scan = IndexedFASTAScanner::new(conf, self.file_compression_type().clone(), 2000);
 
         Ok(Arc::new(scan))
     }
 }
 
+#[async_trait]
 impl ExonFileIndexedListingOptions for ListingFASTATableOptions {
     fn region_file(&self) -> crate::Result<&str> {
-        if let Some(f) = self.region_file {
-            Ok(&f)
+        if let Some(f) = &self.region_file {
+            Ok(f.as_str())
         } else {
             Err(crate::error::ExonError::ExecutionError(
                 "Expected file indexed table to have a configured index file".to_string(),
@@ -411,7 +414,7 @@ impl<T: ExonFileIndexedListingOptions> TableProvider for ListingFASTATable<T> {
                 vec![file_partitions],
             )
             .projection_option(projection.cloned())
-            .table_partition_cols(self.config.options.table_partition_cols())
+            .table_partition_cols(self.config.options.table_partition_cols().to_vec())
             .limit_option(limit)
             .build();
 
@@ -421,13 +424,7 @@ impl<T: ExonFileIndexedListingOptions> TableProvider for ListingFASTATable<T> {
                 .create_physical_plan_with_regions(file_scan_config, regions.to_vec())
                 .await?;
 
-            let scan = IndexedFASTAScanner::new(
-                file_scan_config.clone(),
-                self.config.options.file_compression_type(),
-                fasta_sequence_buffer_capacity,
-            );
-
-            Ok(Arc::new(scan))
+            Ok(scan)
         } else {
             let file_scan_config = FileScanConfigBuilder::new(
                 object_store_url.clone(),
@@ -435,13 +432,13 @@ impl<T: ExonFileIndexedListingOptions> TableProvider for ListingFASTATable<T> {
                 vec![file_list],
             )
             .projection_option(projection.cloned())
-            .table_partition_cols(self.config.options.table_partition_cols())
+            .table_partition_cols(self.config.options.table_partition_cols().to_vec())
             .limit_option(limit)
             .build();
 
             let scan = FASTAScan::new(
                 file_scan_config,
-                self.config.options.file_compression_type(),
+                self.config.options.file_compression_type().clone(),
                 fasta_sequence_buffer_capacity,
             );
 

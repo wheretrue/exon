@@ -80,13 +80,14 @@ impl Default for ListingBAMTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingBAMTableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols
+        self.table_partition_cols.clone()
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
+    fn file_extension(&self) -> String {
+        self.file_extension.clone()
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -102,14 +103,15 @@ impl ExonListingOptions for ListingBAMTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonIndexedListingOptions for ListingBAMTableOptions {
     fn indexed(&self) -> bool {
         self.indexed
     }
 
     fn regions(&self) -> Vec<Region> {
-        if let Some(region) = self.region {
-            vec![region]
+        if let Some(region) = &self.region {
+            vec![region.clone()]
         } else {
             Vec::new()
         }
@@ -290,8 +292,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store_url = url.object_store();
-        let object_store = state.runtime_env().object_store(object_store_url)?;
+        let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let regions = filters
             .iter()
@@ -336,7 +337,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
                 &object_store,
                 url,
                 filters,
-                self.config.options.file_extension(),
+                &self.config.options.file_extension(),
                 &self.config.options.table_partition_cols(),
             )
             .await?
@@ -344,14 +345,14 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
             .await?;
 
             let file_scan_config = FileScanConfig {
-                object_store_url,
+                object_store_url: url.object_store(),
                 file_schema: self.table_schema.file_schema()?,
                 file_groups: vec![file_list],
                 statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
                 projection: projection.cloned(),
                 limit,
                 output_ordering: Vec::new(),
-                table_partition_cols: self.config.options.table_partition_cols(),
+                table_partition_cols: self.config.options.table_partition_cols().to_vec(),
             };
 
             let plan = self
@@ -363,13 +364,16 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
             return Ok(plan);
         }
 
+        let file_extension = self.config.options.file_extension();
+        let partition_cols = self.config.options.table_partition_cols();
+
         let mut file_list = pruned_partition_list(
             state,
             &object_store,
             url,
             filters,
-            self.config.options.file_extension(),
-            &self.config.options.table_partition_cols(),
+            &file_extension,
+            &partition_cols,
         )
         .await?;
 
@@ -392,14 +396,14 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
         }
 
         let file_scan_config = FileScanConfig {
-            object_store_url: object_store_url.clone(),
+            object_store_url: url.object_store(),
             file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_partition_with_ranges],
             statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),
-            table_partition_cols: self.config.options.table_partition_cols(),
+            table_partition_cols: self.config.options.table_partition_cols().to_vec(),
         };
 
         let table = self

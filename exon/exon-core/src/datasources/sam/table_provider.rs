@@ -18,10 +18,8 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
-        TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
@@ -45,32 +43,6 @@ use crate::{
 
 use super::SAMScan;
 
-#[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingSAMTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingSAMTableOptions>,
-}
-
-impl ListingSAMTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingSAMTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 /// Listing options for a SAM table
 pub struct ListingSAMTableOptions {
@@ -84,13 +56,14 @@ pub struct ListingSAMTableOptions {
     tag_as_struct: bool,
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingSAMTableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols.clone()
+        self.table_partition_cols
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
+    fn file_extension(&self) -> String {
+        self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -101,7 +74,9 @@ impl ExonListingOptions for ListingSAMTableOptions {
         &self,
         conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        self.create_physical_plan(conf).await
+        let scan = SAMScan::new(conf);
+
+        Ok(Arc::new(scan))
     }
 }
 
@@ -174,15 +149,6 @@ impl ListingSAMTableOptions {
             ..self
         }
     }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = SAMScan::new(conf);
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -247,7 +213,7 @@ impl<T: ExonListingOptions> TableProvider for ListingSAMTable<T> {
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            self.config.options.file_extension(),
+            &self.config.options.file_extension(),
             &self.config.options.table_partition_cols(),
         )
         .await?
@@ -263,7 +229,7 @@ impl<T: ExonListingOptions> TableProvider for ListingSAMTable<T> {
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),
-            table_partition_cols: self.config.options.table_partition_cols(),
+            table_partition_cols: self.config.options.table_partition_cols().to_vec(),
         };
 
         let plan = self

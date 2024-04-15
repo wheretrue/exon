@@ -112,13 +112,14 @@ impl Default for ListingGFFTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingGFFTableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
         self.table_partition_cols
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
+    fn file_extension(&self) -> String {
+        self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -135,6 +136,7 @@ impl ExonListingOptions for ListingGFFTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonIndexedListingOptions for ListingGFFTableOptions {
     fn indexed(&self) -> bool {
         self.indexed
@@ -153,7 +155,10 @@ impl ExonIndexedListingOptions for ListingGFFTableOptions {
         conf: FileScanConfig,
         region: Vec<Region>,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        todo!()
+        let scanner =
+            IndexedGffScanner::new(conf.clone(), Arc::new(region.first().unwrap().clone()))?;
+
+        Ok(Arc::new(scanner))
     }
 }
 
@@ -321,7 +326,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingGFFTable<T> {
                 &object_store,
                 &url,
                 filters,
-                self.config.options.file_extension(),
+                &self.config.options.file_extension(),
                 &self.config.options.table_partition_cols(),
             )
             .await?;
@@ -350,7 +355,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingGFFTable<T> {
                 vec![file_partitions],
             )
             .projection_option(projection.cloned())
-            .table_partition_cols(self.config.options.table_partition_cols())
+            .table_partition_cols(self.config.options.table_partition_cols().to_vec())
             .limit_option(limit)
             .build();
 
@@ -367,7 +372,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingGFFTable<T> {
             &object_store,
             url,
             filters,
-            self.config.options.file_extension(),
+            &self.config.options.file_extension(),
             &self.config.options.table_partition_cols(),
         )
         .await?
@@ -380,7 +385,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingGFFTable<T> {
             vec![file_list],
         )
         .projection_option(projection.cloned())
-        .table_partition_cols(self.config.options.table_partition_cols())
+        .table_partition_cols(self.config.options.table_partition_cols().to_vec())
         .limit_option(limit)
         .build();
 

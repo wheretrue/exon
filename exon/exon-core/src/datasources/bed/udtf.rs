@@ -60,7 +60,7 @@ impl TableFunctionImpl for BEDScanFunction {
             listing_table_options,
         );
 
-        let listing_table = ListingBEDTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingBEDTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

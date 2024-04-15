@@ -23,7 +23,7 @@ use datafusion::{
         physical_plan::FileScanConfig,
         TableProvider,
     },
-    error::{DataFusionError, Result},
+    error::Result,
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
@@ -33,7 +33,11 @@ use exon_common::TableSchema;
 use futures::TryStreamExt;
 
 use crate::{
-    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    datasources::{
+        exon_listing_table_options::{ExonListingConfig, ExonListingOptions},
+        hive_partition::filter_matches_partition_cols,
+        ExonFileType,
+    },
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
@@ -80,6 +84,35 @@ pub struct ListingHMMDomTabTableOptions {
     table_partition_cols: Vec<Field>,
 }
 
+#[async_trait]
+impl ExonListingOptions for ListingHMMDomTabTableOptions {
+    fn table_partition_cols(&self) -> Vec<Field> {
+        self.table_partition_cols
+    }
+
+    fn file_extension(&self) -> String {
+        self.file_extension
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        self.file_compression_type
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = HMMDomTabScan::new(conf.clone(), self.file_compression_type);
+        Ok(Arc::new(scan))
+    }
+}
+
+impl Default for ListingHMMDomTabTableOptions {
+    fn default() -> Self {
+        Self::new(FileCompressionType::UNCOMPRESSED)
+    }
+}
+
 impl ListingHMMDomTabTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
@@ -108,41 +141,28 @@ impl ListingHMMDomTabTableOptions {
         let table_schema = schema_builder.build();
         Ok(table_schema)
     }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = HMMDomTabScan::new(conf.clone(), self.file_compression_type);
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A HMM Dom listing table
-pub struct ListingHMMDomTabTable {
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingHMMDomTabTable<T> {
     table_schema: TableSchema,
 
-    options: ListingHMMDomTabTableOptions,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingHMMDomTabTable {
+impl<T> ListingHMMDomTabTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingHMMDomTabTableConfig, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
-        })
+            config,
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingHMMDomTabTable {
+impl<T: ExonListingOptions> TableProvider for ListingHMMDomTabTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -161,7 +181,7 @@ impl TableProvider for ListingHMMDomTabTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -172,35 +192,38 @@ impl TableProvider for ListingHMMDomTabTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
+        let url = if let Some(url) = self.config.inner.table_paths.first() {
             url.object_store()
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state.runtime_env().object_store(url)?;
 
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            &self.config.inner.table_paths[0],
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            &self.config.options.file_extension(),
+            &self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
         .await?;
 
         let file_schema = self.table_schema.file_schema()?;
-        let file_scan_config =
-            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
-                .projection_option(projection.cloned())
-                .table_partition_cols(self.options.table_partition_cols.clone())
-                .limit_option(limit)
-                .build();
+        let file_scan_config = FileScanConfigBuilder::new(url, file_schema, vec![file_list])
+            .projection_option(projection.cloned())
+            .table_partition_cols(self.config.options.table_partition_cols().to_vec())
+            .limit_option(limit)
+            .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        let plan = self
+            .config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await?;
 
         Ok(plan)
     }

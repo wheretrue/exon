@@ -28,14 +28,14 @@ use crate::{
     datasources::{
         bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
         bcf::table_provider::ListingBCFTableOptions,
-        bed::table_provider::ListingBEDTableOptions,
+        bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
         bigwig,
         exon_listing_table_options::ExonListingConfig,
-        genbank::table_provider::ListingGenbankTableOptions,
+        genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions},
         gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
-        gtf::table_provider::ListingGTFTableOptions,
-        hmmdomtab::table_provider::ListingHMMDomTabTableOptions,
-        mzml::table_provider::ListingMzMLTableOptions,
+        gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
+        hmmdomtab::table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
+        mzml::table_provider::{ListingMzMLTable, ListingMzMLTableOptions},
         sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
         vcf::ListingVCFTable,
     },
@@ -358,6 +358,91 @@ impl ExonSessionExt for SessionContext {
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingBAMTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_gtf(
+        &self,
+        table_path: &str,
+        options: ListingGTFTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema();
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingGTFTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_genbank(
+        &self,
+        table_path: &str,
+        options: ListingGenbankTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema().await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingGenbankTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_hmm_dom_tab(
+        &self,
+        table_path: &str,
+        options: ListingHMMDomTabTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema().await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingHMMDomTabTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_mzml(
+        &self,
+        table_path: &str,
+        options: ListingMzMLTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema().await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingMzMLTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_bed(
+        &self,
+        table_path: &str,
+        options: ListingBEDTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema()?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = ListingBEDTable::new(config, table_schema);
 
         let table = self.read_table(Arc::new(table))?;
 

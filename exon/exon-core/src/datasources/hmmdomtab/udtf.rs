@@ -16,11 +16,9 @@ use std::sync::Arc;
 
 use super::{
     hmm_dom_tab_config::HMMDomTabSchemaBuilder,
-    table_provider::{
-        ListingHMMDomTabTable, ListingHMMDomTabTableConfig, ListingHMMDomTabTableOptions,
-    },
+    table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
 };
-use crate::datasources::ScanFunction;
+use crate::datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -40,11 +38,12 @@ impl TableFunctionImpl for HMMDomTabScanFunction {
         let listing_table_options =
             ListingHMMDomTabTableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_table_config =
-            ListingHMMDomTabTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
-        let listing_table = ListingHMMDomTabTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingHMMDomTabTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

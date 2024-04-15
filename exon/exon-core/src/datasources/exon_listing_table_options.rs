@@ -15,6 +15,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use arrow::datatypes::Field;
+use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType,
@@ -32,12 +33,15 @@ use crate::{
     physical_plan::object_store::{parse_url, url_to_object_store_url},
 };
 
+#[async_trait]
 pub trait ExonListingOptions: Default + Send + Sync {
     fn table_partition_cols(&self) -> Vec<Field>;
 
-    fn file_extension(&self) -> &str;
+    fn file_extension(&self) -> String;
 
-    fn file_compression_type(&self) -> FileCompressionType;
+    fn file_compression_type(&self) -> FileCompressionType {
+        FileCompressionType::UNCOMPRESSED
+    }
 
     async fn create_physical_plan(
         &self,
@@ -45,6 +49,7 @@ pub trait ExonListingOptions: Default + Send + Sync {
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>>;
 }
 
+#[async_trait]
 pub trait ExonIndexedListingOptions: ExonListingOptions {
     fn indexed(&self) -> bool;
 
@@ -64,6 +69,7 @@ pub trait ExonIndexedListingOptions: ExonListingOptions {
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>>;
 }
 
+#[async_trait]
 pub trait ExonFileIndexedListingOptions: ExonIndexedListingOptions {
     fn region_file(&self) -> crate::Result<&str>;
 

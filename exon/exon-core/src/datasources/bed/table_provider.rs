@@ -56,13 +56,14 @@ pub struct ListingBEDTableOptions {
     table_partition_cols: Vec<Field>,
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingBEDTableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols()
+        self.table_partition_cols
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
+    fn file_extension(&self) -> String {
+        self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -116,19 +117,19 @@ impl ListingBEDTableOptions {
 
 #[derive(Debug, Clone)]
 /// A BED listing table
-pub struct ListingBEDTable<T: Send + ExonListingOptions> {
+pub struct ListingBEDTable<T: ExonListingOptions> {
     config: ExonListingConfig<T>,
 
     table_schema: TableSchema,
 }
 
-impl<T: Send + ExonListingOptions> ListingBEDTable<T> {
+impl<T: ExonListingOptions> ListingBEDTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             config,
             table_schema,
-        })
+        }
     }
 }
 
@@ -177,7 +178,7 @@ impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
             &object_store,
             &first_path,
             filters,
-            self.config.options.file_extension(),
+            &self.config.options.file_extension(),
             &self.config.options.table_partition_cols(),
         )
         .await?
@@ -189,7 +190,7 @@ impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
             FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())
                 .limit_option(limit)
-                .table_partition_cols(self.config.options.table_partition_cols())
+                .table_partition_cols(self.config.options.table_partition_cols().to_vec())
                 .build();
 
         let plan = self

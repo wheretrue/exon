@@ -122,17 +122,14 @@ impl ListingBCFTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonListingOptions for ListingBCFTableOptions {
     fn table_partition_cols(&self) -> Vec<Field> {
         self.table_partition_cols
     }
 
-    fn file_extension(&self) -> &str {
-        &self.file_extension
-    }
-
-    fn file_compression_type(&self) -> FileCompressionType {
-        FileCompressionType::UNCOMPRESSED
+    fn file_extension(&self) -> String {
+        self.file_extension
     }
 
     async fn create_physical_plan(
@@ -144,6 +141,7 @@ impl ExonListingOptions for ListingBCFTableOptions {
     }
 }
 
+#[async_trait]
 impl ExonIndexedListingOptions for ListingBCFTableOptions {
     fn indexed(&self) -> bool {
         self.region.is_some()
@@ -249,7 +247,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBCFTable<T> {
             &object_store,
             &url,
             filters,
-            self.config.options.file_extension(),
+            &self.config.options.file_extension(),
             &self.config.options.table_partition_cols(),
         )
         .await?
@@ -262,7 +260,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBCFTable<T> {
             vec![file_list],
         )
         .projection_option(projection.cloned())
-        .table_partition_cols(self.config.options.table_partition_cols())
+        .table_partition_cols(self.config.options.table_partition_cols().to_vec())
         .limit_option(limit)
         .build();
 

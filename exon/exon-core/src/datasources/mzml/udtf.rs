@@ -14,8 +14,11 @@
 
 use std::sync::Arc;
 
-use super::table_provider::{ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions};
-use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
+use super::table_provider::{ListingMzMLTable, ListingMzMLTableOptions};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    ExonRuntimeEnvExt,
+};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -51,11 +54,12 @@ impl TableFunctionImpl for MzMLScanFunction {
         let listing_table_options =
             ListingMzMLTableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_table_config =
-            ListingMzMLTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
-        let listing_table = ListingMzMLTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingMzMLTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }
