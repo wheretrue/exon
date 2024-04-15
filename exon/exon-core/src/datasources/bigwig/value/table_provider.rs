@@ -72,6 +72,12 @@ pub struct ListingTableOptions {
     table_partition_cols: Vec<Field>,
 }
 
+impl Default for ListingTableOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ListingTableOptions {
     /// Create a new set of options
     pub fn new() -> Self {
@@ -185,7 +191,9 @@ impl TableProvider for ListingTable {
         let object_store_url = if let Some(url) = self.table_paths.first() {
             url.object_store()
         } else {
-            todo!()
+            return Err(datafusion::error::DataFusionError::Execution(
+                "No object store URL found".to_string(),
+            ));
         };
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
