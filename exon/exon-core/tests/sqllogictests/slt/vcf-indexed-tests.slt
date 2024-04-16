@@ -41,3 +41,22 @@ query T
 SELECT COUNT(*) FROM vcf_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/vcf-partition', '1');
 ----
 382
+
+statement ok
+CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/biobear-vcf/vcf_file.vcf.gz';
+
+statement error
+SELECT COUNT(*) FROM vcf_table;
+
+query T
+SELECT COUNT(*) FROM vcf_table WHERE vcf_region_filter('1000', chrom) = true;
+----
+0
+
+query T
+SELECT COUNT(*) FROM vcf_table WHERE vcf_region_filter('1', chrom) = true;
+----
+11
+
+statement ok
+DROP TABLE vcf_table;

@@ -66,9 +66,7 @@ use crate::{
             FastaIndexedScanFunction, FastaScanFunction,
         },
         fastq::{
-            table_provider::{
-                ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions,
-            },
+            table_provider::{ListingFASTQTable, ListingFASTQTableOptions},
             FastqScanFunction,
         },
         gff::{GFFIndexedScanFunction, GFFScanFunction},
@@ -609,7 +607,7 @@ impl ExonSessionExt for SessionContext {
 
         let table_schema = options.infer_schema();
 
-        let config = ListingFASTQTableConfig::new(table_path, options);
+        let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingFASTQTable::try_new(config, table_schema)?;
 
         let table = self.read_table(Arc::new(table))?;
@@ -681,7 +679,7 @@ mod tests {
         let df = ctx
             .read_fastq(
                 fastq_path.to_str().unwrap(),
-                ListingFASTQTableOptions::default().with_file_extension("fq".to_string()),
+                ListingFASTQTableOptions::default().with_some_file_extension(Some("fq")),
             )
             .await?;
 
@@ -690,7 +688,7 @@ mod tests {
         let df = ctx
             .read_fastq(
                 fastq_path.parent().ok_or("No Parent")?.to_str().unwrap(),
-                ListingFASTQTableOptions::default().with_file_extension("fq".to_string()),
+                ListingFASTQTableOptions::default().with_some_file_extension(Some("fq")),
             )
             .await?;
 
@@ -706,7 +704,7 @@ mod tests {
         let fastq_path = exon_test::test_path("fastq", "test.fq.gz");
 
         let options = ListingFASTQTableOptions::new(FileCompressionType::GZIP)
-            .with_file_extension("fq".to_string());
+            .with_some_file_extension(Some("fq"));
 
         let df = ctx
             .read_fastq(fastq_path.to_str().unwrap(), options)
@@ -726,7 +724,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 fasta_path.to_str().unwrap(),
-                ListingFASTATableOptions::default().with_file_extension("fa".to_string()),
+                ListingFASTATableOptions::default().with_some_file_extension(Some("fa")),
             )
             .await?;
 
@@ -781,7 +779,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 "s3://test-bucket/test.fa",
-                ListingFASTATableOptions::default().with_file_extension("fa".to_string()),
+                ListingFASTATableOptions::default().with_some_file_extension(Some("fa")),
             )
             .await?;
 
@@ -800,7 +798,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 fasta_path.to_str().unwrap(),
-                ListingFASTATableOptions::default().with_file_extension("fa".to_string()),
+                ListingFASTATableOptions::default().with_some_file_extension(Some("fa")),
             )
             .await?;
 
@@ -810,7 +808,7 @@ mod tests {
             .read_fasta(
                 fasta_path.to_str().unwrap(),
                 ListingFASTATableOptions::new(FileCompressionType::GZIP)
-                    .with_file_extension("fa".to_string()),
+                    .with_some_file_extension(Some("fa")),
             )
             .await?;
 
@@ -825,7 +823,7 @@ mod tests {
         let fasta_path = exon_test::test_path("fasta", "test.fa.gz");
 
         let options = ListingFASTATableOptions::new(FileCompressionType::GZIP)
-            .with_file_extension("fa".to_string());
+            .with_some_file_extension(Some("fa"));
 
         let df = ctx
             .read_fasta(fasta_path.to_str().unwrap(), options)

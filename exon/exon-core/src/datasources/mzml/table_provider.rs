@@ -18,9 +18,7 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
+        file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
     error::Result,
@@ -47,32 +45,6 @@ use crate::{
 use super::MzMLScan;
 
 #[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingMzMLTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingMzMLTableOptions>,
-}
-
-impl ListingMzMLTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingMzMLTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 /// Listing options for a MzML table
 pub struct ListingMzMLTableOptions {
     /// The file extension for the table
@@ -94,12 +66,12 @@ impl Default for ListingMzMLTableOptions {
 
 #[async_trait]
 impl ExonListingOptions for ListingMzMLTableOptions {
-    fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
     }
 
-    fn file_extension(&self) -> String {
-        self.file_extension
+    fn file_extension(&self) -> &str {
+        &self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -166,7 +138,7 @@ impl<T> ListingMzMLTable<T> {
 }
 
 #[async_trait]
-impl<T: ExonListingOptions> TableProvider for ListingMzMLTable<T> {
+impl<T: ExonListingOptions + 'static> TableProvider for ListingMzMLTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -185,7 +157,7 @@ impl<T: ExonListingOptions> TableProvider for ListingMzMLTable<T> {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols()))
+            .map(|f| filter_matches_partition_cols(f, self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -209,8 +181,8 @@ impl<T: ExonListingOptions> TableProvider for ListingMzMLTable<T> {
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            &self.config.options.file_extension(),
-            &self.config.options.table_partition_cols(),
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()

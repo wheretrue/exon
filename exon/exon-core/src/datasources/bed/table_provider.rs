@@ -32,7 +32,7 @@ use datafusion::{
         TableProvider,
     },
     error::Result,
-    execution::{context::SessionState, object_store::ObjectStoreUrl},
+    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -58,12 +58,12 @@ pub struct ListingBEDTableOptions {
 
 #[async_trait]
 impl ExonListingOptions for ListingBEDTableOptions {
-    fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
     }
 
-    fn file_extension(&self) -> String {
-        self.file_extension
+    fn file_extension(&self) -> &str {
+        &self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -134,7 +134,7 @@ impl<T: ExonListingOptions> ListingBEDTable<T> {
 }
 
 #[async_trait]
-impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
+impl<T: ExonListingOptions + 'static> TableProvider for ListingBEDTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -153,7 +153,7 @@ impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols()))
+            .map(|f| filter_matches_partition_cols(f, self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -170,16 +170,17 @@ impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store_url = ObjectStoreUrl::parse(&first_path)?;
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state
+            .runtime_env()
+            .object_store(first_path.object_store())?;
 
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &first_path,
+            first_path,
             filters,
-            &self.config.options.file_extension(),
-            &self.config.options.table_partition_cols(),
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
@@ -187,7 +188,7 @@ impl<T: Send + Sync + ExonListingOptions> TableProvider for ListingBEDTable<T> {
 
         let file_schema = self.table_schema.file_schema()?;
         let file_scan_config =
-            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
+            FileScanConfigBuilder::new(first_path.object_store(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())
                 .limit_option(limit)
                 .table_partition_cols(self.config.options.table_partition_cols().to_vec())

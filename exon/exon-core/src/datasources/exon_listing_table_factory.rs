@@ -26,7 +26,11 @@ use datafusion::{
 };
 use url::Url;
 
-use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
+use crate::{
+    config::extract_config_from_state,
+    datasources::{exon_file_type::get_file_extension_with_compression, ExonFileType},
+    ExonRuntimeEnvExt,
+};
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
@@ -36,7 +40,7 @@ use super::{
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
     exon_listing_table_options::ExonListingConfig,
     fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
-    fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
+    fastq::table_provider::{ListingFASTQTable, ListingFASTQTableOptions},
     gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
     gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
     hmmdomtab::table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
@@ -236,17 +240,11 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA | ExonFileType::FA | ExonFileType::FAA | ExonFileType::FNA => {
-                let extension = match options.get(FILE_EXTENSION_OPTION) {
-                    Some(file_extension) => match ExonFileType::from_str(file_extension) {
-                        Ok(file_type) => file_type.get_file_extension(file_compression_type),
-                        Err(e) => return Err(e.into()),
-                    },
-                    None => file_type.get_file_extension(file_compression_type),
-                };
+                let extension = options.get(FILE_EXTENSION_OPTION).map(|s| s.as_str());
 
                 let table_options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
-                    .with_file_extension(extension);
+                    .with_some_file_extension(extension);
 
                 let schema = table_options.infer_schema(state).await?;
 
@@ -256,22 +254,15 @@ impl ExonListingTableFactory {
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTQ | ExonFileType::FQ => {
-                let extension = match options.get(FILE_EXTENSION_OPTION) {
-                    Some(file_extension) => match ExonFileType::from_str(file_extension) {
-                        Ok(file_type) => file_type.get_file_extension(file_compression_type),
-                        Err(e) => return Err(e.into()),
-                    },
-                    None => file_type.get_file_extension(file_compression_type),
-                };
+                let extension = options.get(FILE_EXTENSION_OPTION).map(|s| s.as_str());
 
                 let options = ListingFASTQTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
-                    .with_file_extension(extension);
+                    .with_some_file_extension(extension);
 
                 let schema = options.infer_schema();
 
-                let config: ListingFASTQTableConfig =
-                    ListingFASTQTableConfig::new(table_path, options);
+                let config = ExonListingConfig::new_with_options(table_path, options);
                 let table = ListingFASTQTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))

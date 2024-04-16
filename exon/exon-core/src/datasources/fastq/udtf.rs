@@ -22,9 +22,12 @@ use datafusion::{
 };
 use exon_fastq::new_fastq_schema_builder;
 
-use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    ExonRuntimeEnvExt,
+};
 
-use super::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions};
+use super::table_provider::{ListingFASTQTable, ListingFASTQTableOptions};
 
 /// A table function that returns a table provider for a FASTQ file.
 pub struct FastqScanFunction {
@@ -54,7 +57,7 @@ impl TableFunctionImpl for FastqScanFunction {
         let options = ListingFASTQTableOptions::new(listing_scan_function.file_compression_type);
 
         let listing_table_config =
-            ListingFASTQTableConfig::new(listing_scan_function.listing_table_url, options);
+            ExonListingConfig::new_with_options(listing_scan_function.listing_table_url, options);
 
         let listing_table = ListingFASTQTable::try_new(listing_table_config, fasta_schema)?;
 

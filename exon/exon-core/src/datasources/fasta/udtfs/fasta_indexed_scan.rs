@@ -124,7 +124,7 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
                     listing_table_options.with_region_file(region_str.to_string());
             }
             (Err(_), Ok(region)) => {
-                listing_table_options = listing_table_options.with_region(vec![region]);
+                listing_table_options = listing_table_options.with_regions(vec![region]);
             }
             (Err(_), Err(_)) => {
                 return Err(DataFusionError::Execution(

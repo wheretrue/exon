@@ -54,7 +54,7 @@ use super::BCFScan;
 pub struct ListingBCFTableOptions {
     file_extension: String,
 
-    region: Option<Region>,
+    regions: Vec<Region>,
 
     table_partition_cols: Vec<Field>,
 }
@@ -63,7 +63,7 @@ impl Default for ListingBCFTableOptions {
     fn default() -> Self {
         Self {
             file_extension: ExonFileType::BCF.get_file_extension(FileCompressionType::UNCOMPRESSED),
-            region: None,
+            regions: Vec::new(),
             table_partition_cols: Vec::new(),
         }
     }
@@ -71,8 +71,8 @@ impl Default for ListingBCFTableOptions {
 
 impl ListingBCFTableOptions {
     /// Set the region for the table options. This is used to filter the records
-    pub fn with_region(mut self, region: Region) -> Self {
-        self.region = Some(region);
+    pub fn with_regions(mut self, regions: Vec<Region>) -> Self {
+        self.regions = regions;
         self
     }
 
@@ -124,12 +124,12 @@ impl ListingBCFTableOptions {
 
 #[async_trait]
 impl ExonListingOptions for ListingBCFTableOptions {
-    fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
     }
 
-    fn file_extension(&self) -> String {
-        self.file_extension
+    fn file_extension(&self) -> &str {
+        &self.file_extension
     }
 
     async fn create_physical_plan(
@@ -144,15 +144,11 @@ impl ExonListingOptions for ListingBCFTableOptions {
 #[async_trait]
 impl ExonIndexedListingOptions for ListingBCFTableOptions {
     fn indexed(&self) -> bool {
-        self.region.is_some()
+        !self.regions.is_empty()
     }
 
-    fn regions(&self) -> Vec<Region> {
-        if let Some(region) = &self.region {
-            vec![region.clone()]
-        } else {
-            Vec::new()
-        }
+    fn regions(&self) -> &[Region] {
+        &self.regions
     }
 
     async fn create_physical_plan_with_regions(
@@ -174,9 +170,10 @@ impl ExonIndexedListingOptions for ListingBCFTableOptions {
 
         let mut scan = BCFScan::new(conf.clone());
 
-        if let Some(region_filter) = &self.region {
-            scan = scan.with_region_filter(region_filter.clone());
+        if let Some(region) = region.first() {
+            scan = scan.with_region_filter(region.clone());
         }
+
         Ok(Arc::new(scan))
     }
 }
@@ -202,7 +199,7 @@ impl<T> ListingBCFTable<T> {
 }
 
 #[async_trait]
-impl<T: ExonIndexedListingOptions> TableProvider for ListingBCFTable<T> {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBCFTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -221,7 +218,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBCFTable<T> {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols()))
+            .map(|f| filter_matches_partition_cols(f, self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -245,10 +242,10 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBCFTable<T> {
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &url,
+            url,
             filters,
-            &self.config.options.file_extension(),
-            &self.config.options.table_partition_cols(),
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()

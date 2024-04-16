@@ -34,15 +34,20 @@ use crate::{
 };
 
 #[async_trait]
+/// Options for listing a table
 pub trait ExonListingOptions: Default + Send + Sync {
-    fn table_partition_cols(&self) -> Vec<Field>;
+    /// The partition columns for the table
+    fn table_partition_cols(&self) -> &[Field];
 
-    fn file_extension(&self) -> String;
+    /// The file type for the table
+    fn file_extension(&self) -> &str;
 
+    /// The file compression type for the table
     fn file_compression_type(&self) -> FileCompressionType {
         FileCompressionType::UNCOMPRESSED
     }
 
+    /// Create a physical plan for the table
     async fn create_physical_plan(
         &self,
         conf: FileScanConfig,
@@ -50,18 +55,23 @@ pub trait ExonListingOptions: Default + Send + Sync {
 }
 
 #[async_trait]
+/// Options for listing a table with regions
 pub trait ExonIndexedListingOptions: ExonListingOptions {
+    /// Whether the table is indexed
     fn indexed(&self) -> bool;
 
-    fn regions(&self) -> Vec<Region>;
+    /// The regions for the table
+    fn regions(&self) -> &[Region];
 
+    /// Coalesce the regions on the options with the provided regions
     fn coalesce_regions(&self, regions: Vec<Region>) -> Vec<Region> {
-        let mut all_regions = self.regions().clone();
+        let mut all_regions = self.regions().to_vec();
         all_regions.extend(regions);
 
         all_regions
     }
 
+    /// Create a physical plan for the table with regions
     async fn create_physical_plan_with_regions(
         &self,
         conf: FileScanConfig,
@@ -70,9 +80,12 @@ pub trait ExonIndexedListingOptions: ExonListingOptions {
 }
 
 #[async_trait]
+/// Options for listing a table with regions from a file
 pub trait ExonFileIndexedListingOptions: ExonIndexedListingOptions {
+    /// The region file for the table
     fn region_file(&self) -> crate::Result<&str>;
 
+    /// Get the regions from the region file
     async fn get_regions_from_file(
         &self,
         runtime_env: &Arc<RuntimeEnv>,
@@ -109,23 +122,25 @@ pub trait ExonFileIndexedListingOptions: ExonIndexedListingOptions {
 }
 
 #[derive(Debug, Clone)]
+/// Configuration for listing a table
 pub struct ExonListingConfig<T> {
+    /// The inner datafusion listing table configuration
     pub inner: ListingTableConfig,
 
-    pub options: T,
+    /// The options for the table
+    pub options: Arc<T>,
 }
 
-impl<T> ExonListingConfig<T>
-where
-    T: ExonListingOptions + Default + Send + Sync,
-{
+impl<T> ExonListingConfig<T> {
+    /// Create a new listing table configuration
     pub fn new_with_options(table_path: ListingTableUrl, options: T) -> Self {
         Self {
             inner: ListingTableConfig::new(table_path),
-            options,
+            options: Arc::new(options),
         }
     }
 
+    /// Get the first table path
     pub fn first_table_path(&self) -> Option<&ListingTableUrl> {
         self.inner.table_paths.first()
     }

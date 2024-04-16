@@ -99,7 +99,7 @@ mod tests {
         let mut stream_ptr = ArrowArrayStream::empty();
 
         rt.block_on(async {
-            let options = ListingFASTATableOptions::new(FileCompressionType::GZIP);
+            let options = ListingFASTATableOptions::new(FileCompressionType::UNCOMPRESSED);
             let df = ctx
                 .read_fasta(path.to_str().unwrap(), options)
                 .await

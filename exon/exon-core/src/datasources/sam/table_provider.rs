@@ -58,12 +58,12 @@ pub struct ListingSAMTableOptions {
 
 #[async_trait]
 impl ExonListingOptions for ListingSAMTableOptions {
-    fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
     }
 
-    fn file_extension(&self) -> String {
-        self.file_extension
+    fn file_extension(&self) -> &str {
+        &self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -170,7 +170,7 @@ impl<T> ListingSAMTable<T> {
 }
 
 #[async_trait]
-impl<T: ExonListingOptions> TableProvider for ListingSAMTable<T> {
+impl<T: ExonListingOptions + 'static> TableProvider for ListingSAMTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -189,7 +189,7 @@ impl<T: ExonListingOptions> TableProvider for ListingSAMTable<T> {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols()))
+            .map(|f| filter_matches_partition_cols(f, self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -213,8 +213,8 @@ impl<T: ExonListingOptions> TableProvider for ListingSAMTable<T> {
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            &self.config.options.file_extension(),
-            &self.config.options.table_partition_cols(),
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()

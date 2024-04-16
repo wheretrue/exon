@@ -59,7 +59,7 @@ pub struct ListingBAMTableOptions {
     indexed: bool,
 
     /// Any regions to use for the scan
-    region: Option<Region>,
+    region: Vec<Region>,
 
     /// The table partition columns
     table_partition_cols: Vec<Field>,
@@ -75,19 +75,19 @@ impl Default for ListingBAMTableOptions {
             table_partition_cols: Vec::new(),
             indexed: false,
             tag_as_struct: false,
-            region: None,
+            region: Vec::new(),
         }
     }
 }
 
 #[async_trait]
 impl ExonListingOptions for ListingBAMTableOptions {
-    fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols.clone()
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
     }
 
-    fn file_extension(&self) -> String {
-        self.file_extension.clone()
+    fn file_extension(&self) -> &str {
+        &self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -109,12 +109,8 @@ impl ExonIndexedListingOptions for ListingBAMTableOptions {
         self.indexed
     }
 
-    fn regions(&self) -> Vec<Region> {
-        if let Some(region) = &self.region {
-            vec![region.clone()]
-        } else {
-            Vec::new()
-        }
+    fn regions(&self) -> &[Region] {
+        &self.region
     }
 
     async fn create_physical_plan_with_regions(
@@ -150,9 +146,9 @@ impl ListingBAMTableOptions {
     }
 
     /// Set the region for the table options. This is used to filter the records
-    pub fn with_region(self, region: Option<Region>) -> Self {
+    pub fn with_regions(self, regions: Vec<Region>) -> Self {
         Self {
-            region,
+            region: regions,
             indexed: true,
             ..self
         }
@@ -226,12 +222,12 @@ impl ListingBAMTableOptions {
 
 #[derive(Debug, Clone)]
 /// A BAM listing table
-pub struct ListingBAMTable<T> {
+pub struct ListingBAMTable<T: ExonIndexedListingOptions> {
     config: ExonListingConfig<T>,
     table_schema: TableSchema,
 }
 
-impl<T> ListingBAMTable<T> {
+impl<T: ExonIndexedListingOptions> ListingBAMTable<T> {
     /// Create a new BAM listing table
     pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
         Self {
@@ -242,7 +238,7 @@ impl<T> ListingBAMTable<T> {
 }
 
 #[async_trait]
-impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBAMTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -268,13 +264,10 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
                         TableProviderFilterPushDown::Exact
                     } else {
                         tracing::debug!("Unsupported number of arguments for region filter");
-                        filter_matches_partition_cols(
-                            f,
-                            &self.config.options.table_partition_cols(),
-                        )
+                        filter_matches_partition_cols(f, self.config.options.table_partition_cols())
                     }
                 }
-                _ => filter_matches_partition_cols(f, &self.config.options.table_partition_cols()),
+                _ => filter_matches_partition_cols(f, self.config.options.table_partition_cols()),
             })
             .collect())
     }
@@ -313,7 +306,7 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
             if regions.len() == 1 {
                 regions
             } else {
-                self.config.options.regions()
+                self.config.options.regions().to_vec()
             }
         } else {
             regions
@@ -337,8 +330,8 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
                 &object_store,
                 url,
                 filters,
-                &self.config.options.file_extension(),
-                &self.config.options.table_partition_cols(),
+                self.config.options.file_extension(),
+                self.config.options.table_partition_cols(),
             )
             .await?
             .try_collect::<Vec<_>>()
@@ -372,8 +365,8 @@ impl<T: ExonIndexedListingOptions> TableProvider for ListingBAMTable<T> {
             &object_store,
             url,
             filters,
-            &file_extension,
-            &partition_cols,
+            file_extension,
+            partition_cols,
         )
         .await?;
 

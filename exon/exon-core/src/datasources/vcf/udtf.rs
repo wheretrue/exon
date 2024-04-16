@@ -101,7 +101,7 @@ impl TableFunctionImpl for VCFIndexedScanFunction {
         let region = region_str.parse().map_err(ExonError::from)?;
 
         let listing_table_options =
-            ListingVCFTableOptions::new(FileCompressionType::GZIP, true).with_region(Some(region));
+            ListingVCFTableOptions::new(FileCompressionType::GZIP, true).with_regions(vec![region]);
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options

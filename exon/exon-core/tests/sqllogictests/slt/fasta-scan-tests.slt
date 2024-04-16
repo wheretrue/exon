@@ -85,27 +85,6 @@ SELECT COUNT(*) FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta
 ----
 2
 
-statement ok
-CREATE EXTERNAL TABLE faa_table STORED AS FAA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
-
-query T
-SELECT COUNT(*) FROM faa_table;
-----
-2
-
-statement ok
-DROP TABLE faa_table;
-
-statement ok
-CREATE EXTERNAL TABLE fna_table STORED AS FNA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna';
-
-query T
-SELECT COUNT(*) FROM fna_table;
-----
-2
-
-statement ok
-DROP TABLE fna_table;
 
 statement ok
 CREATE EXTERNAL TABLE fna_table STORED AS FASTA OPTIONS (file_extension 'fna') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna';
@@ -123,5 +102,16 @@ CREATE EXTERNAL TABLE fna_table STORED AS FASTA COMPRESSION TYPE GZIP OPTIONS (f
 
 query T
 SELECT COUNT(*) FROM fna_table;
+----
+2
+
+statement ok
+DROP TABLE fna_table;
+
+statement ok
+CREATE EXTERNAL TABLE fa_table STORED AS FASTA COMPRESSION TYPE GZIP OPTIONS (file_extension 'fa') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fa/test.fa.gz';
+
+query T
+SELECT COUNT(*) FROM fa_table;
 ----
 2

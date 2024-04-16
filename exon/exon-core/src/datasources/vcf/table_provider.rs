@@ -18,10 +18,8 @@ use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
-        TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
@@ -57,24 +55,6 @@ use crate::{
 use super::{indexed_scanner::IndexedVCFScanner, VCFScan, VCFSchemaBuilder};
 
 #[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingVCFTableConfig {
-    inner: ListingTableConfig,
-
-    options: ListingVCFTableOptions,
-}
-
-impl ListingVCFTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl, options: ListingVCFTableOptions) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 /// Options specific to the VCF file format
 pub struct ListingVCFTableOptions {
     /// The extension of the files to read
@@ -84,7 +64,7 @@ pub struct ListingVCFTableOptions {
     indexed: bool,
 
     /// A region to filter the records
-    region: Option<Region>,
+    regions: Vec<Region>,
 
     /// The file compression type
     file_compression_type: FileCompressionType,
@@ -98,7 +78,7 @@ impl Default for ListingVCFTableOptions {
         Self {
             file_extension: ExonFileType::VCF.get_file_extension(FileCompressionType::UNCOMPRESSED),
             indexed: false,
-            region: None,
+            regions: Vec::new(),
             file_compression_type: FileCompressionType::UNCOMPRESSED,
             table_partition_cols: Vec::new(),
         }
@@ -107,12 +87,12 @@ impl Default for ListingVCFTableOptions {
 
 #[async_trait]
 impl ExonListingOptions for ListingVCFTableOptions {
-    fn table_partition_cols(&self) -> Vec<Field> {
-        self.table_partition_cols
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
     }
 
-    fn file_extension(&self) -> String {
-        self.file_extension
+    fn file_extension(&self) -> &str {
+        &self.file_extension
     }
 
     fn file_compression_type(&self) -> FileCompressionType {
@@ -135,12 +115,8 @@ impl ExonIndexedListingOptions for ListingVCFTableOptions {
         self.indexed
     }
 
-    fn regions(&self) -> Vec<Region> {
-        if let Some(region) = &self.region {
-            vec![region.clone()]
-        } else {
-            Vec::new()
-        }
+    fn regions(&self) -> &[Region] {
+        &self.regions
     }
 
     async fn create_physical_plan_with_regions(
@@ -164,14 +140,14 @@ impl ListingVCFTableOptions {
             file_compression_type,
             indexed,
             table_partition_cols: Vec::new(),
-            region: None,
+            regions: Vec::new(),
         }
     }
 
     /// Set the region
-    pub fn with_region(self, region: Option<Region>) -> Self {
+    pub fn with_regions(self, regions: Vec<Region>) -> Self {
         Self {
-            region,
+            regions,
             indexed: true,
             ..self
         }
@@ -319,7 +295,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
                     }
                 }
 
-                filter_matches_partition_cols(f, &self.config.options.table_partition_cols())
+                filter_matches_partition_cols(f, self.config.options.table_partition_cols())
             })
             .collect())
     }
@@ -342,7 +318,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
 
         let object_store = state.runtime_env().object_store(url.object_store())?;
 
-        let regions = filters
+        let mut regions = filters
             .iter()
             .map(|f| {
                 if let Expr::ScalarFunction(s) = f {
@@ -357,11 +333,9 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
             .flatten()
             .collect::<Vec<_>>();
 
-        let regions = if self.config.options.indexed() {
-            self.config.options.regions()
-        } else {
-            regions
-        };
+        // add the regions from the configuration
+        let config_regions = self.config.options.regions().to_vec();
+        regions.extend(config_regions);
 
         if regions.len() > 1 {
             return Err(DataFusionError::NotImplemented(
@@ -382,8 +356,8 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
                 &object_store,
                 url,
                 filters,
-                &self.config.options.file_extension(),
-                &self.config.options.table_partition_cols(),
+                self.config.options.file_extension(),
+                self.config.options.table_partition_cols(),
             )
             .await?
             .try_collect::<Vec<_>>()
@@ -411,8 +385,8 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
             &object_store,
             self.config.inner.table_paths.first().unwrap(),
             filters,
-            &self.config.options.file_extension(),
-            &self.config.options.table_partition_cols(),
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?;
 
@@ -445,7 +419,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
         let table = self
             .config
             .options
-            .create_physical_plan_with_regions(file_scan_config, regions)
+            .create_physical_plan_with_regions(file_scan_config, regions.to_vec())
             .await?;
 
         return Ok(table);
@@ -454,20 +428,12 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    use std::sync::Arc;
 
-    use crate::{
-        datasources::{
-            vcf::{IndexedVCFScanner, ListingVCFTableOptions},
-            ExonListingTableFactory,
-        },
-        tests::setup_tracing,
-        ExonSessionExt,
-    };
+    use crate::{datasources::vcf::IndexedVCFScanner, ExonSessionExt};
 
     use arrow::datatypes::{DataType, Field, Fields};
     use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
         physical_plan::{coalesce_partitions::CoalescePartitionsExec, filter::FilterExec},
         prelude::SessionContext,
     };
@@ -685,119 +651,6 @@ mod tests {
         let inner_struct = DataType::Struct(Fields::from(inner_item_fields));
         let inner_list = DataType::List(Arc::new(Field::new("item", inner_struct, true)));
         assert_eq!(schema.field(8).data_type(), &inner_list);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_uncompressed_read() -> Result<(), Box<dyn std::error::Error>> {
-        setup_tracing();
-
-        let ctx = SessionContext::new_exon();
-        let table_path = test_path("vcf", "index.vcf");
-        let table_path = table_path.to_str().ok_or("Invalid path")?;
-
-        let table = ExonListingTableFactory::new()
-            .create_from_file_type(
-                &ctx.state(),
-                crate::datasources::ExonFileType::VCF,
-                FileCompressionType::UNCOMPRESSED,
-                table_path.to_string(),
-                Vec::new(),
-                &HashMap::new(),
-            )
-            .await?;
-
-        ctx.register_table("vcf_file", table)?;
-
-        let df = ctx.sql("SELECT chrom, pos FROM vcf_file").await?;
-
-        let mut row_cnt = 0;
-        let bs = df.collect().await?;
-        for batch in bs {
-            row_cnt += batch.num_rows();
-        }
-        assert_eq!(row_cnt, 621);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_with_biobear_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
-        let table_path = table_path.to_str().ok_or("Invalid path")?;
-
-        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
-
-        ctx.read_vcf(table_path, options).await?;
-
-        let sql = "SELECT * FROM vcf_file";
-        let df = ctx.sql(sql).await?;
-
-        let batches = df.collect().await?;
-        let mut cnt = 0;
-        for batch in batches {
-            assert!(batch.num_rows() > 0);
-
-            // Check the schema is of the correct size.
-            assert_eq!(batch.schema().fields().len(), 9);
-
-            cnt += batch.num_rows();
-        }
-
-        assert_eq!(cnt, 15);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_with_biobear_empty_query() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
-        let table_path = table_path.to_str().ok_or("Invalid path")?;
-
-        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
-
-        ctx.read_vcf(table_path, options).await?;
-
-        let sql = "SELECT * FROM vcf_file WHERE chrom = '1000'";
-        let df = ctx.sql(sql).await?;
-
-        let cnt = df.count().await?;
-
-        assert_eq!(cnt, 0);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_with_biobear_chrom_1() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-
-        let table_path = test_path("biobear-vcf", "vcf_file.vcf.gz");
-        let table_path = table_path.to_str().ok_or("Invalid path")?;
-
-        let options = ListingVCFTableOptions::new(FileCompressionType::GZIP, false);
-        ctx.read_vcf(table_path, options).await?;
-
-        let sql = "SELECT * FROM vcf_file WHERE chrom = '1'";
-        let df = ctx.sql(sql).await?;
-
-        let batches = df.collect().await?;
-        let mut cnt = 0;
-        for batch in batches {
-            assert!(batch.num_rows() > 0);
-
-            // Check the schema is of the correct size.
-            assert_eq!(batch.schema().fields().len(), 9);
-
-            cnt += batch.num_rows();
-        }
-
-        assert_eq!(cnt, 11);
 
         Ok(())
     }
