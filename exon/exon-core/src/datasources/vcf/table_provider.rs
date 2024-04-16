@@ -516,7 +516,6 @@ mod tests {
     #[tokio::test]
     async fn test_region_query_with_additional_predicates() -> Result<(), Box<dyn std::error::Error>>
     {
-        setup_tracing();
         let path = crate::tests::test_fixture_table_url(
             "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
         )?;

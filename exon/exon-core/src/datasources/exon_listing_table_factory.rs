@@ -26,11 +26,7 @@ use datafusion::{
 };
 use url::Url;
 
-use crate::{
-    config::extract_config_from_state,
-    datasources::{exon_file_type::get_file_extension_with_compression, ExonFileType},
-    ExonRuntimeEnvExt,
-};
+use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
