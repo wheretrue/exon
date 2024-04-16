@@ -14,16 +14,14 @@
 
 use std::{any::Any, sync::Arc};
 
-use arrow::datatypes::{Schema, SchemaRef};
+use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
+        file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
-    error::{DataFusionError, Result},
+    error::Result,
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
@@ -32,34 +30,18 @@ use datafusion::{
 use exon_genbank::schema;
 
 use crate::{
-    datasources::ExonFileType, physical_plan::file_scan_config_builder::FileScanConfigBuilder,
+    datasources::{
+        exon_listing_table_options::{ExonListingConfig, ExonListingOptions},
+        ExonFileType,
+    },
+    physical_plan::file_scan_config_builder::FileScanConfigBuilder,
 };
 
 use super::GenbankScan;
 
-#[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingGenbankTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingGenbankTableOptions>,
-}
-
-impl ListingGenbankTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingGenbankTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
+impl Default for ListingGenbankTableOptions {
+    fn default() -> Self {
+        Self::new(FileCompressionType::UNCOMPRESSED)
     }
 }
 
@@ -69,6 +51,30 @@ pub struct ListingGenbankTableOptions {
     file_extension: String,
 
     file_compression_type: FileCompressionType,
+}
+
+#[async_trait]
+impl ExonListingOptions for ListingGenbankTableOptions {
+    fn table_partition_cols(&self) -> &[Field] {
+        &[]
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        self.file_compression_type
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = GenbankScan::new(conf.clone(), self.file_compression_type);
+
+        Ok(Arc::new(scan))
+    }
 }
 
 impl ListingGenbankTableOptions {
@@ -88,42 +94,28 @@ impl ListingGenbankTableOptions {
 
         Ok(schema)
     }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = GenbankScan::new(conf.clone(), self.file_compression_type);
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A table provider for a Genbank listing table
-pub struct ListingGenbankTable {
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingGenbankTable<T> {
     table_schema: SchemaRef,
 
-    options: ListingGenbankTableOptions,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingGenbankTable {
+impl<T> ListingGenbankTable<T> {
     /// Create a new Genbank listing table
-    pub fn try_new(config: ListingGenbankTableConfig, table_schema: Arc<Schema>) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: Arc<Schema>) -> Self {
+        Self {
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
-        })
+            config,
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingGenbankTable {
+impl<T: ExonListingOptions + 'static> TableProvider for ListingGenbankTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -153,26 +145,26 @@ impl TableProvider for ListingGenbankTable {
         _filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
+        let url = if let Some(url) = self.config.inner.table_paths.first() {
+            url
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let partitioned_file_lists = vec![
             crate::physical_plan::object_store::list_files_for_scan(
                 object_store,
-                self.table_paths.clone(),
-                &self.options.file_extension,
+                self.config.inner.table_paths.to_vec(),
+                self.config.options.file_extension(),
                 &[],
             )
             .await?,
         ];
 
         let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
+            url.object_store(),
             Arc::clone(&self.table_schema),
             partitioned_file_lists,
         )
@@ -180,7 +172,11 @@ impl TableProvider for ListingGenbankTable {
         .limit_option(limit)
         .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        let plan = self
+            .config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await?;
 
         Ok(plan)
     }

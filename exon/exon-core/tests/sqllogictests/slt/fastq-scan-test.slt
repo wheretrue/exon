@@ -25,17 +25,6 @@ statement ok
 DROP TABLE fastq_table;
 
 statement ok
-CREATE EXTERNAL TABLE fastq_table STORED AS FQ LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fq/test.fq';
-
-query T
-SELECT COUNT(*) FROM fastq_table;
-----
-2
-
-statement ok
-DROP TABLE fastq_table;
-
-statement ok
 CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.zst';
 
 query T

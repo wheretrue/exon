@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use crate::datasources::ScanFunction;
+use crate::datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -23,7 +23,7 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 
-use super::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions};
+use super::table_provider::{ListingBCFTable, ListingBCFTableOptions};
 
 /// A table function that returns a table provider for a BCF file.
 #[derive(Default)]
@@ -42,21 +42,20 @@ impl TableFunctionImpl for BCFScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
 
-        let listing_table_options = ListingBCFTableOptions::default();
+        let options = ListingBCFTableOptions::default();
 
         let schema = futures::executor::block_on(async {
-            let schema = listing_table_options
+            let schema = options
                 .infer_schema(&self.ctx.state(), &listing_scan_function.listing_table_url)
                 .await?;
 
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
         })?;
 
-        let listing_table_config =
-            ListingBCFTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let config =
+            ExonListingConfig::new_with_options(listing_scan_function.listing_table_url, options);
 
-        let listing_table = ListingBCFTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingBCFTable::new(config, schema);
 
         Ok(Arc::new(listing_table))
     }

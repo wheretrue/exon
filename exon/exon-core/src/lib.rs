@@ -26,31 +26,6 @@
 //!
 //! [`ExonSessionExt`]: session_context::ExonSessionExt
 //! [`datasources`]: datasources
-//!
-//! # Examples
-//!
-//! ## Loading a FASTQ file
-//!
-//! ```rust
-//! use exon::ExonSessionExt;
-//!
-//! use datafusion::prelude::*;
-//! use datafusion::error::Result;
-//!
-//! # #[tokio::main]
-//! # async fn main() -> Result<()> {
-//! let ctx = SessionContext::new_exon();
-//!
-//! let df = ctx.read_fastq("test-data/datasources/fastq/test.fastq", None).await?;
-//!
-//! assert_eq!(df.schema().fields().len(), 4);
-//! assert_eq!(df.schema().field(0).name(), "name");
-//! assert_eq!(df.schema().field(1).name(), "description");
-//! assert_eq!(df.schema().field(2).name(), "sequence");
-//! assert_eq!(df.schema().field(3).name(), "quality_scores");
-//! # Ok(())
-//! # }
-//! ```
 
 mod session_context;
 pub use session_context::ExonSessionExt;

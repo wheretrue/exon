@@ -17,13 +17,7 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
-    common::GetExt,
-    datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
-        TableProvider,
-    },
+    datasource::{file_format::file_compression_type::FileCompressionType, TableProvider},
     error::Result,
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
@@ -35,31 +29,18 @@ use exon_fastq::new_fastq_schema_builder;
 use futures::TryStreamExt;
 
 use crate::{
-    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
+    datasources::{
+        exon_file_type::get_file_extension_with_compression,
+        exon_listing_table_options::{ExonListingConfig, ExonListingOptions},
+        hive_partition::filter_matches_partition_cols,
+        ExonFileType,
+    },
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
     },
 };
 
 use super::FASTQScan;
-
-#[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingFASTQTableConfig {
-    inner: ListingTableConfig,
-
-    options: ListingFASTQTableOptions,
-}
-
-impl ListingFASTQTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl, options: ListingFASTQTableOptions) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 /// Listing options for a FASTQ table
@@ -84,6 +65,30 @@ impl Default for ListingFASTQTableOptions {
     }
 }
 
+#[async_trait]
+impl ExonListingOptions for ListingFASTQTableOptions {
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        self.file_compression_type
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: datafusion::datasource::physical_plan::FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = FASTQScan::new(conf, self.file_compression_type());
+
+        Ok(Arc::new(scan))
+    }
+}
+
 impl ListingFASTQTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
@@ -96,24 +101,17 @@ impl ListingFASTQTableOptions {
         }
     }
 
-    /// Get the extension when accounting for the compression type
-    pub fn file_extension(&self) -> String {
-        if self
-            .file_extension
-            .ends_with(&self.file_compression_type.get_ext())
-        {
-            self.file_extension.clone()
+    /// Set the file extension for the table, does not include the period or compression
+    pub fn with_some_file_extension(self, file_extension: Option<&str>) -> Self {
+        let file_extension = if let Some(file_extension) = file_extension {
+            file_extension.to_string()
         } else {
-            format!(
-                "{}{}",
-                self.file_extension,
-                self.file_compression_type.get_ext()
-            )
-        }
-    }
+            String::from("fastq")
+        };
 
-    /// Set the file extension for the table
-    pub fn with_file_extension(self, file_extension: String) -> Self {
+        let file_extension: String =
+            get_file_extension_with_compression(&file_extension, self.file_compression_type());
+
         Self {
             file_extension,
             ..self
@@ -134,30 +132,21 @@ impl ListingFASTQTableOptions {
             new_fastq_schema_builder().add_partition_fields(self.table_partition_cols.clone());
         builder.build()
     }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTQScan::new(conf.clone(), self.file_compression_type);
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A FASTQ listing table
-pub struct ListingFASTQTable {
+pub struct ListingFASTQTable<T> {
     /// The schema for the table
     table_schema: TableSchema,
 
     /// The config for the table
-    config: ListingFASTQTableConfig,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingFASTQTable {
+impl<T: ExonListingOptions> ListingFASTQTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingFASTQTableConfig, table_schema: TableSchema) -> Result<Self> {
+    pub fn try_new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
             table_schema,
             config,
@@ -166,7 +155,7 @@ impl ListingFASTQTable {
 }
 
 #[async_trait]
-impl TableProvider for ListingFASTQTable {
+impl<T: ExonListingOptions + 'static> TableProvider for ListingFASTQTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -185,7 +174,7 @@ impl TableProvider for ListingFASTQTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.config.options.table_partition_cols))
+            .map(|f| filter_matches_partition_cols(f, self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -209,8 +198,8 @@ impl TableProvider for ListingFASTQTable {
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            &self.config.options.file_extension(),
-            &self.config.options.table_partition_cols,
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
@@ -222,7 +211,7 @@ impl TableProvider for ListingFASTQTable {
             vec![file_list],
         )
         .projection_option(projection.cloned())
-        .table_partition_cols(self.config.options.table_partition_cols.clone())
+        .table_partition_cols(self.config.options.table_partition_cols().to_vec())
         .limit_option(limit)
         .build();
 

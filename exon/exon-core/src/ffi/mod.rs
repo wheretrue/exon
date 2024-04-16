@@ -78,10 +78,12 @@ mod tests {
 
     use arrow::ffi_stream::ArrowArrayStreamReader;
     use arrow::record_batch::RecordBatchReader;
+    use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
     use datafusion::error::DataFusionError;
     use datafusion::prelude::SessionContext;
     use exon_test::test_path;
 
+    use crate::datasources::fasta::table_provider::ListingFASTATableOptions;
     use crate::ffi::create_dataset_stream_from_table_provider;
     use crate::ffi::ArrowArrayStream;
     use crate::session_context::ExonSessionExt;
@@ -97,7 +99,11 @@ mod tests {
         let mut stream_ptr = ArrowArrayStream::empty();
 
         rt.block_on(async {
-            let df = ctx.read_fasta(path.to_str().unwrap(), None).await.unwrap();
+            let options = ListingFASTATableOptions::new(FileCompressionType::UNCOMPRESSED);
+            let df = ctx
+                .read_fasta(path.to_str().unwrap(), options)
+                .await
+                .unwrap();
             create_dataset_stream_from_table_provider(df, rt.clone(), &mut stream_ptr)
                 .await
                 .unwrap();

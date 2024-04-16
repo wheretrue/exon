@@ -25,9 +25,8 @@ use exon_fasta::FASTASchemaBuilder;
 use crate::{
     config::ExonConfigExtension,
     datasources::{
-        fasta::table_provider::{
-            ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions,
-        },
+        exon_listing_table_options::ExonListingConfig,
+        fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
         ScanFunction,
     },
     ExonRuntimeEnvExt,
@@ -74,7 +73,7 @@ impl TableFunctionImpl for FastaScanFunction {
         let listing_table_options =
             ListingFASTATableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_table_config = ListingFASTATableConfig::new(
+        let listing_table_config = ExonListingConfig::new_with_options(
             listing_scan_function.listing_table_url,
             listing_table_options,
         );

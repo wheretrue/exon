@@ -16,6 +16,9 @@ use std::{any::Any, sync::Arc};
 
 use crate::{
     datasources::{
+        exon_listing_table_options::{
+            ExonIndexedListingOptions, ExonListingConfig, ExonListingOptions,
+        },
         hive_partition::filter_matches_partition_cols,
         indexed_file::indexed_bgzf_file::{
             augment_partitioned_file_with_byte_range, IndexedBGZFFile,
@@ -28,9 +31,8 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
-        TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
@@ -48,32 +50,6 @@ use tokio_util::io::StreamReader;
 use super::{indexed_scanner::IndexedBAMScan, BAMScan};
 
 #[derive(Debug, Clone)]
-/// Configuration for a BAM listing table
-pub struct ListingBAMTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingBAMTableOptions>,
-}
-
-impl ListingBAMTableConfig {
-    /// Create a new BAM listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the BAM listing table
-    pub fn with_options(self, options: ListingBAMTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 /// Listing options for a BAM table
 pub struct ListingBAMTableOptions {
     /// The file extension for the BAM file
@@ -83,7 +59,7 @@ pub struct ListingBAMTableOptions {
     indexed: bool,
 
     /// Any regions to use for the scan
-    region: Option<Region>,
+    region: Vec<Region>,
 
     /// The table partition columns
     table_partition_cols: Vec<Field>,
@@ -99,8 +75,64 @@ impl Default for ListingBAMTableOptions {
             table_partition_cols: Vec::new(),
             indexed: false,
             tag_as_struct: false,
-            region: None,
+            region: Vec::new(),
         }
+    }
+}
+
+#[async_trait]
+impl ExonListingOptions for ListingBAMTableOptions {
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        FileCompressionType::UNCOMPRESSED
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = BAMScan::new(conf);
+        Ok(Arc::new(scan))
+    }
+}
+
+#[async_trait]
+impl ExonIndexedListingOptions for ListingBAMTableOptions {
+    fn indexed(&self) -> bool {
+        self.indexed
+    }
+
+    fn regions(&self) -> &[Region] {
+        &self.region
+    }
+
+    async fn create_physical_plan_with_regions(
+        &self,
+        conf: FileScanConfig,
+        regions: Vec<Region>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        if regions.is_empty() {
+            return Err(DataFusionError::Execution(
+                "Regions cannot be empty".to_string(),
+            ));
+        }
+
+        if regions.len() > 1 {
+            return Err(DataFusionError::Execution(
+                "BAM currently only supports 1 region".to_string(),
+            ));
+        }
+
+        let region = Arc::new(regions[0].clone());
+        let scan = IndexedBAMScan::new(conf, region);
+        Ok(Arc::new(scan))
     }
 }
 
@@ -114,9 +146,9 @@ impl ListingBAMTableOptions {
     }
 
     /// Set the region for the table options. This is used to filter the records
-    pub fn with_region(self, region: Option<Region>) -> Self {
+    pub fn with_regions(self, regions: Vec<Region>) -> Self {
         Self {
-            region,
+            region: regions,
             indexed: true,
             ..self
         }
@@ -186,50 +218,27 @@ impl ListingBAMTableOptions {
         self.tag_as_struct = tag_as_struct;
         self
     }
-
-    async fn create_physical_plan_with_region(
-        &self,
-        conf: FileScanConfig,
-        region: Arc<Region>,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedBAMScan::new(conf, region);
-        Ok(Arc::new(scan))
-    }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BAMScan::new(conf);
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A BAM listing table
-pub struct ListingBAMTable {
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingBAMTable<T: ExonIndexedListingOptions> {
+    config: ExonListingConfig<T>,
     table_schema: TableSchema,
-
-    options: ListingBAMTableOptions,
 }
 
-impl ListingBAMTable {
+impl<T: ExonIndexedListingOptions> ListingBAMTable<T> {
     /// Create a new BAM listing table
-    pub fn try_new(config: ListingBAMTableConfig, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
+            config,
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
-        })
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingBAMTable {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBAMTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -255,10 +264,10 @@ impl TableProvider for ListingBAMTable {
                         TableProviderFilterPushDown::Exact
                     } else {
                         tracing::debug!("Unsupported number of arguments for region filter");
-                        filter_matches_partition_cols(f, &self.options.table_partition_cols)
+                        filter_matches_partition_cols(f, self.config.options.table_partition_cols())
                     }
                 }
-                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
+                _ => filter_matches_partition_cols(f, self.config.options.table_partition_cols()),
             })
             .collect())
     }
@@ -270,13 +279,13 @@ impl TableProvider for ListingBAMTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
+        let url = if let Some(url) = self.config.first_table_path() {
+            url
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let regions = filters
             .iter()
@@ -293,20 +302,17 @@ impl TableProvider for ListingBAMTable {
             .flatten()
             .collect::<Vec<_>>();
 
-        let regions = if self.options.indexed {
+        let regions = if self.config.options.indexed() {
             if regions.len() == 1 {
                 regions
             } else {
-                match self.options.region.clone() {
-                    Some(region) => vec![region],
-                    None => regions,
-                }
+                self.config.options.regions().to_vec()
             }
         } else {
             regions
         };
 
-        if regions.is_empty() && self.options.indexed {
+        if regions.is_empty() && self.config.options.indexed() {
             return Err(DataFusionError::Plan(
                 "INDEXED_BAM table type requires a region filter. See the 'bam_region_filter' function.".to_string(),
             ));
@@ -322,38 +328,45 @@ impl TableProvider for ListingBAMTable {
             let file_list = pruned_partition_list(
                 state,
                 &object_store,
-                &self.table_paths[0],
+                url,
                 filters,
-                self.options.file_extension.as_str(),
-                &self.options.table_partition_cols,
+                self.config.options.file_extension(),
+                self.config.options.table_partition_cols(),
             )
             .await?
             .try_collect::<Vec<_>>()
             .await?;
 
             let file_scan_config = FileScanConfig {
-                object_store_url,
+                object_store_url: url.object_store(),
                 file_schema: self.table_schema.file_schema()?,
                 file_groups: vec![file_list],
                 statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
                 projection: projection.cloned(),
                 limit,
                 output_ordering: Vec::new(),
-                table_partition_cols: self.options.table_partition_cols.clone(),
+                table_partition_cols: self.config.options.table_partition_cols().to_vec(),
             };
 
-            let plan = self.options.create_physical_plan(file_scan_config).await?;
+            let plan = self
+                .config
+                .options
+                .create_physical_plan(file_scan_config)
+                .await?;
 
             return Ok(plan);
         }
 
+        let file_extension = self.config.options.file_extension();
+        let partition_cols = self.config.options.table_partition_cols();
+
         let mut file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            url,
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            file_extension,
+            partition_cols,
         )
         .await?;
 
@@ -376,19 +389,20 @@ impl TableProvider for ListingBAMTable {
         }
 
         let file_scan_config = FileScanConfig {
-            object_store_url: object_store_url.clone(),
+            object_store_url: url.object_store(),
             file_schema: self.table_schema.file_schema()?,
             file_groups: vec![file_partition_with_ranges],
             statistics: Statistics::new_unknown(self.table_schema.file_schema()?.as_ref()),
             projection: projection.cloned(),
             limit,
             output_ordering: Vec::new(),
-            table_partition_cols: self.options.table_partition_cols.clone(),
+            table_partition_cols: self.config.options.table_partition_cols().to_vec(),
         };
 
         let table = self
+            .config
             .options
-            .create_physical_plan_with_region(file_scan_config, Arc::new(region.clone()))
+            .create_physical_plan_with_regions(file_scan_config, vec![region])
             .await?;
 
         return Ok(table);

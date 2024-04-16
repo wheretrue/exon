@@ -26,7 +26,6 @@ pub use self::indexed_scanner::IndexedVCFScanner;
 pub use self::scanner::VCFScan;
 pub use self::schema_builder::VCFSchemaBuilder;
 pub use self::table_provider::ListingVCFTable;
-pub use self::table_provider::ListingVCFTableConfig;
 pub use self::table_provider::ListingVCFTableOptions;
 pub use crate::datasources::vcf::file_opener::unindex_file_opener::VCFOpener;
 

@@ -29,34 +29,29 @@ use url::Url;
 use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
 
 use super::{
-    bam::table_provider::{ListingBAMTable, ListingBAMTableConfig, ListingBAMTableOptions},
-    bcf::table_provider::{ListingBCFTable, ListingBCFTableConfig, ListingBCFTableOptions},
-    bed::table_provider::{ListingBEDTable, ListingBEDTableConfig, ListingBEDTableOptions},
+    bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
+    bcf::table_provider::{ListingBCFTable, ListingBCFTableOptions},
+    bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
     bigwig,
     cram::table_provider::{ListingCRAMTableConfig, ListingCRAMTableOptions},
-    fasta::table_provider::{ListingFASTATable, ListingFASTATableConfig, ListingFASTATableOptions},
-    fastq::table_provider::{ListingFASTQTable, ListingFASTQTableConfig, ListingFASTQTableOptions},
-    gff::table_provider::{ListingGFFTable, ListingGFFTableConfig, ListingGFFTableOptions},
-    gtf::table_provider::{ListingGTFTable, ListingGTFTableConfig, ListingGTFTableOptions},
-    hmmdomtab::table_provider::{
-        ListingHMMDomTabTable, ListingHMMDomTabTableConfig, ListingHMMDomTabTableOptions,
-    },
-    sam::table_provider::{ListingSAMTable, ListingSAMTableConfig, ListingSAMTableOptions},
-    vcf::{ListingVCFTable, ListingVCFTableConfig, ListingVCFTableOptions},
+    exon_listing_table_options::ExonListingConfig,
+    fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
+    fastq::table_provider::{ListingFASTQTable, ListingFASTQTableOptions},
+    gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
+    gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
+    hmmdomtab::table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
+    sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
+    vcf::{ListingVCFTable, ListingVCFTableOptions},
 };
 
 #[cfg(feature = "fcs")]
 use super::fcs::table_provider::{ListingFCSTable, ListingFCSTableConfig, ListingFCSTableOptions};
 
 #[cfg(feature = "mzml")]
-use super::mzml::table_provider::{
-    ListingMzMLTable, ListingMzMLTableConfig, ListingMzMLTableOptions,
-};
+use super::mzml::table_provider::{ListingMzMLTable, ListingMzMLTableOptions};
 
 #[cfg(feature = "genbank")]
-use super::genbank::table_provider::{
-    ListingGenbankTable, ListingGenbankTableConfig, ListingGenbankTableOptions,
-};
+use super::genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions};
 
 const FILE_EXTENSION_OPTION: &str = "file_extension";
 const INDEXED_OPTION: &str = "indexed";
@@ -94,8 +89,8 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingBAMTableConfig::new(table_path).with_options(options);
-                let table = ListingBAMTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingBAMTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -105,8 +100,8 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema()?;
 
-                let config = ListingBEDTableConfig::new(table_path).with_options(options);
-                let table = ListingBEDTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingBEDTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -117,8 +112,8 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingSAMTableConfig::new(table_path).with_options(options);
-                let table = ListingSAMTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingSAMTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -135,8 +130,8 @@ impl ExonListingTableFactory {
 
                 let file_schema = options.infer_schema().await?;
 
-                let config = ListingGFFTableConfig::new(table_path).with_options(options);
-                let table = ListingGFFTable::try_new(config, file_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGFFTable::new(config, file_schema);
 
                 Ok(Arc::new(table))
             }
@@ -150,8 +145,8 @@ impl ExonListingTableFactory {
 
                 let file_schema = options.infer_schema().await?;
 
-                let config = ListingGFFTableConfig::new(table_path).with_options(options);
-                let table = ListingGFFTable::try_new(config, file_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGFFTable::new(config, file_schema);
 
                 Ok(Arc::new(table))
             }
@@ -161,8 +156,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let schema = options.infer_schema().await?;
 
-                let config = ListingMzMLTableConfig::new(table_path).with_options(options);
-                let table = ListingMzMLTable::try_new(config, schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingMzMLTable::new(config, schema);
 
                 Ok(Arc::new(table))
             }
@@ -171,8 +166,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = options.infer_schema().await?;
 
-                let config = ListingHMMDomTabTableConfig::new(table_path).with_options(options);
-                let table = ListingHMMDomTabTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingHMMDomTabTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -181,8 +176,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = options.infer_schema();
 
-                let config = ListingGTFTableConfig::new(table_path).with_options(options);
-                let table = ListingGTFTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGTFTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -191,8 +186,8 @@ impl ExonListingTableFactory {
                 let options = ListingGenbankTableOptions::new(file_compression_type);
                 let schema = options.infer_schema().await?;
 
-                let config = ListingGenbankTableConfig::new(table_path).with_options(options);
-                let table = ListingGenbankTable::try_new(config, schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingGenbankTable::new(config, schema);
 
                 Ok(Arc::new(table))
             }
@@ -201,8 +196,8 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingBCFTableConfig::new(table_path).with_options(options);
-                let table = ListingBCFTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingBCFTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }
@@ -211,9 +206,9 @@ impl ExonListingTableFactory {
                     .with_table_partition_cols(table_partition_cols);
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
-                let config = ListingVCFTableConfig::new(table_path, vcf_options);
+                let config = ExonListingConfig::new_with_options(table_path, vcf_options);
 
-                let table = ListingVCFTable::try_new(config, table_schema)?;
+                let table = ListingVCFTable::new(config, table_schema);
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedVCF => {
@@ -222,61 +217,48 @@ impl ExonListingTableFactory {
 
                 let table_schema = vcf_options.infer_schema(state, &table_path).await?;
 
-                let config = ListingVCFTableConfig::new(table_path, vcf_options);
+                let config = ExonListingConfig::new_with_options(table_path, vcf_options);
 
-                let table = ListingVCFTable::try_new(config, table_schema)?;
+                let table = ListingVCFTable::new(config, table_schema);
                 Ok(Arc::new(table))
             }
             ExonFileType::IndexedBAM => {
-                let bam_options = ListingBAMTableOptions::default()
+                let options = ListingBAMTableOptions::default()
                     .with_indexed(true)
                     .with_table_partition_cols(table_partition_cols)
                     .with_tag_as_struct(exon_config_extension.bam_parse_tags);
 
-                let table_schema = bam_options.infer_schema(state, &table_path).await?;
+                let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingBAMTableConfig::new(table_path).with_options(bam_options);
+                let config = ExonListingConfig::new_with_options(table_path, options);
 
-                let table = ListingBAMTable::try_new(config, table_schema)?;
+                let table = ListingBAMTable::new(config, table_schema);
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTA | ExonFileType::FA | ExonFileType::FAA | ExonFileType::FNA => {
-                let extension = match options.get(FILE_EXTENSION_OPTION) {
-                    Some(file_extension) => match ExonFileType::from_str(file_extension) {
-                        Ok(file_type) => file_type.get_file_extension(file_compression_type),
-                        Err(e) => return Err(e.into()),
-                    },
-                    None => file_type.get_file_extension(file_compression_type),
-                };
+                let extension = options.get(FILE_EXTENSION_OPTION).map(|s| s.as_str());
 
                 let table_options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
-                    .with_file_extension(extension);
+                    .with_some_file_extension(extension);
 
                 let schema = table_options.infer_schema(state).await?;
 
-                let config = ListingFASTATableConfig::new(table_path, table_options);
+                let config = ExonListingConfig::new_with_options(table_path, table_options);
                 let table = ListingFASTATable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))
             }
             ExonFileType::FASTQ | ExonFileType::FQ => {
-                let extension = match options.get(FILE_EXTENSION_OPTION) {
-                    Some(file_extension) => match ExonFileType::from_str(file_extension) {
-                        Ok(file_type) => file_type.get_file_extension(file_compression_type),
-                        Err(e) => return Err(e.into()),
-                    },
-                    None => file_type.get_file_extension(file_compression_type),
-                };
+                let extension = options.get(FILE_EXTENSION_OPTION).map(|s| s.as_str());
 
                 let options = ListingFASTQTableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
-                    .with_file_extension(extension);
+                    .with_some_file_extension(extension);
 
                 let schema = options.infer_schema();
 
-                let config: ListingFASTQTableConfig =
-                    ListingFASTQTableConfig::new(table_path, options);
+                let config = ExonListingConfig::new_with_options(table_path, options);
                 let table = ListingFASTQTable::try_new(config, schema)?;
 
                 Ok(Arc::new(table))

@@ -64,6 +64,9 @@ pub mod bigwig;
 #[cfg(feature = "fcs")]
 pub mod fcs;
 
+/// Exon listing table options.
+pub mod exon_listing_table_options;
+
 /// File types.
 mod exon_file_type;
 

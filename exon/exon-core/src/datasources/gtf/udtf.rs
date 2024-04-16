@@ -14,7 +14,10 @@
 
 use std::sync::Arc;
 
-use crate::{datasources::ScanFunction, ExonRuntimeEnvExt};
+use crate::{
+    datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
+    ExonRuntimeEnvExt,
+};
 use datafusion::{
     datasource::{function::TableFunctionImpl, TableProvider},
     error::Result,
@@ -23,7 +26,7 @@ use datafusion::{
 };
 use exon_gtf::new_gtf_schema_builder;
 
-use super::table_provider::{ListingGTFTable, ListingGTFTableConfig, ListingGTFTableOptions};
+use super::table_provider::{ListingGTFTable, ListingGTFTableOptions};
 
 /// A table function that returns a table provider for a GTF file.
 pub struct GTFScanFunction {
@@ -53,11 +56,12 @@ impl TableFunctionImpl for GTFScanFunction {
         let listing_table_options =
             ListingGTFTableOptions::new(listing_scan_function.file_compression_type);
 
-        let listing_table_config =
-            ListingGTFTableConfig::new(listing_scan_function.listing_table_url)
-                .with_options(listing_table_options);
+        let listing_table_config = ExonListingConfig::new_with_options(
+            listing_scan_function.listing_table_url,
+            listing_table_options,
+        );
 
-        let listing_table = ListingGTFTable::try_new(listing_table_config, schema)?;
+        let listing_table = ListingGTFTable::new(listing_table_config, schema);
 
         Ok(Arc::new(listing_table))
     }

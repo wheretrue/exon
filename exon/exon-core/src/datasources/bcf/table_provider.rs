@@ -18,10 +18,8 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
-        TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionState,
@@ -37,7 +35,12 @@ use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::{
-        hive_partition::filter_matches_partition_cols, vcf::VCFSchemaBuilder, ExonFileType,
+        exon_listing_table_options::{
+            ExonIndexedListingOptions, ExonListingConfig, ExonListingOptions,
+        },
+        hive_partition::filter_matches_partition_cols,
+        vcf::VCFSchemaBuilder,
+        ExonFileType,
     },
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, object_store::pruned_partition_list,
@@ -47,37 +50,11 @@ use crate::{
 use super::BCFScan;
 
 #[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingBCFTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingBCFTableOptions>,
-}
-
-impl ListingBCFTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingBCFTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 /// Listing options for a BCF table
 pub struct ListingBCFTableOptions {
     file_extension: String,
 
-    region: Option<Region>,
+    regions: Vec<Region>,
 
     table_partition_cols: Vec<Field>,
 }
@@ -86,7 +63,7 @@ impl Default for ListingBCFTableOptions {
     fn default() -> Self {
         Self {
             file_extension: ExonFileType::BCF.get_file_extension(FileCompressionType::UNCOMPRESSED),
-            region: None,
+            regions: Vec::new(),
             table_partition_cols: Vec::new(),
         }
     }
@@ -94,8 +71,8 @@ impl Default for ListingBCFTableOptions {
 
 impl ListingBCFTableOptions {
     /// Set the region for the table options. This is used to filter the records
-    pub fn with_region(mut self, region: Region) -> Self {
-        self.region = Some(region);
+    pub fn with_regions(mut self, regions: Vec<Region>) -> Self {
+        self.regions = regions;
         self
     }
 
@@ -131,12 +108,7 @@ impl ListingBCFTableOptions {
         let stream_reader = StreamReader::new(stream_reader);
 
         let mut bcf_reader = bcf::AsyncReader::new(stream_reader);
-        // bcf_reader.read_file_format().await?;
-
         let header = bcf_reader.read_header().await?;
-        // let header = header_str
-        //     .parse::<noodles::vcf::Header>()
-        //     .map_err(|e| DataFusionError::Execution(e.to_string()))?;
 
         let mut schema_builder = VCFSchemaBuilder::default()
             .with_header(header)
@@ -148,16 +120,58 @@ impl ListingBCFTableOptions {
 
         Ok(table_schema)
     }
+}
+
+#[async_trait]
+impl ExonListingOptions for ListingBCFTableOptions {
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
 
     async fn create_physical_plan(
         &self,
-        _state: &SessionState,
         conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = BCFScan::new(conf.clone());
+        Ok(Arc::new(scan))
+    }
+}
+
+#[async_trait]
+impl ExonIndexedListingOptions for ListingBCFTableOptions {
+    fn indexed(&self) -> bool {
+        !self.regions.is_empty()
+    }
+
+    fn regions(&self) -> &[Region] {
+        &self.regions
+    }
+
+    async fn create_physical_plan_with_regions(
+        &self,
+        conf: FileScanConfig,
+        region: Vec<Region>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        if region.is_empty() {
+            return Err(DataFusionError::Execution(
+                "No regions provided for indexed scan".to_string(),
+            ));
+        }
+
+        if region.len() > 1 {
+            return Err(DataFusionError::Execution(
+                "Multiple regions provided for indexed scan".to_string(),
+            ));
+        }
+
         let mut scan = BCFScan::new(conf.clone());
 
-        if let Some(region_filter) = &self.region {
-            scan = scan.with_region_filter(region_filter.clone());
+        if let Some(region) = region.first() {
+            scan = scan.with_region_filter(region.clone());
         }
 
         Ok(Arc::new(scan))
@@ -166,32 +180,26 @@ impl ListingBCFTableOptions {
 
 #[derive(Debug, Clone)]
 /// A BCF listing table
-pub struct ListingBCFTable {
-    /// The paths to the files
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingBCFTable<T> {
     /// The schema for the table
     table_schema: TableSchema,
 
     /// The options for the table
-    options: ListingBCFTableOptions,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingBCFTable {
+impl<T> ListingBCFTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingBCFTableConfig, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
-        })
+            config,
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingBCFTable {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBCFTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -210,7 +218,7 @@ impl TableProvider for ListingBCFTable {
     ) -> Result<Vec<TableProviderFilterPushDown>> {
         Ok(filters
             .iter()
-            .map(|f| filter_matches_partition_cols(f, &self.options.table_partition_cols))
+            .map(|f| filter_matches_partition_cols(f, self.config.options.table_partition_cols()))
             .collect())
     }
 
@@ -221,39 +229,42 @@ impl TableProvider for ListingBCFTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
+        let url = if let Some(url) = self.config.first_table_path() {
+            url
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state
+            .runtime_env()
+            .object_store(url.object_store().clone())?;
 
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            url,
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
         .await?;
 
         let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
+            url.object_store(),
             self.table_schema.file_schema()?,
             vec![file_list],
         )
         .projection_option(projection.cloned())
-        .table_partition_cols(self.options.table_partition_cols.clone())
+        .table_partition_cols(self.config.options.table_partition_cols().to_vec())
         .limit_option(limit)
         .build();
 
         let plan = self
+            .config
             .options
-            .create_physical_plan(state, file_scan_config)
+            .create_physical_plan(file_scan_config)
             .await?;
 
         Ok(plan)

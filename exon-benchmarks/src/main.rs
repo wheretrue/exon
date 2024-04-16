@@ -18,8 +18,11 @@ use datafusion::{
     prelude::{col, lit, SessionContext},
 };
 use exon::{
-    datasources::fasta::table_provider::ListingFASTATableOptions, new_exon_config,
-    ExonRuntimeEnvExt, ExonSessionExt,
+    datasources::{
+        fasta::table_provider::ListingFASTATableOptions,
+        mzml::table_provider::ListingMzMLTableOptions,
+    },
+    new_exon_config, ExonRuntimeEnvExt, ExonSessionExt,
 };
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -184,13 +187,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Count: {}", cnt);
         }
         Some(Commands::FASTACodonScan { path, compression }) => {
-            let path = path.as_str();
-
-            let fasta_options = ListingFASTATableOptions::new(compression.unwrap());
+            let options = ListingFASTATableOptions::new(compression.unwrap());
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.read_fasta(path, Some(fasta_options)).await?;
+            let df = ctx.read_fasta(path, options).await?;
 
             let count = df.filter(col("sequence").ilike(lit("M%")))?.count().await?;
 
@@ -199,8 +200,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::FASTAScanParallel { path, workers }) => {
             let exon_config = new_exon_config().with_target_partitions(*workers);
             let ctx = SessionContext::with_config_exon(exon_config);
-            let compression = None;
-            let df = ctx.read_fasta(path, compression).await?;
+
+            let options = ListingFASTATableOptions::default();
+
+            let df = ctx.read_fasta(path, options).await?;
 
             let count = df.filter(col("sequence").ilike(lit("M%")))?.count().await?;
             assert_eq!(count, 4_437_864);
@@ -209,11 +212,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::MzMLScan { path, compression }) => {
             let path = path.as_str();
-            let compression = compression.to_owned();
+
+            let compression = compression.unwrap_or(FileCompressionType::UNCOMPRESSED);
+            let options = ListingMzMLTableOptions::new(compression);
 
             let ctx = SessionContext::new_exon();
 
-            let df = ctx.read_mzml(path, compression).await?;
+            let df = ctx.read_mzml(path, options).await?;
             let count = df.count().await?;
 
             eprintln!("Count: {count}");

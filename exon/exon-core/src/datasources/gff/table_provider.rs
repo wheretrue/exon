@@ -18,9 +18,7 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
+        file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
     error::{DataFusionError, Result},
@@ -37,6 +35,9 @@ use noodles::core::Region;
 use crate::{
     datasources::{
         exon_file_type::get_file_extension_with_compression,
+        exon_listing_table_options::{
+            ExonIndexedListingOptions, ExonListingConfig, ExonListingOptions,
+        },
         hive_partition::filter_matches_partition_cols,
         indexed_file::indexed_bgzf_file::{
             augment_partitioned_file_with_byte_range, IndexedBGZFFile,
@@ -51,32 +52,6 @@ use crate::{
 };
 
 use super::{indexed_scanner::IndexedGffScanner, GFFScan};
-
-#[derive(Debug, Clone)]
-/// Configuration for a GFF listing table
-pub struct ListingGFFTableConfig {
-    inner: ListingTableConfig,
-
-    options: Option<ListingGFFTableOptions>,
-}
-
-impl ListingGFFTableConfig {
-    /// Create a new GFF listing table configuration
-    pub fn new(table_path: ListingTableUrl) -> Self {
-        Self {
-            inner: ListingTableConfig::new(table_path),
-            options: None,
-        }
-    }
-
-    /// Set the options for the VCF listing table
-    pub fn with_options(self, options: ListingGFFTableOptions) -> Self {
-        Self {
-            options: Some(options),
-            ..self
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 /// Listing options for a GFF table
@@ -94,7 +69,65 @@ pub struct ListingGFFTableOptions {
     indexed: bool,
 
     /// A region to filter the records
-    region: Option<Region>,
+    regions: Vec<Region>,
+}
+
+impl Default for ListingGFFTableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: ExonFileType::GFF.get_file_extension(FileCompressionType::UNCOMPRESSED),
+            file_compression_type: FileCompressionType::UNCOMPRESSED,
+            table_partition_cols: Vec::new(),
+            indexed: false,
+            regions: Vec::new(),
+        }
+    }
+}
+
+#[async_trait]
+impl ExonListingOptions for ListingGFFTableOptions {
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    fn file_compression_type(&self) -> FileCompressionType {
+        self.file_compression_type
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = GFFScan::new(conf.clone(), self.file_compression_type);
+
+        Ok(Arc::new(scan))
+    }
+}
+
+#[async_trait]
+impl ExonIndexedListingOptions for ListingGFFTableOptions {
+    fn indexed(&self) -> bool {
+        self.indexed
+    }
+
+    fn regions(&self) -> &[Region] {
+        &self.regions
+    }
+
+    async fn create_physical_plan_with_regions(
+        &self,
+        conf: FileScanConfig,
+        region: Vec<Region>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scanner =
+            IndexedGffScanner::new(conf.clone(), Arc::new(region.first().unwrap().clone()))?;
+
+        Ok(Arc::new(scanner))
+    }
 }
 
 impl ListingGFFTableOptions {
@@ -107,7 +140,7 @@ impl ListingGFFTableOptions {
             file_compression_type,
             table_partition_cols: Vec::new(),
             indexed: false,
-            region: None,
+            regions: Vec::new(),
         }
     }
 
@@ -133,7 +166,7 @@ impl ListingGFFTableOptions {
     /// Set the region
     pub fn with_region(self, region: Region) -> Self {
         Self {
-            region: Some(region),
+            regions: vec![region],
             indexed: true,
             ..self
         }
@@ -154,52 +187,28 @@ impl ListingGFFTableOptions {
 
         Ok(schema.build())
     }
-
-    async fn create_physical_plan_with_region(
-        &self,
-        conf: FileScanConfig,
-        region: Arc<Region>,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = IndexedGffScanner::new(conf.clone(), region)?;
-
-        Ok(Arc::new(scan))
-    }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = GFFScan::new(conf.clone(), self.file_compression_type);
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A GFF listing table
-pub struct ListingGFFTable {
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingGFFTable<T> {
     table_schema: TableSchema,
 
-    options: ListingGFFTableOptions,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingGFFTable {
+impl<T> ListingGFFTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingGFFTableConfig, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             table_schema,
-            options: config
-                .options
-                .ok_or_else(|| DataFusionError::Internal(String::from("Options must be set")))?,
-        })
+            config,
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingGFFTable {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingGFFTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -225,7 +234,7 @@ impl TableProvider for ListingGFFTable {
                     tracing::info!("Pushing down region filter: {:?}", s);
                     TableProviderFilterPushDown::Exact
                 }
-                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
+                _ => filter_matches_partition_cols(f, self.config.options.table_partition_cols()),
             })
             .collect())
     }
@@ -238,13 +247,13 @@ impl TableProvider for ListingGFFTable {
         limit: Option<usize>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         tracing::info!("Scanning GFF table with filters: {:?}", filters);
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
+        let url = if let Some(url) = self.config.inner.table_paths.first() {
+            url
         } else {
             return Ok(Arc::new(EmptyExec::new(Arc::new(Schema::empty()))));
         };
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let regions = filters
             .iter()
@@ -261,33 +270,22 @@ impl TableProvider for ListingGFFTable {
             .flatten()
             .collect::<Vec<_>>();
 
-        let regions = if self.options.indexed {
-            if regions.len() == 1 {
-                regions
-            } else {
-                match self.options.region.clone() {
-                    Some(region) => vec![region],
-                    None => regions,
-                }
-            }
-        } else {
-            regions
-        };
+        let regions = self.config.options.coalesce_regions(regions);
 
-        if regions.is_empty() && self.options.indexed {
+        if regions.is_empty() && self.config.options.indexed() {
             return Err(DataFusionError::Plan(
                 "INDEXED_GFF table type requires a region filter. See the 'gff_region_filter' function.".to_string(),
             ));
         }
 
-        if self.options.indexed && !regions.is_empty() {
+        if self.config.options.indexed() && !regions.is_empty() {
             let mut file_list = pruned_partition_list(
                 state,
                 &object_store,
-                &self.table_paths[0],
+                url,
                 filters,
-                self.options.file_extension.as_str(),
-                &self.options.table_partition_cols,
+                self.config.options.file_extension(),
+                self.config.options.table_partition_cols(),
             )
             .await?;
 
@@ -310,19 +308,19 @@ impl TableProvider for ListingGFFTable {
             }
 
             let file_scan_config = FileScanConfigBuilder::new(
-                object_store_url.clone(),
+                url.object_store(),
                 self.table_schema.file_schema()?,
                 vec![file_partitions],
             )
             .projection_option(projection.cloned())
-            .table_partition_cols(self.options.table_partition_cols.clone())
+            .table_partition_cols(self.config.options.table_partition_cols().to_vec())
             .limit_option(limit)
             .build();
 
-            let region = Arc::new(region.clone());
             let plan = self
+                .config
                 .options
-                .create_physical_plan_with_region(file_scan_config, region)
+                .create_physical_plan_with_regions(file_scan_config, vec![region.clone()])
                 .await?;
             return Ok(plan);
         }
@@ -330,26 +328,30 @@ impl TableProvider for ListingGFFTable {
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            url,
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
         .await?;
 
         let file_scan_config = FileScanConfigBuilder::new(
-            object_store_url.clone(),
+            url.object_store(),
             self.table_schema.file_schema()?,
             vec![file_list],
         )
         .projection_option(projection.cloned())
-        .table_partition_cols(self.options.table_partition_cols.clone())
+        .table_partition_cols(self.config.options.table_partition_cols().to_vec())
         .limit_option(limit)
         .build();
 
-        let plan = self.options.create_physical_plan(file_scan_config).await?;
+        let plan = self
+            .config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await?;
         Ok(plan)
     }
 }
