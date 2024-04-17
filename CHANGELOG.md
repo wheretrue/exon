@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.4 (2024-04-17)
+
+### Fix
+
+- re-export ExonError
+
 ## v0.16.3 (2024-04-17)
 
 ### Fix
