@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.1 (2024-04-16)
+
+### Fix
+
+- fix featurization
+
 ## v0.16.0 (2024-04-16)
 
 ### Feat
