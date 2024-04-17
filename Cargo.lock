@@ -2027,7 +2027,7 @@ dependencies = [
 
 [[package]]
 name = "exon"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2074,7 +2074,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2088,7 +2088,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bcf"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2101,7 +2101,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bed"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2114,7 +2114,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "clap 4.5.4",
  "datafusion",
@@ -2127,7 +2127,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bigwig"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "bigtools",
@@ -2141,7 +2141,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "clap 4.5.4",
  "datafusion",
@@ -2154,7 +2154,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "datafusion",
@@ -2166,7 +2166,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cram"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "coitrees",
@@ -2181,7 +2181,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "datafusion",
@@ -2191,7 +2191,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2205,7 +2205,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2218,7 +2218,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fcs"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "byteorder",
@@ -2231,7 +2231,7 @@ dependencies = [
 
 [[package]]
 name = "exon-genbank"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2244,7 +2244,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2258,7 +2258,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2270,7 +2270,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "aws-config 1.2.0",
@@ -2282,7 +2282,7 @@ dependencies = [
 
 [[package]]
 name = "exon-mzml"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "base64 0.22.0",
@@ -2298,7 +2298,7 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2311,7 +2311,7 @@ dependencies = [
 
 [[package]]
 name = "exon-test"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "datafusion",
  "object_store",
@@ -2319,7 +2319,7 @@ dependencies = [
 
 [[package]]
 name = "exon-vcf"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "arrow",
  "exon-common",

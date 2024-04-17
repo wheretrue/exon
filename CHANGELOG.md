@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.2 (2024-04-17)
+
+### Refactor
+
+- improve config for motif-udfs
+
 ## v0.16.1 (2024-04-16)
 
 ### Fix
