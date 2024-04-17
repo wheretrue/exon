@@ -8,6 +8,8 @@
       "exon/exon-bam/Cargo.toml",
       "exon/exon-bcf/Cargo.toml",
       "exon/exon-bed/Cargo.toml",
+      "exon/exon-bigwig/Cargo.toml",
+      "exon/exon-cli/Cargo.toml",
       "exon/exon-common/Cargo.toml",
       "exon/exon-core/Cargo.toml",
       "exon/exon-cram/Cargo.toml",
@@ -22,7 +24,6 @@
       "exon/exon-sam/Cargo.toml",
       "exon/exon-test/Cargo.toml",
       "exon/exon-vcf/Cargo.toml",
-      "exon/exon-cli/Cargo.toml",
       ".github/workflows/build-cli-image.yml"
     ],
     "update_changelog_on_bump": true

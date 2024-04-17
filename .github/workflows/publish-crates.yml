@@ -103,6 +103,11 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
+      - name: Publish exon-bigwig
+        run: cargo publish --manifest-path exon/exon-bigwig/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Publish exon-fasta
         run: |
           cargo publish --manifest-path exon/exon-fasta/Cargo.toml
