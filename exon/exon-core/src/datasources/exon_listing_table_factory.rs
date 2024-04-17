@@ -285,8 +285,8 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema()?;
 
-                let config = bigwig::value::ListingTableConfig::new(table_path, options);
-                let table = bigwig::value::ListingTable::try_new(config, table_schema)?;
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = bigwig::value::ListingTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }

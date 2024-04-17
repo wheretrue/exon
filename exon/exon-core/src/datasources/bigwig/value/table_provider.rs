@@ -15,8 +15,13 @@
 use std::{any::Any, sync::Arc};
 
 use crate::{
-    datasources::{hive_partition::filter_matches_partition_cols, ExonFileType},
-    error::Result,
+    datasources::{
+        exon_listing_table_options::{
+            ExonIndexedListingOptions, ExonListingConfig, ExonListingOptions,
+        },
+        hive_partition::filter_matches_partition_cols,
+        ExonFileType,
+    },
     physical_plan::{
         file_scan_config_builder::FileScanConfigBuilder, infer_region,
         object_store::pruned_partition_list,
@@ -26,9 +31,7 @@ use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{
-        file_format::file_compression_type::FileCompressionType,
-        listing::{ListingTableConfig as DataFusionListingTableConfig, ListingTableUrl},
-        physical_plan::FileScanConfig,
+        file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
     error::Result as DataFusionResult,
@@ -45,24 +48,6 @@ use noodles::core::Region;
 use super::scanner::Scanner;
 
 #[derive(Debug, Clone)]
-/// Configuration for a VCF listing table
-pub struct ListingTableConfig {
-    inner: DataFusionListingTableConfig,
-
-    options: ListingTableOptions,
-}
-
-impl ListingTableConfig {
-    /// Create a new VCF listing table configuration
-    pub fn new(table_path: ListingTableUrl, options: ListingTableOptions) -> Self {
-        Self {
-            inner: DataFusionListingTableConfig::new(table_path),
-            options,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 /// Listing options for a BigWig table
 pub struct ListingTableOptions {
     /// The file extension, including the compression type
@@ -70,11 +55,57 @@ pub struct ListingTableOptions {
 
     /// A list of table partition columns
     table_partition_cols: Vec<Field>,
+
+    indexed: bool,
+
+    regions: Vec<Region>,
 }
 
 impl Default for ListingTableOptions {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[async_trait]
+impl ExonListingOptions for ListingTableOptions {
+    fn table_partition_cols(&self) -> &[Field] {
+        &self.table_partition_cols
+    }
+
+    fn file_extension(&self) -> &str {
+        &self.file_extension
+    }
+
+    async fn create_physical_plan(
+        &self,
+        conf: FileScanConfig,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let scan = Scanner::new(conf.clone());
+
+        Ok(Arc::new(scan))
+    }
+}
+
+#[async_trait]
+impl ExonIndexedListingOptions for ListingTableOptions {
+    fn indexed(&self) -> bool {
+        self.indexed
+    }
+
+    fn regions(&self) -> &[Region] {
+        &self.regions
+    }
+
+    async fn create_physical_plan_with_regions(
+        &self,
+        conf: FileScanConfig,
+        regions: Vec<Region>,
+    ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
+        let region = regions.first().unwrap();
+        let scan = Scanner::new(conf.clone()).with_some_region_filter(Some(region.clone()));
+
+        Ok(Arc::new(scan))
     }
 }
 
@@ -87,6 +118,8 @@ impl ListingTableOptions {
         Self {
             file_extension,
             table_partition_cols: Vec::new(),
+            indexed: false,
+            regions: Vec::new(),
         }
     }
 
@@ -105,50 +138,28 @@ impl ListingTableOptions {
 
         Ok(schema_builder.build())
     }
-
-    async fn create_physical_plan(
-        &self,
-        conf: FileScanConfig,
-    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        let scan = Scanner::new(conf.clone());
-
-        Ok(Arc::new(scan))
-    }
-
-    async fn create_physical_plan_with_region(
-        &self,
-        conf: FileScanConfig,
-        region: Region,
-    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        let scan = Scanner::new(conf.clone()).with_some_region_filter(Some(region));
-
-        Ok(Arc::new(scan))
-    }
 }
 
 #[derive(Debug, Clone)]
 /// A BigWig listing table
-pub struct ListingTable {
-    table_paths: Vec<ListingTableUrl>,
-
+pub struct ListingTable<T> {
     table_schema: TableSchema,
 
-    options: ListingTableOptions,
+    config: ExonListingConfig<T>,
 }
 
-impl ListingTable {
+impl<T> ListingTable<T> {
     /// Create a new VCF listing table
-    pub fn try_new(config: ListingTableConfig, table_schema: TableSchema) -> Result<Self> {
-        Ok(Self {
-            table_paths: config.inner.table_paths,
+    pub fn new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Self {
+        Self {
             table_schema,
-            options: config.options,
-        })
+            config,
+        }
     }
 }
 
 #[async_trait]
-impl TableProvider for ListingTable {
+impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingTable<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -173,10 +184,10 @@ impl TableProvider for ListingTable {
                     if scalar.name() == "bigwig_region_filter" {
                         TableProviderFilterPushDown::Exact
                     } else {
-                        filter_matches_partition_cols(f, &self.options.table_partition_cols)
+                        filter_matches_partition_cols(f, self.config.options.table_partition_cols())
                     }
                 }
-                _ => filter_matches_partition_cols(f, &self.options.table_partition_cols),
+                _ => filter_matches_partition_cols(f, self.config.options.table_partition_cols()),
             })
             .collect())
     }
@@ -188,23 +199,23 @@ impl TableProvider for ListingTable {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        let object_store_url = if let Some(url) = self.table_paths.first() {
-            url.object_store()
+        let url = if let Some(url) = self.config.inner.table_paths.first() {
+            url
         } else {
             return Err(datafusion::error::DataFusionError::Execution(
                 "No object store URL found".to_string(),
             ));
         };
 
-        let object_store = state.runtime_env().object_store(object_store_url.clone())?;
+        let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let file_list = pruned_partition_list(
             state,
             &object_store,
-            &self.table_paths[0],
+            self.config.inner.table_paths.first().unwrap(),
             filters,
-            self.options.file_extension.as_str(),
-            &self.options.table_partition_cols,
+            self.config.options.file_extension(),
+            self.config.options.table_partition_cols(),
         )
         .await?
         .try_collect::<Vec<_>>()
@@ -212,10 +223,10 @@ impl TableProvider for ListingTable {
 
         let file_schema = self.table_schema.file_schema()?;
         let file_scan_config =
-            FileScanConfigBuilder::new(object_store_url.clone(), file_schema, vec![file_list])
+            FileScanConfigBuilder::new(url.object_store(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())
                 .limit_option(limit)
-                .table_partition_cols(self.options.table_partition_cols.clone())
+                .table_partition_cols(self.config.options.table_partition_cols().to_vec())
                 .build();
 
         let regions = filters
@@ -234,7 +245,11 @@ impl TableProvider for ListingTable {
             .collect::<Vec<_>>();
 
         if regions.is_empty() {
-            let plan = self.options.create_physical_plan(file_scan_config).await?;
+            let plan = self
+                .config
+                .options
+                .create_physical_plan(file_scan_config)
+                .await?;
 
             Ok(plan)
         } else if regions.len() == 1 {
@@ -243,11 +258,9 @@ impl TableProvider for ListingTable {
                 regions.first().unwrap()
             );
             let plan = self
+                .config
                 .options
-                .create_physical_plan_with_region(
-                    file_scan_config.clone(),
-                    regions.first().unwrap().clone(),
-                )
+                .create_physical_plan_with_regions(file_scan_config.clone(), regions.to_vec())
                 .await?;
 
             Ok(plan)
@@ -256,8 +269,9 @@ impl TableProvider for ListingTable {
 
             for region in regions {
                 let plan = self
+                    .config
                     .options
-                    .create_physical_plan_with_region(file_scan_config.clone(), region)
+                    .create_physical_plan_with_regions(file_scan_config.clone(), vec![region])
                     .await?;
 
                 plans.push(plan);
