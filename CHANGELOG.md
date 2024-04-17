@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.3 (2024-04-17)
+
+### Fix
+
+- fix release script
+
 ## v0.16.2 (2024-04-17)
 
 ### Refactor
