@@ -442,9 +442,7 @@ mod tests {
     #[cfg(feature = "fixtures")]
     #[tokio::test]
     async fn test_chr17_queries() -> Result<(), Box<dyn std::error::Error>> {
-        use crate::tests::{setup_tracing, test_fixture_table_url};
-
-        setup_tracing();
+        use crate::tests::test_fixture_table_url;
 
         let path = test_fixture_table_url("chr17/")?;
 
