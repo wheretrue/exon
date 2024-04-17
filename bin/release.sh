@@ -1,3 +1,5 @@
+set -e
+
 git cz bump --files-only
 
 VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "exon") | .version')
