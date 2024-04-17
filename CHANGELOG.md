@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v0.16.0 (2024-04-16)
+
+### Feat
+
+- bigwig partition and method (#473)
+- add bigwig value (#472)
+- region filtering for bigwig zoom (#471)
+- zoom table scan (#470)
+- initial bigwig batch reader (#469)
+- add integer_encoding (#466)
+- support gff3 extensions (#454)
+
+### Refactor
+
+- move bigwig zoom value to new setup (#477)
+- simplify options (#476)
+
 ## v0.15.0 (2024-03-27)
 
 ### Feat
