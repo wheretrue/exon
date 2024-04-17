@@ -17,5 +17,4 @@ mod scanner;
 mod table_provider;
 
 pub use table_provider::ListingTable;
-pub use table_provider::ListingTableConfig;
 pub use table_provider::ListingTableOptions;
