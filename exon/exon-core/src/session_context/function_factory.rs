@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use async_trait::async_trait;
 use datafusion::{
@@ -20,7 +20,7 @@ use datafusion::{
     logical_expr::CreateFunction,
 };
 
-use crate::{error::ExonError, udfs::sequence::motif::create_pssm_function};
+use crate::error::ExonError;
 
 #[cfg(feature = "motif-udf")]
 use crate::udfs::sequence::motif::create_pssm_function;
@@ -32,15 +32,15 @@ pub struct ExonFunctionFactory {}
 impl FunctionFactory for ExonFunctionFactory {
     async fn create(
         &self,
-        state: &SessionState,
+        _state: &SessionState,
         statement: CreateFunction,
     ) -> datafusion::error::Result<RegisterFunction> {
         let CreateFunction {
             temporary: _,
             name,
-            args,
+            args: _,
             return_type: _,
-            params,
+            params: _,
             schema: _,
             or_replace: _,
         } = statement;
@@ -48,7 +48,7 @@ impl FunctionFactory for ExonFunctionFactory {
         let function = ExonFunctions::from_str(name.as_str())?;
 
         match function {
-            #[cfg(feature = "motif-udfs")]
+            #[cfg(feature = "motif-udf")]
             ExonFunctions::Pssm => {
                 let pssm = create_pssm_function(state, &name, &params, &args).await?;
                 Ok(RegisterFunction::Scalar(Arc::new(pssm.into())))

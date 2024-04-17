@@ -21,6 +21,7 @@ mod quality_score_string_to_list;
 mod reverse_complement;
 mod trim_polya;
 
+#[cfg(feature = "motif_udf")]
 pub(crate) mod motif;
 
 use datafusion::{execution::context::SessionContext, logical_expr::ScalarUDF};

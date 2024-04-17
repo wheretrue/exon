@@ -100,38 +100,6 @@ SELECT locate_regex('A[TCG]C', s1) FROM dna_sequences
 statement ok
 DROP TABLE dna_sequences;
 
-statement ok
-CREATE FUNCTION pssm(DNA VARCHAR)
-RETURNS FLOAT
-LANGUAGE jaspar16
-AS '$CARGO_MANIFEST_DIR/test-data/models/jaspar/MA0001.3.pfm';
-
-query I
-SELECT ROUND(pssm('GTTGACCTTATCAAC'), 2);
-----
--43.33
-
-query I
-SELECT ROUND(pssm(s1), 2) FROM (SELECT 'GTTGACCTTATCAAC' s1) t
-----
--43.33
-
-statement ok
-CREATE FUNCTION pssm(DNA VARCHAR)
-RETURNS FLOAT
-LANGUAGE transfac
-AS '$CARGO_MANIFEST_DIR/test-data/models/transfac/M00005.transfac';
-
-query I
-SELECT ROUND(pssm('AGAACCAGCTGTGGAATG'), 2);
-----
-20.64
-
-query I
-SELECT ROUND(pssm(s1), 2) FROM (SELECT 'AGAACCAGCTGTGGAATG' s1) t
-----
-20.64
-
 query I
 SELECT s1, integer_encoding(s1, 'ATCG') FROM (SELECT 'ATCG' s1 UNION ALL SELECT 'AAAA') t ORDER BY s1
 ----

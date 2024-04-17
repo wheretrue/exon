@@ -31,7 +31,6 @@ members = [
   "exon/exon-cram",
   "exon/exon-bigwig",
 ]
-exclude = ["python"]
 resolver = "2"
 
 [workspace.dependencies]
