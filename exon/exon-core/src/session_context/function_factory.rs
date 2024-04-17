@@ -60,7 +60,6 @@ impl FunctionFactory for ExonFunctionFactory {
 }
 
 pub enum ExonFunctions {
-    #[cfg(feature = "motif-udfs")]
     Pssm,
 }
 

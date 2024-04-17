@@ -77,10 +77,6 @@ mod tests {
     };
     use object_store::{local::LocalFileSystem, ObjectStore};
 
-    use std::sync::Once;
-
-    static INIT: Once = Once::new();
-
     pub(crate) fn eq(left: Arc<dyn PhysicalExpr>, right: Arc<dyn PhysicalExpr>) -> BinaryExpr {
         BinaryExpr::new(left, Operator::Eq, right)
     }
@@ -121,15 +117,5 @@ mod tests {
             .join(relative_path);
 
         ListingTableUrl::parse(abs_file_path.to_str().unwrap())
-    }
-
-    pub fn setup_tracing() {
-        INIT.call_once(|| {
-            let subscriber = tracing_subscriber::fmt()
-                .with_max_level(tracing::Level::DEBUG)
-                .finish();
-            tracing::subscriber::set_global_default(subscriber)
-                .expect("setting default subscriber failed");
-        });
     }
 }
