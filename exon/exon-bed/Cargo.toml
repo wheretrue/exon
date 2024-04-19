@@ -12,7 +12,7 @@ version.workspace = true
 
 [dependencies]
 arrow = { workspace = true }
-exon-common = { path = "../exon-common", version = "0.16.5" }
+exon-common = { path = "../exon-common", version = "0.16.6" }
 futures = { workspace = true }
 noodles = { workspace = true, features = ["bed", "core"] }
 object_store = { workspace = true }

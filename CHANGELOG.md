@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.6 (2024-04-18)
+
+### Fix
+
+- various fixes for biobear side (#481)
+
 ## v0.16.5 (2024-04-18)
 
 ### Fix
