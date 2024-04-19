@@ -12,5 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(crate) mod value;
-pub(crate) mod zoom;
+/// Module to work with BigWig files.
+pub mod value;
+
+/// Module to work with BigWig files with a zoom level.
+pub mod zoom;
