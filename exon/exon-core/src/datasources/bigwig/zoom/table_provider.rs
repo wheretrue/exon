@@ -73,6 +73,9 @@ pub struct ListingTableOptions {
 
     /// The reduction level for the BigWig scan
     reduction_level: u32,
+
+    /// The region to filter on
+    region: Option<Region>,
 }
 
 impl ListingTableOptions {
@@ -85,6 +88,15 @@ impl ListingTableOptions {
             file_extension,
             table_partition_cols: Vec::new(),
             reduction_level,
+            region: None,
+        }
+    }
+
+    /// Set the region to filter on
+    pub fn with_region(self, region: Region) -> Self {
+        Self {
+            region: Some(region),
+            ..self
         }
     }
 
@@ -231,9 +243,20 @@ impl TableProvider for ListingTable {
             .collect::<Vec<_>>();
 
         if regions.is_empty() {
-            let plan = self.options.create_physical_plan(file_scan_config).await?;
+            if let Some(region) = self.options.region.clone() {
+                tracing::info!("Creating physical plan with region: {:?}", region);
+                let plan = self
+                    .options
+                    .create_physical_plan_with_region(file_scan_config, region)
+                    .await?;
 
-            Ok(plan)
+                Ok(plan)
+            } else {
+                tracing::info!("Creating physical plan without region");
+                let plan = self.options.create_physical_plan(file_scan_config).await?;
+
+                Ok(plan)
+            }
         } else if regions.len() == 1 {
             tracing::info!(
                 "Creating physical plan with region: {:?}",

@@ -27,7 +27,7 @@ use datafusion::{
 use crate::{
     datasources::{
         bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
-        bcf::table_provider::ListingBCFTableOptions,
+        bcf::table_provider::{ListingBCFTable, ListingBCFTableOptions},
         bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
         bigwig,
         exon_listing_table_options::ExonListingConfig,
@@ -457,7 +457,7 @@ impl ExonSessionExt for SessionContext {
         let table_schema = options.infer_schema(&self.state(), &table_path).await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
-        let table = ListingVCFTable::new(config, table_schema);
+        let table = ListingBCFTable::new(config, table_schema);
 
         let table = self.read_table(Arc::new(table))?;
 
