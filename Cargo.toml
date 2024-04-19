@@ -38,7 +38,7 @@ arrow = { version = "51.0.0" }
 async-trait = "0.1.80"
 datafusion = { version = "37", features = ["compression", "parquet"] }
 futures = "0.3"
-noodles = { version = "0.68" }
+noodles = { version = "0.69" }
 object_store = { version = "0.9" }
 tokio = { version = "1", features = ["io-util"] }
 tokio-util = { version = "0.7.10", features = ["compat"] }
