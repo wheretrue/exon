@@ -32,10 +32,8 @@ where
     /// Configuration for how to batch records.
     config: Arc<BCFConfig>,
 
-    /// The VCF header.
+    /// The header.
     header: Arc<noodles::vcf::Header>,
-    // The VCF header string maps.
-    // string_maps: noodles::bcf::header::StringMaps,
 }
 
 impl<R> BatchReader<R>
@@ -47,22 +45,6 @@ where
         // reader.read_file_format().await?;
 
         let header = reader.read_header().await?;
-        // let header = header_str.parse::<noodles::vcf::Header>().map_err(|e| {
-        //     std::io::Error::new(
-        //         std::io::ErrorKind::InvalidData,
-        //         format!("invalid header: {e}"),
-        //     )
-        // })?;
-
-        // let string_maps = match header_str.parse() {
-        //     Ok(string_maps) => string_maps,
-        //     Err(e) => {
-        //         return Err(std::io::Error::new(
-        //             std::io::ErrorKind::InvalidData,
-        //             format!("invalid header: {e}"),
-        //         ))
-        //     }
-        // };
 
         Ok(Self {
             reader,
