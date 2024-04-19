@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.5 (2024-04-18)
+
+### Fix
+
+- update noodles
+
 ## v0.16.4 (2024-04-17)
 
 ### Fix
