@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.16.7 (2024-04-22)
+
+### Refactor
+
+- use ExonArrayBuilder for bcf (#484)
+
 ## v0.16.6 (2024-04-18)
 
 ### Fix
