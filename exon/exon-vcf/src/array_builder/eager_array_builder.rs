@@ -15,13 +15,11 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
-        Int64Builder,
-    },
+    array::{ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder, Int64Builder},
     datatypes::SchemaRef,
     error::ArrowError,
 };
+use exon_common::ExonArrayBuilder;
 use noodles::vcf::{
     variant::record::{AlternateBases, Filters, Ids},
     Header,
@@ -47,6 +45,8 @@ pub struct VCFArrayBuilder {
     header: Arc<Header>,
 
     projection: Vec<usize>,
+
+    n_rows: usize,
 }
 
 impl VCFArrayBuilder {
@@ -54,7 +54,7 @@ impl VCFArrayBuilder {
     pub fn create(
         schema: SchemaRef,
         capacity: usize,
-        projection: Option<&[usize]>,
+        projection: Option<Vec<usize>>,
         header: Arc<Header>,
     ) -> Result<Self, ArrowError> {
         let info_field = schema.field_with_name("info")?;
@@ -66,6 +66,7 @@ impl VCFArrayBuilder {
         };
 
         Ok(Self {
+            n_rows: 0,
             chromosomes: GenericStringBuilder::<i32>::new(),
             positions: Int64Builder::new(),
             ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
@@ -87,16 +88,6 @@ impl VCFArrayBuilder {
 
             projection,
         })
-    }
-
-    /// Returns the number of records in the builder.
-    pub fn len(&self) -> usize {
-        self.chromosomes.len()
-    }
-
-    /// Returns whether the builder is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 
     /// Appends a record to the builder.
@@ -169,11 +160,14 @@ impl VCFArrayBuilder {
             }
         }
 
+        self.n_rows += 1;
+
         Ok(())
     }
+}
 
-    /// Builds the `ArrayRef`.
-    pub fn finish(&mut self) -> Vec<ArrayRef> {
+impl ExonArrayBuilder for VCFArrayBuilder {
+    fn finish(&mut self) -> Vec<ArrayRef> {
         let mut arrays: Vec<ArrayRef> = vec![];
 
         for col_idx in self.projection.iter() {
@@ -192,5 +186,9 @@ impl VCFArrayBuilder {
         }
 
         arrays
+    }
+
+    fn len(&self) -> usize {
+        self.n_rows
     }
 }

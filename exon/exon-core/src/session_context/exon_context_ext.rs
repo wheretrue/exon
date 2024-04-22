@@ -663,7 +663,8 @@ mod tests {
 
     use crate::{
         datasources::{
-            bigwig, fasta::table_provider::ListingFASTATableOptions,
+            bcf::table_provider::ListingBCFTableOptions, bigwig,
+            fasta::table_provider::ListingFASTATableOptions,
             fastq::table_provider::ListingFASTQTableOptions,
         },
         session_context::ExonSessionExt,
@@ -830,6 +831,44 @@ mod tests {
             .await?;
 
         assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bcf_file() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let bcf_path = exon_test::test_path("bcf", "index.bcf");
+
+        let df = ctx
+            .read_bcf(
+                bcf_path.to_str().unwrap(),
+                ListingBCFTableOptions::default(),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 621);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bcf_file_with_region() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let bcf_path = exon_test::test_path("bcf", "index.bcf");
+
+        let region = "1".parse()?;
+
+        let df = ctx
+            .read_bcf(
+                bcf_path.to_str().unwrap(),
+                ListingBCFTableOptions::default().with_regions(vec![region]),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 191);
 
         Ok(())
     }
