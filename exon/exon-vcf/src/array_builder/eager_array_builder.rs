@@ -19,6 +19,7 @@ use arrow::{
     datatypes::SchemaRef,
     error::ArrowError,
 };
+use exon_common::ExonArrayBuilder;
 use noodles::vcf::{
     variant::record::{AlternateBases, Filters, Ids},
     Header,
@@ -87,16 +88,6 @@ impl VCFArrayBuilder {
 
             projection,
         })
-    }
-
-    /// Returns the number of records in the builder.
-    pub fn len(&self) -> usize {
-        self.n_rows
-    }
-
-    /// Returns whether the builder is empty.
-    pub fn is_empty(&self) -> bool {
-        self.n_rows == 0
     }
 
     /// Appends a record to the builder.
@@ -173,9 +164,10 @@ impl VCFArrayBuilder {
 
         Ok(())
     }
+}
 
-    /// Builds the `ArrayRef`.
-    pub fn finish(&mut self) -> Vec<ArrayRef> {
+impl ExonArrayBuilder for VCFArrayBuilder {
+    fn finish(&mut self) -> Vec<ArrayRef> {
         let mut arrays: Vec<ArrayRef> = vec![];
 
         for col_idx in self.projection.iter() {
@@ -194,5 +186,9 @@ impl VCFArrayBuilder {
         }
 
         arrays
+    }
+
+    fn len(&self) -> usize {
+        self.n_rows
     }
 }

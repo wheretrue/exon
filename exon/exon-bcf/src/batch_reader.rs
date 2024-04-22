@@ -14,6 +14,8 @@
 
 use std::sync::Arc;
 
+use exon_common::ExonArrayBuilder;
+
 use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use exon_vcf::VCFArrayBuilder;
@@ -151,8 +153,8 @@ impl BatchAdapter {
             return Ok(None);
         }
 
-        let schema = self.config.projected_schema();
-        let batch = RecordBatch::try_new(schema, record_batch.finish())?;
+        let schema = self.config.projected_schema()?;
+        let batch = record_batch.try_into_record_batch(schema)?;
 
         match &self.config.projection {
             Some(projection) => Ok(Some(batch.project(projection)?)),
