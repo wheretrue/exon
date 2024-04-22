@@ -50,7 +50,6 @@ where
             reader,
             config,
             header: Arc::new(header),
-            // string_maps,
         })
     }
 
@@ -136,7 +135,7 @@ impl BatchAdapter {
         let mut record_batch = VCFArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.batch_size,
-            self.config.projection.as_deref(),
+            self.config.projection.clone(),
             self.header.clone(),
         )?;
 
@@ -152,7 +151,8 @@ impl BatchAdapter {
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+        let schema = self.config.projected_schema();
+        let batch = RecordBatch::try_new(schema, record_batch.finish())?;
 
         match &self.config.projection {
             Some(projection) => Ok(Some(batch.project(projection)?)),

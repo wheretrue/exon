@@ -261,6 +261,16 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBCFTable<T
         .limit_option(limit)
         .build();
 
+        if let Some(region) = self.config.options.regions().first() {
+            let plan = self
+                .config
+                .options
+                .create_physical_plan_with_regions(file_scan_config, vec![region.clone()])
+                .await?;
+
+            return Ok(plan);
+        }
+
         let plan = self
             .config
             .options

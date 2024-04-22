@@ -848,7 +848,27 @@ mod tests {
             )
             .await?;
 
-        assert_eq!(df.count().await?, 2);
+        assert_eq!(df.count().await?, 621);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_bcf_file_with_region() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let bcf_path = exon_test::test_path("bcf", "index.bcf");
+
+        let region = "1".parse()?;
+
+        let df = ctx
+            .read_bcf(
+                bcf_path.to_str().unwrap(),
+                ListingBCFTableOptions::default().with_regions(vec![region]),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 191);
 
         Ok(())
     }

@@ -15,10 +15,7 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        ArrayBuilder, ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder,
-        Int64Builder,
-    },
+    array::{ArrayRef, Float32Builder, GenericListBuilder, GenericStringBuilder, Int64Builder},
     datatypes::SchemaRef,
     error::ArrowError,
 };
@@ -47,6 +44,8 @@ pub struct VCFArrayBuilder {
     header: Arc<Header>,
 
     projection: Vec<usize>,
+
+    n_rows: usize,
 }
 
 impl VCFArrayBuilder {
@@ -54,7 +53,7 @@ impl VCFArrayBuilder {
     pub fn create(
         schema: SchemaRef,
         capacity: usize,
-        projection: Option<&[usize]>,
+        projection: Option<Vec<usize>>,
         header: Arc<Header>,
     ) -> Result<Self, ArrowError> {
         let info_field = schema.field_with_name("info")?;
@@ -66,6 +65,7 @@ impl VCFArrayBuilder {
         };
 
         Ok(Self {
+            n_rows: 0,
             chromosomes: GenericStringBuilder::<i32>::new(),
             positions: Int64Builder::new(),
             ids: GenericListBuilder::<i32, GenericStringBuilder<i32>>::new(GenericStringBuilder::<
@@ -91,12 +91,12 @@ impl VCFArrayBuilder {
 
     /// Returns the number of records in the builder.
     pub fn len(&self) -> usize {
-        self.chromosomes.len()
+        self.n_rows
     }
 
     /// Returns whether the builder is empty.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.n_rows == 0
     }
 
     /// Appends a record to the builder.
@@ -168,6 +168,8 @@ impl VCFArrayBuilder {
                 ))?,
             }
         }
+
+        self.n_rows += 1;
 
         Ok(())
     }
