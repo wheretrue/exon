@@ -71,6 +71,7 @@ where
 
         let batch: RecordBatch =
             RecordBatch::try_new(self.config.file_schema.clone(), array_builder.finish())?;
+
         match &self.config.projection {
             Some(projection) => {
                 let projected_batch = batch.project(projection)?;

@@ -125,53 +125,15 @@ fn file_fields() -> Vec<Field> {
         true,
     );
 
-    let cv_params_field = Field::new_map(
+    let cv_params_field = Field::new(
         "cv_params",
-        "entries",
-        Field::new("keys", DataType::Utf8, false),
-        Field::new(
-            "values",
-            DataType::Struct(Fields::from(vec![
-                Field::new("accession", DataType::Utf8, true),
-                Field::new("name", DataType::Utf8, true),
-                Field::new("value", DataType::Utf8, true),
-            ])),
+        DataType::List(Arc::new(Field::new(
+            "item",
+            cv_param_struct.data_type().clone(),
             true,
-        ),
-        false,
+        ))),
         true,
     );
-
-    let cv_key_field = Field::new("keys", DataType::Utf8, false);
-
-    // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
-    let isolation_window = Field::new_map(
-        "isolation_window",
-        "entries",
-        cv_key_field.clone(),
-        cv_param_struct.clone(),
-        false,
-        true,
-    );
-
-    let activation = Field::new_map(
-        "activation",
-        "entries",
-        cv_key_field,
-        cv_param_struct,
-        false,
-        true,
-    );
-
-    // A precursor is a struct
-    let precursor = Field::new(
-        "item",
-        DataType::Struct(Fields::from(vec![isolation_window, activation])),
-        true,
-    );
-
-    // A precursor list is a list of precursors
-    let precursor_list = Field::new("precursor_list", DataType::List(Arc::new(precursor)), true);
 
     vec![
         Field::new("id", DataType::Utf8, false),
@@ -179,6 +141,7 @@ fn file_fields() -> Vec<Field> {
         intensity_field,
         wavelength_field,
         cv_params_field,
-        precursor_list,
+        Field::new("precursor_mz", DataType::Float64, true),
+        Field::new("precusor_charge", DataType::Int64, true),
     ]
 }

@@ -17,7 +17,7 @@ use std::sync::Arc;
 use arrow::{
     array::{
         ArrayBuilder, ArrayRef, Float64Builder, GenericListBuilder, GenericStringBuilder,
-        ListBuilder, MapBuilder, StructBuilder,
+        Int64Builder, ListBuilder, StructBuilder,
     },
     datatypes::{DataType, Field, Fields},
 };
@@ -27,6 +27,8 @@ use crate::mzml_reader::{
     FLOAT_32_DATA_TYPE_MS_NUMBER, FLOAT_64_DATA_TYPE_MS_NUMBER, INTENSITY_ARRAY, MZ_ARRAY,
     NO_COMPRESSION_MS_NUMBER, WAVE_LENGTH_ARRAY, ZLIB_COMPRESSION_MS_NUMBER,
 };
+
+// https://github.com/wfondrie/depthcharge/blob/d46adf12deba06fb5d1019eb6e7a2ff621bfb388/depthcharge/data/parsers.py#L253
 
 use super::mzml_reader::binary_conversion::decode_binary_array;
 
@@ -39,9 +41,11 @@ pub struct MzMLArrayBuilder {
     intensity: StructBuilder,
     wavelength: StructBuilder,
 
-    cv_params: MapBuilder<GenericStringBuilder<i32>, StructBuilder>,
+    // cv_params: MapBuilder<GenericStringBuilder<i32>, StructBuilder>,
+    cv_params: GenericListBuilder<i32, StructBuilder>,
 
-    precursor_list: GenericListBuilder<i32, StructBuilder>,
+    precursor_mz: Float64Builder,
+    precursor_charge: Int64Builder,
 }
 
 impl MzMLArrayBuilder {
@@ -79,94 +83,22 @@ impl MzMLArrayBuilder {
         let wavelength_builder =
             StructBuilder::new(wavelength_fields, vec![Box::new(wavelength_array_builder)]);
 
-        let cv_params_builder = MapBuilder::new(
-            None,
-            GenericStringBuilder::<i32>::new(),
-            StructBuilder::new(
-                Fields::from(vec![
-                    Field::new("accession", DataType::Utf8, true),
-                    Field::new("name", DataType::Utf8, true),
-                    Field::new("value", DataType::Utf8, true),
-                ]),
-                vec![
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                ],
-            ),
-        );
-
-        let cv_param_struct = Field::new(
-            "values",
-            DataType::Struct(Fields::from(vec![
+        let cv_param_builder = StructBuilder::new(
+            Fields::from(vec![
                 Field::new("accession", DataType::Utf8, true),
                 Field::new("name", DataType::Utf8, true),
                 Field::new("value", DataType::Utf8, true),
-            ])),
-            true,
+            ]),
+            vec![
+                Box::new(GenericStringBuilder::<i32>::new()),
+                Box::new(GenericStringBuilder::<i32>::new()),
+                Box::new(GenericStringBuilder::<i32>::new()),
+            ],
         );
 
-        let cv_key_field = Field::new("keys", DataType::Utf8, false);
+        let cv_params_builder = GenericListBuilder::new(cv_param_builder);
 
-        // A map of cvParams to their values (DataType::Utf8 to cvParamStruct)
-        let isolation_window = Field::new_map(
-            "isolation_window",
-            "entries",
-            cv_key_field.clone(),
-            cv_param_struct.clone(),
-            false,
-            true,
-        );
-
-        let activation = Field::new_map(
-            "activation",
-            "entries",
-            cv_key_field,
-            cv_param_struct,
-            false,
-            true,
-        );
-
-        let precursor_fields = Fields::from(vec![isolation_window, activation]);
-
-        let isolation_window_builder = MapBuilder::new(
-            None,
-            GenericStringBuilder::<i32>::new(),
-            StructBuilder::new(
-                Fields::from(vec![
-                    Field::new("accession", DataType::Utf8, true),
-                    Field::new("name", DataType::Utf8, true),
-                    Field::new("value", DataType::Utf8, true),
-                ]),
-                vec![
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                ],
-            ),
-        );
-
-        let activation = MapBuilder::new(
-            None,
-            GenericStringBuilder::<i32>::new(),
-            StructBuilder::new(
-                Fields::from(vec![
-                    Field::new("accession", DataType::Utf8, true),
-                    Field::new("name", DataType::Utf8, true),
-                    Field::new("value", DataType::Utf8, true),
-                ]),
-                vec![
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                    Box::new(GenericStringBuilder::<i32>::new()),
-                ],
-            ),
-        );
-
-        let precursor_builder = StructBuilder::new(
-            precursor_fields,
-            vec![Box::new(isolation_window_builder), Box::new(activation)],
-        );
+        let precursor_mz = Float64Builder::new();
 
         Self {
             id: GenericStringBuilder::<i32>::new(),
@@ -174,10 +106,9 @@ impl MzMLArrayBuilder {
             mz: mz_builder,
             intensity: intensity_builder,
             wavelength: wavelength_builder,
-
             cv_params: cv_params_builder,
-
-            precursor_list: GenericListBuilder::new(precursor_builder),
+            precursor_mz,
+            precursor_charge: Int64Builder::new(),
         }
     }
 
@@ -400,8 +331,6 @@ impl MzMLArrayBuilder {
         self.id.append_value(&record.id);
 
         for cv_param in &record.cv_param {
-            self.cv_params.keys().append_value(&cv_param.accession);
-
             self.cv_params
                 .values()
                 .field_builder::<GenericStringBuilder<i32>>(0)
@@ -428,104 +357,58 @@ impl MzMLArrayBuilder {
 
             self.cv_params.values().append(true);
         }
-        self.cv_params.append(true).unwrap();
+        self.cv_params.append(true);
 
         self.append_data_arrays(record)?;
 
-        let precursor_list_values = self.precursor_list.values();
-
         match &record.precursor_list {
             Some(precursor_list) => {
-                for precursor in &precursor_list.precursor {
-                    let isolation_window_builder = precursor_list_values
-                        .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(0)
-                        .unwrap();
+                let precursor = &precursor_list.precursor[0];
+                let selected_ion = &precursor.selected_ion_list.selected_ion[0];
 
-                    match &precursor.isolation_window {
-                        Some(isolation_window) => {
-                            for cv_param in &isolation_window.cv_param {
-                                isolation_window_builder
-                                    .keys()
-                                    .append_value(&cv_param.accession);
+                let selected_ion_mz = selected_ion.cv_param.iter().find_map(|f| {
+                    if f.accession == "MS:1000744" {
+                        if let Some(value) = &f.value {
+                            let string_value = value.to_string();
+                            let float_value = string_value.parse::<f64>().unwrap();
 
-                                isolation_window_builder
-                                    .values()
-                                    .field_builder::<GenericStringBuilder<i32>>(0)
-                                    .unwrap()
-                                    .append_value(&cv_param.accession);
-
-                                isolation_window_builder
-                                    .values()
-                                    .field_builder::<GenericStringBuilder<i32>>(1)
-                                    .unwrap()
-                                    .append_value(&cv_param.name);
-
-                                let cv_value = cv_param.value.as_ref().map(|v| v.to_string());
-                                isolation_window_builder
-                                    .values()
-                                    .field_builder::<GenericStringBuilder<i32>>(2)
-                                    .unwrap()
-                                    .append_option(cv_value);
-
-                                isolation_window_builder.values().append(true);
-                            }
-                            isolation_window_builder.append(true).unwrap();
+                            Some(float_value)
+                        } else {
+                            None
                         }
-                        None => {
-                            isolation_window_builder.append(false).unwrap();
-                        }
-                    };
-
-                    let activation_builder = precursor_list_values
-                        .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(1)
-                        .unwrap();
-
-                    for cv_param in &precursor.activation.cv_param {
-                        activation_builder.keys().append_value(&cv_param.accession);
-
-                        activation_builder
-                            .values()
-                            .field_builder::<GenericStringBuilder<i32>>(0)
-                            .unwrap()
-                            .append_value(&cv_param.accession);
-
-                        activation_builder
-                            .values()
-                            .field_builder::<GenericStringBuilder<i32>>(1)
-                            .unwrap()
-                            .append_value(&cv_param.name);
-
-                        activation_builder
-                            .values()
-                            .field_builder::<GenericStringBuilder<i32>>(2)
-                            .unwrap()
-                            .append_null();
-
-                        activation_builder.values().append(true);
+                    } else {
+                        None
                     }
+                });
 
-                    activation_builder.append(true).unwrap();
+                if let Some(selected_ion_mz) = selected_ion_mz {
+                    self.precursor_mz.append_value(selected_ion_mz);
+                } else {
+                    self.precursor_mz.append_null();
                 }
 
-                precursor_list_values.append(true);
-                self.precursor_list.append(true);
+                let charge_state = selected_ion.cv_param.iter().find_map(|f| {
+                    if f.accession == "MS:1000041" {
+                        if let Some(value) = &f.value {
+                            Some(value)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                });
+
+                if let Some(charge_state) = charge_state {
+                    let charge_state = charge_state.parse::<i64>().unwrap();
+                    self.precursor_charge.append_value(charge_state);
+                } else {
+                    self.precursor_charge.append_null();
+                }
             }
             None => {
-                let isolation_window_builder = precursor_list_values
-                    .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(0)
-                    .unwrap();
-
-                isolation_window_builder.append(true).unwrap();
-
-                let activation_builder = precursor_list_values
-                    .field_builder::<MapBuilder<GenericStringBuilder<i32>, StructBuilder>>(1)
-                    .unwrap();
-
-                activation_builder.append(true).unwrap();
-
-                precursor_list_values.append_null();
-
-                self.precursor_list.append_null();
+                self.precursor_mz.append_null();
+                self.precursor_charge.append_null();
             }
         }
 
@@ -540,7 +423,8 @@ impl MzMLArrayBuilder {
 
         let cv_params = self.cv_params.finish();
 
-        let precursor_list = self.precursor_list.finish();
+        let precursor_mz = self.precursor_mz.finish();
+        let precursor_charge = self.precursor_charge.finish();
 
         vec![
             Arc::new(id),
@@ -548,7 +432,8 @@ impl MzMLArrayBuilder {
             Arc::new(intensity),
             Arc::new(wavelength),
             Arc::new(cv_params),
-            Arc::new(precursor_list),
+            Arc::new(precursor_mz),
+            Arc::new(precursor_charge),
         ]
     }
 }
