@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.17.0 (2024-04-22)
+
+### Feat
+
+- simplify mzml reader
+
 ## v0.16.7 (2024-04-22)
 
 ### Refactor
