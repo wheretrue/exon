@@ -129,6 +129,12 @@ impl ListingCRAMTableOptions {
         self
     }
 
+    /// Set the region filter for the table.
+    pub fn with_region(mut self, region: Option<Region>) -> Self {
+        self.region = region;
+        self
+    }
+
     /// Infer the schema from the file.
     async fn infer_schema_from_object_meta(
         &self,

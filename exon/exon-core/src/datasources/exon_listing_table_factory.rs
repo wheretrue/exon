@@ -321,7 +321,7 @@ impl ExonListingTableFactory {
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
 
-                let config = ListingFCSTableConfig::new(table_path).with_options(options);
+                let config = ListingFCSTableConfig::new(table_path, options);
                 let table = ListingFCSTable::try_new(config, table_schema)?;
 
                 Ok(Arc::new(table))

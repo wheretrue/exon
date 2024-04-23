@@ -30,6 +30,7 @@ use crate::{
         bcf::table_provider::{ListingBCFTable, ListingBCFTableOptions},
         bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
         bigwig,
+        cram::table_provider::{ListingCRAMTable, ListingCRAMTableConfig, ListingCRAMTableOptions},
         exon_listing_table_options::ExonListingConfig,
         genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions},
         gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
@@ -319,6 +320,21 @@ pub trait ExonSessionExt {
         options: ListingFASTQTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
+    /// Read a CRAM file.
+    async fn read_cram(
+        &self,
+        table_path: &str,
+        options: ListingCRAMTableOptions,
+    ) -> Result<DataFrame, ExonError>;
+
+    /// Read an FCS file.
+    #[cfg(feature = "fcs")]
+    async fn read_fcs(
+        &self,
+        table_path: &str,
+        options: crate::datasources::fcs::table_provider::ListingFCSTableOptions,
+    ) -> Result<DataFrame, ExonError>;
+
     /// Read a GENBANK file.
     #[cfg(feature = "genbank")]
     async fn read_genbank(
@@ -357,6 +373,47 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingBAMTable::new(config, table_schema);
 
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    #[cfg(feature = "fcs")]
+    async fn read_fcs(
+        &self,
+        table_path: &str,
+        options: crate::datasources::fcs::table_provider::ListingFCSTableOptions,
+    ) -> Result<DataFrame, ExonError> {
+        use crate::datasources::fcs::table_provider::ListingFCSTableConfig;
+
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        let config = ListingFCSTableConfig::new(table_path, options);
+        let table = crate::datasources::fcs::table_provider::ListingFCSTable::try_new(
+            config,
+            table_schema,
+        )?;
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    async fn read_cram(
+        &self,
+        table_path: &str,
+        options: ListingCRAMTableOptions,
+    ) -> crate::Result<DataFrame> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        // TODO: refactor this to use the new config setup
+        let config = ListingCRAMTableConfig::new(table_path, options);
+
+        let table = ListingCRAMTable::try_new(config, table_schema)?;
         let table = self.read_table(Arc::new(table))?;
 
         Ok(table)
@@ -664,6 +721,7 @@ mod tests {
     use crate::{
         datasources::{
             bcf::table_provider::ListingBCFTableOptions, bigwig,
+            cram::table_provider::ListingCRAMTableOptions,
             fasta::table_provider::ListingFASTATableOptions,
             fastq::table_provider::ListingFASTQTableOptions,
         },
@@ -814,6 +872,72 @@ mod tests {
             .await?;
 
         assert_eq!(df.count().await?, 4);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_cram_file() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let cram_path = exon_test::test_path("cram", "test_input_1_a.cram");
+
+        let df = ctx
+            .read_cram(
+                cram_path.to_str().unwrap(),
+                ListingCRAMTableOptions::default(),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 15);
+
+        let cram_path = exon_test::test_path("two-cram", "twolib.sorted.cram");
+        let fasta_reference = exon_test::test_path("two-cram", "rand1k.fa");
+
+        let df = ctx
+            .read_cram(
+                cram_path.to_str().unwrap(),
+                ListingCRAMTableOptions::default()
+                    .with_fasta_reference(fasta_reference.to_str().map(|s| s.to_string())),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 4);
+
+        let region = "1".parse()?;
+
+        let df = ctx
+            .read_cram(
+                cram_path.to_str().unwrap(),
+                ListingCRAMTableOptions::default()
+                    .with_fasta_reference(fasta_reference.to_str().map(|s| s.to_string()))
+                    .with_indexed(true)
+                    .with_region(Some(region)),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 0);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "fcs")]
+    #[tokio::test]
+    async fn test_read_fcs() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fcs_path = exon_test::test_path("fcs", "Guava Muse.fcs");
+
+        let df = ctx
+            .read_fcs(
+                fcs_path.to_str().unwrap(),
+                crate::datasources::fcs::table_provider::ListingFCSTableOptions::new(
+                    FileCompressionType::UNCOMPRESSED,
+                ),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 108);
+
         Ok(())
     }
 
