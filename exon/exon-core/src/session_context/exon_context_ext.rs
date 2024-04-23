@@ -327,6 +327,14 @@ pub trait ExonSessionExt {
         options: ListingCRAMTableOptions,
     ) -> Result<DataFrame, ExonError>;
 
+    /// Read an FCS file.
+    #[cfg(feature = "fcs")]
+    async fn read_fcs(
+        &self,
+        table_path: &str,
+        options: crate::datasources::fcs::table_provider::ListingFCSTableOptions,
+    ) -> Result<DataFrame, ExonError>;
+
     /// Read a GENBANK file.
     #[cfg(feature = "genbank")]
     async fn read_genbank(
@@ -364,6 +372,29 @@ impl ExonSessionExt for SessionContext {
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingBAMTable::new(config, table_schema);
+
+        let table = self.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
+    #[cfg(feature = "fcs")]
+    async fn read_fcs(
+        &self,
+        table_path: &str,
+        options: crate::datasources::fcs::table_provider::ListingFCSTableOptions,
+    ) -> Result<DataFrame, ExonError> {
+        use crate::datasources::fcs::table_provider::ListingFCSTableConfig;
+
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+
+        let config = ListingFCSTableConfig::new(table_path, options);
+        let table = crate::datasources::fcs::table_provider::ListingFCSTable::try_new(
+            config,
+            table_schema,
+        )?;
 
         let table = self.read_table(Arc::new(table))?;
 
@@ -885,6 +916,27 @@ mod tests {
             .await?;
 
         assert_eq!(df.count().await?, 0);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "fcs")]
+    #[tokio::test]
+    async fn test_read_fcs() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = SessionContext::new_exon();
+
+        let fcs_path = exon_test::test_path("fcs", "Guava Muse.fcs");
+
+        let df = ctx
+            .read_fcs(
+                fcs_path.to_str().unwrap(),
+                crate::datasources::fcs::table_provider::ListingFCSTableOptions::new(
+                    FileCompressionType::UNCOMPRESSED,
+                ),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 108);
 
         Ok(())
     }
