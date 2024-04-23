@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.19.0 (2024-04-23)
+
+### Feat
+
+- add read_cram and read_fcs methods (#487)
+
 ## v0.18.0 (2024-04-22)
 
 ### Feat
