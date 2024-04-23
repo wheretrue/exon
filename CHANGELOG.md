@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.18.0 (2024-04-22)
+
+### Feat
+
+- simplify genbank schema (#485)
+
 ## v0.17.0 (2024-04-22)
 
 ### Feat
