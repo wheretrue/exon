@@ -75,6 +75,16 @@ pub struct ListingFCSTableOptions {
     table_partition_cols: Vec<Field>,
 }
 
+impl Default for ListingFCSTableOptions {
+    fn default() -> Self {
+        Self {
+            file_extension: ExonFileType::FCS.get_file_extension(FileCompressionType::UNCOMPRESSED),
+            file_compression_type: FileCompressionType::UNCOMPRESSED,
+            table_partition_cols: vec![],
+        }
+    }
+}
+
 impl ListingFCSTableOptions {
     /// Create a new set of options
     pub fn new(file_compression_type: FileCompressionType) -> Self {
@@ -91,6 +101,22 @@ impl ListingFCSTableOptions {
     pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
+            ..self
+        }
+    }
+
+    /// Set the file extension
+    pub fn with_file_extension(self, file_extension: String) -> Self {
+        Self {
+            file_extension,
+            ..self
+        }
+    }
+
+    /// Set the file compression type
+    pub fn with_file_compression_type(self, file_compression_type: FileCompressionType) -> Self {
+        Self {
+            file_compression_type,
             ..self
         }
     }

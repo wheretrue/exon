@@ -72,6 +72,7 @@ impl ListingCRAMTableConfig {
     }
 }
 
+/// Options for a CRAM listing table.
 #[derive(Debug, Clone, Default)]
 pub struct ListingCRAMTableOptions {
     /// The partition columns for the table.
@@ -199,6 +200,7 @@ impl ListingCRAMTableOptions {
         Ok(schema_builder.build())
     }
 
+    /// Infer the schema for the table.
     pub async fn infer_schema<'a>(
         &self,
         state: &SessionState,
@@ -244,6 +246,7 @@ impl ListingCRAMTableOptions {
 }
 
 #[derive(Debug, Clone)]
+/// A listing table for CRAM files.
 pub struct ListingCRAMTable {
     /// The paths to the listing table.
     table_paths: Vec<ListingTableUrl>,

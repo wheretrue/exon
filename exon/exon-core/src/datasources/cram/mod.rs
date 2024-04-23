@@ -17,5 +17,7 @@ pub(crate) mod index;
 pub(crate) mod indexed_file_opener;
 pub(crate) mod indexed_scanner;
 pub(crate) mod scanner;
-pub(crate) mod table_provider;
 pub(crate) mod udtf;
+
+/// The CRAM table provider.
+pub mod table_provider;
