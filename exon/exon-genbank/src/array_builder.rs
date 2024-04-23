@@ -16,8 +16,8 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        ArrayBuilder, ArrayRef, GenericListBuilder, GenericStringBuilder, MapBuilder,
-        StringBuilder, StructBuilder,
+        ArrayBuilder, ArrayRef, GenericListBuilder, GenericStringBuilder, StringBuilder,
+        StructBuilder,
     },
     datatypes::{DataType, Field, Fields},
 };
@@ -43,37 +43,38 @@ pub struct GenbankArrayBuilder {
 
 impl GenbankArrayBuilder {
     pub fn new() -> Self {
-        let kind_builder = GenericStringBuilder::<i32>::new();
-        let location_builder = GenericStringBuilder::<i32>::new();
-
         let qualifier_key_field = Field::new("keys", DataType::Utf8, false);
         let qualifier_value_field = Field::new("values", DataType::Utf8, true);
+        let fields = Fields::from(vec![qualifier_key_field, qualifier_value_field]);
 
-        let qualifiers_builder = MapBuilder::new(
-            None,
-            GenericStringBuilder::<i32>::new(),
-            GenericStringBuilder::<i32>::new(),
+        let struct_builder = StructBuilder::new(
+            fields.clone(),
+            vec![
+                Box::new(GenericStringBuilder::<i32>::new()),
+                Box::new(GenericStringBuilder::<i32>::new()),
+            ],
         );
-        let qualifiers_field = Field::new_map(
-            "qualifiers",
-            "entries",
-            qualifier_key_field,
-            qualifier_value_field,
-            false,
-            true,
-        );
+
+        let qualifier_field = Field::new("item", DataType::Struct(fields), true);
+        let qualifier_list_field =
+            Field::new("item", DataType::List(Arc::new(qualifier_field)), true);
+
+        let qualifiers_list_builder = GenericListBuilder::<i32, StructBuilder>::new(struct_builder);
+
+        let kind_builder = GenericStringBuilder::<i32>::new();
+        let location_builder = GenericStringBuilder::<i32>::new();
 
         let kind_field = Field::new("kind", DataType::Utf8, false);
         let location_field = Field::new("location", DataType::Utf8, false);
 
-        let fields = Fields::from(vec![kind_field, location_field, qualifiers_field]);
+        let fields: Fields = Fields::from(vec![kind_field, location_field, qualifier_list_field]);
 
         let feature_builder: StructBuilder = StructBuilder::new(
             fields,
             vec![
                 Box::new(kind_builder),
                 Box::new(location_builder),
-                Box::new(qualifiers_builder),
+                Box::new(qualifiers_list_builder),
             ],
         );
 
@@ -193,17 +194,27 @@ impl GenbankArrayBuilder {
                 .unwrap()
                 .append_value(location);
 
-            let qualifier_values = feature_values
-                .field_builder::<MapBuilder<GenericStringBuilder<i32>, GenericStringBuilder<i32>>>(
-                    2,
-                )
+            let list_builder = feature_values
+                .field_builder::<GenericListBuilder<i32, StructBuilder>>(2)
                 .unwrap();
 
             for (k, v) in feature.qualifiers.iter() {
-                qualifier_values.keys().append_value(k);
-                qualifier_values.values().append_option(v.as_ref());
+                list_builder
+                    .values()
+                    .field_builder::<GenericStringBuilder<i32>>(0)
+                    .unwrap()
+                    .append_value(k);
+
+                list_builder
+                    .values()
+                    .field_builder::<GenericStringBuilder<i32>>(1)
+                    .unwrap()
+                    .append_option(v.as_ref());
+
+                list_builder.values().append(true);
             }
-            qualifier_values.append(true).unwrap();
+
+            list_builder.append(true);
 
             feature_values.append(true);
         }

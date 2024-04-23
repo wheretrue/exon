@@ -25,16 +25,16 @@ pub fn schema() -> SchemaRef {
 
     let qualifier_key_field = Field::new("keys", DataType::Utf8, false);
     let qualifier_value_field = Field::new("values", DataType::Utf8, true);
-    let qualifiers_field = Field::new_map(
-        "qualifiers",
-        "entries",
-        qualifier_key_field,
-        qualifier_value_field,
-        false,
+
+    let qualifier_field = Field::new_struct(
+        "item",
+        vec![qualifier_key_field, qualifier_value_field],
         true,
     );
 
-    let fields = Fields::from(vec![kind_field, location_field, qualifiers_field]);
+    let qualifiers_list = Field::new("item", DataType::List(Arc::new(qualifier_field)), true);
+
+    let fields = Fields::from(vec![kind_field, location_field, qualifiers_list]);
     let feature_field = Field::new("item", DataType::Struct(fields), true);
 
     let comment_field = Field::new("item", DataType::Utf8, true);
