@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.20.0 (2024-04-24)
+
+### Feat
+
+- update vcf table options (#488)
+
 ## v0.19.1 (2024-04-23)
 
 ### Fix
