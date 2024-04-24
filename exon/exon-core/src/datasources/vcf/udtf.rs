@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use crate::{
+    config::extract_config_from_state,
     datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
     error::ExonError,
 };
@@ -48,12 +49,17 @@ impl TableFunctionImpl for VCFScanFunction {
     fn call(&self, exprs: &[Expr]) -> Result<Arc<dyn TableProvider>> {
         let listing_scan_function = ScanFunction::try_from(exprs)?;
 
+        let state = self.ctx.state();
+        let exon_config_extension = extract_config_from_state(&state)?;
+
         let listing_table_options =
-            ListingVCFTableOptions::new(listing_scan_function.file_compression_type, false);
+            ListingVCFTableOptions::new(listing_scan_function.file_compression_type, false)
+                .with_parse_formats(exon_config_extension.vcf_parse_formats)
+                .with_parse_info(exon_config_extension.vcf_parse_info);
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options
-                .infer_schema(&self.ctx.state(), &listing_scan_function.listing_table_url)
+                .infer_schema(&state, &listing_scan_function.listing_table_url)
                 .await?;
 
             Ok::<TableSchema, datafusion::error::DataFusionError>(schema)
@@ -100,8 +106,13 @@ impl TableFunctionImpl for VCFIndexedScanFunction {
 
         let region = region_str.parse().map_err(ExonError::from)?;
 
-        let listing_table_options =
-            ListingVCFTableOptions::new(FileCompressionType::GZIP, true).with_regions(vec![region]);
+        let state = self.ctx.state();
+        let exon_config_extension = extract_config_from_state(&state)?;
+
+        let listing_table_options = ListingVCFTableOptions::new(FileCompressionType::GZIP, true)
+            .with_regions(vec![region])
+            .with_parse_info(exon_config_extension.vcf_parse_info)
+            .with_parse_formats(exon_config_extension.vcf_parse_formats);
 
         let schema = futures::executor::block_on(async {
             let schema = listing_table_options

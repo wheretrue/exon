@@ -34,7 +34,6 @@ use object_store::{ObjectMeta, ObjectStore};
 use tokio_util::io::StreamReader;
 
 use crate::{
-    config::ExonConfigExtension,
     datasources::{
         exon_listing_table_options::{
             ExonIndexedListingOptions, ExonListingConfig, ExonListingOptions,
@@ -71,6 +70,12 @@ pub struct ListingVCFTableOptions {
 
     /// A list of table partition columns
     table_partition_cols: Vec<Field>,
+
+    /// Whether to parse the INFO field
+    parse_info: bool,
+
+    /// Whether to parse the FORMAT field
+    parse_formats: bool,
 }
 
 impl Default for ListingVCFTableOptions {
@@ -81,6 +86,8 @@ impl Default for ListingVCFTableOptions {
             regions: Vec::new(),
             file_compression_type: FileCompressionType::UNCOMPRESSED,
             table_partition_cols: Vec::new(),
+            parse_info: false,
+            parse_formats: false,
         }
     }
 }
@@ -141,6 +148,8 @@ impl ListingVCFTableOptions {
             indexed,
             table_partition_cols: Vec::new(),
             regions: Vec::new(),
+            parse_info: false,
+            parse_formats: false,
         }
     }
 
@@ -169,9 +178,22 @@ impl ListingVCFTableOptions {
         }
     }
 
+    /// Set the parse info field
+    pub fn with_parse_info(self, parse_info: bool) -> Self {
+        Self { parse_info, ..self }
+    }
+
+    /// Set the parse formats field
+    pub fn with_parse_formats(self, parse_formats: bool) -> Self {
+        Self {
+            parse_formats,
+            ..self
+        }
+    }
+
     async fn infer_schema_from_object_meta(
         &self,
-        state: &SessionState,
+        _state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
     ) -> datafusion::error::Result<TableSchema> {
@@ -186,18 +208,9 @@ impl ListingVCFTableOptions {
         let stream_reader = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
         let stream_reader = StreamReader::new(stream_reader);
 
-        let exon_settings = state
-            .config()
-            .options()
-            .extensions
-            .get::<ExonConfigExtension>()
-            .ok_or(DataFusionError::Execution(
-                "Exon settings must be configured.".to_string(),
-            ))?;
-
         let mut builder = VCFSchemaBuilder::default()
-            .with_parse_info(exon_settings.vcf_parse_info)
-            .with_parse_formats(exon_settings.vcf_parse_formats)
+            .with_parse_info(self.parse_info)
+            .with_parse_formats(self.parse_formats)
             .with_partition_fields(self.table_partition_cols.clone());
 
         let header = match self.file_compression_type {
