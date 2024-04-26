@@ -64,6 +64,7 @@ coitrees = "0.4.0"
 exon-test = { path = "../exon-test" }
 sqllogictest = "0.20.2"
 clap = { version = "4", features = ["derive", "env"] }
+criterion = { version = "0.5", features = ["async_tokio"] }
 
 [features]
 all = ["ffi", "genbank", "mzml", "fcs", "motif-udfs"]
@@ -79,3 +80,9 @@ motif-udfs = ["dep:lightmotif", "dep:lightmotif-io"]
 harness = false
 name = "sqllogictests"
 path = "tests/sqllogictests/src/main.rs"
+
+
+[[bench]]
+harness = false
+name = "reverse_complement"
+path = "benches/reverse_complement.rs"

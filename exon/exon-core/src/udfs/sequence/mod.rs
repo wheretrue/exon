@@ -21,6 +21,8 @@ mod quality_score_string_to_list;
 mod reverse_complement;
 mod trim_polya;
 
+pub use reverse_complement::reverse_complement;
+
 #[cfg(feature = "motif_udf")]
 pub(crate) mod motif;
 

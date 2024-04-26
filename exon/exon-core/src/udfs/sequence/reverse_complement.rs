@@ -35,7 +35,8 @@ impl Default for ReverseComplement {
     }
 }
 
-fn reverse_complement(sequence: &str) -> String {
+/// Returns the reverse complement of a DNA sequence.
+pub fn reverse_complement(sequence: &str) -> String {
     sequence
         .chars()
         .rev()
