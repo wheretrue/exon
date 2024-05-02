@@ -252,6 +252,7 @@ impl Error for MissingCompressionError {}
 
 type CVVector = Vec<CVParam>;
 
+#[allow(dead_code)]
 trait CVVectorMethods {}
 
 impl CVVectorMethods for CVVector {}
@@ -314,6 +315,7 @@ type DecodeArrayError = &'static str;
 type DecodedArrayResult<T> = Result<T, DecodeArrayError>;
 
 pub trait DecodedArray {
+    #[allow(dead_code)]
     fn decode_array(&self, i: usize) -> DecodedArrayResult<Vec<f64>> {
         let de = self.decompress_binary_string(i).unwrap();
         let decoded = base64::engine::general_purpose::STANDARD.decode(de);
@@ -331,6 +333,7 @@ pub trait DecodedArray {
         Err("error")
     }
 
+    #[allow(dead_code)]
     fn decompress_binary_string(&self, i: usize) -> std::io::Result<&String>;
 }
 
