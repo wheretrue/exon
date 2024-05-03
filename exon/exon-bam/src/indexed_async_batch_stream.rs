@@ -169,7 +169,7 @@ where
 
     async fn read_record(&mut self, record: &mut RecordBuf) -> std::io::Result<Option<()>> {
         if let Some(max_bytes) = self.max_bytes {
-            if self.reader.virtual_position().uncompressed() >= max_bytes {
+            if self.reader.get_ref().virtual_position().uncompressed() >= max_bytes {
                 return Ok(None);
             }
         }

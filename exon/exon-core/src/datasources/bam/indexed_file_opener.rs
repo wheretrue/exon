@@ -59,7 +59,7 @@ impl FileOpener for IndexedBAMOpener {
             let mut first_bam_reader = noodles::bam::AsyncReader::new(stream_reader);
 
             let header = first_bam_reader.read_header().await?;
-            let header_offset = first_bam_reader.virtual_position();
+            let header_offset = first_bam_reader.get_ref().virtual_position();
 
             let offsets = if let Some(ref ext) = file_meta.extensions {
                 ext.downcast_ref::<BGZFIndexedOffsets>()
