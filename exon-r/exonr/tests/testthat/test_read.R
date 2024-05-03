@@ -141,11 +141,34 @@ test_that("querying an exon session works", {
     session$execute("CREATE EXTERNAL TABLE gene_annotations STORED AS GFF LOCATION '../../../../exon/exon-core/test-data/datasources/gff/test.gff'")
 
     rdf <- session$sql("SELECT seqname, source, type, start, \"end\", score, strand, phase FROM gene_annotations")
-    batch_reader <- rdf$to_arrow()
+    batch_reader <- rdf$to_record_batch_reader()
 
     con <- dbConnect(duckdb::duckdb())
 
     arrow::to_duckdb(batch_reader, table_name = "gene_annotations", con = con)
+
+    result <- dbGetQuery(con, "SELECT * FROM gene_annotations")
+
+    df <- as.data.frame(result)
+
+    expect_equal(colnames(df), c("seqname", "source", "type", "start", "end", "score", "strand", "phase"))
+    expect_equal(nrow(df), 5000)
+})
+
+test_that("querying an exon session works", {
+    skip_if_not(requireNamespace("duckdb", quietly = F))
+
+    library(duckdb)
+
+    session <- ExonRSessionContext$new()
+    session$execute("CREATE EXTERNAL TABLE gene_annotations STORED AS GFF LOCATION '../../../../exon/exon-core/test-data/datasources/gff/test.gff'")
+
+    rdf <- session$sql("SELECT seqname, source, type, start, \"end\", score, strand, phase FROM gene_annotations")
+    table <- rdf$to_arrow()
+
+    con <- dbConnect(duckdb::duckdb())
+
+    arrow::to_duckdb(table, table_name = "gene_annotations", con = con)
 
     result <- dbGetQuery(con, "SELECT * FROM gene_annotations")
 
