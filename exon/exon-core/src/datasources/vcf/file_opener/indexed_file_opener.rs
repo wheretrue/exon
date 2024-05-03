@@ -73,7 +73,7 @@ impl FileOpener for IndexedVCFOpener {
             // We save this header for later to pass to the batch reader for record deserialization.
             let header = vcf_reader.read_header().await?;
 
-            let header_offset = vcf_reader.virtual_position();
+            let header_offset = vcf_reader.get_ref().virtual_position();
 
             let batch_stream = match file_meta.extensions {
                 Some(ref ext) => {
@@ -193,8 +193,8 @@ impl FileOpener for IndexedVCFOpener {
                     let mut async_reader = AsyncBGZFReader::from_reader(stream_reader);
 
                     // If we're at the start of the file, we need to seek to the header offset.
-                    if vcf_reader.virtual_position().compressed() == 0
-                        && vcf_reader.virtual_position().uncompressed() == 0
+                    if vcf_reader.get_ref().virtual_position().compressed() == 0
+                        && vcf_reader.get_ref().virtual_position().uncompressed() == 0
                     {
                         tracing::debug!("Seeking to header offset: {:?}", header_offset);
                         async_reader.scan_to_virtual_position(header_offset).await?;

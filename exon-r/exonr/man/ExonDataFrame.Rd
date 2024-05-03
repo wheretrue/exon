@@ -11,6 +11,7 @@ An ExonDataFrame is a data frame that is backed by an Exon engine.
 \itemize{
 \item \href{#method-ExonDataFrame-new}{\code{ExonDataFrame$new()}}
 \item \href{#method-ExonDataFrame-to_arrow}{\code{ExonDataFrame$to_arrow()}}
+\item \href{#method-ExonDataFrame-to_record_batch_reader}{\code{ExonDataFrame$to_record_batch_reader()}}
 \item \href{#method-ExonDataFrame-clone}{\code{ExonDataFrame$clone()}}
 }
 }
@@ -42,6 +43,19 @@ Convert the ExonDataFrame to an Arrow table.
 
 \subsection{Returns}{
 An Arrow table.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-ExonDataFrame-to_record_batch_reader"></a>}}
+\if{latex}{\out{\hypertarget{method-ExonDataFrame-to_record_batch_reader}{}}}
+\subsection{Method \code{to_record_batch_reader()}}{
+Convert the ExonDataFrame a stream of record batches.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{ExonDataFrame$to_record_batch_reader()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+A stream of record batches.
 }
 }
 \if{html}{\out{<hr>}}

@@ -190,14 +190,20 @@ ExonDataFrame <- R6Class("ExonDataFrame",
         #'
         #' @return An Arrow table.
         to_arrow = function() {
+            record_batch_stream <- self$to_record_batch_reader()
+
+            arrow::arrow_table(record_batch_stream)
+        },
+        #' @description Convert the ExonDataFrame a stream of record batches.
+        #'
+        #' @return A stream of record batches.
+        to_record_batch_reader = function() {
             stream <- nanoarrow::nanoarrow_allocate_array_stream()
             pointer_addr <- nanoarrow::nanoarrow_pointer_addr_chr(stream)
 
             private$data_frame$to_arrow(pointer_addr)
 
-            record_batch_stream <- arrow::RecordBatchStreamReader$import_from_c(pointer_addr)
-
-            arrow::arrow_table(record_batch_stream)
+            arrow::RecordBatchStreamReader$import_from_c(pointer_addr)
         }
     ),
     private = list(

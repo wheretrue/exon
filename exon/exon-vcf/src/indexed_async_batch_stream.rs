@@ -72,7 +72,7 @@ where
     }
 
     async fn read_record(&mut self) -> std::io::Result<Option<noodles::vcf::Record>> {
-        if self.reader.virtual_position().uncompressed() as usize >= self.max_bytes {
+        if self.reader.get_ref().virtual_position().uncompressed() as usize >= self.max_bytes {
             return Ok(None);
         }
 
