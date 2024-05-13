@@ -24,7 +24,7 @@ use arrow::{
 };
 
 use datafusion::{
-    common::{DFField, DFSchema},
+    common::DFSchema,
     datasource::listing::{ListingTableUrl, PartitionedFile},
     error::{DataFusionError, Result},
     execution::context::SessionState,
@@ -146,6 +146,7 @@ pub async fn pruned_partition_list<'a>(
                     partition_values: partition_values.clone(),
                     range: None,
                     extensions: None,
+                    statistics: None,
                 })
             }));
 
@@ -262,10 +263,10 @@ async fn prune_partitions(
     // let fields: Fields = partition_cols.collect();
     let schema = Arc::new(Schema::new(partition_cols.to_vec()));
 
-    let df_schema = DFSchema::new_with_metadata(
+    let df_schema = DFSchema::from_unqualifed_fields(
         partition_cols
             .iter()
-            .map(|f| DFField::new_unqualified(f.name(), f.data_type().clone(), f.is_nullable())) // TODO: use qualified name, remove clone
+            .map(|f| Field::new(f.name(), f.data_type().clone(), f.is_nullable())) // TODO: use qualified name, remove clone
             .collect(),
         Default::default(),
     )?;
