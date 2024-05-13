@@ -21,7 +21,7 @@ use datafusion::{
     error::Result,
     execution::context::SessionState,
     logical_expr::{Expr, LogicalPlan},
-    physical_plan::{insert::FileSinkExec, ExecutionPlan, PhysicalExpr},
+    physical_plan::{insert::DataSinkExec, ExecutionPlan, PhysicalExpr},
     physical_planner::{DefaultPhysicalPlanner, PhysicalPlanner},
 };
 
@@ -48,7 +48,7 @@ impl PhysicalPlanner for ExonPhysicalPlanner {
         let runtime = session_state.runtime_env();
 
         // try to downcast plan as FileSinkExec
-        if let Some(file_sink) = plan.as_any().downcast_ref::<FileSinkExec>() {
+        if let Some(file_sink) = plan.as_any().downcast_ref::<DataSinkExec>() {
             let sink = file_sink.sink();
 
             // Try to downcast to a ParquetSink
