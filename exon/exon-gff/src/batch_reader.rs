@@ -64,16 +64,12 @@ where
     }
 
     async fn read_line(&mut self) -> Result<Option<noodles_gff::lazy::Line>> {
-        loop {
-            let mut line = noodles_gff::lazy::Line::default();
+        let mut line = noodles_gff::lazy::Line::default();
 
-            match self.reader.read_lazy_line(&mut line).await {
-                Ok(0) => return Ok(None),
-                Ok(_) => {
-                    return Ok(Some(line));
-                }
-                Err(e) => return Err(e.into()),
-            };
+        match self.reader.read_lazy_line(&mut line).await {
+            Ok(0) => Ok(None),
+            Ok(_) => Ok(Some(line)),
+            Err(e) => Err(e.into()),
         }
     }
 

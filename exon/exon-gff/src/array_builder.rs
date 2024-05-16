@@ -99,7 +99,7 @@ impl GFFArrayBuilder {
                 5 => {
                     let score = record.score();
 
-                    if score == "" || score == "." {
+                    if score.is_empty() || score == "." {
                         self.scores.append_null();
                     } else {
                         let score_f32 = score
@@ -120,7 +120,7 @@ impl GFFArrayBuilder {
                 7 => {
                     let phase = record.phase();
 
-                    if phase == "" || phase == "." {
+                    if phase.is_empty() || phase == "." {
                         self.phases.append_null();
                     } else {
                         self.phases.append_value(phase);
