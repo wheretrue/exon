@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.21.0 (2024-05-16)
+
+### Feat
+
+- add lazy gff support (#505)
+- **R**: expose `to_record_batch_reader` (#498)
+- add dead code (#496)
+
 ## v0.20.0 (2024-04-24)
 
 ### Feat
