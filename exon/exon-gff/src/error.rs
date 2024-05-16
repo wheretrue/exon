@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{error::Error, fmt::Display, str::Utf8Error};
+use std::{error::Error, fmt::Display, num::ParseIntError, str::Utf8Error};
 
 use arrow::error::ArrowError;
 
@@ -37,13 +37,13 @@ impl Display for ExonGFFError {
 
 impl Error for ExonGFFError {}
 
-impl From<noodles::gff::line::ParseError> for ExonGFFError {
-    fn from(e: noodles::gff::line::ParseError) -> Self {
+impl From<noodles_gff::line::ParseError> for ExonGFFError {
+    fn from(e: noodles_gff::line::ParseError) -> Self {
         match e {
-            noodles::gff::line::ParseError::InvalidRecord(s) => {
+            noodles_gff::line::ParseError::InvalidRecord(s) => {
                 ExonGFFError::InvalidRecord(s.to_string())
             }
-            noodles::gff::line::ParseError::InvalidDirective(s) => {
+            noodles_gff::line::ParseError::InvalidDirective(s) => {
                 ExonGFFError::InvalidDirective(s.to_string())
             }
         }
@@ -70,6 +70,12 @@ impl From<std::io::Error> for ExonGFFError {
 
 impl From<Utf8Error> for ExonGFFError {
     fn from(e: Utf8Error) -> Self {
+        ExonGFFError::ExternalError(Box::new(e))
+    }
+}
+
+impl From<ParseIntError> for ExonGFFError {
+    fn from(e: ParseIntError) -> Self {
         ExonGFFError::ExternalError(Box::new(e))
     }
 }

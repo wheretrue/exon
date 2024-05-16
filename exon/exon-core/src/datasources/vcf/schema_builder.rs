@@ -18,11 +18,17 @@ use arrow::datatypes::{Field, Fields, Schema};
 use datafusion::error::Result;
 use noodles::vcf::{
     header::{
-        record::value::map::format::Type as FormatType, record::value::map::info::Type as InfoType,
-        Formats, Infos, Number as InfoNumber,
+        record::value::map::{
+            format::Number as FormatNumber,
+            format::Type as FormatType,
+            info::{Number as InfoNumber, Type as InfoType},
+        },
+        Formats, Infos,
     },
     Header,
 };
+
+// noodles_vcf::header::record::value::map::Typed
 
 use exon_common::TableSchema;
 
@@ -207,6 +213,25 @@ fn vcf_format_type_to_arrow_type(ty: FormatType) -> arrow::datatypes::DataType {
     }
 }
 
+fn wrap_type_in_count_format(
+    cnt: FormatNumber,
+    typ: &arrow::datatypes::Field,
+) -> arrow::datatypes::Field {
+    match cnt {
+        FormatNumber::Count(0) => typ.clone(),
+        FormatNumber::Count(1) => typ.clone(),
+        _ => arrow::datatypes::Field::new(
+            typ.name(),
+            arrow::datatypes::DataType::List(Arc::new(arrow::datatypes::Field::new(
+                "item",
+                typ.data_type().clone(),
+                typ.is_nullable(),
+            ))),
+            typ.is_nullable(),
+        ),
+    }
+}
+
 fn wrap_type_in_count(cnt: InfoNumber, typ: &arrow::datatypes::Field) -> arrow::datatypes::Field {
     match cnt {
         InfoNumber::Count(0) => typ.clone(),
@@ -246,7 +271,7 @@ fn vcf_formats_to_field(formats: Formats) -> arrow::datatypes::Field {
         let ty = vcf_format_type_to_arrow_type(value.ty());
 
         let field = arrow::datatypes::Field::new(key.to_string(), ty, true);
-        let field = wrap_type_in_count(value.number(), &field);
+        let field = wrap_type_in_count_format(value.number(), &field);
 
         fields.push(field);
     }

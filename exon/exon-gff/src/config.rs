@@ -62,6 +62,20 @@ impl GFFConfig {
         self.projection = Some(file_projection);
         self
     }
+
+    /// Get the projection, returning the identity projection if none is set.
+    pub fn projection(&self) -> Vec<usize> {
+        self.projection
+            .clone()
+            .unwrap_or_else(|| (0..self.file_schema.fields().len()).collect())
+    }
+
+    /// Get the projected schema.
+    pub fn projected_schema(&self) -> arrow::error::Result<SchemaRef> {
+        let schema = self.file_schema.project(&self.projection())?;
+
+        Ok(Arc::new(schema))
+    }
 }
 
 pub fn new_gff_schema_builder() -> TableSchemaBuilder {
