@@ -45,9 +45,6 @@ pub enum ExonError {
     /// Object store error
     ObjectStoreError(object_store::Error),
 
-    /// Noodles error
-    NoodlesError(noodles::core::Error),
-
     /// IO error
     IOError(std::io::Error),
 
@@ -76,12 +73,6 @@ impl From<DataFusionError> for ExonError {
 impl From<ArrowError> for ExonError {
     fn from(error: ArrowError) -> Self {
         ExonError::ArrowError(error)
-    }
-}
-
-impl From<noodles::core::Error> for ExonError {
-    fn from(error: noodles::core::Error) -> Self {
-        ExonError::NoodlesError(error)
     }
 }
 
@@ -152,7 +143,6 @@ impl Display for ExonError {
             ExonError::ArrowError(error) => write!(f, "ArrowError: {}", error),
             ExonError::ExecutionError(error) => write!(f, "ExecutionError: {}", error),
             ExonError::ObjectStoreError(error) => write!(f, "ObjectStoreError: {}", error),
-            ExonError::NoodlesError(error) => write!(f, "NoodlesError: {}", error),
             ExonError::IOError(error) => write!(f, "IOError: {}", error),
             ExonError::InvalidFileType(error) => write!(f, "InvalidFileType: {}", error),
             ExonError::Configuration(error) => write!(f, "InvalidConfig: {}", error),
