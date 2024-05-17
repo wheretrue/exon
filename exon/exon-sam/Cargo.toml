@@ -12,7 +12,7 @@ version = { workspace = true }
 arrow = { workspace = true }
 exon-common = { path = "../exon-common", version = "0.21.0" }
 futures = { workspace = true }
-itertools = "0.12.1"
+itertools = "0.13"
 noodles = { workspace = true, features = [
   "core",
   "async",

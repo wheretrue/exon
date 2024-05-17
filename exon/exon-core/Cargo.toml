@@ -32,7 +32,7 @@ exon-sam = { path = "../exon-sam", version = "0.21.0" }
 exon-vcf = { path = "../exon-vcf", version = "0.21.0" }
 exon-bigwig = { path = "../exon-bigwig", version = "0.21.0" }
 futures = { workspace = true }
-itertools = "0.12.1"
+itertools = "0.13"
 noodles = { workspace = true, features = [
   "bed",
   "tabix",

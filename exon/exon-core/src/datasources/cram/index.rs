@@ -62,7 +62,7 @@ pub(crate) async fn augment_file_with_crai_record_chunks(
             }
         })
         .sorted_by(|a, b| a.offset().cmp(&b.offset()))
-        .group_by(|a| a.offset())
+        .chunk_by(|a| a.offset())
         .into_iter()
         .map(|(offset, records)| {
             let mut pf = partitioned_file.clone();
