@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.21.1 (2024-05-20)
+
+### Fix
+
+- fix overflow in position conversion error
+
 ## v0.21.0 (2024-05-16)
 
 ### Feat
