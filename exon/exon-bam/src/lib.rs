@@ -15,9 +15,11 @@
 mod array_builder;
 mod batch_reader;
 mod config;
+mod error;
 mod indexed_async_batch_stream;
 
 pub use array_builder::BAMArrayBuilder;
 pub use batch_reader::BatchReader;
 pub use config::BAMConfig;
+pub use error::ExonBAMError;
 pub use indexed_async_batch_stream::IndexedAsyncBatchStream;

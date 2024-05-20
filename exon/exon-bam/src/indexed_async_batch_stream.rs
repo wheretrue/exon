@@ -26,6 +26,8 @@ use noodles::{
 };
 use tokio::io::AsyncBufRead;
 
+use crate::ExonBAMError;
+
 use super::{array_builder::BAMArrayBuilder, BAMConfig};
 
 /// This is a semi-lazy record that can be used to filter on the region without
@@ -36,16 +38,10 @@ pub(crate) struct SemiLazyRecord {
 }
 
 impl TryFrom<RecordBuf> for SemiLazyRecord {
-    type Error = arrow::error::ArrowError;
+    type Error = ExonBAMError;
 
     fn try_from(record: RecordBuf) -> Result<Self, Self::Error> {
-        let start = record.alignment_start();
-
-        let alignment_end = start.map(|s| usize::from(s) + record.cigar().alignment_span() - 1);
-        let alignment_end = alignment_end
-            .map(Position::try_from)
-            .transpose()
-            .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+        let alignment_end = record.alignment_end();
 
         Ok(Self {
             inner: record,
