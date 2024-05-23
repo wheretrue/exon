@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.22.0 (2024-05-23)
+
+### Feat
+
+- pass through encoding option to create table (#512)
+- add integer dna and protein encoding (#511)
+
+### Refactor
+
+- one hot to int encode (#513)
+
 ## v0.21.1 (2024-05-20)
 
 ### Fix
