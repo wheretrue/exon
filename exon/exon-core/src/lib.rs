@@ -30,6 +30,7 @@
 mod session_context;
 pub use session_context::ExonSessionExt;
 
+#[allow(clippy::cmp_owned)]
 mod config;
 pub use config::new_exon_config;
 

@@ -20,7 +20,9 @@ mod batch_reader;
 mod config;
 mod error;
 
+pub use array_builder::SequenceBuilder;
 pub use batch_reader::BatchReader;
 pub use config::FASTAConfig;
 pub use config::FASTASchemaBuilder;
+pub use config::SequenceDataType;
 pub use error::ExonFastaError;

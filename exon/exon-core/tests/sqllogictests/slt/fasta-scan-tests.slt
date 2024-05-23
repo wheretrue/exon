@@ -9,7 +9,6 @@ SELECT id, description, sequence FROM fasta_table;
 a description ATCG
 b description2 ATCG
 
-
 query T
 SELECT * FROM fasta_table WHERE id = 'a';
 ----
@@ -115,3 +114,36 @@ query T
 SELECT COUNT(*) FROM fa_table;
 ----
 2
+
+statement ok
+DROP TABLE fa_table;
+
+statement ok
+SET exon.fasta_sequence_data_type = 'one_hot_dna';
+
+statement ok
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
+
+query T
+SELECT id, description, sequence FROM exon_table;
+----
+a description [1, 4, 2, 3]
+b description2 [1, 4, 2, 3]
+
+statement ok
+DROP TABLE exon_table;
+
+statement ok
+SET exon.fasta_sequence_data_type = 'one_hot_protein';
+
+statement ok
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
+
+query T
+SELECT id, description, sequence FROM exon_table;
+----
+a description [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+b description2 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+statement ok
+DROP TABLE exon_table;

@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use arrow::record_batch::RecordBatch;
+use exon_common::ExonArrayBuilder;
 use futures::Stream;
-use noodles::fasta::{
-    record::{Definition, Sequence},
-    Record,
-};
 
 use tokio::io::AsyncBufRead;
 
@@ -58,34 +55,36 @@ where
         }
     }
 
-    async fn read_record(&mut self) -> ExonFastaResult<Option<noodles::fasta::Record>> {
+    async fn read_record(&mut self) -> ExonFastaResult<Option<()>> {
         self.buf.clear();
         if self.reader.read_definition(&mut self.buf).await? == 0 {
             return Ok(None);
         }
 
-        let definition = Definition::from_str(&self.buf)?;
-
-        // Allow for options?
-        // let mut sequence = Vec::with_capacity(self.config.fasta_sequence_buffer_capacity);
         self.sequence_buffer.clear();
         if self.reader.read_sequence(&mut self.sequence_buffer).await? == 0 {
             return Err(ExonFastaError::ParseError("invalid sequence".to_string()));
         }
-        let sequence = Sequence::from_iter(self.sequence_buffer.iter().copied());
-        let record = Record::new(definition, sequence);
 
-        Ok(Some(record))
+        Ok(Some(()))
     }
 
     async fn read_batch(&mut self) -> ExonFastaResult<Option<RecordBatch>> {
-        let mut record_batch =
-            FASTAArrayBuilder::create(self.config.file_schema.clone(), self.config.batch_size)?;
+        let mut record_batch = FASTAArrayBuilder::create(
+            self.config.file_schema.clone(),
+            self.config.projection.clone(),
+            self.config.batch_size,
+            &self.config.sequence_data_type,
+        )?;
 
         for _ in 0..self.config.batch_size {
-            match self.read_record().await? {
-                Some(record) => record_batch.append(&record)?,
-                None => break,
+            self.buf.clear();
+            self.sequence_buffer.clear();
+
+            if (self.read_record().await?).is_some() {
+                record_batch.append(&self.buf, &self.sequence_buffer)?;
+            } else {
+                break;
             }
         }
 
