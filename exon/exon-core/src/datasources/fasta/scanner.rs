@@ -28,7 +28,7 @@ use datafusion::{
         PlanProperties, SendableRecordBatchStream,
     },
 };
-use exon_fasta::FASTAConfig;
+use exon_fasta::{FASTAConfig, SequenceDataType};
 
 use crate::datasources::ExonFileScanConfig;
 
@@ -57,6 +57,9 @@ pub struct FASTAScan {
 
     /// The statistics for the scan.
     statistics: Statistics,
+
+    /// The sequence data type.
+    sequence_data_type: SequenceDataType,
 }
 
 impl FASTAScan {
@@ -65,6 +68,7 @@ impl FASTAScan {
         base_config: FileScanConfig,
         file_compression_type: FileCompressionType,
         fasta_sequence_buffer_capacity: usize,
+        sequence_data_type: SequenceDataType,
     ) -> Self {
         let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
@@ -76,6 +80,7 @@ impl FASTAScan {
             fasta_sequence_buffer_capacity,
             properties,
             statistics,
+            sequence_data_type,
         }
     }
 
@@ -158,6 +163,7 @@ impl ExecutionPlan for FASTAScan {
         let config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
             .with_batch_size(batch_size)
             .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity)
+            .with_sequence_data_type(self.sequence_data_type.clone())
             .with_projection(self.base_config.file_projection());
 
         let opener = FASTAOpener::new(Arc::new(config), self.file_compression_type);

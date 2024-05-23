@@ -245,6 +245,7 @@ impl ExonListingTableFactory {
 
                 let table_options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
+                    .with_sequence_data_type(exon_config_extension.fasta_sequence_data_type()?)
                     .with_some_file_extension(extension);
 
                 let schema = table_options.infer_schema(state).await?;

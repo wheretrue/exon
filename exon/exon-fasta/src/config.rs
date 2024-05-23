@@ -19,11 +19,12 @@ use exon_common::TableSchema;
 use noodles::core::Region;
 use object_store::ObjectStore;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SequenceDataType {
     Utf8,
     LargeUtf8,
     OneHotProtein,
+    OneHotDNA,
 }
 
 impl FromStr for SequenceDataType {
@@ -34,6 +35,7 @@ impl FromStr for SequenceDataType {
             "utf8" => Ok(Self::Utf8),
             "large_utf8" => Ok(Self::LargeUtf8),
             "one_hot_protein" => Ok(Self::OneHotProtein),
+            "one_hot_dna" => Ok(Self::OneHotDNA),
             _ => Err("invalid sequence data type"),
         }
     }
@@ -169,23 +171,29 @@ impl FASTASchemaBuilder {
     }
 
     pub fn build(&mut self) -> TableSchema {
-        // if self.large_utf8 {
-        //     let field = Field::new("sequence", DataType::LargeUtf8, false);
-        //     self.fields[2] = field;
-        // }
+        let mut fields = self.fields.clone();
 
         match self.sequence_data_type {
             SequenceDataType::Utf8 => {
-                let field = Field::new("sequence", DataType::Utf8, false);
-                self.fields[2] = field;
+                let field = Field::new("sequence", DataType::Utf8, true);
+                fields[2] = field;
             }
             SequenceDataType::LargeUtf8 => {
-                let field = Field::new("sequence", DataType::LargeUtf8, false);
-                self.fields[2] = field;
+                let field = Field::new("sequence", DataType::LargeUtf8, true);
+                fields[2] = field;
             }
             SequenceDataType::OneHotProtein => {
-                let field = Field::new("sequence", DataType::LargeUtf8, false);
-                self.fields[2] = field;
+                // List of i32
+                let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int32, true)));
+
+                let field = Field::new("sequence", data_type, true);
+                fields[2] = field;
+            }
+            SequenceDataType::OneHotDNA => {
+                let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int32, true)));
+
+                let field = Field::new("sequence", data_type, true);
+                fields[2] = field;
             }
         }
 
@@ -196,9 +204,9 @@ impl FASTASchemaBuilder {
             .map(|(i, _)| i)
             .collect::<Vec<_>>();
 
-        self.fields.extend(self.partition_fields.clone());
+        fields.extend(self.partition_fields.clone());
 
-        let arrow_schema = Arc::new(arrow::datatypes::Schema::new(self.fields.clone()));
+        let arrow_schema = Arc::new(arrow::datatypes::Schema::new(fields.clone()));
         TableSchema::new(arrow_schema, file_field_projection)
     }
 }

@@ -25,6 +25,8 @@ pub enum ExonFastaError {
     IOError(std::io::Error),
     ParseError(String),
     ArrayBuilderError(String),
+    InvalidNucleotide(u8),
+    InvalidAminoAcid(u8),
 }
 
 impl Display for ExonFastaError {
@@ -36,6 +38,12 @@ impl Display for ExonFastaError {
             ExonFastaError::IOError(error) => write!(f, "IO error: {}", error),
             ExonFastaError::ParseError(msg) => write!(f, "Parse error: {}", msg),
             ExonFastaError::ArrayBuilderError(msg) => write!(f, "Array builder error: {}", msg),
+            ExonFastaError::InvalidNucleotide(nucleotide) => {
+                write!(f, "Invalid nucleotide: {}", nucleotide)
+            }
+            ExonFastaError::InvalidAminoAcid(amino_acid) => {
+                write!(f, "Invalid amino acid: {}", amino_acid)
+            }
         }
     }
 }

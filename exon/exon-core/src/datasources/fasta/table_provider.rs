@@ -20,7 +20,7 @@ use crate::{
         exon_file_type::get_file_extension_with_compression,
         exon_listing_table_options::{
             ExonFileIndexedListingOptions, ExonIndexedListingOptions, ExonListingConfig,
-            ExonListingOptions,
+            ExonListingOptions, ExonSequenceDataTypeOptions,
         },
         hive_partition::filter_matches_partition_cols,
         indexed_file::{fai::compute_fai_range, region::RegionObjectStoreExtension},
@@ -42,7 +42,7 @@ use datafusion::{
     prelude::Expr,
 };
 use exon_common::TableSchema;
-use exon_fasta::FASTASchemaBuilder;
+use exon_fasta::{FASTASchemaBuilder, SequenceDataType};
 use futures::TryStreamExt;
 use noodles::{core::Region, fasta::fai::Reader};
 use object_store::{path::Path, ObjectStore};
@@ -66,6 +66,16 @@ pub struct ListingFASTATableOptions {
 
     /// The region file to read from
     region_file: Option<String>,
+
+    /// The sequence data type for the table
+    sequence_data_type: SequenceDataType,
+}
+
+#[async_trait]
+impl ExonSequenceDataTypeOptions for ListingFASTATableOptions {
+    fn sequence_data_type(&self) -> &SequenceDataType {
+        &self.sequence_data_type
+    }
 }
 
 #[async_trait]
@@ -86,7 +96,12 @@ impl ExonListingOptions for ListingFASTATableOptions {
         &self,
         conf: datafusion::datasource::physical_plan::FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = FASTAScan::new(conf, self.file_compression_type(), 2000);
+        let scan = FASTAScan::new(
+            conf,
+            self.file_compression_type(),
+            2000,
+            self.sequence_data_type.clone(),
+        );
 
         Ok(Arc::new(scan))
     }
@@ -134,6 +149,7 @@ impl Default for ListingFASTATableOptions {
             table_partition_cols: Vec::new(),
             regions: Vec::new(),
             region_file: None,
+            sequence_data_type: SequenceDataType::Utf8,
         }
     }
 }
@@ -149,6 +165,15 @@ impl ListingFASTATableOptions {
             table_partition_cols: Vec::new(),
             regions: Vec::new(),
             region_file: None,
+            sequence_data_type: SequenceDataType::Utf8,
+        }
+    }
+
+    /// Set the sequence data type for the table
+    pub fn with_sequence_data_type(self, sequence_data_type: SequenceDataType) -> Self {
+        Self {
+            sequence_data_type,
+            ..self
         }
     }
 
@@ -217,7 +242,7 @@ pub struct ListingFASTATable<T> {
     table_schema: TableSchema,
 }
 
-impl<T: ExonFileIndexedListingOptions> ListingFASTATable<T> {
+impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions> ListingFASTATable<T> {
     /// Create a new VCF listing table
     pub fn try_new(config: ExonListingConfig<T>, table_schema: TableSchema) -> Result<Self> {
         Ok(Self {
@@ -280,7 +305,9 @@ impl<T: ExonFileIndexedListingOptions> ListingFASTATable<T> {
 }
 
 #[async_trait]
-impl<T: ExonFileIndexedListingOptions + 'static> TableProvider for ListingFASTATable<T> {
+impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions + 'static> TableProvider
+    for ListingFASTATable<T>
+{
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -428,6 +455,7 @@ impl<T: ExonFileIndexedListingOptions + 'static> TableProvider for ListingFASTAT
                 file_scan_config,
                 self.config.options.file_compression_type(),
                 fasta_sequence_buffer_capacity,
+                self.config.options.sequence_data_type().clone(),
             );
 
             Ok(Arc::new(scan))

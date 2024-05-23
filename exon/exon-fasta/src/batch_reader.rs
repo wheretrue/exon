@@ -61,20 +61,12 @@ where
             return Ok(None);
         }
 
-        // let definition = Definition::from_str(&self.buf)?;
-
-        // Allow for options?
-        // let mut sequence = Vec::with_capacity(self.config.fasta_sequence_buffer_capacity);
         self.sequence_buffer.clear();
         if self.reader.read_sequence(&mut self.sequence_buffer).await? == 0 {
             return Err(ExonFastaError::ParseError("invalid sequence".to_string()));
         }
-        // let sequence = Sequence::from_iter(self.sequence_buffer.iter().copied());
-        // let record = Record::new(definition, sequence);
 
         Ok(Some(()))
-
-        // Ok(Some(record))
     }
 
     async fn read_batch(&mut self) -> ExonFastaResult<Option<RecordBatch>> {
@@ -82,6 +74,7 @@ where
             self.config.file_schema.clone(),
             self.config.projection.clone(),
             self.config.batch_size,
+            &self.config.sequence_data_type,
         )?;
 
         for _ in 0..self.config.batch_size {

@@ -25,6 +25,7 @@ use datafusion::{
     execution::runtime_env::RuntimeEnv,
     physical_plan::ExecutionPlan,
 };
+use exon_fasta::SequenceDataType;
 use noodles::core::Region;
 use object_store::{path::Path, ObjectStore};
 
@@ -119,6 +120,13 @@ pub trait ExonFileIndexedListingOptions: ExonIndexedListingOptions {
 
         Ok(regions)
     }
+}
+
+#[async_trait]
+/// Options for a listing table with configurable sequence data type
+pub trait ExonSequenceDataTypeOptions {
+    /// The sequence data type for the table
+    fn sequence_data_type(&self) -> &SequenceDataType;
 }
 
 #[derive(Debug, Clone)]
