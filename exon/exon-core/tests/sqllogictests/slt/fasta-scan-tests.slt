@@ -147,3 +147,12 @@ b description2 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 1
 
 statement ok
 DROP TABLE exon_table;
+
+statement ok
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa', fasta_sequence_data_type 'one_hot_protein') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
+
+query T
+SELECT id, description, sequence FROM exon_table;
+----
+a description [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+b description2 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]

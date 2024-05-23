@@ -24,6 +24,7 @@ use datafusion::{
     execution::context::SessionState,
     logical_expr::CreateExternalTable,
 };
+use exon_fasta::SequenceDataType;
 use url::Url;
 
 use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
@@ -243,9 +244,21 @@ impl ExonListingTableFactory {
             ExonFileType::FASTA | ExonFileType::FA | ExonFileType::FAA | ExonFileType::FNA => {
                 let extension = options.get(FILE_EXTENSION_OPTION).map(|s| s.as_str());
 
+                let fasta_sequence_data_type =
+                    if let Some(data_type) = options.get("fasta_sequence_data_type") {
+                        SequenceDataType::from_str(data_type).map_err(|e| {
+                            datafusion::error::DataFusionError::Execution(format!(
+                                "Failed to parse sequence data type: {}",
+                                e
+                            ))
+                        })?
+                    } else {
+                        exon_config_extension.fasta_sequence_data_type()?
+                    };
+
                 let table_options = ListingFASTATableOptions::new(file_compression_type)
                     .with_table_partition_cols(table_partition_cols)
-                    .with_sequence_data_type(exon_config_extension.fasta_sequence_data_type()?)
+                    .with_sequence_data_type(fasta_sequence_data_type)
                     .with_some_file_extension(extension);
 
                 let schema = table_options.infer_schema(state).await?;
