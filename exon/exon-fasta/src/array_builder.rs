@@ -36,8 +36,8 @@ pub struct FASTAArrayBuilder {
 pub enum SequenceBuilder {
     Utf8(GenericStringBuilder<i32>),
     LargeUtf8(GenericStringBuilder<i64>),
-    OneHotDNA(GenericListBuilder<i32, Int32Builder>),
-    OneHotProtein(GenericListBuilder<i32, Int32Builder>),
+    IntegerEncodeDNA(GenericListBuilder<i32, Int32Builder>),
+    IntegerEncodeProtein(GenericListBuilder<i32, Int32Builder>),
 }
 
 impl SequenceBuilder {
@@ -45,8 +45,8 @@ impl SequenceBuilder {
         match self {
             Self::Utf8(ref mut builder) => Arc::new(builder.finish()),
             Self::LargeUtf8(ref mut builder) => Arc::new(builder.finish()),
-            Self::OneHotProtein(ref mut builder) => Arc::new(builder.finish()),
-            Self::OneHotDNA(ref mut builder) => Arc::new(builder.finish()),
+            Self::IntegerEncodeProtein(ref mut builder) => Arc::new(builder.finish()),
+            Self::IntegerEncodeDNA(ref mut builder) => Arc::new(builder.finish()),
         }
     }
 }
@@ -66,14 +66,12 @@ impl FASTAArrayBuilder {
             SequenceDataType::LargeUtf8 => SequenceBuilder::LargeUtf8(
                 GenericStringBuilder::<i64>::with_capacity(capacity, capacity),
             ),
-            SequenceDataType::OneHotProtein => SequenceBuilder::OneHotProtein(
+            SequenceDataType::IntegerEncodeProtein => SequenceBuilder::IntegerEncodeProtein(
                 GenericListBuilder::<i32, Int32Builder>::new(Int32Builder::with_capacity(capacity)),
             ),
-            SequenceDataType::OneHotDNA => {
-                SequenceBuilder::OneHotDNA(GenericListBuilder::<i32, Int32Builder>::new(
-                    Int32Builder::with_capacity(capacity),
-                ))
-            }
+            SequenceDataType::IntegerEncodeDNA => SequenceBuilder::IntegerEncodeDNA(
+                GenericListBuilder::<i32, Int32Builder>::new(Int32Builder::with_capacity(capacity)),
+            ),
         };
 
         let projection = match projection {
@@ -125,7 +123,7 @@ impl FASTAArrayBuilder {
                     let sequence = std::str::from_utf8(sequence)?;
                     builder.append_value(sequence);
                 }
-                SequenceBuilder::OneHotProtein(ref mut builder) => {
+                SequenceBuilder::IntegerEncodeProtein(ref mut builder) => {
                     let values = builder.values();
 
                     for aa in sequence {
@@ -160,7 +158,7 @@ impl FASTAArrayBuilder {
 
                     builder.append(true);
                 }
-                SequenceBuilder::OneHotDNA(ref mut builder) => {
+                SequenceBuilder::IntegerEncodeDNA(ref mut builder) => {
                     let values = builder.values();
 
                     // Convert the DNA sequence to one-hot encoding, use A => 1, C => 2, G => 3, T => 4, N => 5
