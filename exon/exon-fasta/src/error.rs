@@ -24,6 +24,7 @@ pub enum ExonFastaError {
     ArrowError(ArrowError),
     IOError(std::io::Error),
     ParseError(String),
+    ArrayBuilderError(String),
 }
 
 impl Display for ExonFastaError {
@@ -34,6 +35,7 @@ impl Display for ExonFastaError {
             ExonFastaError::ArrowError(error) => write!(f, "Arrow error: {}", error),
             ExonFastaError::IOError(error) => write!(f, "IO error: {}", error),
             ExonFastaError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            ExonFastaError::ArrayBuilderError(msg) => write!(f, "Array builder error: {}", msg),
         }
     }
 }

@@ -67,7 +67,7 @@ impl TableFunctionImpl for FastaScanFunction {
             ))?;
 
         let fasta_schema = FASTASchemaBuilder::default()
-            .with_large_utf8(exon_settings.fasta_large_utf8)
+            .with_sequence_data_type(exon_settings.fasta_sequence_data_type()?)
             .build();
 
         let listing_table_options =

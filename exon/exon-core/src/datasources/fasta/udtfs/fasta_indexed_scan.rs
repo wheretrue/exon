@@ -94,7 +94,7 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
             ))?;
 
         let fasta_schema = FASTASchemaBuilder::default()
-            .with_large_utf8(exon_settings.fasta_large_utf8)
+            .with_sequence_data_type(exon_settings.fasta_sequence_data_type()?)
             .build();
 
         futures::executor::block_on(async {

@@ -194,7 +194,7 @@ impl ListingFASTATableOptions {
             ))?;
 
         let mut fasta_schema_builder = FASTASchemaBuilder::default()
-            .with_large_utf8(exon_settings.fasta_large_utf8)
+            .with_sequence_data_type(exon_settings.fasta_sequence_data_type()?)
             .with_partition_fields(self.table_partition_cols.clone());
 
         Ok(fasta_schema_builder.build())

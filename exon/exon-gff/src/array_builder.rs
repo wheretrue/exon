@@ -171,7 +171,7 @@ impl GFFArrayBuilder {
     }
 
     pub fn finish(&mut self) -> Vec<ArrayRef> {
-        let mut arrays: Vec<ArrayRef> = Vec::new();
+        let mut arrays: Vec<ArrayRef> = Vec::with_capacity(self.projection.len());
 
         for col_idx in self.projection.iter() {
             match col_idx {
