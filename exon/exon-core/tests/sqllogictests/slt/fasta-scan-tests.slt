@@ -119,7 +119,7 @@ statement ok
 DROP TABLE fa_table;
 
 statement ok
-SET exon.fasta_sequence_data_type = 'one_hot_dna';
+SET exon.fasta_sequence_data_type = 'integer_encode_dna';
 
 statement ok
 CREATE EXTERNAL TABLE exon_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
@@ -134,7 +134,7 @@ statement ok
 DROP TABLE exon_table;
 
 statement ok
-SET exon.fasta_sequence_data_type = 'one_hot_protein';
+SET exon.fasta_sequence_data_type = 'integer_encode_protein';
 
 statement ok
 CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
@@ -149,7 +149,7 @@ statement ok
 DROP TABLE exon_table;
 
 statement ok
-CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa', fasta_sequence_data_type 'one_hot_protein') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa', fasta_sequence_data_type 'integer_encode_protein') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
 
 query T
 SELECT id, description, sequence FROM exon_table;

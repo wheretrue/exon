@@ -23,8 +23,8 @@ use object_store::ObjectStore;
 pub enum SequenceDataType {
     Utf8,
     LargeUtf8,
-    OneHotProtein,
-    OneHotDNA,
+    IntegerEncodeProtein,
+    IntegerEncodeDNA,
 }
 
 impl FromStr for SequenceDataType {
@@ -34,8 +34,8 @@ impl FromStr for SequenceDataType {
         match s {
             "utf8" => Ok(Self::Utf8),
             "large_utf8" => Ok(Self::LargeUtf8),
-            "one_hot_protein" => Ok(Self::OneHotProtein),
-            "one_hot_dna" => Ok(Self::OneHotDNA),
+            "integer_encode_protein" => Ok(Self::IntegerEncodeProtein),
+            "integer_encode_dna" => Ok(Self::IntegerEncodeDNA),
             _ => Err("invalid sequence data type"),
         }
     }
@@ -182,14 +182,14 @@ impl FASTASchemaBuilder {
                 let field = Field::new("sequence", DataType::LargeUtf8, true);
                 fields[2] = field;
             }
-            SequenceDataType::OneHotProtein => {
+            SequenceDataType::IntegerEncodeProtein => {
                 // List of i32
                 let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int32, true)));
 
                 let field = Field::new("sequence", data_type, true);
                 fields[2] = field;
             }
-            SequenceDataType::OneHotDNA => {
+            SequenceDataType::IntegerEncodeDNA => {
                 let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int32, true)));
 
                 let field = Field::new("sequence", data_type, true);
