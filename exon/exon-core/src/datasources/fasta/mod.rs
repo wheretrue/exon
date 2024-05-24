@@ -26,3 +26,5 @@ pub use self::file_opener::FASTAOpener;
 pub use self::scanner::FASTAScan;
 pub use self::udtfs::fasta_indexed_scan::FastaIndexedScanFunction;
 pub use self::udtfs::fasta_scan::FastaScanFunction;
+
+pub use exon_fasta::SequenceDataType;
