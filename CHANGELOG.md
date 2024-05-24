@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.22.1 (2024-05-24)
+
+### Fix
+
+- better handling for ambiguous AAs
+
 ## v0.22.0 (2024-05-23)
 
 ### Feat
