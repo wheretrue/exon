@@ -207,19 +207,10 @@ impl ListingFASTATableOptions {
     /// Infer the base schema for the table
     pub async fn infer_schema(
         &self,
-        state: &SessionState,
+        _state: &SessionState,
     ) -> datafusion::error::Result<TableSchema> {
-        let exon_settings = state
-            .config()
-            .options()
-            .extensions
-            .get::<ExonConfigExtension>()
-            .ok_or(DataFusionError::Execution(
-                "Exon settings must be configured.".to_string(),
-            ))?;
-
         let mut fasta_schema_builder = FASTASchemaBuilder::default()
-            .with_sequence_data_type(exon_settings.fasta_sequence_data_type()?)
+            .with_sequence_data_type(self.sequence_data_type.clone())
             .with_partition_fields(self.table_partition_cols.clone());
 
         Ok(fasta_schema_builder.build())
