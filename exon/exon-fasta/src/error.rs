@@ -42,7 +42,11 @@ impl Display for ExonFastaError {
                 write!(f, "Invalid nucleotide: {}", nucleotide)
             }
             ExonFastaError::InvalidAminoAcid(amino_acid) => {
-                write!(f, "Invalid amino acid: {}", amino_acid)
+                write!(
+                    f,
+                    "Invalid amino acid: {}",
+                    std::char::from_u32(*amino_acid as u32).unwrap()
+                )
             }
         }
     }

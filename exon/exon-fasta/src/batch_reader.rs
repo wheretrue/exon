@@ -70,7 +70,7 @@ where
     }
 
     async fn read_batch(&mut self) -> ExonFastaResult<Option<RecordBatch>> {
-        let mut record_batch = FASTAArrayBuilder::create(
+        let mut array_builder = FASTAArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.projection.clone(),
             self.config.batch_size,
@@ -82,26 +82,20 @@ where
             self.sequence_buffer.clear();
 
             if (self.read_record().await?).is_some() {
-                record_batch.append(&self.buf, &self.sequence_buffer)?;
+                array_builder.append(&self.buf, &self.sequence_buffer)?;
             } else {
                 break;
             }
         }
 
-        if record_batch.is_empty() {
+        if array_builder.is_empty() {
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), record_batch.finish())?;
+        let schema = self.config.projected_schema()?;
+        let batch = array_builder.try_into_record_batch(schema)?;
 
-        match &self.config.projection {
-            Some(projection) => {
-                let projected_batch = batch.project(projection)?;
-
-                Ok(Some(projected_batch))
-            }
-            None => Ok(Some(batch)),
-        }
+        Ok(Some(batch))
     }
 
     /// Converts the reader into a stream of batches.
