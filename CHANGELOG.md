@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.22.2 (2024-05-25)
+
+### Fix
+
+- remove config extraction
+
+### Refactor
+
+- re-export data type
+
 ## v0.22.1 (2024-05-24)
 
 ### Fix
