@@ -66,6 +66,8 @@ pub mod streaming_bgzf;
 
 pub(crate) mod rust_bio_alignment;
 
+mod sinks;
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
