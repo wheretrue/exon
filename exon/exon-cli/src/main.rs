@@ -14,11 +14,10 @@
 
 use clap::Parser;
 use datafusion::error::{DataFusionError, Result};
-use datafusion::execution::context::SessionContext;
 use datafusion_cli::exec;
 use datafusion_cli::print_format::PrintFormat;
 use datafusion_cli::print_options::{MaxRows, PrintOptions};
-use exon::{new_exon_config, ExonSessionExt};
+use exon::{new_exon_config, ExonSession};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug, Parser, PartialEq)]
@@ -63,7 +62,7 @@ pub async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = new_exon_config();
-    let mut ctx = SessionContext::with_config_exon(config);
+    let mut ctx = ExonSession::with_config_exon(config);
 
     let mut print_options = PrintOptions {
         format: args.format,
@@ -76,17 +75,17 @@ pub async fn main() -> Result<()> {
     let files = args.file;
 
     if commands.is_empty() && files.is_empty() {
-        return exec::exec_from_repl(&mut ctx, &mut print_options)
+        return exec::exec_from_repl(&mut ctx.session, &mut print_options)
             .await
             .map_err(|e| DataFusionError::External(Box::new(e)));
     }
 
     if !commands.is_empty() {
-        exec::exec_from_commands(&mut ctx, commands, &print_options).await?;
+        exec::exec_from_commands(&mut ctx.session, commands, &print_options).await?;
     }
 
     if !files.is_empty() {
-        exec::exec_from_files(&mut ctx, files, &print_options).await?;
+        exec::exec_from_files(&mut ctx.session, files, &print_options).await?;
     }
 
     Ok(())

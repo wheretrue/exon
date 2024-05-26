@@ -98,7 +98,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_interval_rule_eq() {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let sql = "CREATE TABLE test AS (SELECT 1 as pos UNION ALL SELECT 2 as pos)";
         ctx.sql(sql).await.unwrap();

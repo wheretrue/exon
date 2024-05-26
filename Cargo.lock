@@ -2111,6 +2111,7 @@ dependencies = [
  "regex",
  "serde",
  "sqllogictest",
+ "sqlparser",
  "tokio",
  "tokio-util",
  "tracing",

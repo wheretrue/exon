@@ -400,13 +400,12 @@ impl TableProviderFactory for ExonListingTableFactory {
 mod tests {
     use std::{path::PathBuf, sync::Arc};
 
-    use datafusion::{
-        catalog::{listing_schema::ListingSchemaProvider, CatalogProvider, MemoryCatalogProvider},
-        prelude::SessionContext,
+    use datafusion::catalog::{
+        listing_schema::ListingSchemaProvider, CatalogProvider, MemoryCatalogProvider,
     };
     use object_store::local::LocalFileSystem;
 
-    use crate::{datasources::ExonListingTableFactory, ExonSessionExt};
+    use crate::{datasources::ExonListingTableFactory, ExonSession};
 
     #[tokio::test]
     async fn test_in_catalog() -> Result<(), Box<dyn std::error::Error>> {
@@ -435,12 +434,12 @@ mod tests {
         // let session_config = SessionConfig::from_env()?;
         // let runtime_env = create_runtime_env()?;
         // let ctx = SessionContext::new_with_config_rt(session_config.clone(), Arc::new(runtime_env));
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
-        ctx.register_catalog("exon", Arc::new(mem_catalog));
-        ctx.refresh_catalogs().await?;
+        ctx.session.register_catalog("exon", Arc::new(mem_catalog));
+        ctx.session.refresh_catalogs().await?;
 
-        let gotten_catalog = ctx.catalog("exon").ok_or("No catalog found")?;
+        let gotten_catalog = ctx.session.catalog("exon").ok_or("No catalog found")?;
         let schema_names = gotten_catalog.schema_names();
         assert_eq!(schema_names, vec!["exon"]);
 

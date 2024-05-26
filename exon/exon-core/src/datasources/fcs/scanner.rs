@@ -159,19 +159,16 @@ impl ExecutionPlan for FCSScan {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{datasources::ExonListingTableFactory, ExonSessionExt};
+    use crate::{datasources::ExonListingTableFactory, ExonSession};
 
-    use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
-        prelude::SessionContext,
-    };
+    use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
 
     use exon_test::test_listing_table_url;
 
     #[tokio::test]
     async fn test_fcs_read() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-        let session_state = ctx.state();
+        let ctx = ExonSession::new_exon();
+        let session_state = ctx.session.state();
 
         let table_path = test_listing_table_url("fcs");
 
@@ -186,7 +183,7 @@ mod tests {
             )
             .await?;
 
-        let df = ctx.read_table(table)?;
+        let df = ctx.session.read_table(table)?;
 
         let mut row_cnt = 0;
         let bs = df.collect().await?;

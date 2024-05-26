@@ -248,19 +248,16 @@ mod tests {
 
     use crate::{
         datasources::{ExonFileType, ExonListingTableFactory},
-        ExonSessionExt,
+        ExonSession,
     };
 
-    use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
-        prelude::SessionContext,
-    };
+    use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
     use exon_test::test_listing_table_url;
 
     #[tokio::test]
     async fn test_table_provider() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
-        let session_state = ctx.state();
+        let ctx = ExonSession::new_exon();
+        let session_state = ctx.session.state();
 
         let table_path = test_listing_table_url("sam");
         let table = ExonListingTableFactory::new()
@@ -274,7 +271,7 @@ mod tests {
             )
             .await?;
 
-        let df = ctx.read_table(table.clone())?;
+        let df = ctx.session.read_table(table.clone())?;
 
         let mut row_cnt = 0;
         let bs = df.collect().await?;

@@ -17,20 +17,20 @@
 
 use arrow::util::pretty::pretty_format_batches;
 use datafusion::error::DataFusionError;
-use datafusion::prelude::*;
-use exon::ExonSessionExt;
+use exon::ExonSession;
 
 #[tokio::main]
 async fn main() -> Result<(), DataFusionError> {
-    let ctx = SessionContext::new_exon();
+    let ctx = ExonSession::new_exon();
 
     // From GNPS, create a table.
     let path = "./exon-examples/data/GNPS00002_A3_p.mzML";
     let sql = format!("CREATE EXTERNAL TABLE mzml STORED AS MZML LOCATION '{path}';",);
-    ctx.sql(&sql).await?;
+    ctx.session.sql(&sql).await?;
 
     // Query the table, select the scan id where the spectrum contains a peak of interest.
     let df = ctx
+        .session
         .sql(
             r#"SELECT id
             FROM mzml

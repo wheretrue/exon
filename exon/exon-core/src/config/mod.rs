@@ -96,9 +96,7 @@ impl ConfigExtension for ExonConfigExtension {
 
 #[cfg(test)]
 mod tests {
-    use datafusion::prelude::SessionContext;
-
-    use crate::{config::ExonConfigExtension, new_exon_config, ExonSessionExt};
+    use crate::{config::ExonConfigExtension, new_exon_config, ExonSession};
 
     #[tokio::test]
     async fn test_config_set_with_defaults() -> Result<(), Box<dyn std::error::Error>> {
@@ -157,19 +155,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_setting_config_through_sql() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
-        ctx.sql("SET exon.vcf_parse_info = true").await?;
-        ctx.sql("SET exon.vcf_parse_formats = true").await?;
-        ctx.sql("SET exon.fasta_sequence_buffer_capacity = 1024")
+        ctx.session.sql("SET exon.vcf_parse_info = true").await?;
+        ctx.session.sql("SET exon.vcf_parse_formats = true").await?;
+        ctx.session
+            .sql("SET exon.fasta_sequence_buffer_capacity = 1024")
             .await?;
-        ctx.sql("SET exon.sam_parse_tags = true").await?;
-        ctx.sql("SET exon.bam_parse_tags = true").await?;
-        ctx.sql("SET exon.cram_parse_tags = true").await?;
-        ctx.sql("SET exon.fasta_sequence_data_type = 'large_utf8'")
+        ctx.session.sql("SET exon.sam_parse_tags = true").await?;
+        ctx.session.sql("SET exon.bam_parse_tags = true").await?;
+        ctx.session.sql("SET exon.cram_parse_tags = true").await?;
+        ctx.session
+            .sql("SET exon.fasta_sequence_data_type = 'large_utf8'")
             .await?;
 
-        let state = ctx.state();
+        let state = ctx.session.state();
         let exon_config = state
             .config()
             .options()

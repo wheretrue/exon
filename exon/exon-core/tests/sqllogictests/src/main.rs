@@ -16,9 +16,9 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use clap::Parser;
-use datafusion::{error::DataFusionError, prelude::SessionContext, scalar::ScalarValue};
-use exon::ExonSessionExt;
+use datafusion::{error::DataFusionError, scalar::ScalarValue};
 
+use exon::ExonSession;
 use sqllogictest::{ColumnType, DBOutput, DefaultColumnType, TestErrorKind};
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -74,22 +74,19 @@ struct Options {
 }
 
 pub struct ExonTextRunner {
-    context: Arc<SessionContext>,
+    context: Arc<ExonSession>,
 }
 
 impl ExonTextRunner {
-    pub fn new(context: Arc<SessionContext>) -> Self {
+    pub fn new(context: Arc<ExonSession>) -> Self {
         Self { context }
     }
 }
 
-async fn run_query(
-    ctx: &SessionContext,
-    sql: impl Into<String>,
-) -> Result<DFOutput, DataFusionError> {
+async fn run_query(ctx: &ExonSession, sql: impl Into<String>) -> Result<DFOutput, DataFusionError> {
     let q = sql.into();
 
-    let df = ctx.sql(q.as_str()).await?;
+    let df = ctx.session.sql(q.as_str()).await?;
 
     let mut output = Vec::new();
 
@@ -150,8 +147,7 @@ async fn run_tests(test_options: &Options) -> Result<(), DataFusionError> {
     // Iterate through the test files and run the tests.
     let test_files = std::fs::read_dir(&test_options.test_dir)?;
 
-    let exon_context = Arc::new(SessionContext::new_exon());
-    exon_context.runtime_env();
+    let exon_context = Arc::new(ExonSession::new_exon());
 
     for test_file in test_files {
         let test_file = test_file?;

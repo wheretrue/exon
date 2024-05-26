@@ -430,7 +430,7 @@ fn vcf_formats_to_field(formats: Formats) -> arrow::datatypes::Field {
 //     async fn test_broad_example() -> Result<(), Box<dyn std::error::Error>> {
 //         let vcf_path = test_path("vcf-broad", "00-common_all.head.vcf");
 
-//         let session_ctx = SessionContext::new_exon();
+//         let session_ctx = ExonSession::new_exon();
 
 //         session_ctx.sql("SET exon.vcf_parse_info = true").await?;
 //         session_ctx.sql("SET exon.vcf_parse_formats = true").await?;

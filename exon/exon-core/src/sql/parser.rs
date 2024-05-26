@@ -17,6 +17,8 @@ use datafusion::sql::{
     sqlparser::{ast::Value, keywords::Keyword, tokenizer::Token},
 };
 
+use super::exon_copy_statement::ExonCopyToStatement;
+
 pub(crate) struct ExonParser<'a> {
     df_parser: DFParser<'a>,
 }
@@ -24,24 +26,6 @@ pub(crate) struct ExonParser<'a> {
 pub(crate) enum ExonStatement {
     DFStatement(Box<Statement>),
     ExonCopyTo(ExonCopyToStatement),
-}
-
-struct ExonCopyToStatement {
-    pub source: CopyToSource,
-    pub target: String,
-    pub stored_as: Option<String>,
-    pub options: Vec<(String, Value)>,
-}
-
-impl From<CopyToStatement> for ExonCopyToStatement {
-    fn from(s: CopyToStatement) -> Self {
-        Self {
-            source: s.source,
-            target: s.target,
-            stored_as: s.stored_as,
-            options: s.options,
-        }
-    }
 }
 
 impl ExonParser<'_> {

@@ -134,7 +134,7 @@ pub struct ExonSessionContext {
 impl Default for ExonSessionContext {
     fn default() -> Self {
         Self {
-            ctx: SessionContext::new_exon(),
+            ctx: ExonSession::new_exon(),
             runtime: Runtime::new().unwrap(),
         }
     }

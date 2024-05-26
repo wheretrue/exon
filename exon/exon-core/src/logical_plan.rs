@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_context_ext;
-mod function_factory;
+mod exon_data_sink_node;
 
-pub use exon_context_ext::ExonSession;
+use std::sync::Arc;
+
+use datafusion::logical_expr::{Extension, UserDefinedLogicalNodeCore};
+pub(crate) use exon_data_sink_node::ExonDataSinkLogicalPlanNode;
+
+pub trait DfExtensionNode: Sized + UserDefinedLogicalNodeCore {
+    fn into_extension(self) -> Extension {
+        Extension {
+            node: Arc::new(self),
+        }
+    }
+}

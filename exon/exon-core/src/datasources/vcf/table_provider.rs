@@ -451,34 +451,34 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
 mod tests {
     use std::sync::Arc;
 
-    use crate::{datasources::vcf::IndexedVCFScanner, ExonSessionExt};
+    use crate::{datasources::vcf::IndexedVCFScanner, ExonSession};
 
     use arrow::datatypes::{DataType, Field, Fields};
-    use datafusion::{
-        physical_plan::{coalesce_partitions::CoalescePartitionsExec, filter::FilterExec},
-        prelude::SessionContext,
+    use datafusion::physical_plan::{
+        coalesce_partitions::CoalescePartitionsExec, filter::FilterExec,
     };
     use exon_test::test_path;
 
     #[cfg(feature = "fixtures")]
     #[tokio::test]
     async fn test_chr17_queries() -> Result<(), Box<dyn std::error::Error>> {
-        use crate::tests::test_fixture_table_url;
+        use crate::{tests::test_fixture_table_url, ExonSession};
 
         let path = test_fixture_table_url("chr17/")?;
 
-        let ctx = SessionContext::new_exon();
-        ctx.sql(
-            format!(
-                "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
-                path.to_string().as_str()
+        let ctx = ExonSession::new_exon();
+        ctx.session
+            .sql(
+                format!(
+                    "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
+                    path.to_string().as_str()
+                )
+                .as_str(),
             )
-            .as_str(),
-        )
-        .await?;
+            .await?;
 
         let sql = "SELECT chrom, pos FROM vcf_file LIMIT 5;";
-        let df = ctx.sql(sql).await?;
+        let df = ctx.session.sql(sql).await?;
 
         // Get the first batch
         let mut batches = df.collect().await?;
@@ -493,15 +493,15 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "fixtures")]
     async fn test_chr17_positions() -> Result<(), Box<dyn std::error::Error>> {
-        use crate::tests::test_fixture_table_url;
+        use crate::{tests::test_fixture_table_url, ExonSession};
 
         let path = test_fixture_table_url(
             "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
         )?;
 
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
-        ctx.sql(
+        ctx.session.sql(
             format!(
                 "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
                 path.to_string().as_str()
@@ -518,7 +518,7 @@ mod tests {
         ];
 
         for sql in sql_commands {
-            let df = ctx.sql(sql).await?;
+            let df = ctx.session.sql(sql).await?;
 
             // Get the first batch
             let mut batches = df.collect().await?;
@@ -535,12 +535,14 @@ mod tests {
     #[tokio::test]
     async fn test_region_query_with_additional_predicates() -> Result<(), Box<dyn std::error::Error>>
     {
+        use crate::ExonSession;
+
         let path = crate::tests::test_fixture_table_url(
             "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
         )?;
 
-        let ctx = SessionContext::new_exon();
-        ctx.sql(
+        let ctx = ExonSession::new_exon();
+        ctx.session.sql(
             format!(
                 "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
                 path.to_string().as_str()
@@ -551,12 +553,13 @@ mod tests {
 
         let sql =
             "SELECT chrom FROM vcf_file WHERE vcf_region_filter('17:1000-1000000', chrom, pos) AND qual != 100;";
-        let df = ctx.sql(sql).await?;
+        let df = ctx.session.sql(sql).await?;
 
         let cnt_where_qual_neq_100 = df.count().await?;
         assert!(cnt_where_qual_neq_100 > 0);
 
         let cnt_total = ctx
+            .session
             .sql(
                 "SELECT chrom FROM vcf_file WHERE vcf_region_filter('17:1000-1000000', chrom, pos)",
             )
@@ -571,7 +574,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
         let table_path = test_path("vcf", "index.vcf.gz");
         let table_path = table_path.to_str().ok_or("Invalid path")?;
 
@@ -579,7 +582,7 @@ mod tests {
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF COMPRESSION TYPE GZIP LOCATION '{}';",
             table_path
         );
-        ctx.sql(&sql).await?;
+        ctx.session.sql(&sql).await?;
 
         let sql_statements = vec![
             "SELECT * FROM vcf_file WHERE vcf_region_filter('1:9999921', chrom, pos);",
@@ -588,9 +591,13 @@ mod tests {
         ];
 
         for sql_statement in sql_statements {
-            let df = ctx.sql(sql_statement).await?;
+            let df = ctx.session.sql(sql_statement).await?;
 
-            let physical_plan = ctx.state().create_physical_plan(df.logical_plan()).await?;
+            let physical_plan = ctx
+                .session
+                .state()
+                .create_physical_plan(df.logical_plan())
+                .await?;
 
             if let Some(scan) = physical_plan.as_any().downcast_ref::<FilterExec>() {
                 let scan = scan
@@ -609,24 +616,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_vcf_parsing_string() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let table_path = test_path("vcf", "index.vcf");
 
         let sql = "SET exon.vcf_parse_info = true;";
-        ctx.sql(sql).await?;
+        ctx.session.sql(sql).await?;
 
         let sql = "SET exon.vcf_parse_formats = true;";
-        ctx.sql(sql).await?;
+        ctx.session.sql(sql).await?;
 
         let sql = format!(
             "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}';",
             table_path.to_str().ok_or("Invalid path")?
         );
-        ctx.sql(&sql).await?;
+        ctx.session.sql(&sql).await?;
 
         let sql = "SELECT * FROM vcf_file WHERE chrom = '1' AND pos = 100000;";
-        let df = ctx.sql(sql).await?;
+        let df = ctx.session.sql(sql).await?;
 
         // Check that the last two columns are strings.
         let schema = df.schema();

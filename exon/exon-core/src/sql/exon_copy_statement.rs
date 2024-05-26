@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_context_ext;
-mod function_factory;
+use datafusion::sql::parser::{CopyToSource, CopyToStatement};
+use sqlparser::ast::Value;
 
-pub use exon_context_ext::ExonSession;
+pub(crate) struct ExonCopyToStatement {
+    pub source: CopyToSource,
+    pub target: String,
+    pub stored_as: Option<String>,
+    pub options: Vec<(String, Value)>,
+}
+
+impl From<CopyToStatement> for ExonCopyToStatement {
+    fn from(s: CopyToStatement) -> Self {
+        Self {
+            source: s.source,
+            target: s.target,
+            stored_as: s.stored_as,
+            options: s.options,
+        }
+    }
+}

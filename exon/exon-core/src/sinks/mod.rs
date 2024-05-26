@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, fmt::Debug, io::Write, sync::Arc};
+use std::{any::Any, fmt::Debug, sync::Arc};
 
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use datafusion::{
     datasource::{file_format::write::BatchSerializer, physical_plan::FileSinkConfig},
     error::DataFusionError,
@@ -27,14 +27,14 @@ use noodles::fasta::{
     Record,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct FASTASerializer {}
 
 impl BatchSerializer for FASTASerializer {
     fn serialize(
         &self,
         batch: arrow::array::RecordBatch,
-        initial: bool,
+        _initial: bool,
     ) -> datafusion::error::Result<bytes::Bytes> {
         let ids = batch
             .column(0)
@@ -74,12 +74,14 @@ impl BatchSerializer for FASTASerializer {
     }
 }
 
-impl DebugSerializer for FASTASerializer {}
-
-trait DebugSerializer: BatchSerializer + std::fmt::Debug {}
-
-struct FASTADataSync {
+pub struct FASTADataSync {
     file_sink_config: FileSinkConfig,
+}
+
+impl FASTADataSync {
+    pub fn new(file_sink_config: FileSinkConfig) -> Self {
+        Self { file_sink_config }
+    }
 }
 
 impl Debug for FASTADataSync {
@@ -122,9 +124,7 @@ impl DataSink for FASTADataSync {
         // let base_output_path = &self.file_sink_config.table_paths[0];
         let partition_file = &self.file_sink_config.file_groups[0];
 
-        let serializer = FASTASerializer {};
-
-        // let writer = object_store.put
+        let serializer = FASTASerializer::default();
 
         while let Some(batch) = data.next().await {
             let batch = batch?;
@@ -144,17 +144,16 @@ impl DataSink for FASTADataSync {
 mod tests {
     use crate::datasources::fasta::table_provider::ListingFASTATableOptions;
     use crate::sinks::FASTADataSync;
-    use crate::ExonSessionExt;
+    use crate::ExonSession;
 
     use datafusion::datasource::listing::PartitionedFile;
     use datafusion::datasource::physical_plan::FileSinkConfig;
-    use datafusion::execution::context::SessionContext;
     use datafusion::execution::object_store::ObjectStoreUrl;
     use datafusion::physical_plan::insert::DataSink;
 
     #[tokio::test]
     async fn test_data_sink() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fasta_path = exon_test::test_path("fasta", "test.fa");
 
@@ -183,7 +182,10 @@ mod tests {
 
         let sink = FASTADataSync { file_sink_config };
 
-        let total_bytes = sink.write_all(stream, &ctx.task_ctx()).await.unwrap();
+        let total_bytes = sink
+            .write_all(stream, &ctx.session.task_ctx())
+            .await
+            .unwrap();
 
         assert_eq!(total_bytes, 0);
 

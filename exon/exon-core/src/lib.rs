@@ -28,7 +28,7 @@
 //! [`datasources`]: datasources
 
 mod session_context;
-pub use session_context::ExonSessionExt;
+pub use session_context::ExonSession;
 
 #[allow(clippy::cmp_owned)]
 mod config;
@@ -66,7 +66,9 @@ pub mod streaming_bgzf;
 
 pub(crate) mod rust_bio_alignment;
 
+mod logical_plan;
 mod sinks;
+mod sql;
 
 #[cfg(test)]
 mod tests {
