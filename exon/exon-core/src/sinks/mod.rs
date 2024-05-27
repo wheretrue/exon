@@ -187,7 +187,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(total_bytes, 0);
+        assert_eq!(total_bytes, 41);
 
         Ok(())
     }

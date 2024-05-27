@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod exon_extension_planner;
 mod exon_physical_planner;
-
 mod exon_query_planner;
 
 pub use exon_query_planner::ExonQueryPlanner;

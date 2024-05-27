@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use datafusion::sql::{
-    parser::{CopyToSource, CopyToStatement, DFParser, Statement},
-    sqlparser::{ast::Value, keywords::Keyword, tokenizer::Token},
+    parser::{DFParser, Statement},
+    sqlparser::{keywords::Keyword, tokenizer::Token},
 };
 
 use super::exon_copy_statement::ExonCopyToStatement;

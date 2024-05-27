@@ -26,13 +26,18 @@ use crate::sql::ExonCopyToStatement;
 
 use super::DfExtensionNode;
 
-#[derive(Debug)]
 pub(crate) struct ExonDataSinkLogicalPlanNode {
-    schema: Arc<DFSchema>,
-    source: CopyToSource,
-    target: String,
-    stored_as: Option<String>,
-    options: Vec<(String, Value)>,
+    pub schema: Arc<DFSchema>,
+    pub source: CopyToSource,
+    pub target: String,
+    pub stored_as: Option<String>,
+    pub options: Vec<(String, Value)>,
+}
+
+impl std::fmt::Debug for ExonDataSinkLogicalPlanNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "ExonDataSinkLogicalPlanNode")
+    }
 }
 
 impl ExonDataSinkLogicalPlanNode {
@@ -42,11 +47,11 @@ impl ExonDataSinkLogicalPlanNode {
         stored_as: Option<String>,
         options: Vec<(String, Value)>,
     ) -> Self {
-        let schema = Schema::new(vec![Field::new("count", DataType::Int32, false)]);
-        let schema = Arc::new(DFSchema::try_from(schema).unwrap());
+        let schema = Schema::new(vec![Field::new("count", DataType::UInt64, false)]);
+        let schema = DFSchema::try_from(schema).unwrap();
 
         Self {
-            schema,
+            schema: Arc::new(schema),
             source,
             target,
             stored_as,
@@ -94,7 +99,7 @@ impl Eq for ExonDataSinkLogicalPlanNode {}
 
 impl UserDefinedLogicalNodeCore for ExonDataSinkLogicalPlanNode {
     fn name(&self) -> &str {
-        &"ExonDataSinkLogicalPlanNode"
+        "ExonDataSinkLogicalPlanNode"
     }
 
     fn inputs(&self) -> Vec<&LogicalPlan> {
@@ -102,7 +107,7 @@ impl UserDefinedLogicalNodeCore for ExonDataSinkLogicalPlanNode {
     }
 
     fn schema(&self) -> &DFSchemaRef {
-        todo!()
+        self.inner_schema()
     }
 
     fn expressions(&self) -> Vec<datafusion::prelude::Expr> {
@@ -114,13 +119,11 @@ impl UserDefinedLogicalNodeCore for ExonDataSinkLogicalPlanNode {
     }
 
     fn from_template(&self, _exprs: &[datafusion::prelude::Expr], _inputs: &[LogicalPlan]) -> Self {
-        let s = Self::new(
+        Self::new(
             self.source.clone(),
             self.target.clone(),
             self.stored_as.clone(),
             self.options.clone(),
-        );
-
-        s
+        )
     }
 }

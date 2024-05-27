@@ -12,26 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{
-    collections::HashMap,
-    hash::{Hash, Hasher},
-    sync::Arc,
-    vec,
-};
+use std::{collections::HashMap, sync::Arc, vec};
 
-use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::{
-    common::{DFSchema, DFSchemaRef},
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
     },
     error::{DataFusionError, Result},
     execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
-    logical_expr::{Extension, LogicalPlan, UserDefinedLogicalNodeCore},
+    logical_expr::LogicalPlan,
     prelude::{DataFrame, SessionConfig, SessionContext},
-    sql::parser::CopyToSource,
 };
-use sqlparser::ast::Value;
 
 use crate::{
     datasources::{
@@ -99,11 +90,14 @@ use crate::{
 
 use super::function_factory::ExonFunctionFactory;
 
+/// Exon session context.
 pub struct ExonSession {
+    /// The Exon session context.
     pub session: SessionContext,
 }
 
 impl ExonSession {
+    /// Create a new Exon session context.
     pub fn new(session: SessionContext) -> Self {
         Self { session }
     }
@@ -111,18 +105,13 @@ impl ExonSession {
     /// Create a new Exon based [`SessionContext`].
     pub fn new_exon() -> Self {
         let exon_config = new_exon_config();
-
-        let exon_session = Self::with_config_exon(exon_config);
-
-        exon_session
+        Self::with_config_exon(exon_config)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config.
     pub fn with_config_exon(config: SessionConfig) -> Self {
         let runtime = Arc::new(RuntimeEnv::default());
-        let exon_session = Self::with_config_rt_exon(config, runtime);
-
-        exon_session
+        Self::with_config_rt_exon(config, runtime)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
@@ -163,7 +152,6 @@ impl ExonSession {
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
 
-        // state = state.with_query_planner(Arc::new(ExonQueryPlanner::default()));
         let ctx = SessionContext::new_with_state(
             state.with_query_planner(Arc::new(ExonQueryPlanner::default())),
         );
@@ -245,6 +233,7 @@ impl ExonSession {
         Self::new(ctx)
     }
 
+    /// Convert Exon SQL to a logical plan.
     pub async fn exon_sql_to_logical_plan(&self, sql: &str) -> crate::Result<LogicalPlan> {
         let mut exon_parser = ExonParser::new(sql)?;
 
@@ -263,6 +252,15 @@ impl ExonSession {
         }
     }
 
+    /// Execute an Exon SQL statement.
+    pub async fn sql(&self, sql: &str) -> crate::Result<DataFrame> {
+        let plan = self.exon_sql_to_logical_plan(sql).await?;
+        let df = DataFrame::new(self.session.state(), plan);
+
+        Ok(df)
+    }
+
+    /// Read a BAM file.
     pub async fn read_bam(
         &self,
         table_path: &str,
@@ -282,6 +280,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a BCF file.
     #[cfg(feature = "fcs")]
     pub async fn read_fcs(
         &self,
@@ -307,6 +306,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a CRAM file.
     pub async fn read_cram(
         &self,
         table_path: &str,
@@ -327,6 +327,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a GTF file.
     pub async fn read_gtf(
         &self,
         table_path: &str,
@@ -344,6 +345,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a Genbank file.
     pub async fn read_genbank(
         &self,
         table_path: &str,
@@ -361,6 +363,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a HMM Dom Tab file.
     pub async fn read_hmm_dom_tab(
         &self,
         table_path: &str,
@@ -378,6 +381,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a MzML file.
     pub async fn read_mzml(
         &self,
         table_path: &str,
@@ -395,6 +399,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a BED file.
     pub async fn read_bed(
         &self,
         table_path: &str,
@@ -412,6 +417,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a BCF file.
     pub async fn read_bcf(
         &self,
         table_path: &str,
@@ -431,6 +437,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a GFF file.
     pub async fn read_gff(
         &self,
         table_path: &str,
@@ -448,6 +455,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a SAM file.
     pub async fn read_sam(
         &self,
         table_path: &str,
@@ -467,6 +475,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a VCF file.
     pub async fn read_vcf(
         &self,
         table_path: &str,
@@ -486,6 +495,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read an Exon table.
     pub async fn read_exon_table(
         &self,
         table_path: &str,
@@ -515,6 +525,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a FASTA file.
     pub async fn read_fasta(
         &self,
         table_path: &str,
@@ -586,6 +597,7 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Register an Exon table.
     pub async fn register_exon_table(
         &self,
         name: &str,
@@ -602,6 +614,7 @@ impl ExonSession {
         Ok(())
     }
 
+    /// Read an inferred Exon table.
     pub async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError> {
         let session_state = self.session.state();
 
@@ -695,6 +708,39 @@ mod tests {
             .read_fasta(
                 fasta_path.to_str().unwrap(),
                 ListingFASTATableOptions::default().with_some_file_extension(Some("fa")),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fasta_round_trip() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = ExonSession::new_exon();
+
+        let fasta_path = exon_test::test_path("fasta", "test.fasta");
+
+        let sql = format!(
+            "CREATE EXTERNAL TABLE test_fasta STORED AS FASTA LOCATION '{}'",
+            fasta_path.to_str().unwrap()
+        );
+        ctx.session.sql(&sql).await?.collect().await.unwrap();
+
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test.fasta");
+
+        let sql = format!(
+            "COPY (SELECT * FROM test_fasta) TO '{}' STORED AS FASTA",
+            temp_path.display()
+        );
+        ctx.sql(&sql).await?.collect().await?;
+
+        let df = ctx
+            .read_fasta(
+                temp_path.to_str().unwrap(),
+                ListingFASTATableOptions::default().with_some_file_extension(Some("fasta")),
             )
             .await?;
 
