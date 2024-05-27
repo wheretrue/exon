@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_extension_planner;
-mod exon_physical_planner;
-mod exon_query_planner;
+mod exon_copy_statement;
+mod parser;
 
-pub use exon_query_planner::ExonQueryPlanner;
+pub(crate) use exon_copy_statement::ExonCopyToStatement;
+pub(crate) use parser::ExonParser;
+pub(crate) use parser::ExonStatement;

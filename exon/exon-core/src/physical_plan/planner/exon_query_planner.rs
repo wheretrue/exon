@@ -37,6 +37,7 @@ impl QueryPlanner for ExonQueryPlanner {
         session_state: &SessionState,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         let physical_planner = ExonPhysicalPlanner::default();
+
         physical_planner
             .create_physical_plan(logical_plan, session_state)
             .await

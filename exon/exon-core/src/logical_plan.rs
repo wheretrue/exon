@@ -12,8 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_extension_planner;
-mod exon_physical_planner;
-mod exon_query_planner;
+mod exon_data_sink_node;
 
-pub use exon_query_planner::ExonQueryPlanner;
+use std::sync::Arc;
+
+use datafusion::logical_expr::{Extension, LogicalPlan, UserDefinedLogicalNodeCore};
+pub(crate) use exon_data_sink_node::ExonDataSinkLogicalPlanNode;
+
+pub trait DfExtensionNode: Sized + UserDefinedLogicalNodeCore {
+    fn into_extension(self) -> Extension {
+        Extension {
+            node: Arc::new(self),
+        }
+    }
+}
+
+pub enum ExonLogicalPlan {
+    DataFusion(LogicalPlan),
+    Exon(LogicalPlan),
+}

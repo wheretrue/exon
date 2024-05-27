@@ -1,0 +1,45 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
+
+query T
+SELECT id, description, sequence FROM fasta_table;
+----
+a description ATCG
+b description2 ATCG
+
+query T
+SELECT * FROM fasta_table WHERE id = 'a';
+----
+a description ATCG
+
+statement ok
+COPY (SELECT * FROM fasta_table) TO '${__TEST_DIR__}test.fasta' STORED AS FASTA;
+
+query I
+SELECT * FROM fasta_scan('${__TEST_DIR__}test.fasta');
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+COPY fasta_table TO '${__TEST_DIR__}test2.fasta' STORED AS FASTA;
+
+query I
+SELECT * FROM fasta_scan('${__TEST_DIR__}test2.fasta');
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+COPY fasta_table TO 's3://test-bucket/test3.fasta' STORED AS FASTA;
+
+query I
+SELECT * FROM fasta_scan('s3://test-bucket/test3.fasta');
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE fasta_table;

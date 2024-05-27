@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, vec};
 
-use async_trait::async_trait;
 use datafusion::{
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
     },
     error::{DataFusionError, Result},
     execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
+    logical_expr::LogicalPlan,
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 
@@ -41,6 +41,8 @@ use crate::{
         vcf::ListingVCFTable,
     },
     error::ExonError,
+    logical_plan::{DfExtensionNode, ExonDataSinkLogicalPlanNode, ExonLogicalPlan},
+    sql::{ExonParser, ExonStatement},
     udfs::{
         register_bigwig_region_filter_udf, sam::cram_region_filter::register_cram_region_filter_udf,
     },
@@ -88,32 +90,32 @@ use crate::{
 
 use super::function_factory::ExonFunctionFactory;
 
-/// Extension trait for [`SessionContext`] that adds Exon-specific functionality.
-#[async_trait]
-pub trait ExonSessionExt {
-    /// Reads a Exon table from the given path of a certain type and optional compression type.
-    async fn read_exon_table(
-        &self,
-        table_path: &str,
-        file_type: ExonFileType,
-        file_compression_type: Option<FileCompressionType>,
-    ) -> Result<DataFrame, ExonError>;
+/// Exon session context.
+pub struct ExonSession {
+    /// The Exon session context.
+    pub session: SessionContext,
+}
+
+impl ExonSession {
+    /// Create a new Exon session context.
+    pub fn new(session: SessionContext) -> Self {
+        Self { session }
+    }
 
     /// Create a new Exon based [`SessionContext`].
-    fn new_exon() -> SessionContext {
+    pub fn new_exon() -> Self {
         let exon_config = new_exon_config();
-
         Self::with_config_exon(exon_config)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config.
-    fn with_config_exon(config: SessionConfig) -> SessionContext {
+    pub fn with_config_exon(config: SessionConfig) -> Self {
         let runtime = Arc::new(RuntimeEnv::default());
         Self::with_config_rt_exon(config, runtime)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
-    fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> SessionContext {
+    pub fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> Self {
         let mut state = SessionState::new_with_config_rt(config, runtime)
             .with_function_factory(Arc::new(ExonFunctionFactory::default()));
 
@@ -150,7 +152,6 @@ pub trait ExonSessionExt {
                 .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
         }
 
-        // state = state.with_query_planner(Arc::new(ExonQueryPlanner::default()));
         let ctx = SessionContext::new_with_state(
             state.with_query_planner(Arc::new(ExonQueryPlanner::default())),
         );
@@ -229,157 +230,96 @@ pub trait ExonSessionExt {
             Arc::new(LocalFileSystem::new()),
         );
 
-        ctx
+        Self::new(ctx)
     }
 
-    /// Infer the file type and compression, then read the file.
-    async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError>;
+    fn exon_sql_to_statement(&self, sql: &str) -> crate::Result<ExonStatement> {
+        let mut exon_parser = ExonParser::new(sql)?;
 
-    /// Register a Exon table from the given path of a certain type and optional compression type.
-    async fn register_exon_table(
-        &self,
-        name: &str,
-        table_path: &str,
-        file_type: &str,
-    ) -> Result<(), DataFusionError>;
+        exon_parser.parse_statement()
+    }
 
-    /// Read a BigWig zoom file.
-    async fn read_bigwig_zoom(
-        &self,
-        table_path: &str,
-        options: bigwig::zoom::ListingTableOptions,
-    ) -> Result<DataFrame, ExonError>;
+    /// Convert Exon SQL to a logical plan.
+    // async fn exon_statement_to_physical_plan(
+    //     &self,
+    //     stmt: ExonStatement,
+    // ) -> crate::Result<LogicalPlan> {
+    //     match stmt {
+    //         ExonStatement::DFStatement(stmt) => {
+    //             let plan = self.session.state().statement_to_plan(*stmt).await?;
+    //             Ok(plan)
+    //         }
+    //         ExonStatement::ExonCopyTo(stmt) => {
+    //             let node = ExonDataSinkLogicalPlanNode::from(stmt);
+    //             let extension = node.into_extension();
+    //             let plan = LogicalPlan::Extension(extension);
 
-    /// Read a BigWig file.
-    async fn read_bigwig_view(
-        &self,
-        table_path: &str,
-        options: bigwig::value::ListingTableOptions,
-    ) -> Result<DataFrame, ExonError>;
+    //             Ok(plan)
+    //         }
+    //     }
+    // }
 
-    /// Read a FASTA file.
-    async fn read_fasta(
+    /// Convert Exon SQL to a logical plan.
+    async fn exon_statement_to_logical_plan(
         &self,
-        table_path: &str,
-        options: ListingFASTATableOptions,
-    ) -> Result<DataFrame, ExonError>;
+        stmt: ExonStatement,
+    ) -> crate::Result<ExonLogicalPlan> {
+        match stmt {
+            ExonStatement::DFStatement(stmt) => {
+                let plan = self.session.state().statement_to_plan(*stmt).await?;
+
+                Ok(ExonLogicalPlan::DataFusion(plan))
+            }
+            ExonStatement::ExonCopyTo(stmt) => {
+                let node = ExonDataSinkLogicalPlanNode::from(stmt);
+                let extension = node.into_extension();
+                let plan = LogicalPlan::Extension(extension);
+
+                Ok(ExonLogicalPlan::Exon(plan))
+            }
+        }
+    }
+
+    /// Execute an Exon SQL statement.
+    pub async fn sql(&self, sql: &str) -> crate::Result<DataFrame> {
+        let statement = self.exon_sql_to_statement(sql)?;
+        let plan = self.exon_statement_to_logical_plan(statement).await?;
+
+        match plan {
+            ExonLogicalPlan::DataFusion(plan) => {
+                let df = self.session.execute_logical_plan(plan).await?;
+                Ok(df)
+            }
+            ExonLogicalPlan::Exon(plan) => {
+                let df = DataFrame::new(self.session.state(), plan);
+                Ok(df)
+            }
+        }
+    }
 
     /// Read a BAM file.
-    async fn read_bam(
-        &self,
-        table_path: &str,
-        options: ListingBAMTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a SAM file.
-    async fn read_sam(
-        &self,
-        table_path: &str,
-        options: ListingSAMTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a VCF file.
-    async fn read_vcf(
-        &self,
-        table_path: &str,
-        options: ListingVCFTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a BCF file.
-    async fn read_bcf(
-        &self,
-        table_path: &str,
-        options: ListingBCFTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a GFF file.
-    async fn read_gff(
-        &self,
-        table_path: &str,
-        options: ListingGFFTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a GTF file.
-    async fn read_gtf(
-        &self,
-        table_path: &str,
-        options: ListingGTFTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a BED file.
-    async fn read_bed(
-        &self,
-        table_path: &str,
-        options: ListingBEDTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a FASTQ file.
-    async fn read_fastq(
-        &self,
-        table_path: &str,
-        options: ListingFASTQTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a CRAM file.
-    async fn read_cram(
-        &self,
-        table_path: &str,
-        options: ListingCRAMTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read an FCS file.
-    #[cfg(feature = "fcs")]
-    async fn read_fcs(
-        &self,
-        table_path: &str,
-        options: crate::datasources::fcs::table_provider::ListingFCSTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a GENBANK file.
-    #[cfg(feature = "genbank")]
-    async fn read_genbank(
-        &self,
-        table_path: &str,
-        options: ListingGenbankTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a HMMER DOMTAB file.
-    async fn read_hmm_dom_tab(
-        &self,
-        table_path: &str,
-        options: ListingHMMDomTabTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-
-    /// Read a MZML file.
-    #[cfg(feature = "mzml")]
-    async fn read_mzml(
-        &self,
-        table_path: &str,
-        options: ListingMzMLTableOptions,
-    ) -> Result<DataFrame, ExonError>;
-}
-
-#[async_trait]
-impl ExonSessionExt for SessionContext {
-    async fn read_bam(
+    pub async fn read_bam(
         &self,
         table_path: &str,
         options: ListingBAMTableOptions,
     ) -> crate::Result<DataFrame> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingBAMTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
+    /// Read a BCF file.
     #[cfg(feature = "fcs")]
-    async fn read_fcs(
+    pub async fn read_fcs(
         &self,
         table_path: &str,
         options: crate::datasources::fcs::table_provider::ListingFCSTableOptions,
@@ -388,7 +328,9 @@ impl ExonSessionExt for SessionContext {
 
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
 
         let config = ListingFCSTableConfig::new(table_path, options);
         let table = crate::datasources::fcs::table_provider::ListingFCSTable::try_new(
@@ -396,30 +338,34 @@ impl ExonSessionExt for SessionContext {
             table_schema,
         )?;
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_cram(
+    /// Read a CRAM file.
+    pub async fn read_cram(
         &self,
         table_path: &str,
         options: ListingCRAMTableOptions,
     ) -> crate::Result<DataFrame> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
 
         // TODO: refactor this to use the new config setup
         let config = ListingCRAMTableConfig::new(table_path, options);
 
         let table = ListingCRAMTable::try_new(config, table_schema)?;
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_gtf(
+    /// Read a GTF file.
+    pub async fn read_gtf(
         &self,
         table_path: &str,
         options: ListingGTFTableOptions,
@@ -431,12 +377,13 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingGTFTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_genbank(
+    /// Read a Genbank file.
+    pub async fn read_genbank(
         &self,
         table_path: &str,
         options: ListingGenbankTableOptions,
@@ -448,12 +395,13 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingGenbankTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_hmm_dom_tab(
+    /// Read a HMM Dom Tab file.
+    pub async fn read_hmm_dom_tab(
         &self,
         table_path: &str,
         options: ListingHMMDomTabTableOptions,
@@ -465,12 +413,13 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingHMMDomTabTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_mzml(
+    /// Read a MzML file.
+    pub async fn read_mzml(
         &self,
         table_path: &str,
         options: ListingMzMLTableOptions,
@@ -482,12 +431,13 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingMzMLTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_bed(
+    /// Read a BED file.
+    pub async fn read_bed(
         &self,
         table_path: &str,
         options: ListingBEDTableOptions,
@@ -499,29 +449,33 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingBEDTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_bcf(
+    /// Read a BCF file.
+    pub async fn read_bcf(
         &self,
         table_path: &str,
         options: ListingBCFTableOptions,
     ) -> crate::Result<DataFrame> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingBCFTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_gff(
+    /// Read a GFF file.
+    pub async fn read_gff(
         &self,
         table_path: &str,
         options: ListingGFFTableOptions,
@@ -533,52 +487,59 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingGFFTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_sam(
+    /// Read a SAM file.
+    pub async fn read_sam(
         &self,
         table_path: &str,
         options: ListingSAMTableOptions,
     ) -> crate::Result<DataFrame> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingSAMTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_vcf(
+    /// Read a VCF file.
+    pub async fn read_vcf(
         &self,
         table_path: &str,
         options: ListingVCFTableOptions,
     ) -> crate::Result<DataFrame> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state(), &table_path).await?;
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingVCFTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn read_exon_table(
+    /// Read an Exon table.
+    pub async fn read_exon_table(
         &self,
         table_path: &str,
         file_type: ExonFileType,
         file_compression_type: Option<FileCompressionType>,
     ) -> crate::Result<DataFrame> {
-        let session_state = self.state();
+        let session_state = self.session.state();
 
         let file_compression_type =
             file_compression_type.unwrap_or(FileCompressionType::UNCOMPRESSED);
@@ -596,30 +557,31 @@ impl ExonSessionExt for SessionContext {
             )
             .await?;
 
-        let table = self.read_table(table)?;
+        let table = self.session.read_table(table)?;
 
         Ok(table)
     }
 
-    async fn read_fasta(
+    /// Read a FASTA file.
+    pub async fn read_fasta(
         &self,
         table_path: &str,
         options: ListingFASTATableOptions,
     ) -> Result<DataFrame, ExonError> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.state()).await?;
+        let table_schema = options.infer_schema(&self.session.state()).await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingFASTATable::try_new(config, table_schema)?;
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
     /// Read a BigWig zoom file.
-    async fn read_bigwig_zoom(
+    pub async fn read_bigwig_zoom(
         &self,
         table_path: &str,
         options: bigwig::zoom::ListingTableOptions,
@@ -631,13 +593,13 @@ impl ExonSessionExt for SessionContext {
         let config = bigwig::zoom::ListingTableConfig::new(table_path, options);
         let table = bigwig::zoom::ListingTable::try_new(config, table_schema)?;
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
     /// Read a BigWig view file.
-    async fn read_bigwig_view(
+    pub async fn read_bigwig_view(
         &self,
         table_path: &str,
         options: bigwig::value::ListingTableOptions,
@@ -649,13 +611,13 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = bigwig::value::ListingTable::new(config, table_schema);
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
     /// Read a FASTQ file.
-    async fn read_fastq(
+    pub async fn read_fastq(
         &self,
         table_path: &str,
         options: ListingFASTQTableOptions,
@@ -667,12 +629,13 @@ impl ExonSessionExt for SessionContext {
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingFASTQTable::try_new(config, table_schema)?;
 
-        let table = self.read_table(Arc::new(table))?;
+        let table = self.session.read_table(Arc::new(table))?;
 
         Ok(table)
     }
 
-    async fn register_exon_table(
+    /// Register an Exon table.
+    pub async fn register_exon_table(
         &self,
         name: &str,
         table_path: &str,
@@ -683,13 +646,14 @@ impl ExonSessionExt for SessionContext {
             name, file_type, table_path
         );
 
-        self.sql(&sql_statement).await?;
+        self.session.sql(&sql_statement).await?;
 
         Ok(())
     }
 
-    async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError> {
-        let session_state = self.state();
+    /// Read an inferred Exon table.
+    pub async fn read_inferred_exon_table(&self, table_path: &str) -> Result<DataFrame, ExonError> {
+        let session_state = self.session.state();
 
         let (file_type, file_compress_type) =
             crate::datasources::infer_file_type_and_compression(table_path)?;
@@ -705,7 +669,7 @@ impl ExonSessionExt for SessionContext {
             )
             .await?;
 
-        let table = self.read_table(table)?;
+        let table = self.session.read_table(table)?;
 
         Ok(table)
     }
@@ -713,10 +677,7 @@ impl ExonSessionExt for SessionContext {
 
 #[cfg(test)]
 mod tests {
-    use datafusion::{
-        datasource::file_format::file_compression_type::FileCompressionType,
-        execution::context::SessionContext,
-    };
+    use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
 
     use crate::{
         datasources::{
@@ -725,13 +686,13 @@ mod tests {
             fasta::table_provider::ListingFASTATableOptions,
             fastq::table_provider::ListingFASTQTableOptions,
         },
-        session_context::ExonSessionExt,
+        session_context::exon_context_ext::ExonSession,
         ExonRuntimeEnvExt,
     };
 
     #[tokio::test]
     async fn test_read_fastq() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fastq_path = exon_test::test_path("fastq", "test.fq");
 
@@ -758,7 +719,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fastq_gzip() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fastq_path = exon_test::test_path("fastq", "test.fq.gz");
 
@@ -776,7 +737,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fasta_path = exon_test::test_path("fasta", "test.fa");
 
@@ -793,8 +754,61 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_fasta_round_trip() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = ExonSession::new_exon();
+
+        let fasta_path = exon_test::test_path("fasta", "test.fasta");
+
+        let sql = format!(
+            "CREATE EXTERNAL TABLE test_fasta STORED AS FASTA LOCATION '{}'",
+            fasta_path.to_str().unwrap()
+        );
+        ctx.sql(&sql).await?.collect().await.unwrap();
+
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test.fasta");
+
+        let sql = format!(
+            "COPY (SELECT * FROM test_fasta) TO '{}' STORED AS FASTA",
+            temp_path.display()
+        );
+        ctx.sql(&sql).await?.collect().await?;
+
+        let df = ctx
+            .read_fasta(
+                temp_path.to_str().unwrap(),
+                ListingFASTATableOptions::default(),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        // delete the temp file
+        std::fs::remove_file(temp_path)?;
+
+        let temp_path = temp_dir.join("test.fasta");
+        let sql = format!(
+            "COPY test_fasta TO '{}' STORED AS FASTA",
+            temp_path.display()
+        );
+
+        ctx.sql(&sql).await?.collect().await?;
+
+        let df = ctx
+            .read_fasta(
+                temp_path.to_str().unwrap(),
+                ListingFASTATableOptions::default(),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_bigwig_zoom_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let bigwig_path = exon_test::test_path("bigwig", "test.bw");
 
@@ -812,7 +826,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_bigwig_view_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let bigwig_path = exon_test::test_path("bigwig", "test.bw");
 
@@ -829,9 +843,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta_s3() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
-        ctx.runtime_env()
+        ctx.session
+            .runtime_env()
             .register_s3_object_store(&url::Url::parse("s3://test-bucket")?)
             .await?;
 
@@ -849,7 +864,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta_dir() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fasta_path = exon_test::test_path("fa", "test.fa");
         let fasta_path = fasta_path.parent().ok_or("No parent")?;
@@ -877,7 +892,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cram_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let cram_path = exon_test::test_path("cram", "test_input_1_a.cram");
 
@@ -923,7 +938,7 @@ mod tests {
     #[cfg(feature = "fcs")]
     #[tokio::test]
     async fn test_read_fcs() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fcs_path = exon_test::test_path("fcs", "Guava Muse.fcs");
 
@@ -943,7 +958,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta_gzip() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let fasta_path = exon_test::test_path("fasta", "test.fa.gz");
 
@@ -961,7 +976,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bcf_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let bcf_path = exon_test::test_path("bcf", "index.bcf");
 
@@ -979,7 +994,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bcf_file_with_region() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let bcf_path = exon_test::test_path("bcf", "index.bcf");
 

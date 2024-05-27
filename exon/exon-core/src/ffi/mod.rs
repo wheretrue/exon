@@ -80,19 +80,18 @@ mod tests {
     use arrow::record_batch::RecordBatchReader;
     use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
     use datafusion::error::DataFusionError;
-    use datafusion::prelude::SessionContext;
     use exon_test::test_path;
 
     use crate::datasources::fasta::table_provider::ListingFASTATableOptions;
     use crate::ffi::create_dataset_stream_from_table_provider;
     use crate::ffi::ArrowArrayStream;
-    use crate::session_context::ExonSessionExt;
+    use crate::ExonSession;
 
     #[test]
     pub fn test() -> Result<(), DataFusionError> {
         let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
-        let ctx = SessionContext::new_exon();
+        let ctx = ExonSession::new_exon();
 
         let path = test_path("fasta", "test.fasta");
 

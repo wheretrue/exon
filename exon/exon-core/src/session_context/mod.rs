@@ -15,4 +15,4 @@
 mod exon_context_ext;
 mod function_factory;
 
-pub use exon_context_ext::ExonSessionExt;
+pub use exon_context_ext::ExonSession;

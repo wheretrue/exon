@@ -12,8 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod exon_extension_planner;
-mod exon_physical_planner;
-mod exon_query_planner;
+use datafusion::sql::{
+    parser::{CopyToSource, CopyToStatement},
+    sqlparser::ast::Value,
+};
 
-pub use exon_query_planner::ExonQueryPlanner;
+#[derive(Debug)]
+pub(crate) struct ExonCopyToStatement {
+    pub source: CopyToSource,
+    pub target: String,
+    pub stored_as: Option<String>,
+    pub options: Vec<(String, Value)>,
+}
+
+impl From<CopyToStatement> for ExonCopyToStatement {
+    fn from(s: CopyToStatement) -> Self {
+        Self {
+            source: s.source,
+            target: s.target,
+            stored_as: s.stored_as,
+            options: s.options,
+        }
+    }
+}

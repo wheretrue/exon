@@ -18,7 +18,7 @@
 use arrow::util::pretty::pretty_format_batches;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::*;
-use exon::ExonSessionExt;
+use exon::ExonSession;
 
 #[tokio::main]
 async fn main() -> Result<(), DataFusionError> {
@@ -26,14 +26,15 @@ async fn main() -> Result<(), DataFusionError> {
         .with_target_partitions(4)
         .with_repartition_file_scans(true);
 
-    let ctx = SessionContext::with_config_exon(config);
+    let ctx = ExonSession::with_config_exon(config);
 
     let path = "./exon-examples/data/Ga0604745_crt.gff";
     let sql = format!("CREATE EXTERNAL TABLE gff STORED AS GFF LOCATION '{path}';",);
 
-    ctx.sql(&sql).await?;
+    ctx.session.sql(&sql).await?;
 
     let df = ctx
+        .session
         .sql(
             r#"SELECT crispr.seqname, crispr.start, crispr.end, repeat.start, repeat.end
             FROM (SELECT * FROM gff WHERE type = 'CRISPR') AS crispr

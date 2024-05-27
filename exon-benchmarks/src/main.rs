@@ -15,14 +15,14 @@
 use clap::{Parser, Subcommand};
 use datafusion::{
     datasource::file_format::file_compression_type::FileCompressionType,
-    prelude::{col, lit, SessionContext},
+    prelude::{col, lit},
 };
 use exon::{
     datasources::{
         fasta::table_provider::ListingFASTATableOptions,
         mzml::table_provider::ListingMzMLTableOptions,
     },
-    new_exon_config, ExonRuntimeEnvExt, ExonSessionExt,
+    new_exon_config, ExonRuntimeEnvExt, ExonSession,
 };
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -111,12 +111,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
 
-            let ctx = SessionContext::new_exon();
-            ctx.runtime_env()
+            let ctx = ExonSession::new_exon();
+            ctx.session
+                .runtime_env()
                 .exon_register_object_store_uri(path)
                 .await?;
 
-            ctx.sql(
+            ctx.session.sql(
                 format!(
                     "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
                     path
@@ -126,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
 
             let df = ctx
-                .sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE vcf_region_filter('{}', chrom, pos) = true;", region).as_str())
+                .session.sql(format!("SELECT chrom, pos, array_to_string(id, ':') AS id FROM vcf_file WHERE vcf_region_filter('{}', chrom, pos) = true;", region).as_str())
                 .await?;
 
             let cnt = df.count().await?;
@@ -134,21 +135,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::BAMScan { path }) => {
             let path = path.as_str();
-            let ctx = SessionContext::new_exon();
-            ctx.runtime_env()
+            let ctx = ExonSession::new_exon();
+            ctx.session
+                .runtime_env()
                 .exon_register_object_store_uri(path)
                 .await?;
 
-            ctx.sql(
-                format!(
-                    "CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '{}';",
-                    path
+            ctx.session
+                .sql(
+                    format!(
+                        "CREATE EXTERNAL TABLE bam STORED AS BAM LOCATION '{}';",
+                        path
+                    )
+                    .as_str(),
                 )
-                .as_str(),
-            )
-            .await?;
+                .await?;
 
-            let df = ctx.sql("SELECT COUNT(*) FROM bam").await?.collect().await?;
+            let df = ctx
+                .session
+                .sql("SELECT COUNT(*) FROM bam")
+                .await?
+                .collect()
+                .await?;
 
             assert!(df.len() == 1);
 
@@ -158,21 +166,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let path = path.as_str();
             let region = region.as_str();
 
-            let ctx = SessionContext::new_exon();
-            ctx.runtime_env()
+            let ctx = ExonSession::new_exon();
+            ctx.session
+                .runtime_env()
                 .exon_register_object_store_uri(path)
                 .await?;
 
-            ctx.sql(
-                format!(
-                    "CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '{}';",
-                    path
+            ctx.session
+                .sql(
+                    format!(
+                        "CREATE EXTERNAL TABLE bam STORED AS INDEXED_BAM LOCATION '{}';",
+                        path
+                    )
+                    .as_str(),
                 )
-                .as_str(),
-            )
-            .await?;
+                .await?;
 
             let df = ctx
+                .session
                 .sql(
                     format!(
                         "SELECT reference FROM bam WHERE bam_region_filter('{}', reference, start, end) = true;",
@@ -189,7 +200,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::FASTACodonScan { path, compression }) => {
             let options = ListingFASTATableOptions::new(compression.unwrap());
 
-            let ctx = SessionContext::new_exon();
+            let ctx = ExonSession::new_exon();
 
             let df = ctx.read_fasta(path, options).await?;
 
@@ -199,7 +210,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::FASTAScanParallel { path, workers }) => {
             let exon_config = new_exon_config().with_target_partitions(*workers);
-            let ctx = SessionContext::with_config_exon(exon_config);
+            let ctx = ExonSession::with_config_exon(exon_config);
 
             let options = ListingFASTATableOptions::default();
 
@@ -216,7 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let compression = compression.unwrap_or(FileCompressionType::UNCOMPRESSED);
             let options = ListingMzMLTableOptions::new(compression);
 
-            let ctx = SessionContext::new_exon();
+            let ctx = ExonSession::new_exon();
 
             let df = ctx.read_mzml(path, options).await?;
             let count = df.count().await?;

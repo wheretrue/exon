@@ -27,10 +27,21 @@ use datafusion::{
 
 use crate::ExonRuntimeEnvExt;
 
-#[derive(Default)]
+use super::exon_extension_planner::ExomeExtensionPlanner;
+
 /// A custom PhysicalPlanner that adds Exon-specific functionality.
 pub struct ExonPhysicalPlanner {
     planner: DefaultPhysicalPlanner,
+}
+
+impl Default for ExonPhysicalPlanner {
+    fn default() -> Self {
+        let exon_extension_planner = ExomeExtensionPlanner::default();
+        let planner =
+            DefaultPhysicalPlanner::with_extension_planners(vec![Arc::new(exon_extension_planner)]);
+
+        Self { planner }
+    }
 }
 
 #[async_trait]
