@@ -2,6 +2,8 @@ name: Test R
 
 on:
   push:
+    paths:
+      - 'exon-r/**'
 
 jobs:
   test:

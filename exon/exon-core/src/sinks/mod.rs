@@ -74,23 +74,23 @@ impl BatchSerializer for FASTASerializer {
     }
 }
 
-pub struct FASTADataSync {
+pub struct FASTADataSink {
     file_sink_config: FileSinkConfig,
 }
 
-impl FASTADataSync {
+impl FASTADataSink {
     pub fn new(file_sink_config: FileSinkConfig) -> Self {
         Self { file_sink_config }
     }
 }
 
-impl Debug for FASTADataSync {
+impl Debug for FASTADataSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FASTADataSync").finish()
     }
 }
 
-impl DisplayAs for FASTADataSync {
+impl DisplayAs for FASTADataSink {
     fn fmt_as(
         &self,
         _display_type: DisplayFormatType,
@@ -101,7 +101,7 @@ impl DisplayAs for FASTADataSync {
 }
 
 #[async_trait::async_trait]
-impl DataSink for FASTADataSync {
+impl DataSink for FASTADataSink {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -143,7 +143,7 @@ impl DataSink for FASTADataSync {
 #[cfg(test)]
 mod tests {
     use crate::datasources::fasta::table_provider::ListingFASTATableOptions;
-    use crate::sinks::FASTADataSync;
+    use crate::sinks::FASTADataSink;
     use crate::ExonSession;
 
     use datafusion::datasource::listing::PartitionedFile;
@@ -180,7 +180,7 @@ mod tests {
             overwrite: false,
         };
 
-        let sink = FASTADataSync { file_sink_config };
+        let sink = FASTADataSink { file_sink_config };
 
         let total_bytes = sink
             .write_all(stream, &ctx.session.task_ctx())
