@@ -172,7 +172,7 @@ fn parse_partition_key_values(
 }
 
 /// Parse a URL, but handle local file paths
-pub(crate) fn parse_url(input: &str) -> Result<url::Url, ExonError> {
+pub(crate) fn parse_url(input: &str) -> crate::Result<url::Url> {
     // Check if the input already has a scheme
     let url = if input.contains("://") {
         url::Url::parse(input)?

@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use datafusion::sql::parser::{CopyToSource, CopyToStatement};
-use sqlparser::ast::Value;
+use datafusion::sql::{
+    parser::{CopyToSource, CopyToStatement},
+    sqlparser::ast::Value,
+};
 
+#[derive(Debug)]
 pub(crate) struct ExonCopyToStatement {
     pub source: CopyToSource,
     pub target: String,

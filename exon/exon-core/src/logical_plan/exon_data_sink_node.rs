@@ -18,9 +18,8 @@ use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::{
     common::{DFSchema, DFSchemaRef},
     logical_expr::{LogicalPlan, UserDefinedLogicalNodeCore},
-    sql::parser::CopyToSource,
+    sql::{parser::CopyToSource, sqlparser::ast::Value},
 };
-use sqlparser::ast::Value;
 
 use crate::sql::ExonCopyToStatement;
 

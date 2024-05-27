@@ -23,13 +23,16 @@ use datafusion::{
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
     sql::{
         parser::{CopyToSource, Statement},
+        sqlparser::ast,
         TableReference,
     },
 };
 use exon_fasta::FASTASchemaBuilder;
-use object_store::path::Path;
 
-use crate::{logical_plan::ExonDataSinkLogicalPlanNode, sinks::FASTADataSync};
+use crate::{
+    logical_plan::ExonDataSinkLogicalPlanNode, physical_plan::object_store::parse_url,
+    sinks::FASTADataSync,
+};
 
 pub struct ExomeExtensionPlanner {}
 
@@ -63,9 +66,9 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
         let input_plan = match &logical_node.source {
             CopyToSource::Query(q) => {
                 session_state
-                    .statement_to_plan(Statement::Statement(Box::new(
-                        sqlparser::ast::Statement::Query(Box::new(q.clone())),
-                    )))
+                    .statement_to_plan(Statement::Statement(Box::new(ast::Statement::Query(
+                        Box::new(q.clone()),
+                    ))))
                     .await?
             }
             CopyToSource::Relation(r) => {
@@ -106,17 +109,15 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
 
         let url = logical_node.target.clone();
 
-        // let url = Url::parse(url.as_str()).expect("Invalid default catalog location!");
-        // let authority = match url.host_str() {
-        //     Some(host) => format!("{}://{}", url.scheme(), host),
-        //     None => format!("{}://", url.scheme()),
-        // };
-        // let path = &url.as_str()[authority.len()..];
+        let url = parse_url(&url)?;
+        let authority = match url.host_str() {
+            Some(host) => format!("{}://{}", url.scheme(), host),
+            None => format!("{}://", url.scheme()),
+        };
+        let path = &url.as_str()[authority.len()..];
 
-        // let path = object_store::path::Path::parse(path).expect("Can't parse path");
-        // let object_store_url = ObjectStoreUrl::parse(authority.as_str()).unwrap();
-        let object_store_url = ObjectStoreUrl::local_filesystem();
-        let path = Path::parse(url.as_str()).expect("Can't parse path");
+        let path = object_store::path::Path::parse(path).expect("Can't parse path");
+        let object_store_url = ObjectStoreUrl::parse(authority.as_str()).unwrap();
 
         let p_file = PartitionedFile::new(path, 0);
 

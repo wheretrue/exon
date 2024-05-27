@@ -41,7 +41,7 @@ use crate::{
         vcf::ListingVCFTable,
     },
     error::ExonError,
-    logical_plan::{DfExtensionNode, ExonDataSinkLogicalPlanNode},
+    logical_plan::{DfExtensionNode, ExonDataSinkLogicalPlanNode, ExonLogicalPlan},
     sql::{ExonParser, ExonStatement},
     udfs::{
         register_bigwig_region_filter_udf, sam::cram_region_filter::register_cram_region_filter_udf,
@@ -233,31 +233,68 @@ impl ExonSession {
         Self::new(ctx)
     }
 
-    /// Convert Exon SQL to a logical plan.
-    pub async fn exon_sql_to_logical_plan(&self, sql: &str) -> crate::Result<LogicalPlan> {
+    fn exon_sql_to_statement(&self, sql: &str) -> crate::Result<ExonStatement> {
         let mut exon_parser = ExonParser::new(sql)?;
 
-        match exon_parser.parse_statement()? {
+        exon_parser.parse_statement()
+    }
+
+    /// Convert Exon SQL to a logical plan.
+    // async fn exon_statement_to_physical_plan(
+    //     &self,
+    //     stmt: ExonStatement,
+    // ) -> crate::Result<LogicalPlan> {
+    //     match stmt {
+    //         ExonStatement::DFStatement(stmt) => {
+    //             let plan = self.session.state().statement_to_plan(*stmt).await?;
+    //             Ok(plan)
+    //         }
+    //         ExonStatement::ExonCopyTo(stmt) => {
+    //             let node = ExonDataSinkLogicalPlanNode::from(stmt);
+    //             let extension = node.into_extension();
+    //             let plan = LogicalPlan::Extension(extension);
+
+    //             Ok(plan)
+    //         }
+    //     }
+    // }
+
+    /// Convert Exon SQL to a logical plan.
+    async fn exon_statement_to_logical_plan(
+        &self,
+        stmt: ExonStatement,
+    ) -> crate::Result<ExonLogicalPlan> {
+        match stmt {
             ExonStatement::DFStatement(stmt) => {
                 let plan = self.session.state().statement_to_plan(*stmt).await?;
-                Ok(plan)
+
+                Ok(ExonLogicalPlan::DataFusion(plan))
             }
             ExonStatement::ExonCopyTo(stmt) => {
                 let node = ExonDataSinkLogicalPlanNode::from(stmt);
                 let extension = node.into_extension();
                 let plan = LogicalPlan::Extension(extension);
 
-                Ok(plan)
+                Ok(ExonLogicalPlan::Exon(plan))
             }
         }
     }
 
     /// Execute an Exon SQL statement.
     pub async fn sql(&self, sql: &str) -> crate::Result<DataFrame> {
-        let plan = self.exon_sql_to_logical_plan(sql).await?;
-        let df = DataFrame::new(self.session.state(), plan);
+        let statement = self.exon_sql_to_statement(sql)?;
+        let plan = self.exon_statement_to_logical_plan(statement).await?;
 
-        Ok(df)
+        match plan {
+            ExonLogicalPlan::DataFusion(plan) => {
+                let df = self.session.execute_logical_plan(plan).await?;
+                Ok(df)
+            }
+            ExonLogicalPlan::Exon(plan) => {
+                let df = DataFrame::new(self.session.state(), plan);
+                Ok(df)
+            }
+        }
     }
 
     /// Read a BAM file.
@@ -726,7 +763,7 @@ mod tests {
             "CREATE EXTERNAL TABLE test_fasta STORED AS FASTA LOCATION '{}'",
             fasta_path.to_str().unwrap()
         );
-        ctx.session.sql(&sql).await?.collect().await.unwrap();
+        ctx.sql(&sql).await?.collect().await.unwrap();
 
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join("test.fasta");

@@ -86,7 +86,7 @@ impl ExonTextRunner {
 async fn run_query(ctx: &ExonSession, sql: impl Into<String>) -> Result<DFOutput, DataFusionError> {
     let q = sql.into();
 
-    let df = ctx.session.sql(q.as_str()).await?;
+    let df = ctx.sql(q.as_str()).await?;
 
     let mut output = Vec::new();
 

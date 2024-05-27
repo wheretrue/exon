@@ -23,6 +23,7 @@ pub(crate) struct ExonParser<'a> {
     df_parser: DFParser<'a>,
 }
 
+#[derive(Debug)]
 pub(crate) enum ExonStatement {
     DFStatement(Box<Statement>),
     ExonCopyTo(ExonCopyToStatement),

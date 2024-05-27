@@ -16,7 +16,7 @@ mod exon_data_sink_node;
 
 use std::sync::Arc;
 
-use datafusion::logical_expr::{Extension, UserDefinedLogicalNodeCore};
+use datafusion::logical_expr::{Extension, LogicalPlan, UserDefinedLogicalNodeCore};
 pub(crate) use exon_data_sink_node::ExonDataSinkLogicalPlanNode;
 
 pub trait DfExtensionNode: Sized + UserDefinedLogicalNodeCore {
@@ -25,4 +25,9 @@ pub trait DfExtensionNode: Sized + UserDefinedLogicalNodeCore {
             node: Arc::new(self),
         }
     }
+}
+
+pub enum ExonLogicalPlan {
+    DataFusion(LogicalPlan),
+    Exon(LogicalPlan),
 }
