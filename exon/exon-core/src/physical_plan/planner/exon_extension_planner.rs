@@ -31,7 +31,7 @@ use exon_fasta::FASTASchemaBuilder;
 
 use crate::{
     logical_plan::ExonDataSinkLogicalPlanNode, physical_plan::object_store::parse_url,
-    sinks::FASTADataSync,
+    sinks::FASTADataSink,
 };
 
 pub struct ExomeExtensionPlanner {}
@@ -132,7 +132,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             overwrite: false,
         };
 
-        let sink = Arc::new(FASTADataSync::new(file_sink_config));
+        let sink = Arc::new(FASTADataSink::new(file_sink_config));
         let sink_schema = FASTASchemaBuilder::default().build().file_schema().unwrap();
 
         let data_sink = DataSinkExec::new(physical_plan, sink, sink_schema, None);
