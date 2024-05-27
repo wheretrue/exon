@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.23.0 (2024-05-27)
+
+### Feat
+
+- copy to FASTA file (#514)
+
+### Fix
+
+- sync -> sink (#517)
+
 ## v0.22.2 (2024-05-25)
 
 ### Fix

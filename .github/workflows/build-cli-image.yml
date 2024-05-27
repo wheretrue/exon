@@ -37,5 +37,5 @@ jobs:
           build-args: |
             CARGO_BUILD_PROFILE=release
           push: true
-          tags: public.ecr.aws/p3a4z1t3/exon-cli:latest,public.ecr.aws/p3a4z1t3/exon-cli:v0.22.2
+          tags: public.ecr.aws/p3a4z1t3/exon-cli:latest,public.ecr.aws/p3a4z1t3/exon-cli:v0.23.0
           platforms: linux/amd64,linux/arm64

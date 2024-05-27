@@ -10,7 +10,7 @@ version = { workspace = true }
 
 [dependencies]
 arrow = { workspace = true }
-exon-common = { path = "../exon-common", version = "0.22.2" }
+exon-common = { path = "../exon-common", version = "0.23.0" }
 futures = { workspace = true }
 itertools = "0.13"
 noodles = { workspace = true, features = [
