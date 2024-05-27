@@ -16,12 +16,15 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{listing::PartitionedFile, physical_plan::FileSinkConfig},
+    datasource::{listing::PartitionedFile, physical_plan::FileSinkConfig, DefaultTableSource},
     execution::{context::SessionState, object_store::ObjectStoreUrl},
-    logical_expr::{LogicalPlan, UserDefinedLogicalNode},
+    logical_expr::{LogicalPlan, LogicalPlanBuilder, UserDefinedLogicalNode},
     physical_plan::{insert::DataSinkExec, ExecutionPlan},
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
-    sql::parser::{CopyToSource, Statement},
+    sql::{
+        parser::{CopyToSource, Statement},
+        TableReference,
+    },
 };
 use exon_fasta::FASTASchemaBuilder;
 use object_store::path::Path;
@@ -57,16 +60,45 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             .downcast_ref::<ExonDataSinkLogicalPlanNode>()
             .unwrap();
 
-        let copy_to = match &logical_node.source {
-            CopyToSource::Query(q) => q,
-            _ => unimplemented!(),
-        };
+        let input_plan = match &logical_node.source {
+            CopyToSource::Query(q) => {
+                session_state
+                    .statement_to_plan(Statement::Statement(Box::new(
+                        sqlparser::ast::Statement::Query(Box::new(q.clone())),
+                    )))
+                    .await?
+            }
+            CopyToSource::Relation(r) => {
+                let catalog = &session_state.config_options().catalog;
 
-        let input_plan = session_state
-            .statement_to_plan(Statement::Statement(Box::new(
-                sqlparser::ast::Statement::Query(Box::new(copy_to.clone())),
-            )))
-            .await?;
+                let table_name = r.to_string();
+                let table_ref = TableReference::parse_str(&table_name);
+
+                let table = table_ref
+                    .clone()
+                    .resolve(&catalog.default_catalog, &catalog.default_schema);
+
+                let u = session_state
+                    .catalog_list()
+                    .catalog(&table.catalog)
+                    .unwrap()
+                    .schema(&table.schema)
+                    .unwrap();
+
+                let table_provider = u.table(&table.table).await?.ok_or(
+                    datafusion::error::DataFusionError::Plan(format!(
+                        "Table {} not found in schema {}",
+                        table.table, table.schema
+                    )),
+                )?;
+
+                let table_source = Arc::new(DefaultTableSource::new(table_provider));
+
+                let builder = LogicalPlanBuilder::scan(table_ref, table_source, None)?;
+
+                builder.build()?
+            }
+        };
 
         let physical_plan = planner
             .create_physical_plan(&input_plan, session_state)

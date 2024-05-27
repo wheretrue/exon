@@ -740,7 +740,27 @@ mod tests {
         let df = ctx
             .read_fasta(
                 temp_path.to_str().unwrap(),
-                ListingFASTATableOptions::default().with_some_file_extension(Some("fasta")),
+                ListingFASTATableOptions::default(),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        // delete the temp file
+        std::fs::remove_file(temp_path)?;
+
+        let temp_path = temp_dir.join("test.fasta");
+        let sql = format!(
+            "COPY test_fasta TO '{}' STORED AS FASTA",
+            temp_path.display()
+        );
+
+        ctx.sql(&sql).await?.collect().await?;
+
+        let df = ctx
+            .read_fasta(
+                temp_path.to_str().unwrap(),
+                ListingFASTATableOptions::default(),
             )
             .await?;
 
