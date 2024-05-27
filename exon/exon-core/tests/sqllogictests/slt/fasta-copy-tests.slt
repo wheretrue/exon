@@ -22,3 +22,24 @@ SELECT * FROM fasta_scan('${__TEST_DIR__}test.fasta');
 ----
 a description ATCG
 b description2 ATCG
+
+statement ok
+COPY fasta_table TO '${__TEST_DIR__}test2.fasta' STORED AS FASTA;
+
+query I
+SELECT * FROM fasta_scan('${__TEST_DIR__}test2.fasta');
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+COPY fasta_table TO 's3://test-bucket/test3.fasta' STORED AS FASTA;
+
+query I
+SELECT * FROM fasta_scan('s3://test-bucket/test3.fasta');
+----
+a description ATCG
+b description2 ATCG
+
+statement ok
+DROP TABLE fasta_table;
