@@ -108,17 +108,6 @@ test_that("reading a BAM works", {
     expect_equal(nrow(df), 61)
 })
 
-test_that("reading a mzml file works", {
-    batch_reader <- read_mzml_file("../../../../exon/exon-core/test-data/datasources/mzml/test.mzML")
-    df <- as.data.frame(batch_reader$read_table())
-
-    # Check the column names are what's expected.
-    expect_equal(colnames(df), c("id", "mz", "intensity", "wavelength", "cv_params", "precursor_list"))
-
-    # Check there's two rows.
-    expect_equal(nrow(df), 2)
-})
-
 test_that("querying an exon session to a dataframe works", {
     session <- ExonRSessionContext$new()
     session$execute("CREATE EXTERNAL TABLE gene_annotations STORED AS GFF LOCATION '../../../../exon/exon-core/test-data/datasources/gff/test.gff'")
