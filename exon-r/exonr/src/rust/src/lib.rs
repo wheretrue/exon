@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod error;
+
 use std::sync::Arc;
 
 use arrow::ffi_stream::FFI_ArrowArrayStream;
 use datafusion::error::DataFusionError;
 use datafusion::prelude::DataFrame;
-use datafusion::prelude::SessionContext;
+use exon::ffi::create_dataset_stream_from_table_provider;
 use exon::ffi::DataFrameRecordBatchStream;
-use exon::new_exon_config;
 use exon::ExonRuntimeEnvExt;
-use exon::{ffi::create_dataset_stream_from_table_provider, ExonSessionExt};
+use exon::ExonSession;
 use extendr_api::{
     extendr, extendr_module, list, prelude::*, Attributes, Conversions, IntoRobj, Result,
 };
@@ -30,11 +31,11 @@ use tokio::runtime::Runtime;
 fn read_inferred_exon_table_inner(path: &str, stream_ptr: *mut FFI_ArrowArrayStream) -> Result<()> {
     let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
 
-    let config = new_exon_config();
-    let ctx = SessionContext::with_config_exon(config);
+    let ctx = ExonSession::new_exon();
 
     rt.block_on(async {
-        ctx.runtime_env()
+        ctx.session
+            .runtime_env()
             .exon_register_object_store_uri(path)
             .await?;
 
@@ -127,7 +128,7 @@ impl From<DataFrame> for RDataFrame {
 }
 
 pub struct ExonSessionContext {
-    ctx: SessionContext,
+    ctx: ExonSession,
     runtime: Runtime,
 }
 
