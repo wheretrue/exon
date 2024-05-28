@@ -197,14 +197,13 @@ impl FASTASchemaBuilder {
                 fields[2] = field;
             }
             SequenceDataType::IntegerEncodeProtein => {
-                // List of i32
-                let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int32, true)));
+                let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int8, true)));
 
                 let field = Field::new("sequence", data_type, true);
                 fields[2] = field;
             }
             SequenceDataType::IntegerEncodeDNA => {
-                let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int32, true)));
+                let data_type = DataType::List(Arc::new(Field::new("item", DataType::Int8, true)));
 
                 let field = Field::new("sequence", data_type, true);
                 fields[2] = field;

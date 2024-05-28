@@ -15,7 +15,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use arrow::{
-    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int32Builder},
+    array::{ArrayRef, GenericListBuilder, GenericStringBuilder, Int8Builder},
     datatypes::SchemaRef,
     error::ArrowError,
 };
@@ -38,8 +38,8 @@ pub struct FASTAArrayBuilder {
 pub enum SequenceBuilder {
     Utf8(GenericStringBuilder<i32>),
     LargeUtf8(GenericStringBuilder<i64>),
-    IntegerEncodeDNA(GenericListBuilder<i32, Int32Builder>),
-    IntegerEncodeProtein(GenericListBuilder<i32, Int32Builder>),
+    IntegerEncodeDNA(GenericListBuilder<i32, Int8Builder>),
+    IntegerEncodeProtein(GenericListBuilder<i32, Int8Builder>),
 }
 
 impl SequenceBuilder {
@@ -69,14 +69,14 @@ impl FASTAArrayBuilder {
                 GenericStringBuilder::<i64>::with_capacity(capacity, capacity),
             ),
             SequenceDataType::IntegerEncodeProtein => SequenceBuilder::IntegerEncodeProtein(
-                GenericListBuilder::<i32, Int32Builder>::with_capacity(
-                    Int32Builder::with_capacity(60),
+                GenericListBuilder::<i32, Int8Builder>::with_capacity(
+                    Int8Builder::with_capacity(60),
                     capacity,
                 ),
             ),
             SequenceDataType::IntegerEncodeDNA => SequenceBuilder::IntegerEncodeDNA(
-                GenericListBuilder::<i32, Int32Builder>::with_capacity(
-                    Int32Builder::with_capacity(60),
+                GenericListBuilder::<i32, Int8Builder>::with_capacity(
+                    Int8Builder::with_capacity(60),
                     capacity,
                 ),
             ),
