@@ -15,38 +15,35 @@
 use arrow::array::StringArray;
 use bytes::Bytes;
 use datafusion::datasource::file_format::write::BatchSerializer;
-use noodles::fasta::{
-    record::{Definition, Sequence},
-    Record,
-};
 
 use super::columns_from_batch::get_array_column;
 
 #[derive(Debug, Default)]
-pub(crate) struct FASTASerializer {}
+pub(crate) struct FASTQSerializer {}
 
-impl BatchSerializer for FASTASerializer {
+impl BatchSerializer for FASTQSerializer {
     fn serialize(
         &self,
         batch: arrow::array::RecordBatch,
         _initial: bool,
     ) -> datafusion::error::Result<bytes::Bytes> {
-        let ids = get_array_column::<StringArray>(&batch, "id")?;
+        let names = get_array_column::<StringArray>(&batch, "name")?;
         let descriptions = get_array_column::<StringArray>(&batch, "description")?;
         let sequences = get_array_column::<StringArray>(&batch, "sequence")?;
+        let quality_scores = get_array_column::<StringArray>(&batch, "quality_scores")?;
 
         let b = Vec::new();
-        let mut fasta_writer = noodles::fasta::writer::Writer::new(b);
+        let mut fasta_writer = noodles::fastq::Writer::new(b);
 
         for i in 0..batch.num_rows() {
-            let id = ids.value(i);
+            let id = names.value(i);
             let description = descriptions.value(i);
             let sequence = sequences.value(i);
+            let quality_scores = quality_scores.value(i);
 
-            let definition = Definition::new(id, Some(Vec::from(description)));
-            let sequence = Sequence::from(Vec::from(sequence));
+            let definition = noodles::fastq::record::Definition::new(id, description);
+            let record = noodles::fastq::Record::new(definition, sequence, quality_scores);
 
-            let record = Record::new(definition, sequence);
             fasta_writer.write_record(&record)?;
         }
 

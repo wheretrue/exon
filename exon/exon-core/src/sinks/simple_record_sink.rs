@@ -26,34 +26,39 @@ use datafusion::{
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt;
 
-use super::fasta_serializer::FASTASerializer;
+use crate::datasources::ExonFileType;
 
-pub struct FASTADataSink {
+use super::{fasta_serializer::FASTASerializer, fastq_serializer::FASTQSerializer};
+
+pub struct SimpleRecordSink {
     file_compression_type: FileCompressionType,
     file_sink_config: FileSinkConfig,
+    exon_file_type: ExonFileType,
 }
 
-impl FASTADataSink {
+impl SimpleRecordSink {
     pub fn new(
         file_sink_config: FileSinkConfig,
         file_compression_type: FileCompressionType,
+        exon_file_type: ExonFileType,
     ) -> Self {
         Self {
             file_sink_config,
             file_compression_type,
+            exon_file_type,
         }
     }
 }
 
 use std::fmt::Debug;
 
-impl Debug for FASTADataSink {
+impl Debug for SimpleRecordSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FASTADataSync").finish()
     }
 }
 
-impl DisplayAs for FASTADataSink {
+impl DisplayAs for SimpleRecordSink {
     fn fmt_as(
         &self,
         _display_type: DisplayFormatType,
@@ -64,7 +69,7 @@ impl DisplayAs for FASTADataSink {
 }
 
 #[async_trait::async_trait]
-impl DataSink for FASTADataSink {
+impl DataSink for SimpleRecordSink {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -94,7 +99,11 @@ impl DataSink for FASTADataSink {
             .file_compression_type
             .convert_async_writer(buf_writer)?;
 
-        let serializer = FASTASerializer::default();
+        let serializer: Arc<dyn BatchSerializer> = match self.exon_file_type {
+            ExonFileType::FASTA => Arc::new(FASTASerializer::default()),
+            ExonFileType::FASTQ => Arc::new(FASTQSerializer::default()),
+            _ => return Err(DataFusionError::Execution("Invalid file type".to_string())),
+        };
 
         while let Some(batch) = data.next().await {
             let batch = batch?;
@@ -115,7 +124,8 @@ impl DataSink for FASTADataSink {
 #[cfg(test)]
 mod tests {
     use crate::datasources::fasta::table_provider::ListingFASTATableOptions;
-    use crate::sinks::FASTADataSink;
+    use crate::datasources::ExonFileType;
+    use crate::sinks::SimpleRecordSink;
     use crate::ExonSession;
 
     use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
@@ -153,7 +163,12 @@ mod tests {
             overwrite: false,
         };
 
-        let sink = FASTADataSink::new(file_sink_config, FileCompressionType::UNCOMPRESSED);
+        let exon_file_type = ExonFileType::FASTA;
+        let sink = SimpleRecordSink::new(
+            file_sink_config,
+            FileCompressionType::UNCOMPRESSED,
+            exon_file_type,
+        );
 
         let total_bytes = sink
             .write_all(stream, &ctx.session.task_ctx())
