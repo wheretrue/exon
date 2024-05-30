@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod fasta_data_sink;
+mod columns_from_batch;
 mod fasta_serializer;
+mod fastq_serializer;
+mod simple_record_sink;
 
-pub(crate) use fasta_data_sink::FASTADataSink;
+pub(crate) use simple_record_sink::SimpleRecordSink;

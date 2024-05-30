@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::str::FromStr;
+
 use datafusion::sql::{
     parser::{DFParser, Statement},
     sqlparser::{keywords::Keyword, tokenizer::Token},
 };
+
+use crate::datasources::ExonFileType;
 
 use super::exon_copy_statement::ExonCopyToStatement;
 
@@ -52,7 +56,7 @@ impl ExonParser<'_> {
 
             if let Statement::CopyTo(s) = &df_statement {
                 match &s.stored_as {
-                    Some(v) if v == "FASTA" => Ok(ExonStatement::ExonCopyTo(
+                    Some(v) if ExonFileType::from_str(v).is_ok() => Ok(ExonStatement::ExonCopyTo(
                         ExonCopyToStatement::from(s.clone()),
                     )),
                     _ => Ok(ExonStatement::DFStatement(Box::from(df_statement))),

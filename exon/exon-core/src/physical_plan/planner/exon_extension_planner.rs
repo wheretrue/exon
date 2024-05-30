@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::{
@@ -31,10 +31,11 @@ use datafusion::{
     },
 };
 use exon_fasta::FASTASchemaBuilder;
+use exon_fastq::new_fastq_schema_builder;
 
 use crate::{
-    logical_plan::ExonDataSinkLogicalPlanNode, physical_plan::object_store::parse_url,
-    sinks::FASTADataSink,
+    datasources::ExonFileType, logical_plan::ExonDataSinkLogicalPlanNode,
+    physical_plan::object_store::parse_url, sinks::SimpleRecordSink,
 };
 
 pub struct ExomeExtensionPlanner {}
@@ -124,13 +125,28 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
 
         let p_file = PartitionedFile::new(path, 0);
 
-        let schema = FASTASchemaBuilder::default().build().file_schema().unwrap();
+        let stored_as = logical_node.stored_as.as_ref().ok_or_else(|| {
+            datafusion::error::DataFusionError::Plan(
+                "Stored as option is required for ExonDataSinkLogicalPlanNode".to_string(),
+            )
+        })?;
+        let exon_file_type = ExonFileType::from_str(stored_as)?;
+
+        let schema = match ExonFileType::from_str(stored_as)? {
+            ExonFileType::FASTA => FASTASchemaBuilder::default().build().file_schema().unwrap(),
+            ExonFileType::FASTQ => new_fastq_schema_builder().build().file_schema().unwrap(),
+            _ => {
+                return Err(datafusion::error::DataFusionError::Plan(
+                    "Invalid file type".to_string(),
+                ))
+            }
+        };
 
         let file_sink_config = FileSinkConfig {
             object_store_url,
             file_groups: vec![p_file],
             table_paths: vec![],
-            output_schema: schema,
+            output_schema: schema.clone(),
             table_partition_cols: vec![],
             overwrite: false,
         };
@@ -138,10 +154,14 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
         let compression_type = logical_node
             .file_compression_type()?
             .unwrap_or(FileCompressionType::UNCOMPRESSED);
-        let sink = Arc::new(FASTADataSink::new(file_sink_config, compression_type));
-        let sink_schema = FASTASchemaBuilder::default().build().file_schema().unwrap();
 
-        let data_sink = DataSinkExec::new(physical_plan, sink, sink_schema, None);
+        let sink = Arc::new(SimpleRecordSink::new(
+            file_sink_config,
+            compression_type,
+            exon_file_type,
+        ));
+
+        let data_sink = DataSinkExec::new(physical_plan, sink, schema, None);
 
         Ok(Some(Arc::new(data_sink)))
     }
