@@ -45,7 +45,6 @@ noodles = { workspace = true, features = [
   "gtf",
 ] }
 num_cpus = "1.16.0"
-flate2 = { workspace = true }
 object_store = { workspace = true, features = ["aws"] }
 pin-project = { version = "1.1.5", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }

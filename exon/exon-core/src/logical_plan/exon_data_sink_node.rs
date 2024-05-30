@@ -81,7 +81,7 @@ impl ExonDataSinkLogicalPlanNode {
                 )),
             });
 
-        Ok(inferred_type.transpose()?)
+        inferred_type.transpose()
     }
 }
 
