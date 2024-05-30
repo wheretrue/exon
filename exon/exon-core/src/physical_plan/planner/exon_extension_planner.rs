@@ -16,7 +16,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{
-    datasource::{listing::PartitionedFile, physical_plan::FileSinkConfig, DefaultTableSource},
+    datasource::{
+        file_format::file_compression_type::FileCompressionType, listing::PartitionedFile,
+        physical_plan::FileSinkConfig, DefaultTableSource,
+    },
     execution::{context::SessionState, object_store::ObjectStoreUrl},
     logical_expr::{LogicalPlan, LogicalPlanBuilder, UserDefinedLogicalNode},
     physical_plan::{insert::DataSinkExec, ExecutionPlan},
@@ -132,7 +135,10 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             overwrite: false,
         };
 
-        let sink = Arc::new(FASTADataSink::new(file_sink_config));
+        let compression_type = logical_node
+            .file_compression_type()?
+            .unwrap_or(FileCompressionType::UNCOMPRESSED);
+        let sink = Arc::new(FASTADataSink::new(file_sink_config, compression_type));
         let sink_schema = FASTASchemaBuilder::default().build().file_schema().unwrap();
 
         let data_sink = DataSinkExec::new(physical_plan, sink, sink_schema, None);

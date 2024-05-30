@@ -786,9 +786,9 @@ mod tests {
         // delete the temp file
         std::fs::remove_file(temp_path)?;
 
-        let temp_path = temp_dir.join("test.fasta");
+        let temp_path = temp_dir.join("test.fasta.gz");
         let sql = format!(
-            "COPY test_fasta TO '{}' STORED AS FASTA",
+            "COPY test_fasta TO '{}' STORED AS FASTA OPTIONS(compression 'gzip')",
             temp_path.display()
         );
 
@@ -797,7 +797,7 @@ mod tests {
         let df = ctx
             .read_fasta(
                 temp_path.to_str().unwrap(),
-                ListingFASTATableOptions::default(),
+                ListingFASTATableOptions::new(FileCompressionType::GZIP),
             )
             .await?;
 
