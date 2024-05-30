@@ -15,22 +15,22 @@ arrow = { workspace = true }
 async-trait = { workspace = true }
 bytes = "1.6.0"
 datafusion = { workspace = true }
-exon-bam = { path = "../exon-bam", version = "0.23.0" }
-exon-bcf = { path = "../exon-bcf", version = "0.23.0" }
-exon-bed = { path = "../exon-bed", version = "0.23.0" }
-exon-cram = { path = "../exon-cram", version = "0.23.0" }
-exon-common = { path = "../exon-common", version = "0.23.0" }
-exon-fasta = { path = "../exon-fasta", version = "0.23.0" }
-exon-fastq = { path = "../exon-fastq", version = "0.23.0" }
-exon-fcs = { path = "../exon-fcs", version = "0.23.0", optional = true }
-exon-genbank = { path = "../exon-genbank", version = "0.23.0", optional = true }
-exon-gff = { path = "../exon-gff", version = "0.23.0" }
-exon-gtf = { path = "../exon-gtf", version = "0.23.0" }
-exon-io = { path = "../exon-io", version = "0.23.0" }
-exon-mzml = { path = "../exon-mzml", version = "0.23.0", optional = true }
-exon-sam = { path = "../exon-sam", version = "0.23.0" }
-exon-vcf = { path = "../exon-vcf", version = "0.23.0" }
-exon-bigwig = { path = "../exon-bigwig", version = "0.23.0" }
+exon-bam = { path = "../exon-bam", version = "0.24.0" }
+exon-bcf = { path = "../exon-bcf", version = "0.24.0" }
+exon-bed = { path = "../exon-bed", version = "0.24.0" }
+exon-cram = { path = "../exon-cram", version = "0.24.0" }
+exon-common = { path = "../exon-common", version = "0.24.0" }
+exon-fasta = { path = "../exon-fasta", version = "0.24.0" }
+exon-fastq = { path = "../exon-fastq", version = "0.24.0" }
+exon-fcs = { path = "../exon-fcs", version = "0.24.0", optional = true }
+exon-genbank = { path = "../exon-genbank", version = "0.24.0", optional = true }
+exon-gff = { path = "../exon-gff", version = "0.24.0" }
+exon-gtf = { path = "../exon-gtf", version = "0.24.0" }
+exon-io = { path = "../exon-io", version = "0.24.0" }
+exon-mzml = { path = "../exon-mzml", version = "0.24.0", optional = true }
+exon-sam = { path = "../exon-sam", version = "0.24.0" }
+exon-vcf = { path = "../exon-vcf", version = "0.24.0" }
+exon-bigwig = { path = "../exon-bigwig", version = "0.24.0" }
 futures = { workspace = true }
 itertools = "0.13"
 noodles = { workspace = true, features = [

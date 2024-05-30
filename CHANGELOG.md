@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.24.0 (2024-05-30)
+
+### Feat
+
+- support gzip writer (#519)
+
+### Refactor
+
+- improve FASTA batch serialization add FASTQ (#520)
+- use i8 for sequence integer encoding
+
 ## v0.23.0 (2024-05-27)
 
 ### Feat
