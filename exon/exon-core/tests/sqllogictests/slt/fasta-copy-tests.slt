@@ -26,6 +26,12 @@ b description2 ATCG
 statement ok
 COPY fasta_table TO '${__TEST_DIR__}test2.fasta' STORED AS FASTA;
 
+statement ok
+COPY fasta_table TO 'relative-path2.fasta' STORED AS FASTA;
+
+statement ok
+COPY fasta_table TO './relative-path.fasta' STORED AS FASTA;
+
 query I
 SELECT * FROM fasta_scan('${__TEST_DIR__}test2.fasta');
 ----
