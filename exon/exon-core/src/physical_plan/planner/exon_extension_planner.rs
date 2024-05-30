@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::{env, str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::{
@@ -20,7 +20,7 @@ use datafusion::{
         file_format::file_compression_type::FileCompressionType, listing::PartitionedFile,
         physical_plan::FileSinkConfig, DefaultTableSource,
     },
-    execution::{context::SessionState, object_store::ObjectStoreUrl},
+    execution::context::SessionState,
     logical_expr::{LogicalPlan, LogicalPlanBuilder, UserDefinedLogicalNode},
     physical_plan::{insert::DataSinkExec, ExecutionPlan},
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
@@ -34,8 +34,10 @@ use exon_fasta::FASTASchemaBuilder;
 use exon_fastq::new_fastq_schema_builder;
 
 use crate::{
-    datasources::ExonFileType, logical_plan::ExonDataSinkLogicalPlanNode,
-    physical_plan::object_store::parse_url, sinks::SimpleRecordSink,
+    datasources::ExonFileType,
+    logical_plan::ExonDataSinkLogicalPlanNode,
+    physical_plan::object_store::{parse_url, url_to_object_store_url},
+    sinks::SimpleRecordSink,
 };
 
 pub struct ExomeExtensionPlanner {}
@@ -118,11 +120,26 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             Some(host) => format!("{}://{}", url.scheme(), host),
             None => format!("{}://", url.scheme()),
         };
-        let path = &url.as_str()[authority.len()..];
 
-        let path = object_store::path::Path::parse(path).expect("Can't parse path");
-        let object_store_url = ObjectStoreUrl::parse(authority.as_str()).unwrap();
+        let is_local = authority.starts_with("file://");
 
+        let path = if is_local {
+            let p = std::path::Path::new(logical_node.target.as_str());
+
+            if p.is_absolute() {
+                object_store::path::Path::from_absolute_path(p)?
+            } else {
+                let current_dir = env::current_dir()?;
+
+                let absolute_path = current_dir.join(p);
+                object_store::path::Path::from_absolute_path(absolute_path)?
+            }
+        } else {
+            let path = &url.as_str()[authority.len()..];
+            object_store::path::Path::parse(path)?
+        };
+
+        let object_store_url = url_to_object_store_url(&parse_url(&logical_node.target)?)?;
         let p_file = PartitionedFile::new(path, 0);
 
         let stored_as = logical_node.stored_as.as_ref().ok_or_else(|| {
