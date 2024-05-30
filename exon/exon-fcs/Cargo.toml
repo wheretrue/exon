@@ -13,7 +13,7 @@ version.workspace = true
 [dependencies]
 arrow = { workspace = true }
 byteorder = { version = "1.5.0" }
-exon-common = { path = "../exon-common", version = "0.24.0" }
+exon-common = { path = "../exon-common", version = "0.24.1" }
 futures = { workspace = true }
 object_store = { workspace = true }
 tokio = { workspace = true, features = ["fs"] }

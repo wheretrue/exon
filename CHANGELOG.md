@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.24.1 (2024-05-30)
+
+### Fix
+
+- support relative paths (#522)
+
 ## v0.24.0 (2024-05-30)
 
 ### Feat
