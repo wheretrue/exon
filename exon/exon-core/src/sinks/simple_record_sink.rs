@@ -89,9 +89,7 @@ impl DataSink for SimpleRecordSink {
             .runtime_env()
             .object_store(&self.file_sink_config.object_store_url)?;
 
-        // let base_output_path = &self.file_sink_config.table_paths[0];
         let partition_file = &self.file_sink_config.file_groups[0];
-
         let location = partition_file.path();
 
         let buf_writer = object_store::buffered::BufWriter::new(object_store, location.clone());
