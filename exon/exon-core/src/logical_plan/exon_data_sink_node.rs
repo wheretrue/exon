@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{hash::Hash, hash::Hasher, sync::Arc};
+use std::{
+    hash::{Hash, Hasher},
+    str::FromStr,
+    sync::Arc,
+};
 
 use arrow::datatypes::{DataType, Field, Schema};
 use datafusion::{
     common::{DFSchema, DFSchemaRef},
+    datasource::file_format::file_compression_type::FileCompressionType,
     logical_expr::{LogicalPlan, UserDefinedLogicalNodeCore},
     sql::{parser::CopyToSource, sqlparser::ast::Value},
 };
 
-use crate::sql::ExonCopyToStatement;
+use crate::{sql::ExonCopyToStatement, ExonError};
 
 use super::DfExtensionNode;
 
@@ -60,6 +65,23 @@ impl ExonDataSinkLogicalPlanNode {
 
     fn inner_schema(&self) -> &DFSchemaRef {
         &self.schema
+    }
+
+    pub(crate) fn file_compression_type(&self) -> crate::Result<Option<FileCompressionType>> {
+        let inferred_type = self
+            .options
+            .iter()
+            .find(|(k, _)| k == "compression")
+            .map(|(_, v)| match v {
+                Value::SingleQuotedString(s) => {
+                    FileCompressionType::from_str(s).map_err(|e| e.into())
+                }
+                _ => Err(ExonError::ExecutionError(
+                    "Invalid compression type".to_string(),
+                )),
+            });
+
+        Ok(inferred_type.transpose()?)
     }
 }
 

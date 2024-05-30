@@ -12,77 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, fmt::Debug, sync::Arc};
+use std::{any::Any, sync::Arc};
 
-use bytes::Bytes;
 use datafusion::{
-    datasource::{file_format::write::BatchSerializer, physical_plan::FileSinkConfig},
+    datasource::{
+        file_format::{file_compression_type::FileCompressionType, write::BatchSerializer},
+        physical_plan::FileSinkConfig,
+    },
     error::DataFusionError,
     execution::{SendableRecordBatchStream, TaskContext},
     physical_plan::{insert::DataSink, metrics::MetricsSet, DisplayAs, DisplayFormatType},
 };
 use futures::StreamExt;
-use noodles::fasta::{
-    record::{Definition, Sequence},
-    Record,
-};
+use tokio::io::AsyncWriteExt;
 
-#[derive(Debug, Default)]
-struct FASTASerializer {}
-
-impl BatchSerializer for FASTASerializer {
-    fn serialize(
-        &self,
-        batch: arrow::array::RecordBatch,
-        _initial: bool,
-    ) -> datafusion::error::Result<bytes::Bytes> {
-        let ids = batch
-            .column(0)
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("ids should be a string array");
-
-        let descriptions = batch
-            .column(1)
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("descriptions should be a string array");
-
-        let sequences = batch
-            .column(2)
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("sequences should be a string array");
-
-        let b = Vec::new();
-        let mut fasta_writer = noodles::fasta::writer::Writer::new(b);
-
-        for i in 0..batch.num_rows() {
-            let id = ids.value(i);
-            let description = descriptions.value(i);
-            let sequence = sequences.value(i);
-
-            let definition = Definition::new(id, Some(Vec::from(description)));
-            let sequence = Sequence::from(Vec::from(sequence));
-
-            let record = Record::new(definition, sequence);
-            fasta_writer.write_record(&record)?;
-        }
-
-        // todo benchmark this
-        Ok(Bytes::from(fasta_writer.get_ref().to_vec()))
-    }
-}
+use super::fasta_serializer::FASTASerializer;
 
 pub struct FASTADataSink {
+    file_compression_type: FileCompressionType,
     file_sink_config: FileSinkConfig,
 }
 
 impl FASTADataSink {
-    pub fn new(file_sink_config: FileSinkConfig) -> Self {
-        Self { file_sink_config }
+    pub fn new(
+        file_sink_config: FileSinkConfig,
+        file_compression_type: FileCompressionType,
+    ) -> Self {
+        Self {
+            file_sink_config,
+            file_compression_type,
+        }
     }
 }
+
+use std::fmt::Debug;
 
 impl Debug for FASTADataSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -124,17 +87,26 @@ impl DataSink for FASTADataSink {
         // let base_output_path = &self.file_sink_config.table_paths[0];
         let partition_file = &self.file_sink_config.file_groups[0];
 
+        let location = partition_file.path();
+
+        let buf_writer = object_store::buffered::BufWriter::new(object_store, location.clone());
+        let mut buf_writer = self
+            .file_compression_type
+            .convert_async_writer(buf_writer)?;
+
         let serializer = FASTASerializer::default();
 
         while let Some(batch) = data.next().await {
             let batch = batch?;
-
             let bytes = serializer.serialize(batch, false)?;
-            total_bytes += bytes.len() as u64;
 
-            let location = partition_file.path();
-            object_store.put(location, bytes).await?;
+            buf_writer.write_all(&bytes).await?;
+            buf_writer.flush().await?;
+
+            total_bytes += bytes.len() as u64;
         }
+
+        buf_writer.shutdown().await?;
 
         Ok(total_bytes)
     }
@@ -146,6 +118,7 @@ mod tests {
     use crate::sinks::FASTADataSink;
     use crate::ExonSession;
 
+    use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
     use datafusion::datasource::listing::PartitionedFile;
     use datafusion::datasource::physical_plan::FileSinkConfig;
     use datafusion::execution::object_store::ObjectStoreUrl;
@@ -180,7 +153,7 @@ mod tests {
             overwrite: false,
         };
 
-        let sink = FASTADataSink { file_sink_config };
+        let sink = FASTADataSink::new(file_sink_config, FileCompressionType::UNCOMPRESSED);
 
         let total_bytes = sink
             .write_all(stream, &ctx.session.task_ctx())

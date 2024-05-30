@@ -2098,6 +2098,7 @@ dependencies = [
  "exon-sam",
  "exon-test",
  "exon-vcf",
+ "flate2",
  "futures",
  "fxhash",
  "itertools 0.13.0",
