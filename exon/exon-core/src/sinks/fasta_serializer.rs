@@ -28,23 +28,50 @@ impl BatchSerializer for FASTASerializer {
         batch: arrow::array::RecordBatch,
         _initial: bool,
     ) -> datafusion::error::Result<bytes::Bytes> {
-        let ids = batch
-            .column(0)
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("ids should be a string array");
+        let ids = if let Some(column) = batch.column_by_name("ids") {
+            column
+                .as_any()
+                .downcast_ref::<arrow::array::StringArray>()
+                .ok_or_else(|| {
+                    datafusion::error::DataFusionError::Execution(
+                        "ids should be a string array".to_string(),
+                    )
+                })?
+        } else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "ids column not found".to_string(),
+            ));
+        };
 
-        let descriptions = batch
-            .column(1)
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("descriptions should be a string array");
+        let descriptions = if let Some(column) = batch.column_by_name("descriptions") {
+            column
+                .as_any()
+                .downcast_ref::<arrow::array::StringArray>()
+                .ok_or_else(|| {
+                    datafusion::error::DataFusionError::Execution(
+                        "descriptions should be a string array".to_string(),
+                    )
+                })?
+        } else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "descriptions column not found".to_string(),
+            ));
+        };
 
-        let sequences = batch
-            .column(2)
-            .as_any()
-            .downcast_ref::<arrow::array::StringArray>()
-            .expect("sequences should be a string array");
+        let sequences = if let Some(column) = batch.column_by_name("sequences") {
+            column
+                .as_any()
+                .downcast_ref::<arrow::array::StringArray>()
+                .ok_or_else(|| {
+                    datafusion::error::DataFusionError::Execution(
+                        "sequences should be a string array".to_string(),
+                    )
+                })?
+        } else {
+            return Err(datafusion::error::DataFusionError::Execution(
+                "sequences column not found".to_string(),
+            ));
+        };
 
         let b = Vec::new();
         let mut fasta_writer = noodles::fasta::writer::Writer::new(b);
