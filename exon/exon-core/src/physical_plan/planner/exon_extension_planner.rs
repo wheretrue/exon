@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::{env, str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use datafusion::{
@@ -20,7 +20,7 @@ use datafusion::{
         file_format::file_compression_type::FileCompressionType, listing::PartitionedFile,
         physical_plan::FileSinkConfig, DefaultTableSource,
     },
-    execution::{context::SessionState, object_store::ObjectStoreUrl},
+    execution::context::SessionState,
     logical_expr::{LogicalPlan, LogicalPlanBuilder, UserDefinedLogicalNode},
     physical_plan::{insert::DataSinkExec, ExecutionPlan},
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
@@ -127,18 +127,16 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             let p = std::path::Path::new(logical_node.target.as_str());
 
             if p.is_absolute() {
-                object_store::path::Path::from_absolute_path(p).unwrap()
+                object_store::path::Path::from_absolute_path(p)?
             } else {
-                use std::env;
                 let current_dir = env::current_dir()?;
 
                 let absolute_path = current_dir.join(p);
-                object_store::path::Path::from_absolute_path(absolute_path).unwrap()
+                object_store::path::Path::from_absolute_path(absolute_path)?
             }
         } else {
             let path = &url.as_str()[authority.len()..];
-            let path = object_store::path::Path::parse(path).expect("Can't parse path");
-            path
+            object_store::path::Path::parse(path)?
         };
 
         let object_store_url = url_to_object_store_url(&parse_url(&logical_node.target)?)?;
