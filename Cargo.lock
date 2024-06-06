@@ -1958,9 +1958,9 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
 name = "educe"
-version = "0.5.11"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4bd92664bf78c4d3dba9b7cdafce6fa15b13ed3ed16175218196942e99168a8"
+checksum = "1d7bc049e1bd8cdeb31b68bbd586a9464ecf9f3944af3958a7a9d0f8b9799417"
 dependencies = [
  "enum-ordinalize",
  "proc-macro2",
@@ -4516,9 +4516,9 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sqllogictest"
-version = "0.20.2"
+version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e617f979a0d206ca288958f823ce260a172e2ae1bf40f0a8fbc42bbe76913dc"
+checksum = "f20de090b0fde4dcd53b330e7ad2772140304eb34f5e9a99c8963fc4c052f149"
 dependencies = [
  "async-trait",
  "educe",
@@ -4526,7 +4526,7 @@ dependencies = [
  "futures",
  "glob",
  "humantime",
- "itertools 0.12.1",
+ "itertools 0.13.0",
  "libtest-mimic",
  "md-5",
  "owo-colors",
