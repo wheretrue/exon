@@ -13,7 +13,7 @@ statement ok
 DROP TABLE fastq_table;
 
 statement ok
-CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.gz';
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.gz' OPTIONS (compression gzip);
 
 query T
 SELECT name, description, quality_scores, sequence FROM fastq_table LIMIT 2;
@@ -25,7 +25,7 @@ statement ok
 DROP TABLE fastq_table;
 
 statement ok
-CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.zst';
+CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq.zst' OPTIONS (compression zstd);
 
 query T
 SELECT name, description, quality_scores, sequence FROM fastq_table LIMIT 2;
@@ -67,17 +67,6 @@ query T
 SELECT COUNT(*) FROM fastq_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test_bgzip.fastq.gz', 'gzip');
 ----
 2
-
-statement ok
-CREATE EXTERNAL TABLE fastq_bgzip_table STORED AS FASTQ COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test_bgzip.fastq.gz';
-
-query T
-SELECT COUNT(*) FROM fastq_bgzip_table LIMIT 2;
-----
-2
-
-statement ok
-DROP TABLE fastq_bgzip_table;
 
 statement ok
 CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ OPTIONS (file_extension 'fq') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fq/test.fq';

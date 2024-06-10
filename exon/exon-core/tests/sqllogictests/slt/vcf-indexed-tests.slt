@@ -1,7 +1,7 @@
 control substitution on
 
 statement ok
-CREATE EXTERNAL TABLE indexed_vcf_table STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf.gz'
+CREATE EXTERNAL TABLE indexed_vcf_table STORED AS INDEXED_VCF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf/index.vcf.gz' OPTIONS (compression gzip);
 
 # If we try to select from a statement w/o a region filter we should get an error.
 statement error
@@ -16,7 +16,7 @@ statement ok
 DROP TABLE indexed_vcf_table;
 
 statement ok
-CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF PARTITIONED BY (sample) COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf-partition';
+CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF PARTITIONED BY (sample) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/vcf-partition' OPTIONS (compression gzip);
 
 # Test that zero rows are returned when the region filter does not match any rows.
 query T
@@ -43,7 +43,7 @@ SELECT COUNT(*) FROM vcf_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources
 382
 
 statement ok
-CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/biobear-vcf/vcf_file.vcf.gz';
+CREATE EXTERNAL TABLE vcf_table STORED AS INDEXED_VCF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/biobear-vcf/vcf_file.vcf.gz' OPTIONS (compression gzip);
 
 statement error
 SELECT COUNT(*) FROM vcf_table;

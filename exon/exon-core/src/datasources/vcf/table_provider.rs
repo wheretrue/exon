@@ -503,7 +503,7 @@ mod tests {
 
         ctx.session.sql(
             format!(
-                "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+                "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF LOCATION '{}' OPTIONS (compression gzip);",
                 path.to_string().as_str()
             )
             .as_str(),
@@ -544,7 +544,7 @@ mod tests {
         let ctx = ExonSession::new_exon();
         ctx.session.sql(
             format!(
-                "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+                "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF LOCATION '{}' OPTIONS (compression gzip);",
                 path.to_string().as_str()
             )
             .as_str(),
@@ -579,7 +579,7 @@ mod tests {
         let table_path = table_path.to_str().ok_or("Invalid path")?;
 
         let sql = format!(
-            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+            "CREATE EXTERNAL TABLE vcf_file STORED AS VCF LOCATION '{}' OPTIONS (compression gzip);",
             table_path
         );
         ctx.session.sql(&sql).await?;

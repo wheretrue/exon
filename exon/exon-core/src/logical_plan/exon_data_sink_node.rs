@@ -139,12 +139,16 @@ impl UserDefinedLogicalNodeCore for ExonDataSinkLogicalPlanNode {
         write!(f, "ExonDataSinkLogicalPlanNode")
     }
 
-    fn from_template(&self, _exprs: &[datafusion::prelude::Expr], _inputs: &[LogicalPlan]) -> Self {
-        Self::new(
+    fn with_exprs_and_inputs(
+        &self,
+        _exprs: Vec<datafusion::prelude::Expr>,
+        _inputs: Vec<LogicalPlan>,
+    ) -> datafusion::error::Result<Self> {
+        Ok(Self::new(
             self.source.clone(),
             self.target.clone(),
             self.stored_as.clone(),
             self.options.clone(),
-        )
+        ))
     }
 }

@@ -121,7 +121,7 @@ impl ExecutionPlan for MzMLScan {
         Ok(Some(Arc::new(new_plan)))
     }
 
-    fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
+    fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
         vec![]
     }
 
