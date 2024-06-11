@@ -15,4 +15,4 @@ aws-config = { version = "1.5.1" }
 aws-credential-types = { version = "1.2.0" }
 object_store = { workspace = true, features = ["aws"] }
 tokio = { version = "1", features = ["io-util"] }
-url = { version = "2.5.0" }
+url = { version = "2.5.1" }
