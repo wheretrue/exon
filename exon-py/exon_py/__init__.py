@@ -1,5 +1,5 @@
 """The Exome Python client library."""
-# Copyright 2023 WHERE TRUE Technologies.
+# Copyright 2024 WHERE TRUE Technologies.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
