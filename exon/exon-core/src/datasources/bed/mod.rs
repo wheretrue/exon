@@ -27,3 +27,6 @@ pub use self::scanner::BEDScan;
 
 mod udtf;
 pub use self::udtf::BEDScanFunction;
+
+mod table_options;
+pub use self::table_options::BEDOptions;

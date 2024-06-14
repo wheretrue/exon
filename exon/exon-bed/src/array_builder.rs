@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,27 +69,31 @@ impl BEDArrayBuilder {
     pub fn append(&mut self, record: BEDRecord) -> std::io::Result<()> {
         self.rows += 1;
 
-        self.reference_sequence_names
-            .append_value(record.reference_sequence_name.as_str());
-
-        self.starts.append_value(record.start as i64);
-        self.ends.append_value(record.end as i64);
-
-        self.names.append_option(record.name);
-        self.scores.append_option(record.score);
-
-        self.strands.append_option(record.strand);
-        self.thick_starts
-            .append_option(record.thick_start.map(|x| x as i64));
-        self.thick_ends
-            .append_option(record.thick_end.map(|x| x as i64));
-
-        self.colors.append_option(record.color);
-        self.block_counts
-            .append_option(record.block_count.map(|x| x as i64));
-
-        self.block_sizes.append_option(record.block_sizes);
-        self.block_starts.append_option(record.block_starts);
+        for col_idx in self.projection.iter() {
+            match col_idx {
+                0 => self
+                    .reference_sequence_names
+                    .append_value(record.reference_sequence_name()),
+                1 => self.starts.append_value(record.start() as i64),
+                2 => self.ends.append_value(record.end() as i64),
+                3 => self.names.append_option(record.name()),
+                4 => self.scores.append_option(record.score()),
+                5 => self.strands.append_option(record.strand()),
+                6 => self
+                    .thick_starts
+                    .append_option(record.thick_start().map(|x| x as i64)),
+                7 => self
+                    .thick_ends
+                    .append_option(record.thick_end.map(|x| x as i64)),
+                8 => self.colors.append_option(record.color()),
+                9 => self
+                    .block_counts
+                    .append_option(record.block_count().map(|x| x as i64)),
+                10 => self.block_sizes.append_option(record.block_sizes()),
+                11 => self.block_starts.append_option(record.block_starts()),
+                _ => panic!("Invalid column index"),
+            }
+        }
 
         Ok(())
     }

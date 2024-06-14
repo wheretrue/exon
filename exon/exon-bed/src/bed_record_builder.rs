@@ -35,6 +35,56 @@ pub struct BEDRecord {
     pub block_starts: Option<String>,
 }
 
+impl BEDRecord {
+    pub fn reference_sequence_name(&self) -> &str {
+        &self.reference_sequence_name
+    }
+
+    pub fn start(&self) -> u64 {
+        self.start
+    }
+
+    pub fn end(&self) -> u64 {
+        self.end
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    pub fn score(&self) -> Option<i64> {
+        self.score
+    }
+
+    pub fn strand(&self) -> Option<&str> {
+        self.strand.as_deref()
+    }
+
+    pub fn thick_start(&self) -> Option<u64> {
+        self.thick_start
+    }
+
+    pub fn thick_end(&self) -> Option<u64> {
+        self.thick_end
+    }
+
+    pub fn color(&self) -> Option<&str> {
+        self.color.as_deref()
+    }
+
+    pub fn block_count(&self) -> Option<u64> {
+        self.block_count
+    }
+
+    pub fn block_sizes(&self) -> Option<&str> {
+        self.block_sizes.as_deref()
+    }
+
+    pub fn block_starts(&self) -> Option<&str> {
+        self.block_starts.as_deref()
+    }
+}
+
 pub struct BEDRecordBuilder {
     reference_sequence_name: String,
     start: u64,
