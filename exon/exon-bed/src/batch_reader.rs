@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,22 @@ use noodles::bed::Record;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
 use super::{array_builder::BEDArrayBuilder, bed_record_builder::BEDRecord, config::BEDConfig};
+
+macro_rules! extract_record {
+    ($buf:expr, $num:expr) => {{
+        let r: Record<$num> = match Record::from_str(&$buf) {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("invalid record: {e}"),
+                ));
+            }
+        };
+
+        BEDRecord::from(r)
+    }};
+}
 
 /// A batch reader for BED files.
 pub struct BatchReader<R> {
@@ -54,7 +70,10 @@ where
     }
 
     async fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
-        let mut array_builder = BEDArrayBuilder::create();
+        let mut array_builder = BEDArrayBuilder::create(
+            self.config.file_schema.clone(),
+            Some(self.config.projection()),
+        );
 
         for _ in 0..self.config.batch_size {
             match self.read_record().await? {
@@ -72,13 +91,15 @@ where
             return Ok(None);
         }
 
-        let schema = self.config.file_schema.clone();
+        let schema = self.config.projected_schema().map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("invalid schema: {e}"),
+            )
+        })?;
         let batch = array_builder.try_into_record_batch(schema)?;
 
-        match &self.config.projection {
-            Some(projection) => Ok(Some(batch.project(projection)?)),
-            None => Ok(Some(batch)),
-        }
+        Ok(Some(batch))
     }
 
     pub async fn read_record(&mut self) -> std::io::Result<Option<BEDRecord>> {
@@ -100,43 +121,14 @@ where
         }
 
         let bed_record = match num_fields {
-            12 => {
-                let r: Record<12> = match Record::from_str(&buf) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("invalid record: {e}"),
-                        ));
-                    }
-                };
-
-                r.into()
-            }
-            9 => {
-                let r: Record<9> = match Record::from_str(&buf) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("invalid record: {e}"),
-                        ));
-                    }
-                };
-                r.into()
-            }
-            6 => {
-                let r: Record<6> = match Record::from_str(&buf) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("invalid record: {e}"),
-                        ));
-                    }
-                };
-                r.into()
-            }
+            12 => extract_record!(buf, 12),
+            9 => extract_record!(buf, 9),
+            8 => extract_record!(buf, 8),
+            7 => extract_record!(buf, 7),
+            6 => extract_record!(buf, 6),
+            5 => extract_record!(buf, 5),
+            4 => extract_record!(buf, 4),
+            3 => extract_record!(buf, 3),
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,

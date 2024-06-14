@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ use datafusion::{
         file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
-    error::Result,
+    error::{DataFusionError, Result},
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
@@ -54,6 +54,9 @@ pub struct ListingBEDTableOptions {
 
     /// A list of table partition columns
     table_partition_cols: Vec<Field>,
+
+    /// The number of fields in the BED file, assumed to be valid by this point
+    n_fields: usize,
 }
 
 #[async_trait]
@@ -74,7 +77,7 @@ impl ExonListingOptions for ListingBEDTableOptions {
         &self,
         conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        let scan = BEDScan::new(conf.clone(), self.file_compression_type);
+        let scan = BEDScan::new(conf.clone(), self.file_compression_type, self.n_fields);
 
         Ok(Arc::new(scan))
     }
@@ -95,7 +98,13 @@ impl ListingBEDTableOptions {
             file_extension,
             file_compression_type,
             table_partition_cols: Vec::new(),
+            n_fields: 12,
         }
+    }
+
+    /// Set the number of fields in the BED file
+    pub fn with_n_fields(self, n_fields: usize) -> Self {
+        Self { n_fields, ..self }
     }
 
     /// Set the file extension
@@ -116,7 +125,10 @@ impl ListingBEDTableOptions {
 
     /// Infer the schema for the table
     pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
-        let mut schema_builder = BEDSchemaBuilder::default();
+        let mut schema_builder = BEDSchemaBuilder::with_n_fields(self.n_fields).map_err(|e| {
+            DataFusionError::Execution(format!("Error creating BED schema builder: {}", e,))
+        })?;
+        // let mut schema_builder = BEDSchemaBuilder::default();
         schema_builder.add_partition_fields(self.table_partition_cols.clone());
 
         Ok(schema_builder.build())
@@ -195,6 +207,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingBEDTable<T> {
         .await?;
 
         let file_schema = self.table_schema.file_schema()?;
+
         let file_scan_config =
             FileScanConfigBuilder::new(first_path.object_store(), file_schema, vec![file_list])
                 .projection_option(projection.cloned())

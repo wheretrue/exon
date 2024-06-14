@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,3 +27,6 @@ pub use self::scanner::BEDScan;
 
 mod udtf;
 pub use self::udtf::BEDScanFunction;
+
+mod table_options;
+pub use self::table_options::BEDOptions;

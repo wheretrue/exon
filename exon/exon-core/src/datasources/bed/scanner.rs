@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,9 @@ pub struct BEDScan {
     /// The compression type of the file.
     file_compression_type: FileCompressionType,
 
+    /// The number of fields to use during the scan.
+    n_fields: usize,
+
     /// Metrics for the execution plan.
     metrics: ExecutionPlanMetricsSet,
 
@@ -56,7 +59,11 @@ pub struct BEDScan {
 
 impl BEDScan {
     /// Create a new BED scan.
-    pub fn new(base_config: FileScanConfig, file_compression_type: FileCompressionType) -> Self {
+    pub fn new(
+        base_config: FileScanConfig,
+        file_compression_type: FileCompressionType,
+        n_fields: usize,
+    ) -> Self {
         let (projected_schema, statistics, properties) = base_config.project_with_properties();
 
         Self {
@@ -66,6 +73,7 @@ impl BEDScan {
             metrics: ExecutionPlanMetricsSet::new(),
             properties,
             statistics,
+            n_fields,
         }
     }
 }
@@ -139,6 +147,7 @@ impl ExecutionPlan for BEDScan {
         let batch_size = context.session_config().batch_size();
 
         let config = BEDConfig::new(object_store, self.base_config.file_schema.clone())
+            .with_n_fields(self.n_fields)
             .with_batch_size(batch_size)
             .with_some_projection(Some(self.base_config.file_projection()));
 

@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,11 @@ mod array_builder;
 mod batch_reader;
 mod bed_record_builder;
 mod config;
+mod error;
+mod schema;
 
 pub use array_builder::BEDArrayBuilder;
-pub use array_builder::BEDSchemaBuilder;
 pub use batch_reader::BatchReader;
 pub use config::BEDConfig;
+pub use error::{ExonBEDError, ExonBEDResult};
+pub use schema::BEDSchemaBuilder;

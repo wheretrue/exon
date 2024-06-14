@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,18 +21,68 @@ use noodles::{
 };
 
 pub struct BEDRecord {
-    pub reference_sequence_name: String,
-    pub start: u64,
-    pub end: u64,
-    pub name: Option<String>,
-    pub score: Option<i64>,
-    pub strand: Option<String>,
-    pub thick_start: Option<u64>,
-    pub thick_end: Option<u64>,
-    pub color: Option<String>,
-    pub block_count: Option<u64>,
-    pub block_sizes: Option<String>,
-    pub block_starts: Option<String>,
+    reference_sequence_name: String,
+    start: u64,
+    end: u64,
+    name: Option<String>,
+    score: Option<i64>,
+    strand: Option<String>,
+    thick_start: Option<u64>,
+    thick_end: Option<u64>,
+    color: Option<String>,
+    block_count: Option<u64>,
+    block_sizes: Option<String>,
+    block_starts: Option<String>,
+}
+
+impl BEDRecord {
+    pub fn reference_sequence_name(&self) -> &str {
+        &self.reference_sequence_name
+    }
+
+    pub fn start(&self) -> u64 {
+        self.start
+    }
+
+    pub fn end(&self) -> u64 {
+        self.end
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    pub fn score(&self) -> Option<i64> {
+        self.score
+    }
+
+    pub fn strand(&self) -> Option<&str> {
+        self.strand.as_deref()
+    }
+
+    pub fn thick_start(&self) -> Option<u64> {
+        self.thick_start
+    }
+
+    pub fn thick_end(&self) -> Option<u64> {
+        self.thick_end
+    }
+
+    pub fn color(&self) -> Option<&str> {
+        self.color.as_deref()
+    }
+
+    pub fn block_count(&self) -> Option<u64> {
+        self.block_count
+    }
+
+    pub fn block_sizes(&self) -> Option<&str> {
+        self.block_sizes.as_deref()
+    }
+
+    pub fn block_starts(&self) -> Option<&str> {
+        self.block_starts.as_deref()
+    }
 }
 
 pub struct BEDRecordBuilder {
@@ -194,6 +244,37 @@ impl From<Record<9>> for BEDRecord {
     }
 }
 
+impl From<Record<8>> for BEDRecord {
+    fn from(value: Record<8>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score())
+            .strand(value.strand())
+            .thick_start(value.thick_start())
+            .thick_end(value.thick_end());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<7>> for BEDRecord {
+    fn from(value: Record<7>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score())
+            .strand(value.strand())
+            .thick_start(value.thick_start());
+
+        builder.finish()
+    }
+}
+
 impl From<Record<6>> for BEDRecord {
     fn from(value: Record<6>) -> Self {
         let builder = BEDRecordBuilder::new()
@@ -203,6 +284,42 @@ impl From<Record<6>> for BEDRecord {
             .name(value.name())
             .score(value.score())
             .strand(value.strand());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<5>> for BEDRecord {
+    fn from(value: Record<5>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<4>> for BEDRecord {
+    fn from(value: Record<4>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<3>> for BEDRecord {
+    fn from(value: Record<3>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position());
 
         builder.finish()
     }
