@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.25.0 (2024-06-14)
+
+### Feat
+
+- support number of fields in bed files (#533)
+
 ## v0.24.1 (2024-05-30)
 
 ### Fix
