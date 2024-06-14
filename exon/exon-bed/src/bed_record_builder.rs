@@ -21,18 +21,18 @@ use noodles::{
 };
 
 pub struct BEDRecord {
-    pub reference_sequence_name: String,
-    pub start: u64,
-    pub end: u64,
-    pub name: Option<String>,
-    pub score: Option<i64>,
-    pub strand: Option<String>,
-    pub thick_start: Option<u64>,
-    pub thick_end: Option<u64>,
-    pub color: Option<String>,
-    pub block_count: Option<u64>,
-    pub block_sizes: Option<String>,
-    pub block_starts: Option<String>,
+    reference_sequence_name: String,
+    start: u64,
+    end: u64,
+    name: Option<String>,
+    score: Option<i64>,
+    strand: Option<String>,
+    thick_start: Option<u64>,
+    thick_end: Option<u64>,
+    color: Option<String>,
+    block_count: Option<u64>,
+    block_sizes: Option<String>,
+    block_starts: Option<String>,
 }
 
 impl BEDRecord {

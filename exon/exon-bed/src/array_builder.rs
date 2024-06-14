@@ -84,7 +84,7 @@ impl BEDArrayBuilder {
                     .append_option(record.thick_start().map(|x| x as i64)),
                 7 => self
                     .thick_ends
-                    .append_option(record.thick_end.map(|x| x as i64)),
+                    .append_option(record.thick_end().map(|x| x as i64)),
                 8 => self.colors.append_option(record.color()),
                 9 => self
                     .block_counts
