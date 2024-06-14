@@ -182,7 +182,7 @@ impl PhysicalExpr for StartEndIntervalPhysicalExpr {
         self.inner.evaluate(batch)
     }
 
-    fn children(&self) -> Vec<Arc<dyn PhysicalExpr>> {
+    fn children(&self) -> Vec<&Arc<dyn PhysicalExpr>> {
         vec![]
     }
 

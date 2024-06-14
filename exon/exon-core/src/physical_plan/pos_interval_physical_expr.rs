@@ -203,7 +203,7 @@ impl PhysicalExpr for PosIntervalPhysicalExpr {
         self.inner.evaluate(batch)
     }
 
-    fn children(&self) -> Vec<std::sync::Arc<dyn PhysicalExpr>> {
+    fn children(&self) -> Vec<&std::sync::Arc<dyn PhysicalExpr>> {
         vec![]
     }
 

@@ -12,7 +12,7 @@ statement ok
 DROP TABLE gff_table;
 
 statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE GZIP OPTIONS (file_extension '.gff3') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff3.gz';
+CREATE EXTERNAL TABLE gff_table STORED AS GFF OPTIONS (file_extension '.gff3', compression gzip) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff3.gz';
 
 query T
 SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
@@ -34,7 +34,7 @@ statement ok
 DROP TABLE gff_table;
 
 statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.gz';
+CREATE EXTERNAL TABLE gff_table STORED AS GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.gz' OPTIONS (compression gzip);
 
 query T
 SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
@@ -45,7 +45,7 @@ statement ok
 DROP TABLE gff_table;
 
 statement ok
-CREATE EXTERNAL TABLE gff_table STORED AS GFF COMPRESSION TYPE ZSTD LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.zst';
+CREATE EXTERNAL TABLE gff_table STORED AS GFF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff/test.gff.zst' OPTIONS (compression zstd);
 
 query T
 SELECT seqname, source, start, "end", score, strand, phase FROM gff_table LIMIT 1;
@@ -102,7 +102,7 @@ SELECT COUNT(*) FROM gff_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources
 7091
 
 statement ok
-CREATE EXTERNAL TABLE new_gff STORED AS INDEXED_GFF COMPRESSION TYPE GZIP LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-index';
+CREATE EXTERNAL TABLE new_gff STORED AS INDEXED_GFF OPTIONS (compression gzip) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/gff-index';
 
 query T
 SELECT COUNT(*) AS cnt FROM new_gff WHERE gff_region_filter('chr1', seqname) = true

@@ -119,7 +119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             ctx.session.sql(
                 format!(
-                    "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF COMPRESSION TYPE GZIP LOCATION '{}';",
+                    "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF LOCATION '{}' OPTIONS (compression gzip);",
                     path
                 )
                 .as_str(),

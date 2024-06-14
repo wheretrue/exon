@@ -95,9 +95,12 @@ impl TryFrom<&HashMap<String, String>> for ListingCRAMTableOptions {
     type Error = ExonError;
 
     fn try_from(options: &HashMap<String, String>) -> Result<Self, ExonError> {
-        let fasta_reference = options.get("fasta_reference").map(|s| s.to_string());
+        let fasta_reference = options.get("format.fasta_reference").map(|s| s.to_string());
 
-        let indexed = options.get("indexed").map(|s| s == "true").unwrap_or(false);
+        let indexed = options
+            .get("format.indexed")
+            .map(|s| s == "true")
+            .unwrap_or(false);
 
         Ok(Self::default()
             .with_fasta_reference(fasta_reference)

@@ -27,7 +27,9 @@ use datafusion::{
 use exon_fasta::SequenceDataType;
 use url::Url;
 
-use crate::{config::extract_config_from_state, datasources::ExonFileType, ExonRuntimeEnvExt};
+use crate::{
+    config::extract_config_from_state, datasources::ExonFileType, ExonError, ExonRuntimeEnvExt,
+};
 
 use super::{
     bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
@@ -54,8 +56,8 @@ use super::mzml::table_provider::{ListingMzMLTable, ListingMzMLTableOptions};
 #[cfg(feature = "genbank")]
 use super::genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions};
 
-const FILE_EXTENSION_OPTION: &str = "file_extension";
-const INDEXED_OPTION: &str = "indexed";
+const FILE_EXTENSION_OPTION: &str = "format.file_extension";
+const INDEXED_OPTION: &str = "format.indexed";
 const INDEXED_TRUE_VALUE: &str = "true";
 
 /// A `ListingTableFactory` that adapts Exon FileFormats to `TableProvider`s.
@@ -311,7 +313,7 @@ impl ExonListingTableFactory {
             }
             ExonFileType::BigWigZoom => {
                 let reduction_level = options
-                    .get("reduction_level")
+                    .get("format.reduction_level")
                     .ok_or(datafusion::error::DataFusionError::Execution(
                         "BigWigZoom files must have a reduction level".to_string(),
                     ))?
@@ -356,7 +358,16 @@ impl TableProviderFactory for ExonListingTableFactory {
         state: &SessionState,
         cmd: &CreateExternalTable,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
-        let file_compression_type: FileCompressionType = cmd.file_compression_type.into();
+        eprintln!("Options: {:?}", cmd.options);
+
+        let file_compression_type: FileCompressionType = cmd
+            .options
+            .get("format.compression")
+            .map(|s| {
+                FileCompressionType::from_str(s)
+                    .map_err(|_| ExonError::ExecutionError("Invalid compression type".to_string()))
+            })
+            .unwrap_or(Ok(FileCompressionType::UNCOMPRESSED))?;
 
         let schema: SchemaRef = Arc::new(cmd.schema.as_ref().to_owned().into());
         let table_partition_cols = cmd
@@ -426,7 +437,6 @@ mod tests {
             Arc::new(ExonListingTableFactory::default()),
             object_store,
             "SAM".to_string(),
-            false,
         );
 
         mem_catalog.register_schema("exon", Arc::new(schema))?;
