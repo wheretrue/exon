@@ -3660,9 +3660,9 @@ dependencies = [
 
 [[package]]
 name = "noodles-gff"
-version = "0.32.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44a4046d86db9371044d6581ae5293556bf236e564ae26f661998acc100a2d39"
+checksum = "578b6efaf5c3f029720af4c8590e34fd38e214666971d665a52e3566830170d0"
 dependencies = [
  "futures",
  "indexmap 2.2.6",
