@@ -25,7 +25,7 @@ pub struct BEDSchemaBuilder {
 }
 
 fn file_fields(n_fields: usize) -> ExonBEDResult<Vec<Field>> {
-    if n_fields < 3 || n_fields > 12 {
+    if !(3..=12).contains(&n_fields) {
         return Err(ExonBEDError::InvalidNumberOfFields(n_fields));
     }
 

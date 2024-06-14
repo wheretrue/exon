@@ -34,7 +34,7 @@ impl BEDOptions {
     pub fn n_fields(&self) -> ExonBEDResult<usize> {
         if let Some(n_fields) = &self.n_fields {
             let n_fields = n_fields.parse::<usize>()?;
-            if n_fields < 3 || n_fields > 12 {
+            if !(3..=12).contains(&n_fields) {
                 return Err(ExonBEDError::InvalidNumberOfFields(n_fields));
             }
             Ok(n_fields)

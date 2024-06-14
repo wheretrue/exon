@@ -126,10 +126,7 @@ impl ListingBEDTableOptions {
     /// Infer the schema for the table
     pub fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = BEDSchemaBuilder::with_n_fields(self.n_fields).map_err(|e| {
-            DataFusionError::Execution(format!(
-                "Error creating BED schema builder: {}",
-                e.to_string()
-            ))
+            DataFusionError::Execution(format!("Error creating BED schema builder: {}", e,))
         })?;
         // let mut schema_builder = BEDSchemaBuilder::default();
         schema_builder.add_partition_fields(self.table_partition_cols.clone());
