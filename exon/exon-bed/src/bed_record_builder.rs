@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -194,6 +194,37 @@ impl From<Record<9>> for BEDRecord {
     }
 }
 
+impl From<Record<8>> for BEDRecord {
+    fn from(value: Record<8>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score())
+            .strand(value.strand())
+            .thick_start(value.thick_start())
+            .thick_end(value.thick_end());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<7>> for BEDRecord {
+    fn from(value: Record<7>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score())
+            .strand(value.strand())
+            .thick_start(value.thick_start());
+
+        builder.finish()
+    }
+}
+
 impl From<Record<6>> for BEDRecord {
     fn from(value: Record<6>) -> Self {
         let builder = BEDRecordBuilder::new()
@@ -203,6 +234,42 @@ impl From<Record<6>> for BEDRecord {
             .name(value.name())
             .score(value.score())
             .strand(value.strand());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<5>> for BEDRecord {
+    fn from(value: Record<5>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name())
+            .score(value.score());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<4>> for BEDRecord {
+    fn from(value: Record<4>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position())
+            .name(value.name());
+
+        builder.finish()
+    }
+}
+
+impl From<Record<3>> for BEDRecord {
+    fn from(value: Record<3>) -> Self {
+        let builder = BEDRecordBuilder::new()
+            .reference_sequence_name(value.reference_sequence_name().to_string())
+            .start(value.start_position())
+            .end(value.end_position());
 
         builder.finish()
     }

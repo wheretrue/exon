@@ -16,62 +16,11 @@ use std::sync::Arc;
 
 use arrow::{
     array::{ArrayRef, GenericStringBuilder, Int64Builder},
-    datatypes::{DataType, Field, Schema},
+    datatypes::SchemaRef,
 };
-use exon_common::{ExonArrayBuilder, TableSchema};
+use exon_common::ExonArrayBuilder;
 
 use super::bed_record_builder::BEDRecord;
-
-pub struct BEDSchemaBuilder {
-    file_fields: Vec<Field>,
-    partition_fields: Vec<Field>,
-}
-
-impl BEDSchemaBuilder {
-    pub fn new(file_fields: Vec<Field>, partition_fields: Vec<Field>) -> Self {
-        Self {
-            file_fields,
-            partition_fields,
-        }
-    }
-
-    pub fn add_partition_fields(&mut self, fields: Vec<Field>) {
-        self.partition_fields.extend(fields);
-    }
-
-    /// Returns the schema and the projection indexes for the file's schema
-    pub fn build(self) -> TableSchema {
-        let mut fields = self.file_fields.clone();
-        fields.extend_from_slice(&self.partition_fields);
-
-        let schema = Schema::new(fields);
-
-        let projection = (0..self.file_fields.len()).collect::<Vec<_>>();
-
-        TableSchema::new(Arc::new(schema), projection)
-    }
-}
-
-impl Default for BEDSchemaBuilder {
-    fn default() -> Self {
-        let field_fields = vec![
-            Field::new("reference_sequence_name", DataType::Utf8, false),
-            Field::new("start", DataType::Int64, false),
-            Field::new("end", DataType::Int64, false),
-            Field::new("name", DataType::Utf8, true),
-            Field::new("score", DataType::Int64, true),
-            Field::new("strand", DataType::Utf8, true),
-            Field::new("thick_start", DataType::Int64, true),
-            Field::new("thick_end", DataType::Int64, true),
-            Field::new("color", DataType::Utf8, true),
-            Field::new("block_count", DataType::Int64, true),
-            Field::new("block_sizes", DataType::Utf8, true),
-            Field::new("block_starts", DataType::Utf8, true),
-        ];
-
-        Self::new(field_fields, vec![])
-    }
-}
 
 pub struct BEDArrayBuilder {
     reference_sequence_names: GenericStringBuilder<i32>,
@@ -87,11 +36,18 @@ pub struct BEDArrayBuilder {
     block_sizes: GenericStringBuilder<i32>,
     block_starts: GenericStringBuilder<i32>,
 
+    projection: Vec<usize>,
+
     rows: usize,
 }
 
 impl BEDArrayBuilder {
-    pub fn create() -> Self {
+    pub fn create(schema: SchemaRef, projection: Option<Vec<usize>>) -> Self {
+        let projection = match projection {
+            Some(p) => p,
+            None => (0..schema.fields().len()).collect(),
+        };
+
         Self {
             reference_sequence_names: GenericStringBuilder::<i32>::new(),
             starts: Int64Builder::new(),
@@ -105,11 +61,14 @@ impl BEDArrayBuilder {
             block_counts: Int64Builder::new(),
             block_sizes: GenericStringBuilder::<i32>::new(),
             block_starts: GenericStringBuilder::<i32>::new(),
+            projection,
             rows: 0,
         }
     }
 
     pub fn append(&mut self, record: BEDRecord) -> std::io::Result<()> {
+        self.rows += 1;
+
         self.reference_sequence_names
             .append_value(record.reference_sequence_name.as_str());
 
@@ -132,39 +91,31 @@ impl BEDArrayBuilder {
         self.block_sizes.append_option(record.block_sizes);
         self.block_starts.append_option(record.block_starts);
 
-        self.rows += 1;
-
         Ok(())
     }
 
     pub fn finish(&mut self) -> Vec<ArrayRef> {
-        let reference_sequence_names = self.reference_sequence_names.finish();
-        let starts = self.starts.finish();
-        let ends = self.ends.finish();
-        let names = self.names.finish();
-        let scores = self.scores.finish();
-        let strands = self.strands.finish();
-        let thick_starts = self.thick_starts.finish();
-        let thick_ends = self.thick_ends.finish();
-        let colors = self.colors.finish();
-        let block_counts = self.block_counts.finish();
-        let block_sizes = self.block_sizes.finish();
-        let block_starts = self.block_starts.finish();
+        let mut arrays: Vec<ArrayRef> = vec![];
 
-        vec![
-            Arc::new(reference_sequence_names),
-            Arc::new(starts),
-            Arc::new(ends),
-            Arc::new(names),
-            Arc::new(scores),
-            Arc::new(strands),
-            Arc::new(thick_starts),
-            Arc::new(thick_ends),
-            Arc::new(colors),
-            Arc::new(block_counts),
-            Arc::new(block_sizes),
-            Arc::new(block_starts),
-        ]
+        for col_idx in self.projection.iter() {
+            match col_idx {
+                0 => arrays.push(Arc::new(self.reference_sequence_names.finish())),
+                1 => arrays.push(Arc::new(self.starts.finish())),
+                2 => arrays.push(Arc::new(self.ends.finish())),
+                3 => arrays.push(Arc::new(self.names.finish())),
+                4 => arrays.push(Arc::new(self.scores.finish())),
+                5 => arrays.push(Arc::new(self.strands.finish())),
+                6 => arrays.push(Arc::new(self.thick_starts.finish())),
+                7 => arrays.push(Arc::new(self.thick_ends.finish())),
+                8 => arrays.push(Arc::new(self.colors.finish())),
+                9 => arrays.push(Arc::new(self.block_counts.finish())),
+                10 => arrays.push(Arc::new(self.block_sizes.finish())),
+                11 => arrays.push(Arc::new(self.block_starts.finish())),
+                _ => panic!("Invalid column index"),
+            }
+        }
+
+        arrays
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2023 WHERE TRUE Technologies.
+// Copyright 2024 WHERE TRUE Technologies.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ use arrow::datatypes::SchemaRef;
 use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
 
+use crate::ExonBEDResult;
+
 /// Configuration for a BED datasource.
 #[derive(Debug)]
 pub struct BEDConfig {
@@ -32,6 +34,9 @@ pub struct BEDConfig {
 
     /// Any projections to apply to the resulting batches.
     pub projection: Option<Vec<usize>>,
+
+    /// The number of fields of the BED to read.
+    pub n_fields: Option<usize>,
 }
 
 impl BEDConfig {
@@ -42,7 +47,14 @@ impl BEDConfig {
             object_store,
             file_schema,
             projection: None,
+            n_fields: None,
         }
+    }
+
+    /// Set the number of fields.
+    pub fn with_n_fields(mut self, n_fields: usize) -> Self {
+        self.n_fields = Some(n_fields);
+        self
     }
 
     /// Set the batch size.
@@ -61,5 +73,26 @@ impl BEDConfig {
     pub fn with_some_projection(mut self, projection: Option<Vec<usize>>) -> Self {
         self.projection = projection;
         self
+    }
+
+    /// Get the projected schema.
+    pub fn projected_schema(&self) -> ExonBEDResult<SchemaRef> {
+        let schema = self.file_schema.project(&self.projection())?;
+
+        Ok(Arc::new(schema))
+    }
+
+    /// Return the projection, while accounting for the number of fields.
+    pub fn projection(&self) -> Vec<usize> {
+        match (&self.projection, &self.n_fields) {
+            (Some(projection), Some(n_fields)) => projection
+                .iter()
+                .filter(|&i| i < n_fields)
+                .copied()
+                .collect(),
+            (Some(projection), None) => projection.clone(),
+            (_, Some(n_fields)) => (0..*n_fields).collect(),
+            (_, _) => (0..self.file_schema.fields().len()).collect(),
+        }
     }
 }
