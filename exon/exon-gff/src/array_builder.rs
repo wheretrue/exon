@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{
     array::{
@@ -23,7 +23,7 @@ use arrow::{
     error::ArrowError,
 };
 use exon_common::ExonArrayBuilder;
-use noodles_gff::{lazy::Record, record::attributes::field::Value};
+use noodles::gff::lazy::Record;
 
 pub struct GFFArrayBuilder {
     seqnames: GenericStringBuilder<i32>,
@@ -86,14 +86,11 @@ impl GFFArrayBuilder {
                 1 => self.sources.append_value(record.source()),
                 2 => self.feature_types.append_value(record.ty()),
                 3 => {
-                    let start_pos = noodles::core::Position::try_from(record.start())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
+                    let start_pos = record.start()?;
                     self.starts.append_value(start_pos.get() as i64)
                 }
                 4 => {
-                    let end_pos = noodles::core::Position::try_from(record.end())
-                        .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-
+                    let end_pos = record.end()?;
                     self.ends.append_value(end_pos.get() as i64)
                 }
                 5 => {
@@ -109,7 +106,7 @@ impl GFFArrayBuilder {
                     }
                 }
                 6 => {
-                    let strand = record.strand();
+                    let strand = record.strand()?;
 
                     if strand.as_ref() == "" || strand.as_ref() == "." {
                         self.strands.append_null();
@@ -128,30 +125,23 @@ impl GFFArrayBuilder {
                 }
                 8 => {
                     for resp in record.attributes().iter() {
-                        let (key, v) = resp?;
+                        let (key, value) = resp?;
 
                         self.attributes.keys().append_value(key);
 
-                        let value = Value::from_str(v)
-                            .map_err(|e| ArrowError::from_external_error(Box::new(e)))?;
-
                         match value {
-                            Value::String(value) => {
-                                let values = self.attributes.values();
-                                let list_values = values.values();
-
-                                list_values.append_value(value.as_str());
-                                values.append(true);
+                            noodles::gff::lazy::record::attributes::field::Value::String(value) => {
+                                self.attributes.values().append(true);
+                                self.attributes.values().values().append_value(value);
                             }
-                            Value::Array(attr_values) => {
-                                let values = self.attributes.values();
-                                let list_values = values.values();
-
+                            noodles::gff::lazy::record::attributes::field::Value::Array(
+                                attr_values,
+                            ) => {
+                                let list_values = self.attributes.values().values();
                                 for value in attr_values.iter() {
-                                    list_values.append_value(value.as_str());
+                                    list_values.append_value(value);
                                 }
-
-                                values.append(true);
+                                self.attributes.values().append(true);
                             }
                         }
                     }

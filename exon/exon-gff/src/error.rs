@@ -37,13 +37,13 @@ impl Display for ExonGFFError {
 
 impl Error for ExonGFFError {}
 
-impl From<noodles_gff::line::ParseError> for ExonGFFError {
-    fn from(e: noodles_gff::line::ParseError) -> Self {
+impl From<noodles::gff::line::ParseError> for ExonGFFError {
+    fn from(e: noodles::gff::line::ParseError) -> Self {
         match e {
-            noodles_gff::line::ParseError::InvalidRecord(s) => {
+            noodles::gff::line::ParseError::InvalidRecord(s) => {
                 ExonGFFError::InvalidRecord(s.to_string())
             }
-            noodles_gff::line::ParseError::InvalidDirective(s) => {
+            noodles::gff::line::ParseError::InvalidDirective(s) => {
                 ExonGFFError::InvalidDirective(s.to_string())
             }
         }

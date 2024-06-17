@@ -33,7 +33,7 @@ impl BatchSerializer for FASTQSerializer {
         let quality_scores = get_array_column::<StringArray>(&batch, "quality_scores")?;
 
         let b = Vec::new();
-        let mut fasta_writer = noodles::fastq::Writer::new(b);
+        let mut fasta_writer = noodles::fastq::io::Writer::new(b);
 
         for i in 0..batch.num_rows() {
             let id = names.value(i);
