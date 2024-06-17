@@ -27,7 +27,7 @@ use super::{array_builder::GFFArrayBuilder, GFFConfig};
 /// Reads a GFF file into arrow record batches.
 pub struct BatchReader<R> {
     /// The reader to read from.
-    reader: noodles_gff::AsyncReader<R>,
+    reader: noodles::gff::AsyncReader<R>,
 
     /// The configuration for this reader.
     config: Arc<GFFConfig>,
@@ -42,7 +42,7 @@ where
 {
     pub fn new(reader: R, config: Arc<GFFConfig>) -> Self {
         Self {
-            reader: noodles_gff::AsyncReader::new(reader),
+            reader: noodles::gff::AsyncReader::new(reader),
             config,
             region: None,
         }
@@ -63,8 +63,8 @@ where
         })
     }
 
-    async fn read_line(&mut self) -> Result<Option<noodles_gff::lazy::Line>> {
-        let mut line = noodles_gff::lazy::Line::default();
+    async fn read_line(&mut self) -> Result<Option<noodles::gff::lazy::Line>> {
+        let mut line = noodles::gff::lazy::Line::default();
 
         match self.reader.read_lazy_line(&mut line).await {
             Ok(0) => Ok(None),
@@ -73,7 +73,7 @@ where
         }
     }
 
-    fn filter(&self, record: &noodles_gff::lazy::Record) -> Result<bool> {
+    fn filter(&self, record: &noodles::gff::lazy::Record) -> Result<bool> {
         let chrom = record.reference_sequence_name();
 
         match &self.region {
@@ -84,7 +84,7 @@ where
                     return Ok(false);
                 }
 
-                let start = noodles::core::Position::try_from(record.start())?;
+                let start = record.start()?;
 
                 if !region.interval().contains(start) {
                     return Ok(false);
@@ -106,9 +106,9 @@ where
             match self.read_line().await? {
                 None => break,
                 Some(line) => match line {
-                    noodles_gff::lazy::Line::Comment(_) => {}
-                    noodles_gff::lazy::Line::Directive(_) => {}
-                    noodles_gff::lazy::Line::Record(record) => {
+                    noodles::gff::lazy::Line::Comment(_) => {}
+                    noodles::gff::lazy::Line::Directive(_) => {}
+                    noodles::gff::lazy::Line::Record(record) => {
                         // Filter on region if provided.
                         if !self.filter(&record)? {
                             continue;
