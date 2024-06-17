@@ -2118,7 +2118,7 @@ dependencies = [
  "fxhash",
  "itertools 0.13.0",
  "lazy_static",
- "lightmotif 0.6.0",
+ "lightmotif",
  "lightmotif-io",
  "noodles",
  "num_cpus",
@@ -3335,16 +3335,6 @@ dependencies = [
 
 [[package]]
 name = "lightmotif"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e24fb940d6f1c7b97ed6276dac8efb6dbcf7a55e59b8fd7f1455c8c620f49b1d"
-dependencies = [
- "generic-array 0.14.7",
- "typenum",
-]
-
-[[package]]
-name = "lightmotif"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c99710f2f153c00047d00cdfbf84d43740b35ca180767a16bf044ba85433f7dd"
@@ -3361,7 +3351,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0ea0d14f263787bac551524d337a100eaf2dfe0214922e1198028332c0b2e22"
 dependencies = [
- "lightmotif 0.7.2",
+ "lightmotif",
  "memchr",
  "nom 7.1.3",
 ]
