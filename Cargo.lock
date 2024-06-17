@@ -1170,7 +1170,7 @@ version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.7",
 ]
 
 [[package]]
@@ -1528,7 +1528,7 @@ version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.7",
  "typenum",
 ]
 
@@ -2118,7 +2118,7 @@ dependencies = [
  "fxhash",
  "itertools 0.13.0",
  "lazy_static",
- "lightmotif",
+ "lightmotif 0.6.0",
  "lightmotif-io",
  "noodles",
  "num_cpus",
@@ -2592,6 +2592,15 @@ checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
 dependencies = [
  "typenum",
  "version_check 0.9.4",
+]
+
+[[package]]
+name = "generic-array"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe739944a5406424e080edccb6add95685130b9f160d5407c639c7df0c5836b0"
+dependencies = [
+ "typenum",
 ]
 
 [[package]]
@@ -3330,17 +3339,29 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e24fb940d6f1c7b97ed6276dac8efb6dbcf7a55e59b8fd7f1455c8c620f49b1d"
 dependencies = [
- "generic-array",
+ "generic-array 0.14.7",
+ "typenum",
+]
+
+[[package]]
+name = "lightmotif"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c99710f2f153c00047d00cdfbf84d43740b35ca180767a16bf044ba85433f7dd"
+dependencies = [
+ "generic-array 1.0.0",
+ "rand",
+ "rand_distr",
  "typenum",
 ]
 
 [[package]]
 name = "lightmotif-io"
-version = "0.6.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed0203ce5016dff446ec8c4f2dc32fe54d1c080fea5d20521e1310aff03c454f"
+checksum = "b0ea0d14f263787bac551524d337a100eaf2dfe0214922e1198028332c0b2e22"
 dependencies = [
- "lightmotif",
+ "lightmotif 0.7.2",
  "memchr",
  "nom 7.1.3",
 ]
@@ -4221,6 +4242,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "rand_distr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
+dependencies = [
+ "num-traits",
+ "rand",
 ]
 
 [[package]]
