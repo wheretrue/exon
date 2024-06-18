@@ -3334,9 +3334,9 @@ dependencies = [
 
 [[package]]
 name = "lightmotif"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c99710f2f153c00047d00cdfbf84d43740b35ca180767a16bf044ba85433f7dd"
+checksum = "5e0f3edae4e9972c3bb4a4b748654d2b85c2216cc594990254830a9b15f4790f"
 dependencies = [
  "generic-array 1.0.0",
  "rand",
