@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.26.0 (2024-06-18)
+
+### Feat
+
+- support bed files with commented lines (#539)
+
 ## v0.25.1 (2024-06-17)
 
 ## v0.25.0 (2024-06-14)
