@@ -108,6 +108,14 @@ where
             return Ok(None);
         }
 
+        // Skip commented lines
+        while buf.starts_with('#') {
+            buf.clear();
+            if self.reader.read_line(&mut buf).await? == 0 {
+                return Ok(None);
+            }
+        }
+
         // Get the number of tab separated fields
         let num_fields = buf.split('\t').count();
 
