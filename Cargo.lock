@@ -3346,10 +3346,11 @@ dependencies = [
 
 [[package]]
 name = "lightmotif-io"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0ea0d14f263787bac551524d337a100eaf2dfe0214922e1198028332c0b2e22"
+checksum = "2d8c88e309c3f3a155ad9dbbc631bf1f53bd6f2ece32eaece3f8450f5d7c0169"
 dependencies = [
+ "generic-array 1.0.0",
  "lightmotif",
  "memchr",
  "nom 7.1.3",
