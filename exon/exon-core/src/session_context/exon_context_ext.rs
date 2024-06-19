@@ -28,10 +28,14 @@ use crate::{
     datasources::{
         bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
         bcf::table_provider::{ListingBCFTable, ListingBCFTableOptions},
-        bed::table_provider::{ListingBEDTable, ListingBEDTableOptions},
+        bed::{
+            table_provider::{ListingBEDTable, ListingBEDTableOptions},
+            BEDOptions,
+        },
         bigwig,
         cram::table_provider::{ListingCRAMTable, ListingCRAMTableConfig, ListingCRAMTableOptions},
         exon_listing_table_options::ExonListingConfig,
+        fasta::FASTAOptions,
         genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions},
         gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
         gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
@@ -156,6 +160,9 @@ impl ExonSession {
             state.with_query_planner(Arc::new(ExonQueryPlanner::default())),
         );
 
+        ctx.register_table_options_extension(FASTAOptions::default());
+        ctx.register_table_options_extension(BEDOptions::default());
+
         // Register the mass spec UDFs
         #[cfg(feature = "mzml")]
         crate::udfs::massspec::register_udfs(&ctx);
@@ -238,26 +245,6 @@ impl ExonSession {
 
         exon_parser.parse_statement()
     }
-
-    /// Convert Exon SQL to a logical plan.
-    // async fn exon_statement_to_physical_plan(
-    //     &self,
-    //     stmt: ExonStatement,
-    // ) -> crate::Result<LogicalPlan> {
-    //     match stmt {
-    //         ExonStatement::DFStatement(stmt) => {
-    //             let plan = self.session.state().statement_to_plan(*stmt).await?;
-    //             Ok(plan)
-    //         }
-    //         ExonStatement::ExonCopyTo(stmt) => {
-    //             let node = ExonDataSinkLogicalPlanNode::from(stmt);
-    //             let extension = node.into_extension();
-    //             let plan = LogicalPlan::Extension(extension);
-
-    //             Ok(plan)
-    //         }
-    //     }
-    // }
 
     /// Convert Exon SQL to a logical plan.
     async fn exon_statement_to_logical_plan(

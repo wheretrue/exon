@@ -25,4 +25,5 @@ pub use batch_reader::BatchReader;
 pub use config::FASTAConfig;
 pub use config::FASTASchemaBuilder;
 pub use config::SequenceDataType;
-pub use error::ExonFastaError;
+pub use error::ExonFASTAError;
+pub use error::ExonFASTAResult;

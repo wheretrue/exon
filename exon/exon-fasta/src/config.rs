@@ -19,6 +19,8 @@ use exon_common::TableSchema;
 use noodles::core::Region;
 use object_store::ObjectStore;
 
+use crate::ExonFASTAError;
+
 #[derive(Debug, Clone)]
 pub enum SequenceDataType {
     Utf8,
@@ -28,7 +30,7 @@ pub enum SequenceDataType {
 }
 
 impl FromStr for SequenceDataType {
-    type Err = &'static str;
+    type Err = ExonFASTAError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -36,7 +38,7 @@ impl FromStr for SequenceDataType {
             "large_utf8" => Ok(Self::LargeUtf8),
             "integer_encode_protein" => Ok(Self::IntegerEncodeProtein),
             "integer_encode_dna" => Ok(Self::IntegerEncodeDNA),
-            _ => Err("invalid sequence data type"),
+            _ => Err(ExonFASTAError::InvalidSequenceDataType(s.to_string())),
         }
     }
 }

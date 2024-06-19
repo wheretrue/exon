@@ -22,7 +22,7 @@ use arrow::{
 use exon_common::ExonArrayBuilder;
 use noodles::fasta::record::Definition;
 
-use crate::{ExonFastaError, SequenceDataType};
+use crate::{ExonFASTAError, SequenceDataType};
 
 pub struct FASTAArrayBuilder {
     names: GenericStringBuilder<i32>,
@@ -172,7 +172,7 @@ impl FASTAArrayBuilder {
                             b'X' => 24,
                             b'Z' => 25,
                             _ => {
-                                return Err(ExonFastaError::InvalidAminoAcid(*aa).into());
+                                return Err(ExonFASTAError::InvalidAminoAcid(*aa).into());
                             }
                         };
 
@@ -194,7 +194,7 @@ impl FASTAArrayBuilder {
                             b'T' => 4,
                             b'N' => 5,
                             _ => {
-                                return Err(ExonFastaError::InvalidNucleotide(*nt).into());
+                                return Err(ExonFASTAError::InvalidNucleotide(*nt).into());
                             }
                         };
 

@@ -14,6 +14,7 @@
 
 mod file_opener;
 mod scanner;
+mod table_options;
 mod udtfs;
 
 /// Table provider for FASTA files.
@@ -28,3 +29,4 @@ pub use self::udtfs::fasta_indexed_scan::FastaIndexedScanFunction;
 pub use self::udtfs::fasta_scan::FastaScanFunction;
 
 pub use exon_fasta::SequenceDataType;
+pub use table_options::FASTAOptions;

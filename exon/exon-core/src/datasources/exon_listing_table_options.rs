@@ -127,6 +127,9 @@ pub trait ExonFileIndexedListingOptions: ExonIndexedListingOptions {
 pub trait ExonSequenceDataTypeOptions {
     /// The sequence data type for the table
     fn sequence_data_type(&self) -> &SequenceDataType;
+
+    /// The buffer capacity for the sequence
+    fn sequence_buffer_capacity(&self) -> usize;
 }
 
 #[derive(Debug, Clone)]

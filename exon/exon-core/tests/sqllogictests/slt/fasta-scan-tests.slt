@@ -86,7 +86,7 @@ SELECT COUNT(*) FROM fasta_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta
 
 
 statement ok
-CREATE EXTERNAL TABLE fna_table STORED AS FASTA OPTIONS (file_extension 'fna') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna';
+CREATE EXTERNAL TABLE fna_table STORED AS FASTA OPTIONS ('fasta.file_extension' 'fna') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna';
 
 query T
 SELECT COUNT(*) FROM fna_table;
@@ -97,7 +97,7 @@ statement ok
 DROP TABLE fna_table;
 
 statement ok
-CREATE EXTERNAL TABLE fna_table STORED AS FASTA OPTIONS (file_extension 'fna', compression gzip) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna.gz';
+CREATE EXTERNAL TABLE fna_table STORED AS FASTA OPTIONS ('fasta.file_extension' 'fna', compression gzip) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fna/test.fna.gz';
 
 query T
 SELECT COUNT(*) FROM fna_table;
@@ -108,7 +108,7 @@ statement ok
 DROP TABLE fna_table;
 
 statement ok
-CREATE EXTERNAL TABLE fa_table STORED AS FASTA OPTIONS (file_extension 'fa', compression gzip) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fa/test.fa.gz';
+CREATE EXTERNAL TABLE fa_table STORED AS FASTA OPTIONS ('fasta.file_extension' 'fa', compression gzip) LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fa/test.fa.gz';
 
 query T
 SELECT COUNT(*) FROM fa_table;
@@ -119,10 +119,7 @@ statement ok
 DROP TABLE fa_table;
 
 statement ok
-SET exon.fasta_sequence_data_type = 'integer_encode_dna';
-
-statement ok
-CREATE EXTERNAL TABLE exon_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS('fasta.sequence_data_type' 'integer_encode_dna') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
 
 query T
 SELECT id, description, sequence FROM exon_table;
@@ -134,10 +131,7 @@ statement ok
 DROP TABLE exon_table;
 
 statement ok
-SET exon.fasta_sequence_data_type = 'integer_encode_protein';
-
-statement ok
-CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS ('fasta.file_extension' 'faa', 'fasta.sequence_data_type' 'integer_encode_protein') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
 
 query T
 SELECT id, description, sequence FROM exon_table;
@@ -149,7 +143,7 @@ statement ok
 DROP TABLE exon_table;
 
 statement ok
-CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS (file_extension 'faa', fasta_sequence_data_type 'integer_encode_protein') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
+CREATE EXTERNAL TABLE exon_table STORED AS FASTA OPTIONS ('fasta.file_extension' 'faa', 'fasta.sequence_data_type' 'integer_encode_protein') LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/faa/test.faa';
 
 query T
 SELECT id, description, sequence FROM exon_table;

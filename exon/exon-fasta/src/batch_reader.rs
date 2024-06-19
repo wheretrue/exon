@@ -20,7 +20,7 @@ use futures::Stream;
 
 use tokio::io::AsyncBufRead;
 
-use crate::{error::ExonFastaResult, ExonFastaError};
+use crate::{error::ExonFASTAResult, ExonFASTAError};
 
 use super::{array_builder::FASTAArrayBuilder, config::FASTAConfig};
 
@@ -55,7 +55,7 @@ where
         }
     }
 
-    async fn read_record(&mut self) -> ExonFastaResult<Option<()>> {
+    async fn read_record(&mut self) -> ExonFASTAResult<Option<()>> {
         self.buf.clear();
         if self.reader.read_definition(&mut self.buf).await? == 0 {
             return Ok(None);
@@ -63,13 +63,13 @@ where
 
         self.sequence_buffer.clear();
         if self.reader.read_sequence(&mut self.sequence_buffer).await? == 0 {
-            return Err(ExonFastaError::ParseError("invalid sequence".to_string()));
+            return Err(ExonFASTAError::ParseError("invalid sequence".to_string()));
         }
 
         Ok(Some(()))
     }
 
-    async fn read_batch(&mut self) -> ExonFastaResult<Option<RecordBatch>> {
+    async fn read_batch(&mut self) -> ExonFASTAResult<Option<RecordBatch>> {
         let mut array_builder = FASTAArrayBuilder::create(
             self.config.file_schema.clone(),
             self.config.projection.clone(),
@@ -99,7 +99,7 @@ where
     }
 
     /// Converts the reader into a stream of batches.
-    pub fn into_stream(self) -> impl Stream<Item = ExonFastaResult<RecordBatch>> {
+    pub fn into_stream(self) -> impl Stream<Item = ExonFASTAResult<RecordBatch>> {
         futures::stream::unfold(self, |mut reader| async move {
             match reader.read_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),

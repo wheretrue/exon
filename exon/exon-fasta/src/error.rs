@@ -18,7 +18,7 @@ use arrow::error::ArrowError;
 
 /// An error returned when reading a FASTA file fails for some reason.
 #[derive(Debug)]
-pub enum ExonFastaError {
+pub enum ExonFASTAError {
     InvalidDefinition(String),
     InvalidRecord(String),
     ArrowError(ArrowError),
@@ -27,61 +27,65 @@ pub enum ExonFastaError {
     ArrayBuilderError(String),
     InvalidNucleotide(u8),
     InvalidAminoAcid(u8),
+    InvalidSequenceDataType(String),
 }
 
-impl Display for ExonFastaError {
+impl Display for ExonFASTAError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExonFastaError::InvalidDefinition(msg) => write!(f, "Invalid definition: {}", msg),
-            ExonFastaError::InvalidRecord(msg) => write!(f, "Invalid record: {}", msg),
-            ExonFastaError::ArrowError(error) => write!(f, "Arrow error: {}", error),
-            ExonFastaError::IOError(error) => write!(f, "IO error: {}", error),
-            ExonFastaError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            ExonFastaError::ArrayBuilderError(msg) => write!(f, "Array builder error: {}", msg),
-            ExonFastaError::InvalidNucleotide(nucleotide) => {
+            ExonFASTAError::InvalidDefinition(msg) => write!(f, "Invalid definition: {}", msg),
+            ExonFASTAError::InvalidRecord(msg) => write!(f, "Invalid record: {}", msg),
+            ExonFASTAError::ArrowError(error) => write!(f, "Arrow error: {}", error),
+            ExonFASTAError::IOError(error) => write!(f, "IO error: {}", error),
+            ExonFASTAError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            ExonFASTAError::ArrayBuilderError(msg) => write!(f, "Array builder error: {}", msg),
+            ExonFASTAError::InvalidNucleotide(nucleotide) => {
                 write!(f, "Invalid nucleotide: {}", nucleotide)
             }
-            ExonFastaError::InvalidAminoAcid(amino_acid) => {
+            ExonFASTAError::InvalidAminoAcid(amino_acid) => {
                 write!(
                     f,
                     "Invalid amino acid: {}",
                     std::char::from_u32(*amino_acid as u32).unwrap()
                 )
             }
+            ExonFASTAError::InvalidSequenceDataType(data_type) => {
+                write!(f, "Invalid sequence data type: {}", data_type)
+            }
         }
     }
 }
 
-impl Error for ExonFastaError {}
+impl Error for ExonFASTAError {}
 
-impl From<std::io::Error> for ExonFastaError {
+impl From<std::io::Error> for ExonFASTAError {
     fn from(error: std::io::Error) -> Self {
-        ExonFastaError::IOError(error)
+        ExonFASTAError::IOError(error)
     }
 }
 
-impl From<noodles::fasta::record::definition::ParseError> for ExonFastaError {
+impl From<noodles::fasta::record::definition::ParseError> for ExonFASTAError {
     fn from(error: noodles::fasta::record::definition::ParseError) -> Self {
-        ExonFastaError::ParseError(error.to_string())
+        ExonFASTAError::ParseError(error.to_string())
     }
 }
 
-impl From<ArrowError> for ExonFastaError {
+impl From<ArrowError> for ExonFASTAError {
     fn from(error: ArrowError) -> Self {
-        ExonFastaError::ArrowError(error)
+        ExonFASTAError::ArrowError(error)
     }
 }
 
-impl From<ExonFastaError> for ArrowError {
-    fn from(error: ExonFastaError) -> Self {
+impl From<ExonFASTAError> for ArrowError {
+    fn from(error: ExonFASTAError) -> Self {
         ArrowError::ExternalError(Box::new(error))
     }
 }
 
-impl From<Utf8Error> for ExonFastaError {
+impl From<Utf8Error> for ExonFASTAError {
     fn from(error: Utf8Error) -> Self {
-        ExonFastaError::ParseError(error.to_string())
+        ExonFASTAError::ParseError(error.to_string())
     }
 }
 
-pub type ExonFastaResult<T, E = ExonFastaError> = std::result::Result<T, E>;
+pub type ExonFASTAResult<T, E = ExonFASTAError> = std::result::Result<T, E>;
