@@ -15,7 +15,6 @@
 use std::{any::Any, fmt::Debug, sync::Arc, vec};
 
 use crate::{
-    config::ExonConfigExtension,
     datasources::{
         exon_file_type::get_file_extension_with_compression,
         exon_listing_table_options::{
@@ -35,7 +34,7 @@ use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
     datasource::{file_format::file_compression_type::FileCompressionType, TableProvider},
-    error::{DataFusionError, Result},
+    error::Result,
     execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
@@ -69,12 +68,19 @@ pub struct ListingFASTATableOptions {
 
     /// The sequence data type for the table
     sequence_data_type: SequenceDataType,
+
+    /// The sequence buffer capacity
+    sequence_buffer_capacity: usize,
 }
 
 #[async_trait]
 impl ExonSequenceDataTypeOptions for ListingFASTATableOptions {
     fn sequence_data_type(&self) -> &SequenceDataType {
         &self.sequence_data_type
+    }
+
+    fn sequence_buffer_capacity(&self) -> usize {
+        self.sequence_buffer_capacity
     }
 }
 
@@ -150,6 +156,7 @@ impl Default for ListingFASTATableOptions {
             regions: Vec::new(),
             region_file: None,
             sequence_data_type: SequenceDataType::Utf8,
+            sequence_buffer_capacity: 512,
         }
     }
 }
@@ -166,6 +173,7 @@ impl ListingFASTATableOptions {
             regions: Vec::new(),
             region_file: None,
             sequence_data_type: SequenceDataType::Utf8,
+            sequence_buffer_capacity: 512,
         }
     }
 
@@ -173,6 +181,14 @@ impl ListingFASTATableOptions {
     pub fn with_sequence_data_type(self, sequence_data_type: SequenceDataType) -> Self {
         Self {
             sequence_data_type,
+            ..self
+        }
+    }
+
+    /// Set the sequence buffer capacity for the table
+    pub fn with_sequence_buffer_capacity(self, sequence_buffer_capacity: usize) -> Self {
+        Self {
+            sequence_buffer_capacity,
             ..self
         }
     }
@@ -357,17 +373,6 @@ impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions + 'static> T
         .try_collect::<Vec<_>>()
         .await?;
 
-        let exon_settings = state
-            .config()
-            .options()
-            .extensions
-            .get::<ExonConfigExtension>()
-            .ok_or(DataFusionError::Execution(
-                "Exon settings must be configured.".to_string(),
-            ))?;
-
-        let fasta_sequence_buffer_capacity = exon_settings.fasta_sequence_buffer_capacity;
-
         if let Some(regions) = &regions {
             // If we have regions, for local files, just add the region extension to the ObjectMeta
             // for remote files, prequery the index and associate the faidx region
@@ -445,7 +450,7 @@ impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions + 'static> T
             let scan = FASTAScan::new(
                 file_scan_config,
                 self.config.options.file_compression_type(),
-                fasta_sequence_buffer_capacity,
+                self.config.options.sequence_buffer_capacity(),
                 self.config.options.sequence_data_type().clone(),
             );
 

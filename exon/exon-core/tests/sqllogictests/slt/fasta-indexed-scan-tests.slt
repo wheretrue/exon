@@ -1,8 +1,5 @@
 control substitution on
 
-statement ok
-SET exon.fasta_sequence_data_type = 'utf8';
-
 query III
 SELECT * FROM fasta_indexed_scan('$CARGO_MANIFEST_DIR/test-data/datasources/fasta-indexed/test.fasta', 'a');
 ----

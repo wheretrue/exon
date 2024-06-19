@@ -29,7 +29,6 @@ use noodles::core::Region;
 use object_store::{path::Path, ObjectStore};
 
 use crate::{
-    config::ExonConfigExtension,
     datasources::{
         exon_listing_table_options::ExonListingConfig,
         fasta::table_provider::{ListingFASTATable, ListingFASTATableOptions},
@@ -82,20 +81,7 @@ impl TableFunctionImpl for FastaIndexedScanFunction {
             .or(passed_compression_type)
             .unwrap_or(FileCompressionType::UNCOMPRESSED);
 
-        let state = self.ctx.state();
-
-        let exon_settings = state
-            .config()
-            .options()
-            .extensions
-            .get::<ExonConfigExtension>()
-            .ok_or(DataFusionError::Execution(
-                "Exon settings must be configured.".to_string(),
-            ))?;
-
-        let fasta_schema = FASTASchemaBuilder::default()
-            .with_sequence_data_type(exon_settings.fasta_sequence_data_type()?)
-            .build();
+        let fasta_schema = FASTASchemaBuilder::default().build();
 
         futures::executor::block_on(async {
             self.ctx

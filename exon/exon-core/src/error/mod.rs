@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{error::Error, fmt::Display, str::Utf8Error};
+use std::{error::Error, fmt::Display, num::ParseIntError, str::Utf8Error};
 
 use arrow::error::ArrowError;
 use datafusion::{error::DataFusionError, sql::sqlparser::parser::ParserError};
+use exon_fasta::ExonFASTAError;
 use exon_gff::ExonGFFError;
 use noodles::bgzf::virtual_position::TryFromU64U16TupleError;
 
@@ -57,11 +58,20 @@ pub enum ExonError {
     /// Invalid GFF error
     ExonGFFError(ExonGFFError),
 
+    /// FASTA specific error
+    ExonFASTAError(ExonFASTAError),
+
     /// SQL Parser error
     ParserError(String),
 
     /// Unsupported function
     UnsupportedFunction(String),
+}
+
+impl From<ParseIntError> for ExonError {
+    fn from(error: ParseIntError) -> Self {
+        ExonError::ExecutionError(format!("Error parsing integer: {}", error))
+    }
 }
 
 impl From<DataFusionError> for ExonError {
@@ -136,6 +146,12 @@ impl From<ParserError> for ExonError {
     }
 }
 
+impl From<ExonFASTAError> for ExonError {
+    fn from(error: ExonFASTAError) -> Self {
+        ExonError::ExonFASTAError(error)
+    }
+}
+
 impl Display for ExonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -149,6 +165,7 @@ impl Display for ExonError {
             ExonError::ExonGFFError(error) => write!(f, "ExonGFFError: {}", error),
             ExonError::ParserError(error) => write!(f, "ParserError: {}", error),
             ExonError::UnsupportedFunction(error) => write!(f, "UnsupportedFunction: {}", error),
+            ExonError::ExonFASTAError(error) => write!(f, "ExonFASTAError: {}", error),
         }
     }
 }
