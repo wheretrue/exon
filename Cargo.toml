@@ -9,13 +9,15 @@ version = "0.26.0"
 [workspace]
 members = [
   "exon-benchmarks",
-  "exon/exon-cli",
   "exon-examples",
   "exon/exon-bam",
   "exon/exon-bcf",
   "exon/exon-bed",
+  "exon/exon-bigwig",
+  "exon/exon-cli",
   "exon/exon-common",
   "exon/exon-core",
+  "exon/exon-cram",
   "exon/exon-cram",
   "exon/exon-fasta",
   "exon/exon-fastq",
@@ -26,10 +28,9 @@ members = [
   "exon/exon-io",
   "exon/exon-mzml",
   "exon/exon-sam",
+  "exon/exon-sdf",
   "exon/exon-test",
   "exon/exon-vcf",
-  "exon/exon-cram",
-  "exon/exon-bigwig",
 ]
 resolver = "2"
 
