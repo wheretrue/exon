@@ -108,6 +108,14 @@ impl ListingMzMLTableOptions {
         }
     }
 
+    /// Set the file extension
+    pub fn with_file_extension(self, file_extension: String) -> Self {
+        Self {
+            file_extension,
+            ..self
+        }
+    }
+
     /// Infer the schema for the table (i.e. the file and partition columns)
     pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut schema_builder = MzMLSchemaBuilder::default();

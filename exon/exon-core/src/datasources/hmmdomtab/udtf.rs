@@ -15,7 +15,7 @@
 use std::sync::Arc;
 
 use super::{
-    hmm_dom_tab_config::HMMDomTabSchemaBuilder,
+    hmm_dom_schema_builder::HMMDomTabSchemaBuilder,
     table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
 };
 use crate::datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction};
