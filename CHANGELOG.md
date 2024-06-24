@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.26.1 (2024-06-24)
+
+### Feat
+
+- molfile record parser (#553)
+- make hmm dom tab extension settable (#547)
+
+### Refactor
+
+- fasta options refactor (#544)
+
 ## v0.26.0 (2024-06-18)
 
 ### Feat
