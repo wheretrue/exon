@@ -41,7 +41,7 @@ use crate::{
     },
 };
 
-use super::{hmm_dom_tab_config::HMMDomTabSchemaBuilder, HMMDomTabScan};
+use super::{hmm_dom_schema_builder::HMMDomTabSchemaBuilder, HMMDomTabScan};
 
 #[derive(Debug, Clone)]
 /// Listing options for a HMM Dom Tab table
@@ -101,6 +101,14 @@ impl ListingHMMDomTabTableOptions {
     pub fn with_table_partition_cols(self, table_partition_cols: Vec<Field>) -> Self {
         Self {
             table_partition_cols,
+            ..self
+        }
+    }
+
+    /// Set the file extension for the table
+    pub fn with_file_extension(self, file_extension: String) -> Self {
+        Self {
+            file_extension,
             ..self
         }
     }
@@ -206,12 +214,26 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        datasources::{ExonFileType, ExonListingTableFactory},
+        datasources::{
+            hmmdomtab::table_provider::ListingHMMDomTabTableOptions, ExonFileType,
+            ExonListingTableFactory,
+        },
         ExonSession,
     };
 
     use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
     use exon_test::test_listing_table_url;
+
+    #[tokio::test]
+    async fn test_settable_file_extension() -> Result<(), Box<dyn std::error::Error>> {
+        let options = ListingHMMDomTabTableOptions::default();
+        assert_eq!(options.file_extension, "hmmdomtab");
+
+        let options_with_hmm = options.with_file_extension("hmm".to_string());
+        assert_eq!(options_with_hmm.file_extension, "hmm");
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {

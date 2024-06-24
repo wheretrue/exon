@@ -14,6 +14,7 @@
 
 //! A datafusion compatible datasource for HMMER3 domain tabular output files.
 
+mod hmm_dom_schema_builder;
 mod hmm_dom_tab_config;
 mod hmm_dom_tab_opener;
 mod hmm_dom_tab_scanner;

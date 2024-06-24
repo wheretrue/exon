@@ -16,41 +16,10 @@ use std::sync::Arc;
 
 use arrow::{
     csv::{reader::Decoder, ReaderBuilder},
-    datatypes::{DataType, Field, Schema, SchemaRef},
+    datatypes::SchemaRef,
 };
-use exon_common::{TableSchema, DEFAULT_BATCH_SIZE};
+use exon_common::DEFAULT_BATCH_SIZE;
 use object_store::ObjectStore;
-
-pub struct HMMDomTabSchemaBuilder {
-    file_fields: Vec<Field>,
-    partition_fields: Vec<Field>,
-}
-
-impl HMMDomTabSchemaBuilder {
-    pub fn add_partition_fields(&mut self, partition_fields: Vec<Field>) {
-        self.partition_fields.extend(partition_fields);
-    }
-
-    pub fn build(self) -> TableSchema {
-        let mut fields = self.file_fields.clone();
-        fields.extend(self.partition_fields);
-
-        let schema = Schema::new(fields);
-
-        let projection: Vec<usize> = (0..self.file_fields.len()).collect();
-
-        TableSchema::new(Arc::new(schema.clone()), projection.clone())
-    }
-}
-
-impl Default for HMMDomTabSchemaBuilder {
-    fn default() -> Self {
-        Self {
-            file_fields: file_fields(),
-            partition_fields: vec![],
-        }
-    }
-}
 
 /// Configuration for a HMMDomTab data source.
 pub struct HMMDomTabConfig {
@@ -96,32 +65,4 @@ impl HMMDomTabConfig {
         self.projection = projection;
         self
     }
-}
-
-fn file_fields() -> Vec<Field> {
-    vec![
-        Field::new("target_name", DataType::Utf8, false),
-        Field::new("target_accession", DataType::Utf8, false),
-        Field::new("tlen", DataType::Int64, false),
-        Field::new("query_name", DataType::Utf8, false),
-        Field::new("accession", DataType::Utf8, false),
-        Field::new("qlen", DataType::Int64, false),
-        Field::new("evalue", DataType::Float64, false),
-        Field::new("sequence_score", DataType::Float64, false),
-        Field::new("bias", DataType::Float64, false),
-        Field::new("domain_number", DataType::Int64, false),
-        Field::new("ndom", DataType::Int64, false),
-        Field::new("conditional_evalue", DataType::Float64, false),
-        Field::new("independent_evalue", DataType::Float64, false),
-        Field::new("domain_score", DataType::Float64, false),
-        Field::new("domain_bias", DataType::Float64, false),
-        Field::new("hmm_from", DataType::Int64, false),
-        Field::new("hmm_to", DataType::Int64, false),
-        Field::new("ali_from", DataType::Int64, false),
-        Field::new("ali_to", DataType::Int64, false),
-        Field::new("env_from", DataType::Int64, false),
-        Field::new("env_to", DataType::Int64, false),
-        Field::new("accuracy", DataType::Float64, false),
-        Field::new("description", DataType::Utf8, false),
-    ]
 }
