@@ -18,7 +18,7 @@ mod data;
 
 use atom::Atom;
 use bond::Bond;
-use data::{Data, Datum};
+use data::Data;
 
 #[derive(Debug)]
 pub struct Molfile {
@@ -51,6 +51,10 @@ impl Molfile {
         &self.bonds
     }
 
+    pub fn data(&self) -> &Data {
+        &self.data
+    }
+
     pub fn parse(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let mut lines = content.lines();
 
@@ -72,7 +76,6 @@ impl Molfile {
         let mut bonds = Vec::with_capacity(bond_count);
         for _ in 0..bond_count {
             let line = lines.next().ok_or("Unexpected end of bond block")?;
-            eprintln!("line: {:?}", line);
             bonds.push(Bond::parse(line)?);
         }
 
@@ -83,7 +86,6 @@ impl Molfile {
         // with the properties and can start the data
         loop {
             let line = lines.next().ok_or("Unexpected end of properties block")?;
-            eprintln!("line: {:?}", line);
             if line.ends_with("END") {
                 break;
             }
@@ -101,8 +103,6 @@ impl Molfile {
             if line == "$$$$" {
                 break;
             }
-
-            eprintln!("line: {:?}", line);
 
             let data_line = lines.next().ok_or("Unexpected end of data block")?;
             data.push(line.to_string(), data_line.to_string());
@@ -175,5 +175,8 @@ $$$$
         assert!(molfile.atom_count == 6);
         assert!(molfile.bond_count == 5);
         assert!(!molfile.data.is_empty());
+        assert!(molfile.data.len() == 2);
+        assert!(molfile.data.get(0).unwrap().header() == "> 25 <MELTING.POINT>");
+        assert!(molfile.data.get(0).unwrap().data() == "179.0 - 183.0");
     }
 }

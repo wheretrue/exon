@@ -45,4 +45,12 @@ impl Data {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Datum> {
+        self.data.get(index)
+    }
 }
