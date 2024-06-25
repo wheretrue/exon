@@ -12,8 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod error;
-pub use error::ExonSDFError;
+#[derive(Debug)]
+pub struct Datum {
+    header: String,
+    data: String,
+}
 
-mod sdfile;
-pub use sdfile::Molfile;
+impl Datum {
+    pub fn new(header: String, data: String) -> Self {
+        Datum { header, data }
+    }
+
+    pub fn header(&self) -> &str {
+        &self.header
+    }
+
+    pub fn data(&self) -> &str {
+        &self.data
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Data {
+    data: Vec<Datum>,
+}
+
+impl Data {
+    pub fn push(&mut self, header: String, data: String) {
+        self.data.push(Datum::new(header, data));
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+}
