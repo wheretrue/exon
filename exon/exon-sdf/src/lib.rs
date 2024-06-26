@@ -15,5 +15,5 @@
 mod error;
 pub use error::ExonSDFError;
 
-mod molfile;
-pub use molfile::Molfile;
+mod sdfile;
+pub use sdfile::Molfile;
