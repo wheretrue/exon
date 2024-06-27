@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Datum {
     header: String,
     data: String,
@@ -32,7 +32,7 @@ impl Datum {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Data {
     data: Vec<Datum>,
 }

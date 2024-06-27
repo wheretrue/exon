@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod io;
+pub use io::Reader;
+
 mod error;
 pub use error::ExonSDFError;
 
 mod sdfile;
-pub use sdfile::Molfile;
+pub use sdfile::Record;
