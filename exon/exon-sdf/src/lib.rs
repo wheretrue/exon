@@ -18,5 +18,7 @@ pub use io::Reader;
 mod error;
 pub use error::ExonSDFError;
 
-mod sdfile;
-pub use sdfile::Record;
+mod record;
+pub use record::Record;
+
+mod array_builder;

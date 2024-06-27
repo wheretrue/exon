@@ -54,3 +54,23 @@ impl Data {
         self.data.get(index)
     }
 }
+
+impl From<Vec<(String, String)>> for Data {
+    fn from(data: Vec<(String, String)>) -> Self {
+        let data = data
+            .iter()
+            .map(|(header, data)| Datum::new(header.clone(), data.clone()))
+            .collect();
+
+        Data { data }
+    }
+}
+
+impl<'a> IntoIterator for &'a Data {
+    type Item = &'a Datum;
+    type IntoIter = std::slice::Iter<'a, Datum>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter()
+    }
+}

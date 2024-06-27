@@ -32,9 +32,9 @@ mod data;
 
 use atom::Atom;
 use bond::Bond;
-use data::Data;
+pub(crate) use data::Data;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Record {
     header: String,
     atom_count: usize,
@@ -67,6 +67,10 @@ impl Record {
 
     pub fn data(&self) -> &Data {
         &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut Data {
+        &mut self.data
     }
 
     fn parse_counts_line(line: &str) -> Result<(usize, usize), Box<dyn std::error::Error>> {
