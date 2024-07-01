@@ -35,7 +35,7 @@ use bond::Bond;
 pub(crate) use data::Data;
 
 #[derive(Debug, PartialEq, Default)]
-pub struct Record {
+pub(crate) struct Record {
     header: String,
     atom_count: usize,
     bond_count: usize,

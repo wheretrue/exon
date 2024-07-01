@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod io;
-pub use io::Reader;
+use arrow::datatypes::SchemaRef;
 
-mod error;
-pub use error::ExonSDFError;
+/// Configuration for a SDF data source.
+#[derive(Debug)]
+pub(crate) struct SDFConfig {
+    pub batch_size: usize,
+    pub file_schema: SchemaRef,
+}
 
-mod record;
-pub(crate) use record::Record;
-
-mod array_builder;
-mod batch_reader;
-mod config;
+impl SDFConfig {
+    pub fn new(batch_size: usize, file_schema: SchemaRef) -> Self {
+        SDFConfig {
+            batch_size,
+            file_schema,
+        }
+    }
+}

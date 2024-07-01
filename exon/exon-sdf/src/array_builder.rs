@@ -76,10 +76,14 @@ impl DataArrayBuilder {
 
         Ok(())
     }
+
+    pub fn finish(&mut self) -> arrow::array::ArrayRef {
+        Arc::new(self.inner.finish())
+    }
 }
 
 // Structured Data File (SDF) Array Builder
-struct SDFArrayBuilder {
+pub(crate) struct SDFArrayBuilder {
     data: DataArrayBuilder,
     n_rows: usize,
 }
@@ -104,6 +108,12 @@ impl SDFArrayBuilder {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    pub fn finish(&mut self) -> Vec<arrow::array::ArrayRef> {
+        let finished_data = self.data.finish();
+
+        vec![finished_data]
     }
 }
 
