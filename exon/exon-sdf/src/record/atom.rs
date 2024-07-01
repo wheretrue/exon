@@ -27,7 +27,7 @@ pub struct Atom {
 }
 
 impl Atom {
-    pub(super) fn parse(line: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn parse(line: &str) -> crate::Result<Self> {
         let parts: Vec<&str> = line.split_whitespace().collect();
         Ok(Atom {
             x: parts[0].parse()?,
@@ -41,45 +41,5 @@ impl Atom {
             stereo_care: parts[8].parse()?,
             valence: parts[9].parse()?,
         })
-    }
-
-    pub fn x(&self) -> f64 {
-        self.x
-    }
-
-    pub fn y(&self) -> f64 {
-        self.y
-    }
-
-    pub fn z(&self) -> f64 {
-        self.z
-    }
-
-    pub fn element(&self) -> &str {
-        &self.element
-    }
-
-    pub fn mass_difference(&self) -> i8 {
-        self.mass_difference
-    }
-
-    pub fn charge(&self) -> i8 {
-        self.charge
-    }
-
-    pub fn stereochemistry(&self) -> i8 {
-        self.stereochemistry
-    }
-
-    pub fn hydrogen_count(&self) -> i8 {
-        self.hydrogen_count
-    }
-
-    pub fn stereo_care(&self) -> i8 {
-        self.stereo_care
-    }
-
-    pub fn valence(&self) -> i8 {
-        self.valence
     }
 }

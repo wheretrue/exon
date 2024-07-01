@@ -2363,6 +2363,13 @@ dependencies = [
 [[package]]
 name = "exon-sdf"
 version = "0.26.1"
+dependencies = [
+ "arrow",
+ "exon-common",
+ "regex",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "exon-test"
