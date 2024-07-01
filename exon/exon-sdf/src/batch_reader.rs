@@ -14,7 +14,7 @@
 
 use std::io::BufRead;
 
-use arrow::{array::RecordBatch, error::ArrowError};
+use arrow::array::RecordBatch;
 
 use crate::config::SDFConfig;
 
@@ -34,14 +34,14 @@ where
         }
     }
 
-    pub fn read_batch(&mut self) -> Result<Option<RecordBatch>, ArrowError> {
+    pub fn read_batch(&mut self) -> crate::Result<Option<RecordBatch>> {
         let file_schema = self.config.file_schema.clone();
         let mut array_builder =
-            crate::array_builder::SDFArrayBuilder::new(file_schema.fields().clone());
+            crate::array_builder::SDFArrayBuilder::new(file_schema.fields().clone())?;
 
         for _ in 0..self.config.batch_size {
             match self.reader.read_record()? {
-                Some(record) => array_builder.append_value(record),
+                Some(record) => array_builder.append_value(record)?,
                 None => break,
             }
         }
@@ -51,46 +51,57 @@ where
         } else {
             let finished_builder = array_builder.finish();
 
-            RecordBatch::try_new(self.config.file_schema.clone(), finished_builder).map(Some)
+            let rb = RecordBatch::try_new(self.config.file_schema.clone(), finished_builder)?;
+            Ok(Some(rb))
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
+    use tracing::Level;
+    use tracing_subscriber::FmtSubscriber;
 
-    use arrow::datatypes::{DataType, Field, Schema};
-
-    use crate::config::SDFConfig;
+    use crate::schema_builder::SDFSchemaBuilder;
 
     use super::*;
 
     #[test]
     fn test_read_batch() {
+        let subscriber = FmtSubscriber::builder()
+            .with_max_level(Level::TRACE)
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("setting default subscriber failed");
+
         let molfile_content = r#"
-        Methane
-        Example
+Methane
+Example
 
-        2  1  0  0  0  0            999 V2000
-            0.0000    0.0000    0.0000 C   0  0  0  0  0  0
-            0.0000    1.0000    0.0000 H   0  0  0  0  0  0
-        1  2  1  0  0  0
-        M  END
-        >  <MELTING.POINT>
-        -182.5
+2  1  0  0  0  0            999 V2000
+    0.0000    0.0000    0.0000 C   0  0  0  0  0  0
+    0.0000    1.0000    0.0000 H   0  0  0  0  0  0
+1  2  1  0  0  0
+M  END
+>  <canonical_smiles>
+CCC
 
-        $$$$
-        "#
+$$$$
+"#
         .trim();
 
-        let mut reader = crate::Reader::new(std::io::Cursor::new(molfile_content));
+        let mut cursor = std::io::Cursor::new(molfile_content);
 
-        let file_schema = Schema::new(vec![Field::new(
-            "data",
-            DataType::Struct(vec![Field::new("canonical_smiles", DataType::Utf8, true)]),
-            true,
-        )]);
+        let sdf_schema = SDFSchemaBuilder::default().build();
+        let file_schema = sdf_schema.file_schema().unwrap();
         let config = crate::config::SDFConfig::new(1, file_schema);
+
+        let mut batch_reader = BatchReader::new(&mut cursor, config);
+
+        let batch = batch_reader.read_batch().unwrap().unwrap();
+
+        assert_eq!(batch.num_columns(), 4);
+        assert_eq!(batch.num_rows(), 1);
     }
 }

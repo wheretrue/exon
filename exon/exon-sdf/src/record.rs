@@ -34,8 +34,10 @@ use atom::Atom;
 use bond::Bond;
 pub(crate) use data::Data;
 
+use crate::ExonSDFError;
+
 #[derive(Debug, PartialEq, Default)]
-pub(crate) struct Record {
+pub struct Record {
     header: String,
     atom_count: usize,
     bond_count: usize,
@@ -81,83 +83,68 @@ impl Record {
     }
 }
 
-impl From<Vec<u8>> for Record {
-    fn from(bytes: Vec<u8>) -> Self {
-        let content = String::from_utf8(bytes).expect("Invalid UTF-8 sequence");
-        Record::from(content.as_str())
+pub(crate) fn parse_to_record(content: &str) -> crate::Result<Record> {
+    tracing::trace!("Parsing SDF content: {:?}", content);
+    let mut lines = content.lines();
+
+    // Parse header (first 3 lines)
+    let header = lines.by_ref().take(3).collect::<Vec<_>>().join("\n");
+
+    // Parse counts line
+    let counts_line = lines.next().expect("Missing counts line");
+    let (atom_count, bond_count) =
+        Record::parse_counts_line(counts_line).expect("Failed to parse counts line");
+
+    // Parse atom block
+    let mut atoms = Vec::with_capacity(atom_count);
+    for _ in 0..atom_count {
+        let line = lines.next().ok_or(ExonSDFError::UnexpectedEndofAtomBlock)?;
+        atoms.push(Atom::parse(line)?);
     }
-}
 
-impl From<&Vec<u8>> for Record {
-    fn from(bytes: &Vec<u8>) -> Self {
-        let content = String::from_utf8(bytes.clone()).expect("Invalid UTF-8 sequence");
-        Record::from(content.as_str())
+    // Parse bond block
+    let mut bonds = Vec::with_capacity(bond_count);
+    for _ in 0..bond_count {
+        let line = lines.next().ok_or(ExonSDFError::UnexpectedEndofBondBlock)?;
+        bonds.push(Bond::parse(line).expect("Failed to parse bond"));
     }
-}
 
-impl From<&str> for Record {
-    fn from(content: &str) -> Self {
-        let mut lines = content.lines();
+    // Parse properties block
+    let mut properties = Vec::new();
 
-        // Parse header (first 3 lines)
-        let header = lines.by_ref().take(3).collect::<Vec<_>>().join("\n");
-
-        // Parse counts line
-        let counts_line = lines.next().expect("Missing counts line");
-        let (atom_count, bond_count) =
-            Record::parse_counts_line(counts_line).expect("Failed to parse counts line");
-
-        // Parse atom block
-        let mut atoms = Vec::with_capacity(atom_count);
-        for _ in 0..atom_count {
-            let line = lines.next().expect("Unexpected end of atom block");
-            atoms.push(Atom::parse(line).expect("Failed to parse atom"));
+    loop {
+        let line = lines.next().expect("Unexpected end of properties block");
+        if line.ends_with("END") {
+            break;
         }
-
-        // Parse bond block
-        let mut bonds = Vec::with_capacity(bond_count);
-        for _ in 0..bond_count {
-            let line = lines.next().expect("Unexpected end of bond block");
-            bonds.push(Bond::parse(line).expect("Failed to parse bond"));
-        }
-
-        // Parse properties block
-        let mut properties = Vec::new();
-
-        loop {
-            let line = lines.next().expect("Unexpected end of properties block");
-            if line.ends_with("END") {
-                break;
-            }
-            properties.push(line);
-        }
-
-        let mut data = Data::default();
-
-        let mut line = lines.next().expect("Unexpected end of data block");
-
-        loop {
-            if line == "$$$$" {
-                break;
-            }
-
-            let data_line = lines.next().expect("Unexpected end of data block");
-            data.push(line.to_string(), data_line.to_string());
-
-            // blank line
-            let _ = lines.next().expect("Unexpected end of data block");
-
-            // next line
-            line = lines.next().expect("Unexpected end of data block");
-        }
-
-        Record {
-            header,
-            atom_count,
-            bond_count,
-            atoms,
-            bonds,
-            data,
-        }
+        properties.push(line);
     }
+
+    let mut data = Data::default();
+
+    let mut line = lines.next().expect("Unexpected end of data block");
+
+    loop {
+        if line.trim_start() == "$$$$" {
+            break;
+        }
+
+        let data_line = lines.next().expect("Unexpected end of data block");
+        data.push(line.to_string(), data_line.to_string());
+
+        // blank line
+        let _ = lines.next().expect("Unexpected end of data block");
+
+        // next line
+        line = lines.next().expect("Unexpected end of data block");
+    }
+
+    Ok(Record {
+        header,
+        atom_count,
+        bond_count,
+        atoms,
+        bonds,
+        data,
+    })
 }

@@ -14,7 +14,7 @@
 
 use std::io::BufRead;
 
-use crate::Record;
+use crate::{record::parse_to_record, Record};
 
 /// A reader for reading records from an SD file.
 pub struct Reader<R> {
@@ -47,7 +47,7 @@ where
     }
 
     /// Read record from the underlying reader.
-    pub fn read_record(&mut self) -> std::io::Result<Option<Record>> {
+    pub fn read_record(&mut self) -> crate::Result<Option<Record>> {
         let mut buf = Vec::new();
         let bytes_read = self.read_record_bytes(&mut buf)?;
 
@@ -55,7 +55,12 @@ where
             return Ok(None);
         }
 
-        let record = Record::from(&buf);
+        let s = match std::str::from_utf8(&buf) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        };
+
+        let record = parse_to_record(s)?;
         Ok(Some(record))
     }
 }

@@ -17,6 +17,7 @@ pub use io::Reader;
 
 mod error;
 pub use error::ExonSDFError;
+pub use error::Result;
 
 mod record;
 pub(crate) use record::Record;
@@ -24,3 +25,8 @@ pub(crate) use record::Record;
 mod array_builder;
 mod batch_reader;
 mod config;
+mod schema_builder;
+
+pub use batch_reader::BatchReader;
+pub use config::SDFConfig;
+pub use schema_builder::SDFSchemaBuilder;

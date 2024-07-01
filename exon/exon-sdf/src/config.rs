@@ -16,7 +16,7 @@ use arrow::datatypes::SchemaRef;
 
 /// Configuration for a SDF data source.
 #[derive(Debug)]
-pub(crate) struct SDFConfig {
+pub struct SDFConfig {
     pub batch_size: usize,
     pub file_schema: SchemaRef,
 }

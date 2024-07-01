@@ -9,3 +9,7 @@ version.workspace = true
 
 [dependencies]
 arrow = { workspace = true }
+exon-common = { path = "../exon-common", version = "0.26.1" }
+tracing = { workspace = true }
+tracing-subscriber = "0.3.18"
+regex = "1"
