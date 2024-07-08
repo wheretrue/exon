@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::io::BufRead;
+use std::{io::BufRead, sync::Arc};
 
-use arrow::array::RecordBatch;
+use arrow::{array::RecordBatch, error::ArrowError};
 
 use crate::config::SDFConfig;
 
 pub struct BatchReader<R> {
     reader: crate::io::Reader<R>,
-    config: crate::config::SDFConfig,
+    config: Arc<crate::config::SDFConfig>,
 }
 
 impl<R> BatchReader<R>
 where
     R: BufRead,
 {
-    pub fn new(inner: R, config: SDFConfig) -> Self {
+    pub fn new(inner: R, config: Arc<SDFConfig>) -> Self {
         BatchReader {
             reader: crate::io::Reader::new(inner),
             config,
@@ -55,10 +55,25 @@ where
             Ok(Some(rb))
         }
     }
+
+    pub fn into_stream(self) -> impl futures::Stream<Item = Result<RecordBatch, ArrowError>> {
+        futures::stream::unfold(self, |mut reader| async move {
+            match reader.read_batch() {
+                Ok(Some(batch)) => Some((Ok(batch), reader)),
+                Ok(None) => None,
+                Err(e) => {
+                    let arrow_error = e.into();
+                    Some((Err(arrow_error), reader))
+                }
+            }
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use tracing::Level;
     use tracing_subscriber::FmtSubscriber;
 
@@ -75,31 +90,23 @@ mod tests {
         tracing::subscriber::set_global_default(subscriber)
             .expect("setting default subscriber failed");
 
-        let molfile_content = r#"
-Methane
-Example
-
-2  1  0  0  0  0            999 V2000
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0
-    0.0000    1.0000    0.0000 H   0  0  0  0  0  0
-1  2  1  0  0  0
-M  END
->  <canonical_smiles>
-CCC
-
-$$$$
-"#
-        .trim();
-
-        let mut cursor = std::io::Cursor::new(molfile_content);
+        let cargo_manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let file_path = format!("{}/test-data/tox_benchmark_N6512.sdf", cargo_manifest);
+        let mut file = std::fs::File::open(file_path)
+            .map(std::io::BufReader::new)
+            .unwrap();
 
         let sdf_schema = SDFSchemaBuilder::default().build();
         let file_schema = sdf_schema.file_schema().unwrap();
-        let config = crate::config::SDFConfig::new(1, file_schema);
 
-        let mut batch_reader = BatchReader::new(&mut cursor, config);
+        let local_store = Arc::new(object_store::local::LocalFileSystem::new());
+        let config = crate::config::SDFConfig::new(local_store, 1, file_schema);
+
+        let mut batch_reader = BatchReader::new(&mut file, Arc::new(config));
 
         let batch = batch_reader.read_batch().unwrap().unwrap();
+
+        eprintln!("{:?}", batch);
 
         assert_eq!(batch.num_columns(), 4);
         assert_eq!(batch.num_rows(), 1);

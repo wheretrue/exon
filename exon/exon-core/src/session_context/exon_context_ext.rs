@@ -148,6 +148,7 @@ impl ExonSession {
             "MZML",
             #[cfg(feature = "fcs")]
             "FCS",
+            "SDF",
         ];
 
         for source in sources {

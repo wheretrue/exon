@@ -1,0 +1,9 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE sdf STORED AS SDF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/sdf/tox_benchmark_N6512.sdf'
+
+query T
+SELECT COUNT(*) FROM sdf;
+----
+2

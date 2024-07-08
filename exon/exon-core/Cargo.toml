@@ -16,6 +16,7 @@ async-trait = { workspace = true }
 bytes = "1.6.0"
 datafusion = { workspace = true }
 exon-bam = { path = "../exon-bam", version = "0.26.1" }
+exon-sdf = { path = "../exon-sdf", version = "0.26.1" }
 exon-bcf = { path = "../exon-bcf", version = "0.26.1" }
 exon-bed = { path = "../exon-bed", version = "0.26.1" }
 exon-cram = { path = "../exon-cram", version = "0.26.1" }

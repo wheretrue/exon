@@ -19,7 +19,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 
-use crate::{record::Data, Record};
+use crate::{record::Data, ExonSDFError, Record};
 
 struct DataArrayBuilder {
     inner: StructBuilder,
@@ -54,9 +54,9 @@ impl DataArrayBuilder {
         Ok(DataArrayBuilder::new(fields.clone()))
     }
 
-    pub fn append_value(&mut self, data: &Data) -> Result<(), arrow::error::ArrowError> {
+    pub fn append_value(&mut self, data: &Data) -> crate::Result<()> {
         for datum in data {
-            let re = regex::Regex::new(r">  <(.*?)>").unwrap();
+            let re = regex::Regex::new(r"<(.*?)>").unwrap();
 
             let parsed = re.captures(datum.header()).ok_or(
                 arrow::error::ArrowError::InvalidArgumentError(format!(
@@ -66,12 +66,10 @@ impl DataArrayBuilder {
             )?;
             let header = parsed.get(1).unwrap().as_str();
 
-            let field_idx = self.field_to_index.get(header).ok_or(
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field {} not found in schema",
-                    datum.header()
-                )),
-            )?;
+            let field_idx = self
+                .field_to_index
+                .get(header)
+                .ok_or(ExonSDFError::MissingDataFieldInSchema(header.to_string()))?;
 
             let value = datum.data();
 

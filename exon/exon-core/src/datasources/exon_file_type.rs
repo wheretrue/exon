@@ -97,6 +97,9 @@ pub enum ExonFileType {
     /// FCS file format.
     #[cfg(feature = "fcs")]
     FCS,
+
+    /// SDF file format.
+    SDF,
 }
 
 impl FromStr for ExonFileType {
@@ -132,6 +135,7 @@ impl FromStr for ExonFileType {
             "FCS" => Ok(Self::FCS),
             "CRAM" => Ok(Self::CRAM),
             "FA" => Ok(Self::FASTA),
+            "SDF" => Ok(Self::SDF),
             _ => Err(ExonError::InvalidFileType(s)),
         }
     }
@@ -166,6 +170,7 @@ impl Display for ExonFileType {
             Self::FCS => write!(f, "FCS"),
             Self::CRAM => write!(f, "CRAM"),
             Self::FA => write!(f, "FA"),
+            Self::SDF => write!(f, "SDF"),
         }
     }
 }

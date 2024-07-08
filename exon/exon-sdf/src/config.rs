@@ -12,18 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
 use arrow::datatypes::SchemaRef;
+use object_store::ObjectStore;
 
 /// Configuration for a SDF data source.
 #[derive(Debug)]
 pub struct SDFConfig {
+    /// The number of rows to read at a time.
     pub batch_size: usize,
+
+    /// The schema of the file.
     pub file_schema: SchemaRef,
+
+    /// The object store to use.
+    pub object_store: Arc<dyn ObjectStore>,
 }
 
 impl SDFConfig {
-    pub fn new(batch_size: usize, file_schema: SchemaRef) -> Self {
+    pub fn new(
+        object_store: Arc<dyn ObjectStore>,
+        batch_size: usize,
+        file_schema: SchemaRef,
+    ) -> Self {
         SDFConfig {
+            object_store,
             batch_size,
             file_schema,
         }

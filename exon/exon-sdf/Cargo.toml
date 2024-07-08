@@ -10,6 +10,8 @@ version.workspace = true
 [dependencies]
 arrow = { workspace = true }
 exon-common = { path = "../exon-common", version = "0.26.1" }
+object_store = { workspace = true }
+regex = "1"
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
-regex = "1"
+futures = { workspace = true }

@@ -121,22 +121,25 @@ pub(crate) fn parse_to_record(content: &str) -> crate::Result<Record> {
     }
 
     let mut data = Data::default();
-
     let mut line = lines.next().expect("Unexpected end of data block");
+
+    eprintln!("line: {:?}", line);
 
     loop {
         if line.trim_start() == "$$$$" {
             break;
         }
 
-        let data_line = lines.next().expect("Unexpected end of data block");
-        data.push(line.to_string(), data_line.to_string());
+        let mut data_string = String::new();
+        loop {
+            line = lines.next().expect("Unexpected end of data block");
+            if line.trim_start() == "$$$$" || line.starts_with(">") {
+                break;
+            }
+            data_string.push_str(line);
+        }
 
-        // blank line
-        let _ = lines.next().expect("Unexpected end of data block");
-
-        // next line
-        line = lines.next().expect("Unexpected end of data block");
+        data.push(line.to_string(), data_string);
     }
 
     Ok(Record {

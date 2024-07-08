@@ -40,7 +40,7 @@ where
                 return Ok(bytes_read);
             }
 
-            if buf.ends_with(b"$$$$\n") {
+            if buf.ends_with(b"$$$$\n") || buf.ends_with(b"$$$$\r\n") {
                 return Ok(bytes_read);
             }
         }
@@ -67,7 +67,6 @@ where
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]
@@ -96,5 +95,13 @@ $$$$
         assert_eq!(record.data().len(), 1);
         assert_eq!(record.atom_count(), 2);
         assert_eq!(record.bond_count(), 1);
+
+        let data = record
+            .data()
+            .into_iter()
+            .map(|d| (d.header(), d.data()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(data, vec![("MELTING.POINT", "-182.5")]);
     }
 }
