@@ -79,7 +79,6 @@ impl Atom {
 
     pub(super) fn parse(line: &str) -> crate::Result<Self> {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        tracing::debug!("parts: {:?}", parts);
 
         let x = parts[0].parse().map_err(|e| {
             crate::ExonSDFError::ParseError(format!("Failed to parse x coordinate: {} {}", line, e))

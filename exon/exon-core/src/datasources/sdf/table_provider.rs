@@ -291,7 +291,21 @@ mod tests {
         };
 
         let data_field_names = data_field.iter().map(|f| f.name()).collect::<Vec<_>>();
-        assert_eq!(data_field_names, vec!["canonical_smiles", "molblock"]);
+        let expected = vec![
+            "canonical_smiles",
+            "CAS_NO",
+            "Source",
+            "Activity",
+            "WDI_Name",
+            "REFERENCE",
+            "MC_Example",
+            "MC_Pred",
+            "DEREK_Example",
+            "DEREK_Pred",
+            "Molecular_Weight",
+            "Set",
+        ];
+        assert_eq!(data_field_names, expected);
 
         Ok(())
     }
