@@ -11,7 +11,7 @@ version = { workspace = true }
 
 [dependencies]
 async-trait = "0.1.80"
-aws-config = { version = "1.5.3" }
+aws-config = { version = "1.5.4" }
 aws-credential-types = { version = "1.2.0" }
 object_store = { workspace = true, features = ["aws"] }
 tokio = { version = "1", features = ["io-util"] }
