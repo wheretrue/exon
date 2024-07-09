@@ -145,7 +145,10 @@ impl ListingSDFTableOptions {
         let reader = std::io::BufReader::new(f);
         let mut sdf_reader = exon_sdf::Reader::new(reader);
 
-        let record = if let Some(r) = sdf_reader.read_record().unwrap() {
+        let record = if let Some(r) = sdf_reader
+            .read_record()
+            .map_err(|e| DataFusionError::Execution(format!("Unable to read record: {}", e)))?
+        {
             r
         } else {
             return Err(DataFusionError::Execution(

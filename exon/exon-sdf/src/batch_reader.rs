@@ -15,6 +15,7 @@
 use std::{io::BufRead, sync::Arc};
 
 use arrow::{array::RecordBatch, error::ArrowError};
+use exon_common::ExonArrayBuilder;
 
 use crate::config::SDFConfig;
 
@@ -36,8 +37,10 @@ where
 
     pub fn read_batch(&mut self) -> crate::Result<Option<RecordBatch>> {
         let file_schema = self.config.file_schema.clone();
-        let mut array_builder =
-            crate::array_builder::SDFArrayBuilder::new(file_schema.fields().clone())?;
+        let mut array_builder = crate::array_builder::SDFArrayBuilder::new(
+            file_schema.fields().clone(),
+            self.config.clone(),
+        )?;
 
         for _ in 0..self.config.batch_size {
             match self.reader.read_record()? {
@@ -49,9 +52,11 @@ where
         if array_builder.is_empty() {
             Ok(None)
         } else {
-            let finished_builder = array_builder.finish();
+            // let finished_builder = array_builder.finish();
 
-            let rb = RecordBatch::try_new(self.config.file_schema.clone(), finished_builder)?;
+            let schema = self.config.projected_schema()?;
+            let rb = array_builder.try_into_record_batch(schema)?;
+
             Ok(Some(rb))
         }
     }
@@ -105,8 +110,6 @@ mod tests {
         let mut batch_reader = BatchReader::new(&mut file, Arc::new(config));
 
         let batch = batch_reader.read_batch().unwrap().unwrap();
-
-        eprintln!("{:?}", batch);
 
         assert_eq!(batch.num_columns(), 4);
         assert_eq!(batch.num_rows(), 1);

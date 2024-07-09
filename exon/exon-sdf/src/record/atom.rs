@@ -17,9 +17,9 @@ pub struct Atom {
     x: f64,
     y: f64,
     z: f64,
-    element: String,
-    mass_difference: i8,
-    charge: i8,
+    element: Option<String>,
+    mass_difference: Option<i8>,
+    charge: Option<i8>,
     stereochemistry: Option<i8>,
     hydrogen_count: Option<i8>,
     stereo_care: Option<i8>,
@@ -31,9 +31,9 @@ impl Atom {
         x: f64,
         y: f64,
         z: f64,
-        element: String,
-        mass_difference: i8,
-        charge: i8,
+        element: Option<String>,
+        mass_difference: Option<i8>,
+        charge: Option<i8>,
         stereochemistry: Option<i8>,
         hydrogen_count: Option<i8>,
         stereo_care: Option<i8>,
@@ -77,12 +77,19 @@ impl Atom {
         let parts: Vec<&str> = line.split_whitespace().collect();
         tracing::debug!("parts: {:?}", parts);
 
-        let x = parts[0].parse()?;
-        let y = parts[1].parse()?;
-        let z = parts[2].parse()?;
-        let element = parts[3].to_string();
-        let mass_difference = parts[4].parse()?;
-        let charge = parts[5].parse()?;
+        let x = parts[0].parse().map_err(|e| {
+            crate::ExonSDFError::ParseError(format!("Failed to parse x coordinate: {} {}", line, e))
+        })?;
+        let y = parts[1].parse().map_err(|e| {
+            crate::ExonSDFError::ParseError(format!("Failed to parse y coordinate: {}", e))
+        })?;
+        let z = parts[2].parse().map_err(|e| {
+            crate::ExonSDFError::ParseError(format!("Failed to parse z coordinate: {}", e))
+        })?;
+
+        let element = parts.get(3).map(|s| s.to_string());
+        let mass_difference = parts.get(4).map(|s| s.parse::<i8>().ok()).flatten();
+        let charge = parts.get(5).map(|s| s.parse::<i8>().ok()).flatten();
 
         let mut atom = Atom::new(
             x,

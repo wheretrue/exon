@@ -17,7 +17,7 @@ pub struct Bond {
     atom1: usize,
     atom2: usize,
     bond_type: u8,
-    stereo: u8,
+    stereo: Option<u8>,
     topology: Option<u8>,
     reacting_center: Option<u8>,
 }
@@ -28,12 +28,13 @@ impl Bond {
 
         let topology = parts.get(4).map(|s| s.parse()).transpose()?;
         let reacting_center = parts.get(5).map(|s| s.parse()).transpose()?;
+        let stereo = parts.get(3).map(|s| s.parse()).transpose()?;
 
         Ok(Bond {
             atom1: parts[0].parse()?,
             atom2: parts[1].parse()?,
             bond_type: parts[2].parse()?,
-            stereo: parts[3].parse()?,
+            stereo,
             topology,
             reacting_center,
         })
@@ -49,9 +50,5 @@ impl Bond {
 
     pub fn bond_type(&self) -> u8 {
         self.bond_type
-    }
-
-    pub fn stereo(&self) -> u8 {
-        self.stereo
     }
 }

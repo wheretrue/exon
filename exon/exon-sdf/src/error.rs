@@ -31,6 +31,7 @@ pub enum ExonSDFError {
     UnexpectedEndofBondBlock,
     FailedToParseBond(String),
     ParseError(String),
+    InvalidColumnIndex(usize),
 }
 
 impl Display for ExonSDFError {
@@ -51,6 +52,7 @@ impl Display for ExonSDFError {
             ExonSDFError::UnexpectedEndofBondBlock => write!(f, "Unexpected end of bond block"),
             ExonSDFError::FailedToParseBond(msg) => write!(f, "Failed to parse bond: {}", msg),
             ExonSDFError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            ExonSDFError::InvalidColumnIndex(idx) => write!(f, "Invalid column index: {}", idx),
         }
     }
 }

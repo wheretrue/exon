@@ -28,6 +28,9 @@ pub struct SDFConfig {
 
     /// The object store to use.
     pub object_store: Arc<dyn ObjectStore>,
+
+    /// Any projections to apply to the resulting batches.
+    pub projection: Option<Vec<usize>>,
 }
 
 impl SDFConfig {
@@ -40,6 +43,36 @@ impl SDFConfig {
             object_store,
             batch_size,
             file_schema,
+            projection: None,
         }
+    }
+
+    /// Get the projection.
+    pub fn projection(&self) -> Vec<usize> {
+        self.projection
+            .clone()
+            .unwrap_or_else(|| (0..self.file_schema.fields().len()).collect())
+    }
+
+    /// Get the projected schema.
+    pub fn projected_schema(&self) -> arrow::error::Result<SchemaRef> {
+        let schema = self.file_schema.project(&self.projection())?;
+
+        Ok(Arc::new(schema))
+    }
+
+    /// Create a new SDF configuration with a given projection.
+    pub fn with_projection(mut self, projection: Vec<usize>) -> Self {
+        // Only include fields that are in the file schema.
+        // TODO: make this cleaner, i.e. projection should probably come
+        // pre-filtered.
+        let file_projection = projection
+            .iter()
+            .filter(|f| **f < self.file_schema.fields().len())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        self.projection = Some(file_projection);
+        self
     }
 }
