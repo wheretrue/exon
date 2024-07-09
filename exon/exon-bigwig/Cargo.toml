@@ -13,7 +13,7 @@ arrow = { workspace = true }
 exon-common = { path = "../exon-common", version = "0.26.1" }
 noodles = { workspace = true, features = ["core"] }
 futures = { workspace = true }
-bigtools = "0.4.3"
+bigtools = "0.5"
 object_store = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

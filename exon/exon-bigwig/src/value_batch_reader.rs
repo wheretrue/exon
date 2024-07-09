@@ -252,7 +252,7 @@ mod tests {
 
         let batch = reader.read_batch()?.ok_or("no batch")?;
 
-        assert_eq!(batch.num_rows(), 5);
+        assert_eq!(batch.num_rows(), 4);
         assert_eq!(batch.num_columns(), 4);
 
         Ok(())
