@@ -27,49 +27,53 @@ pub struct Atom {
 }
 
 impl Atom {
-    fn new(
-        x: f64,
-        y: f64,
-        z: f64,
-        element: Option<String>,
-        mass_difference: Option<i8>,
-        charge: Option<i8>,
-        stereochemistry: Option<i8>,
-        hydrogen_count: Option<i8>,
-        stereo_care: Option<i8>,
-        valence: Option<i8>,
-    ) -> Self {
+    fn new(x: f64, y: f64, z: f64) -> Self {
         Atom {
             x,
             y,
             z,
-            element,
-            mass_difference,
-            charge,
-            stereochemistry,
-            hydrogen_count,
-            stereo_care,
-            valence,
+            element: None,
+            mass_difference: None,
+            charge: None,
+            stereochemistry: None,
+            hydrogen_count: None,
+            stereo_care: None,
+            valence: None,
         }
     }
 
-    fn with_stereochemistry(mut self, stereochemistry: i8) -> Self {
-        self.stereochemistry = Some(stereochemistry);
+    fn with_element_opt(mut self, element: Option<String>) -> Self {
+        self.element = element;
         self
     }
 
-    fn with_hydrogen_count(mut self, hydrogen_count: i8) -> Self {
-        self.hydrogen_count = Some(hydrogen_count);
+    fn with_mass_difference_opt(mut self, mass_difference: Option<i8>) -> Self {
+        self.mass_difference = mass_difference;
         self
     }
 
-    fn with_stereo_care(mut self, stereo_care: i8) -> Self {
-        self.stereo_care = Some(stereo_care);
+    fn with_charge_opt(mut self, charge: Option<i8>) -> Self {
+        self.charge = charge;
         self
     }
 
-    fn with_valence(mut self, valence: i8) -> Self {
-        self.valence = Some(valence);
+    fn with_stereochemistry_opt(mut self, stereochemistry: Option<i8>) -> Self {
+        self.stereochemistry = stereochemistry;
+        self
+    }
+
+    fn with_hydrogen_count_opt(mut self, hydrogen_count: Option<i8>) -> Self {
+        self.hydrogen_count = hydrogen_count;
+        self
+    }
+
+    fn with_stereo_care_opt(mut self, stereo_care: Option<i8>) -> Self {
+        self.stereo_care = stereo_care;
+        self
+    }
+
+    fn with_valence_opt(mut self, valence: Option<i8>) -> Self {
+        self.valence = valence;
         self
     }
 
@@ -88,37 +92,21 @@ impl Atom {
         })?;
 
         let element = parts.get(3).map(|s| s.to_string());
-        let mass_difference = parts.get(4).map(|s| s.parse::<i8>().ok()).flatten();
-        let charge = parts.get(5).map(|s| s.parse::<i8>().ok()).flatten();
+        let mass_difference = parts.get(4).and_then(|s| s.parse::<i8>().ok());
+        let charge = parts.get(5).and_then(|s| s.parse::<i8>().ok());
+        let stereochemistry = parts.get(6).and_then(|s| s.parse::<i8>().ok());
+        let hydrogen_count = parts.get(7).and_then(|s| s.parse::<i8>().ok());
+        let stereo_care = parts.get(8).and_then(|s| s.parse::<i8>().ok());
+        let valence = parts.get(9).and_then(|s| s.parse::<i8>().ok());
 
-        let mut atom = Atom::new(
-            x,
-            y,
-            z,
-            element,
-            mass_difference,
-            charge,
-            None,
-            None,
-            None,
-            None,
-        );
-
-        if parts.len() > 6 {
-            atom = atom.with_stereochemistry(parts[6].parse()?);
-        }
-
-        if parts.len() > 7 {
-            atom = atom.with_hydrogen_count(parts[7].parse()?);
-        }
-
-        if parts.len() > 8 {
-            atom = atom.with_stereo_care(parts[8].parse()?);
-        }
-
-        if parts.len() > 9 {
-            atom = atom.with_valence(parts[9].parse()?);
-        }
+        let atom = Atom::new(x, y, z)
+            .with_element_opt(element)
+            .with_mass_difference_opt(mass_difference)
+            .with_charge_opt(charge)
+            .with_stereochemistry_opt(stereochemistry)
+            .with_hydrogen_count_opt(hydrogen_count)
+            .with_stereo_care_opt(stereo_care)
+            .with_valence_opt(valence);
 
         Ok(atom)
     }
