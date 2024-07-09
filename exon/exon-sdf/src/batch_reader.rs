@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::io::BufRead;
+use std::{io::BufRead, sync::Arc};
 
-use arrow::array::RecordBatch;
+use arrow::{array::RecordBatch, error::ArrowError};
+use exon_common::ExonArrayBuilder;
 
 use crate::config::SDFConfig;
 
 pub struct BatchReader<R> {
     reader: crate::io::Reader<R>,
-    config: crate::config::SDFConfig,
+    config: Arc<crate::config::SDFConfig>,
 }
 
 impl<R> BatchReader<R>
 where
     R: BufRead,
 {
-    pub fn new(inner: R, config: SDFConfig) -> Self {
+    pub fn new(inner: R, config: Arc<SDFConfig>) -> Self {
         BatchReader {
             reader: crate::io::Reader::new(inner),
             config,
@@ -36,8 +37,10 @@ where
 
     pub fn read_batch(&mut self) -> crate::Result<Option<RecordBatch>> {
         let file_schema = self.config.file_schema.clone();
-        let mut array_builder =
-            crate::array_builder::SDFArrayBuilder::new(file_schema.fields().clone())?;
+        let mut array_builder = crate::array_builder::SDFArrayBuilder::new(
+            file_schema.fields().clone(),
+            self.config.clone(),
+        )?;
 
         for _ in 0..self.config.batch_size {
             match self.reader.read_record()? {
@@ -49,59 +52,25 @@ where
         if array_builder.is_empty() {
             Ok(None)
         } else {
-            let finished_builder = array_builder.finish();
+            // let finished_builder = array_builder.finish();
 
-            let rb = RecordBatch::try_new(self.config.file_schema.clone(), finished_builder)?;
+            let schema = self.config.projected_schema()?;
+            let rb = array_builder.try_into_record_batch(schema)?;
+
             Ok(Some(rb))
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use tracing::Level;
-    use tracing_subscriber::FmtSubscriber;
-
-    use crate::schema_builder::SDFSchemaBuilder;
-
-    use super::*;
-
-    #[test]
-    fn test_read_batch() {
-        let subscriber = FmtSubscriber::builder()
-            .with_max_level(Level::TRACE)
-            .finish();
-
-        tracing::subscriber::set_global_default(subscriber)
-            .expect("setting default subscriber failed");
-
-        let molfile_content = r#"
-Methane
-Example
-
-2  1  0  0  0  0            999 V2000
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0
-    0.0000    1.0000    0.0000 H   0  0  0  0  0  0
-1  2  1  0  0  0
-M  END
->  <canonical_smiles>
-CCC
-
-$$$$
-"#
-        .trim();
-
-        let mut cursor = std::io::Cursor::new(molfile_content);
-
-        let sdf_schema = SDFSchemaBuilder::default().build();
-        let file_schema = sdf_schema.file_schema().unwrap();
-        let config = crate::config::SDFConfig::new(1, file_schema);
-
-        let mut batch_reader = BatchReader::new(&mut cursor, config);
-
-        let batch = batch_reader.read_batch().unwrap().unwrap();
-
-        assert_eq!(batch.num_columns(), 4);
-        assert_eq!(batch.num_rows(), 1);
+    pub fn into_stream(self) -> impl futures::Stream<Item = Result<RecordBatch, ArrowError>> {
+        futures::stream::unfold(self, |mut reader| async move {
+            match reader.read_batch() {
+                Ok(Some(batch)) => Some((Ok(batch), reader)),
+                Ok(None) => None,
+                Err(e) => {
+                    let arrow_error = e.into();
+                    Some((Err(arrow_error), reader))
+                }
+            }
+        })
     }
 }

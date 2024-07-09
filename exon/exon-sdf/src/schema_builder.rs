@@ -17,6 +17,8 @@ use std::sync::Arc;
 use arrow::datatypes::{Field, Schema};
 use exon_common::TableSchema;
 
+use crate::record::Data;
+
 /// Builds a schema for an SDF file.
 pub struct SDFSchemaBuilder {
     file_fields: Vec<Field>,
@@ -68,6 +70,17 @@ impl SDFSchemaBuilder {
     /// Adds a partition field to the schema.
     pub fn add_partition_field(&mut self, field: Field) {
         self.partition_fields.push(field);
+    }
+
+    /// Update the data field based on the input data.
+    pub fn update_data_field(&mut self, data: &Data) {
+        let new_fields = data
+            .into_iter()
+            .map(|d| Field::new(d.header(), arrow::datatypes::DataType::Utf8, true))
+            .collect::<Vec<_>>();
+
+        let struct_type = arrow::datatypes::DataType::Struct(new_fields.into());
+        self.file_fields[3] = Field::new("data", struct_type, false);
     }
 
     /// Builds the schema.

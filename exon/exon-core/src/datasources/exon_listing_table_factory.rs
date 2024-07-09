@@ -45,6 +45,7 @@ use super::{
     gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
     hmmdomtab::table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
     sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
+    sdf::{ListingSDFTable, ListingSDFTableOptions},
     vcf::{ListingVCFTable, ListingVCFTableOptions},
 };
 
@@ -337,6 +338,17 @@ impl ExonListingTableFactory {
 
                 let config = ListingFCSTableConfig::new(table_path, options);
                 let table = ListingFCSTable::try_new(config, table_schema)?;
+
+                Ok(Arc::new(table))
+            }
+            ExonFileType::SDF => {
+                let options = ListingSDFTableOptions::default()
+                    .with_table_partition_cols(table_partition_cols);
+
+                let table_schema = options.infer_schema(state, &table_path).await?;
+
+                let config = ExonListingConfig::new_with_options(table_path, options);
+                let table = ListingSDFTable::new(config, table_schema);
 
                 Ok(Arc::new(table))
             }

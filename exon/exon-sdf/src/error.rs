@@ -22,6 +22,7 @@ use std::{
 pub enum ExonSDFError {
     InvalidInput(String),
     MissingDataField,
+    MissingDataFieldInSchema(String),
     Internal(String),
     IoError(std::io::Error),
     ArrowError(arrow::error::ArrowError),
@@ -30,6 +31,7 @@ pub enum ExonSDFError {
     UnexpectedEndofBondBlock,
     FailedToParseBond(String),
     ParseError(String),
+    InvalidColumnIndex(usize),
 }
 
 impl Display for ExonSDFError {
@@ -37,6 +39,9 @@ impl Display for ExonSDFError {
         match self {
             ExonSDFError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
             ExonSDFError::MissingDataField => write!(f, "Missing data field"),
+            ExonSDFError::MissingDataFieldInSchema(msg) => {
+                write!(f, "Missing data field in schema: {}", msg)
+            }
             ExonSDFError::Internal(msg) => {
                 write!(f, "Internal error (please contact the developers): {}", msg)
             }
@@ -47,6 +52,7 @@ impl Display for ExonSDFError {
             ExonSDFError::UnexpectedEndofBondBlock => write!(f, "Unexpected end of bond block"),
             ExonSDFError::FailedToParseBond(msg) => write!(f, "Failed to parse bond: {}", msg),
             ExonSDFError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            ExonSDFError::InvalidColumnIndex(idx) => write!(f, "Invalid column index: {}", idx),
         }
     }
 }
@@ -64,6 +70,12 @@ impl From<std::io::Error> for ExonSDFError {
 impl From<arrow::error::ArrowError> for ExonSDFError {
     fn from(err: arrow::error::ArrowError) -> Self {
         ExonSDFError::ArrowError(err)
+    }
+}
+
+impl From<ExonSDFError> for arrow::error::ArrowError {
+    fn from(err: ExonSDFError) -> Self {
+        arrow::error::ArrowError::ExternalError(Box::new(err))
     }
 }
 

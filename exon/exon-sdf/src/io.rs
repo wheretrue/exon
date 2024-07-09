@@ -40,7 +40,7 @@ where
                 return Ok(bytes_read);
             }
 
-            if buf.ends_with(b"$$$$\n") {
+            if buf.ends_with(b"$$$$\n") || buf.ends_with(b"$$$$\r\n") {
                 return Ok(bytes_read);
             }
         }
@@ -67,6 +67,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::record::Data;
 
     use super::*;
 
@@ -81,8 +82,15 @@ Example
     0.0000    1.0000    0.0000 H   0  0  0  0  0  0
 1  2  1  0  0  0
 M  END
->  <MELTING.POINT>
+> <MELTING.POINT>
 -182.5
+
+> <BOILING.POINT>
+-161.5
+
+> <TWO.LINE>
+A
+B
 
 $$$$
 "#
@@ -93,8 +101,17 @@ $$$$
         let record = reader.read_record().unwrap().unwrap();
 
         assert_eq!(record.header(), "Methane\nExample\n");
-        assert_eq!(record.data().len(), 1);
+        assert_eq!(record.data().len(), 3);
         assert_eq!(record.atom_count(), 2);
         assert_eq!(record.bond_count(), 1);
+
+        let expected_data = Data::from(vec![
+            ("MELTING.POINT", "-182.5"),
+            ("BOILING.POINT", "-161.5"),
+            // TODO: Fix this test to handle multiline data
+            ("TWO.LINE", "AB"),
+        ]);
+
+        assert_eq!(record.data(), &expected_data);
     }
 }

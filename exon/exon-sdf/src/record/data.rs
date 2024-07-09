@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #[derive(Debug, PartialEq)]
 pub struct Datum {
     header: String,
@@ -40,6 +38,10 @@ pub struct Data {
 }
 
 impl Data {
+    pub fn new() -> Self {
+        Data { data: Vec::new() }
+    }
+
     pub fn push(&mut self, header: String, data: String) {
         self.data.push(Datum::new(header, data));
     }
@@ -61,7 +63,18 @@ impl From<Vec<(String, String)>> for Data {
     fn from(data: Vec<(String, String)>) -> Self {
         let data = data
             .iter()
-            .map(|(header, data)| Datum::new(header.clone(), data.clone()))
+            .map(|(header, data)| Datum::new(header.trim().to_string(), data.clone()))
+            .collect();
+
+        Data { data }
+    }
+}
+
+impl From<Vec<(&str, &str)>> for Data {
+    fn from(data: Vec<(&str, &str)>) -> Self {
+        let data = data
+            .iter()
+            .map(|(header, data)| Datum::new(header.trim().to_string(), data.to_string()))
             .collect();
 
         Data { data }

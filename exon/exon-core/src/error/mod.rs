@@ -18,6 +18,7 @@ use arrow::error::ArrowError;
 use datafusion::{error::DataFusionError, sql::sqlparser::parser::ParserError};
 use exon_fasta::ExonFASTAError;
 use exon_gff::ExonGFFError;
+use exon_sdf::ExonSDFError;
 use noodles::bgzf::virtual_position::TryFromU64U16TupleError;
 
 use self::invalid_chrom::InvalidRegionNameError;
@@ -60,6 +61,9 @@ pub enum ExonError {
 
     /// FASTA specific error
     ExonFASTAError(ExonFASTAError),
+
+    /// SDF specific error
+    ExonSDFError(ExonSDFError),
 
     /// SQL Parser error
     ParserError(String),
@@ -152,6 +156,12 @@ impl From<ExonFASTAError> for ExonError {
     }
 }
 
+impl From<ExonSDFError> for ExonError {
+    fn from(error: ExonSDFError) -> Self {
+        ExonError::ExonSDFError(error)
+    }
+}
+
 impl Display for ExonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -166,6 +176,7 @@ impl Display for ExonError {
             ExonError::ParserError(error) => write!(f, "ParserError: {}", error),
             ExonError::UnsupportedFunction(error) => write!(f, "UnsupportedFunction: {}", error),
             ExonError::ExonFASTAError(error) => write!(f, "ExonFASTAError: {}", error),
+            ExonError::ExonSDFError(error) => write!(f, "ExonSDFError: {}", error),
         }
     }
 }

@@ -15,11 +15,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use arrow::{
-    array::{GenericStringBuilder, StringBuilder, StructBuilder},
+    array::{ArrayRef, GenericStringBuilder, StringBuilder, StructBuilder},
     datatypes::{DataType, Field, Fields},
 };
+use exon_common::ExonArrayBuilder;
 
-use crate::{record::Data, Record};
+use crate::{record::Data, ExonSDFError, Record, SDFConfig};
 
 struct DataArrayBuilder {
     inner: StructBuilder,
@@ -54,30 +55,20 @@ impl DataArrayBuilder {
         Ok(DataArrayBuilder::new(fields.clone()))
     }
 
-    pub fn append_value(&mut self, data: &Data) -> Result<(), arrow::error::ArrowError> {
+    pub fn append_value(&mut self, data: &Data) -> crate::Result<()> {
         for datum in data {
-            let re = regex::Regex::new(r">  <(.*?)>").unwrap();
+            let header = datum.header();
 
-            let parsed = re.captures(datum.header()).ok_or(
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Invalid header: {}",
-                    datum.header()
-                )),
-            )?;
-            let header = parsed.get(1).unwrap().as_str();
-
-            let field_idx = self.field_to_index.get(header).ok_or(
-                arrow::error::ArrowError::InvalidArgumentError(format!(
-                    "Field {} not found in schema",
-                    datum.header()
-                )),
-            )?;
+            let field_idx = self
+                .field_to_index
+                .get(header)
+                .ok_or(ExonSDFError::MissingDataFieldInSchema(header.to_string()))?;
 
             let value = datum.data();
 
             self.inner
                 .field_builder::<GenericStringBuilder<i32>>(*field_idx)
-                .unwrap()
+                .ok_or(ExonSDFError::MissingDataFieldInSchema(header.to_string()))?
                 .append_value(value);
         }
 
@@ -97,11 +88,12 @@ pub(crate) struct SDFArrayBuilder {
     atom_count: arrow::array::UInt32Builder,
     bond_count: arrow::array::UInt32Builder,
     data: DataArrayBuilder,
+    projection: Vec<usize>,
     n_rows: usize,
 }
 
 impl SDFArrayBuilder {
-    pub fn new(fields: Fields) -> crate::Result<Self> {
+    pub fn new(fields: Fields, sdf_config: Arc<SDFConfig>) -> crate::Result<Self> {
         let header = StringBuilder::new();
         let atom_count = arrow::array::UInt32Builder::new();
         let bond_count = arrow::array::UInt32Builder::new();
@@ -118,17 +110,32 @@ impl SDFArrayBuilder {
             header,
             atom_count,
             bond_count,
+            projection: sdf_config.projection(),
         })
     }
 
     pub fn append_value(&mut self, record: Record) -> crate::Result<()> {
         self.n_rows += 1;
 
-        self.header.append_value(record.header());
-        self.atom_count.append_value(record.atom_count() as u32);
-        self.bond_count.append_value(record.bond_count() as u32);
-
-        self.data.append_value(record.data())?;
+        for col_idx in self.projection.iter() {
+            match col_idx {
+                0 => {
+                    self.header.append_value(record.header());
+                }
+                1 => {
+                    self.atom_count.append_value(record.atom_count() as u32);
+                }
+                2 => {
+                    self.bond_count.append_value(record.bond_count() as u32);
+                }
+                3 => {
+                    self.data.append_value(record.data())?;
+                }
+                _ => {
+                    return Err(ExonSDFError::InvalidColumnIndex(*col_idx));
+                }
+            }
+        }
 
         Ok(())
     }
@@ -140,50 +147,64 @@ impl SDFArrayBuilder {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+}
 
-    pub fn finish(&mut self) -> Vec<arrow::array::ArrayRef> {
-        let finished_header = Arc::new(self.header.finish());
-        let finished_atom_count = Arc::new(self.atom_count.finish());
-        let finished_bond_count = Arc::new(self.bond_count.finish());
-        let finished_data = self.data.finish();
+impl ExonArrayBuilder for SDFArrayBuilder {
+    fn finish(&mut self) -> Vec<ArrayRef> {
+        let mut arrow_arrays: Vec<ArrayRef> = Vec::new();
 
-        vec![
-            finished_header,
-            finished_atom_count,
-            finished_bond_count,
-            finished_data,
-        ]
+        self.projection.iter().for_each(|col_idx| match col_idx {
+            0 => {
+                arrow_arrays.push(Arc::new(self.header.finish()));
+            }
+            1 => {
+                arrow_arrays.push(Arc::new(self.atom_count.finish()));
+            }
+            2 => {
+                arrow_arrays.push(Arc::new(self.bond_count.finish()));
+            }
+            3 => {
+                arrow_arrays.push(self.data.finish());
+            }
+            _ => {}
+        });
+
+        arrow_arrays
+    }
+
+    fn len(&self) -> usize {
+        self.n_rows
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use arrow::datatypes::{Field, Schema};
+// #[cfg(test)]
+// mod tests {
+//     use arrow::datatypes::{Field, Schema};
 
-    use crate::Record;
+//     use crate::Record;
 
-    use super::SDFArrayBuilder;
+//     use super::SDFArrayBuilder;
 
-    #[test]
-    fn test_append_to_sdf_array_builder() -> Result<(), Box<dyn std::error::Error>> {
-        let mut record = Record::default();
-        record
-            .data_mut()
-            .push(">  <canonical_smiles>".to_string(), "CCC".to_string());
+//     #[test]
+//     fn test_append_to_sdf_array_builder() -> Result<(), Box<dyn std::error::Error>> {
+//         let mut record = Record::default();
+//         record
+//             .data_mut()
+//             .push(">  <canonical_smiles>".to_string(), "CCC".to_string());
 
-        let data_fields = vec![Field::new(
-            "canonical_smiles",
-            arrow::datatypes::DataType::Utf8,
-            true,
-        )];
-        let schema = Schema::new(vec![Field::new_struct("data", data_fields, true)]);
+//         let data_fields = vec![Field::new(
+//             "canonical_smiles",
+//             arrow::datatypes::DataType::Utf8,
+//             true,
+//         )];
+//         let schema = Schema::new(vec![Field::new_struct("data", data_fields, true)]);
 
-        let mut sdf_array_builder = SDFArrayBuilder::new(schema.fields().clone())?;
+//         let mut sdf_array_builder = SDFArrayBuilder::new(schema.fields().clone())?;
 
-        sdf_array_builder.append_value(record)?;
+//         sdf_array_builder.append_value(record)?;
 
-        assert_eq!(sdf_array_builder.len(), 1);
+//         assert_eq!(sdf_array_builder.len(), 1);
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }

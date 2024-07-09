@@ -75,10 +75,22 @@ impl Record {
         &mut self.data
     }
 
-    fn parse_counts_line(line: &str) -> Result<(usize, usize), Box<dyn std::error::Error>> {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        let atom_count = parts[0].parse()?;
-        let bond_count = parts[1].parse()?;
+    fn parse_counts_line(line: &str) -> crate::Result<(usize, usize)> {
+        let line = line.trim_end();
+
+        // Parse the atom and bond counts from their fixed positions
+        let atom_count_str = &line[0..3].trim();
+        let bond_count_str = &line[3..6].trim();
+
+        // Convert the parsed strings to usize
+        let atom_count = atom_count_str.parse().map_err(|_| {
+            ExonSDFError::ParseError(format!("Failed to parse atom count: {}", atom_count_str))
+        })?;
+
+        let bond_count = bond_count_str.parse().map_err(|_| {
+            ExonSDFError::ParseError(format!("Failed to parse bond count: {}", bond_count_str))
+        })?;
+
         Ok((atom_count, bond_count))
     }
 }
@@ -92,8 +104,7 @@ pub(crate) fn parse_to_record(content: &str) -> crate::Result<Record> {
 
     // Parse counts line
     let counts_line = lines.next().expect("Missing counts line");
-    let (atom_count, bond_count) =
-        Record::parse_counts_line(counts_line).expect("Failed to parse counts line");
+    let (atom_count, bond_count) = Record::parse_counts_line(counts_line)?;
 
     // Parse atom block
     let mut atoms = Vec::with_capacity(atom_count);
@@ -122,21 +133,37 @@ pub(crate) fn parse_to_record(content: &str) -> crate::Result<Record> {
 
     let mut data = Data::default();
 
-    let mut line = lines.next().expect("Unexpected end of data block");
+    let re = regex::Regex::new(r"<(.*?)>").unwrap();
 
-    loop {
-        if line.trim_start() == "$$$$" {
+    while let Some(line) = lines.next() {
+        if line == "$$$$" {
             break;
         }
 
-        let data_line = lines.next().expect("Unexpected end of data block");
-        data.push(line.to_string(), data_line.to_string());
+        let parsed = if let Some(line) = re.captures(line) {
+            line
+        } else {
+            return Err(ExonSDFError::ParseError(format!(
+                "Failed to parse data block: {}",
+                line
+            )));
+        };
 
-        // blank line
-        let _ = lines.next().expect("Unexpected end of data block");
+        let header = parsed.get(1).unwrap().as_str();
+        let mut data_string = String::new();
+        loop {
+            let line = lines.next().expect("Unexpected end of data block");
+            if line.trim() == "$$$$" || line.trim() == "" {
+                break;
+            }
+            data_string.push_str(line);
+        }
 
-        // next line
-        line = lines.next().expect("Unexpected end of data block");
+        data.push(header.to_string(), data_string);
+
+        if line.trim() == "$$$$" {
+            break;
+        }
     }
 
     Ok(Record {
