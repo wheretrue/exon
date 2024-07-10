@@ -1091,9 +1091,9 @@ dependencies = [
 
 [[package]]
 name = "bigtools"
-version = "0.4.3"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3991a416f05e8b4b5dc3c21bf86840217cd2fe2f995673d82698803d8e229c61"
+checksum = "94a336849e5d6aa4590c7fb38ef17d388a4c7ccd7b1e4c399419f10d1d185459"
 dependencies = [
  "attohttpc",
  "bincode",
