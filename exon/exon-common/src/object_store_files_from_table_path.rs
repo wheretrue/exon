@@ -36,6 +36,8 @@ pub async fn object_store_files_from_table_path<'a>(
         .map_err(Into::into)
         .try_filter(move |meta| {
             let path = &meta.location;
+            eprintln!("path: {:?}, extension: {:?}", path, file_extension);
+
             let extension_match = path.as_ref().ends_with(file_extension);
             let glob_match = match glob {
                 Some(ref glob) => glob.matches(path.as_ref()),

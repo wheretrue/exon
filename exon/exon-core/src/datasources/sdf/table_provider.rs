@@ -17,6 +17,7 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    common::GetExt,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
         physical_plan::FileScanConfig, TableProvider, TableType,
@@ -97,6 +98,15 @@ impl ListingSDFTableOptions {
         self
     }
 
+    /// Update the file compression type
+    pub fn with_file_compression_type(
+        mut self,
+        file_compression_type: FileCompressionType,
+    ) -> Self {
+        self.file_compression_type = file_compression_type;
+        self
+    }
+
     /// Infer the schema of the files in the table
     pub async fn infer_schema<'a>(
         &'a self,
@@ -105,11 +115,21 @@ impl ListingSDFTableOptions {
     ) -> datafusion::common::Result<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
 
+        let file_extension = if self.file_compression_type.is_compressed() {
+            format!(
+                "{}{}",
+                self.file_extension,
+                self.file_compression_type.get_ext()
+            )
+        } else {
+            self.file_extension.clone()
+        };
+
         let files = exon_common::object_store_files_from_table_path(
             &store,
             table_path.as_ref(),
             table_path.prefix(),
-            self.file_extension.as_str(),
+            file_extension.as_str(),
             None,
         )
         .await;
@@ -218,12 +238,22 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSDFTable<T> {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
+        let file_extension = if self.config.options.file_compression_type().is_compressed() {
+            format!(
+                "{}{}",
+                self.config.options.file_extension(),
+                self.config.options.file_compression_type().get_ext()
+            )
+        } else {
+            self.config.options.file_extension().to_string()
+        };
+
         let file_list = pruned_partition_list(
             state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            self.config.options.file_extension(),
+            file_extension.as_str(),
             self.config.options.table_partition_cols(),
         )
         .await?
