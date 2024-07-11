@@ -81,9 +81,11 @@ impl ExonListingOptions for ListingSDFTableOptions {
 
     async fn create_physical_plan(
         &self,
-        _conf: FileScanConfig,
+        conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        todo!()
+        let scan = SDFScan::new(conf, self.file_compression_type());
+
+        Ok(Arc::new(scan))
     }
 }
 
@@ -242,12 +244,10 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSDFTable<T> {
         .limit_option(limit)
         .build();
 
-        let scan = SDFScan::new(
-            file_scan_config,
-            self.config.options.file_compression_type(),
-        );
-
-        Ok(Arc::new(scan))
+        self.config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await
     }
 }
 
