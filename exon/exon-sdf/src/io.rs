@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::io::BufRead;
+use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
 use crate::{record::parse_to_record, Record};
 
@@ -23,17 +23,17 @@ pub struct Reader<R> {
 
 impl<R> Reader<R>
 where
-    R: BufRead,
+    R: AsyncBufRead + Unpin,
 {
     pub fn new(inner: R) -> Self {
         Reader { inner }
     }
 
     /// Read a single record's bytes from the underlying reader.
-    pub fn read_record_bytes(&mut self, buf: &mut Vec<u8>) -> std::io::Result<usize> {
+    pub async fn read_record_bytes(&mut self, buf: &mut Vec<u8>) -> std::io::Result<usize> {
         let mut bytes_read = 0;
         loop {
-            let n = self.inner.read_until(b'\n', buf)?;
+            let n = self.inner.read_until(b'\n', buf).await?;
             bytes_read += n;
 
             if n == 0 {
@@ -47,9 +47,9 @@ where
     }
 
     /// Read record from the underlying reader.
-    pub fn read_record(&mut self) -> crate::Result<Option<Record>> {
+    pub async fn read_record(&mut self) -> crate::Result<Option<Record>> {
         let mut buf = Vec::new();
-        let bytes_read = self.read_record_bytes(&mut buf)?;
+        let bytes_read = self.read_record_bytes(&mut buf).await?;
 
         if bytes_read == 0 {
             return Ok(None);
@@ -71,8 +71,8 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_read_record() {
+    #[tokio::test]
+    async fn test_read_record() -> crate::Result<()> {
         let molfile_content = r#"
 Methane
 Example
@@ -98,7 +98,7 @@ $$$$
 
         let mut reader = Reader::new(std::io::Cursor::new(molfile_content));
 
-        let record = reader.read_record().unwrap().unwrap();
+        let record = reader.read_record().await?.unwrap();
 
         assert_eq!(record.header(), "Methane\nExample\n");
         assert_eq!(record.data().len(), 3);
@@ -113,5 +113,7 @@ $$$$
         ]);
 
         assert_eq!(record.data(), &expected_data);
+
+        Ok(())
     }
 }

@@ -2370,6 +2370,7 @@ dependencies = [
  "futures",
  "object_store",
  "regex",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]

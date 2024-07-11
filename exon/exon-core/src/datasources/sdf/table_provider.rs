@@ -28,7 +28,8 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 use futures::TryStreamExt;
-use object_store::{GetResultPayload, ObjectMeta, ObjectStore};
+use object_store::{ObjectMeta, ObjectStore};
+use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::{
@@ -135,20 +136,15 @@ impl ListingSDFTableOptions {
             ));
         }
 
-        let f = match store.get(&objects[0].location).await?.payload {
-            GetResultPayload::Stream(_) => {
-                return Err(DataFusionError::Execution(
-                    "Cannot infer schema from stream".to_string(),
-                ));
-            }
-            GetResultPayload::File(f, _) => f,
-        };
+        let stream = store.get(&objects[0].location).await?.into_stream();
 
-        let reader = std::io::BufReader::new(f);
+        let reader = StreamReader::new(stream);
+
         let mut sdf_reader = exon_sdf::Reader::new(reader);
 
         let record = if let Some(r) = sdf_reader
             .read_record()
+            .await
             .map_err(|e| DataFusionError::Execution(format!("Unable to read record: {}", e)))?
         {
             r

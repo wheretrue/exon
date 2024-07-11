@@ -53,6 +53,7 @@ aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/dataso
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/two-cram/twolib.sorted.cram s3://test-bucket/twolib.sorted.cram
 aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/two-cram/twolib.sorted.cram.crai s3://test-bucket/twolib.sorted.cram.crai
 
+aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/datasources/sdf/tox_benchmark_N6512.sdf s3://test-bucket/tox_benchmark_N6512.sdf
 
 # Make the bucket public.
 aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-bucket --acl public-read

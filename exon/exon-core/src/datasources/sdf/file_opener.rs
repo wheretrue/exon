@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::panic;
-use std::{io::BufReader, sync::Arc};
+use std::sync::Arc;
 
-use datafusion::datasource::{
-    file_format::file_compression_type::FileCompressionType, physical_plan::FileOpener,
+use datafusion::{
+    datasource::{
+        file_format::file_compression_type::FileCompressionType, physical_plan::FileOpener,
+    },
+    error::DataFusionError,
 };
 use exon_sdf::SDFConfig;
-use futures::StreamExt;
-use object_store::GetResultPayload;
+use futures::{StreamExt, TryStreamExt};
+use tokio_util::io::StreamReader;
 
 #[derive(Debug)]
 pub struct SDFOpener {
@@ -50,25 +52,16 @@ impl FileOpener for SDFOpener {
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
-            match file_compression_type {
-                FileCompressionType::UNCOMPRESSED => {
-                    let get_request = config.object_store.get(file_meta.location()).await?;
+            let get_result = config.object_store.get(file_meta.location()).await?;
 
-                    match get_request.payload {
-                        GetResultPayload::File(f, _) => {
-                            let reader = BufReader::new(f);
+            let stream = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+            let stream = file_compression_type.convert_stream(stream)?;
+            let stream_reader = StreamReader::new(stream);
 
-                            let batch_reader = exon_sdf::BatchReader::new(reader, config);
+            let batch_reader = exon_sdf::BatchReader::new(stream_reader, config);
 
-                            let stream = batch_reader.into_stream();
-
-                            Ok(stream.boxed())
-                        }
-                        _ => panic!("Expected a file"),
-                    }
-                }
-                _ => panic!("Unsupported compression type"),
-            }
+            let batch_stream = batch_reader.into_stream();
+            Ok(batch_stream.boxed())
         }))
     }
 }

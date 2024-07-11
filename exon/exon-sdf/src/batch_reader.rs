@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{io::BufRead, sync::Arc};
+use std::sync::Arc;
 
 use arrow::{array::RecordBatch, error::ArrowError};
 use exon_common::ExonArrayBuilder;
+use tokio::io::AsyncBufRead;
 
 use crate::config::SDFConfig;
 
@@ -26,7 +27,7 @@ pub struct BatchReader<R> {
 
 impl<R> BatchReader<R>
 where
-    R: BufRead,
+    R: AsyncBufRead + Unpin,
 {
     pub fn new(inner: R, config: Arc<SDFConfig>) -> Self {
         BatchReader {
@@ -35,7 +36,7 @@ where
         }
     }
 
-    pub fn read_batch(&mut self) -> crate::Result<Option<RecordBatch>> {
+    pub async fn read_batch(&mut self) -> crate::Result<Option<RecordBatch>> {
         let file_schema = self.config.file_schema.clone();
         let mut array_builder = crate::array_builder::SDFArrayBuilder::new(
             file_schema.fields().clone(),
@@ -43,7 +44,7 @@ where
         )?;
 
         for _ in 0..self.config.batch_size {
-            match self.reader.read_record()? {
+            match self.reader.read_record().await? {
                 Some(record) => array_builder.append_value(record)?,
                 None => break,
             }
@@ -63,7 +64,7 @@ where
 
     pub fn into_stream(self) -> impl futures::Stream<Item = Result<RecordBatch, ArrowError>> {
         futures::stream::unfold(self, |mut reader| async move {
-            match reader.read_batch() {
+            match reader.read_batch().await {
                 Ok(Some(batch)) => Some((Ok(batch), reader)),
                 Ok(None) => None,
                 Err(e) => {
