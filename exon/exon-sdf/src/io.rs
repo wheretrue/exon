@@ -55,10 +55,7 @@ where
             return Ok(None);
         }
 
-        let s = match std::str::from_utf8(&buf) {
-            Ok(v) => v,
-            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-        };
+        let s = std::str::from_utf8(&buf)?;
 
         let record = parse_to_record(s)?;
         Ok(Some(record))

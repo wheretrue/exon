@@ -156,9 +156,12 @@ impl ListingSDFTableOptions {
             ));
         }
 
-        let stream = store.get(&objects[0].location).await?.into_stream();
+        let get_result = store.get(&objects[0].location).await?;
 
-        let reader = StreamReader::new(stream);
+        let stream = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+        let decompressed_stream = self.file_compression_type().convert_stream(stream)?;
+
+        let reader = StreamReader::new(decompressed_stream);
 
         let mut sdf_reader = exon_sdf::Reader::new(reader);
 

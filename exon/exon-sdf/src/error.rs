@@ -16,6 +16,7 @@ use std::{
     error::Error,
     fmt::Display,
     num::{ParseFloatError, ParseIntError},
+    str::Utf8Error,
 };
 
 #[derive(Debug)]
@@ -70,6 +71,12 @@ impl From<std::io::Error> for ExonSDFError {
 impl From<arrow::error::ArrowError> for ExonSDFError {
     fn from(err: arrow::error::ArrowError) -> Self {
         ExonSDFError::ArrowError(err)
+    }
+}
+
+impl From<Utf8Error> for ExonSDFError {
+    fn from(err: Utf8Error) -> Self {
+        ExonSDFError::ParseError(err.to_string())
     }
 }
 

@@ -16,7 +16,7 @@ O=C1c2ccccc2C(=O)c3c1ccc4c3[nH]c5c6C(=O)c7ccccc7C(=O)c6c8[nH]c9c%10C(=O)c%11cccc
 query T
 SELECT COUNT(*) FROM sdf;
 ----
-100
+6512
 
 statement ok
 DROP TABLE sdf
