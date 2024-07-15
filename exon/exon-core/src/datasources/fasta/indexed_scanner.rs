@@ -92,6 +92,11 @@ impl ExecutionPlan for IndexedFASTAScanner {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn name(&self) -> &str {
+        "IndexedFASTAScanner"
+    }
+
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
     }

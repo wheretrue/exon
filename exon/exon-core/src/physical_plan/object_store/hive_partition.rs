@@ -263,7 +263,7 @@ async fn prune_partitions(
     // let fields: Fields = partition_cols.collect();
     let schema = Arc::new(Schema::new(partition_cols.to_vec()));
 
-    let df_schema = DFSchema::from_unqualifed_fields(
+    let df_schema = DFSchema::from_unqualified_fields(
         partition_cols
             .iter()
             .map(|f| Field::new(f.name(), f.data_type().clone(), f.is_nullable())) // TODO: use qualified name, remove clone

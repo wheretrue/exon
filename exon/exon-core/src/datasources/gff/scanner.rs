@@ -81,6 +81,10 @@ impl ExecutionPlan for GFFScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "GFFScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

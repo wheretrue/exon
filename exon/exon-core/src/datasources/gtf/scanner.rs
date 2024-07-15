@@ -81,6 +81,10 @@ impl ExecutionPlan for GTFScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "GTFScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

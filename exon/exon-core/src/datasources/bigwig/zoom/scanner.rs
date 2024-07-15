@@ -104,6 +104,10 @@ impl ExecutionPlan for Scanner {
         self
     }
 
+    fn name(&self) -> &str {
+        "BigWigScanner"
+    }
+
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
     }

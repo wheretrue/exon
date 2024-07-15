@@ -159,6 +159,7 @@ mod tests {
             output_schema,
             table_partition_cols: vec![],
             overwrite: false,
+            keep_partition_by_columns: false,
         };
 
         let exon_file_type = ExonFileType::FASTA;

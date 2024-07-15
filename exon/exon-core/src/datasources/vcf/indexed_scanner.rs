@@ -86,6 +86,10 @@ impl ExecutionPlan for IndexedVCFScanner {
         self
     }
 
+    fn name(&self) -> &str {
+        "IndexedVCFScanner"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

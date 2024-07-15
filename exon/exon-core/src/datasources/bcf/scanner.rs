@@ -91,6 +91,10 @@ impl ExecutionPlan for BCFScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "BCFScanExec"
+    }
+
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
     }

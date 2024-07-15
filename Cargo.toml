@@ -8,36 +8,36 @@ version = "0.26.1"
 
 [workspace]
 members = [
-  "exon-benchmarks",
-  "exon-examples",
-  "exon/exon-bam",
-  "exon/exon-bcf",
-  "exon/exon-bed",
-  "exon/exon-bigwig",
-  "exon/exon-cli",
-  "exon/exon-common",
-  "exon/exon-core",
-  "exon/exon-cram",
-  "exon/exon-cram",
-  "exon/exon-fasta",
-  "exon/exon-fastq",
-  "exon/exon-fcs",
-  "exon/exon-genbank",
-  "exon/exon-gff",
-  "exon/exon-gtf",
-  "exon/exon-io",
-  "exon/exon-mzml",
-  "exon/exon-sam",
-  "exon/exon-sdf",
-  "exon/exon-test",
-  "exon/exon-vcf",
+	"exon-benchmarks",
+	"exon-examples",
+	"exon/exon-bam",
+	"exon/exon-bcf",
+	"exon/exon-bed",
+	"exon/exon-bigwig",
+	"exon/exon-cli",
+	"exon/exon-common",
+	"exon/exon-core",
+	"exon/exon-cram",
+	"exon/exon-cram",
+	"exon/exon-fasta",
+	"exon/exon-fastq",
+	"exon/exon-fcs",
+	"exon/exon-genbank",
+	"exon/exon-gff",
+	"exon/exon-gtf",
+	"exon/exon-io",
+	"exon/exon-mzml",
+	"exon/exon-sam",
+	"exon/exon-sdf",
+	"exon/exon-test",
+	"exon/exon-vcf",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 arrow = { version = "52.1.0" }
 async-trait = "0.1.80"
-datafusion = { version = "39", features = ["compression", "parquet"] }
+datafusion = { version = "40", features = ["compression", "parquet"] }
 futures = "0.3"
 noodles = { version = "0.77" }
 object_store = { version = "0.10.1" }

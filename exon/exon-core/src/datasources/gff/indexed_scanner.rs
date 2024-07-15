@@ -87,6 +87,10 @@ impl ExecutionPlan for IndexedGffScanner {
         Ok(self.statistics.clone())
     }
 
+    fn name(&self) -> &str {
+        "IndexedGffScanner"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

@@ -96,6 +96,10 @@ impl ExecutionPlan for VCFScan {
         Ok(self.statistics.clone())
     }
 
+    fn name(&self) -> &str {
+        "VCFScan"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

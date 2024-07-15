@@ -79,6 +79,10 @@ impl ExecutionPlan for IndexedBAMScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "IndexedBAMScan"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

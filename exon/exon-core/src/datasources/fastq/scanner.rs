@@ -81,6 +81,10 @@ impl ExecutionPlan for FASTQScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "FASTQScan"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

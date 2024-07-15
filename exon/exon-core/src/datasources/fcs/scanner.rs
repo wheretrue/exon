@@ -87,6 +87,10 @@ impl ExecutionPlan for FCSScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "FCSScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

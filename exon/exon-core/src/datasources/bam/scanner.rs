@@ -93,6 +93,10 @@ impl ExecutionPlan for BAMScan {
         Ok(self.statistics.clone())
     }
 
+    fn name(&self) -> &str {
+        "BAMScan"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

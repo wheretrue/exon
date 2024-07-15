@@ -81,6 +81,10 @@ impl ExecutionPlan for GenbankScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "GenbankScan"
+    }
+
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
     }
