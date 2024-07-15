@@ -86,6 +86,10 @@ impl ExecutionPlan for MzMLScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "MzMLScan"
+    }
+
     fn schema(&self) -> SchemaRef {
         self.projected_schema.clone()
     }

@@ -166,6 +166,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             output_schema: schema.clone(),
             table_partition_cols: vec![],
             overwrite: false,
+            keep_partition_by_columns: false,
         };
 
         let compression_type = logical_node

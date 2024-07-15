@@ -37,7 +37,7 @@ resolver = "2"
 [workspace.dependencies]
 arrow = { version = "52.1.0" }
 async-trait = "0.1.80"
-datafusion = { version = "39", features = ["compression", "parquet"] }
+datafusion = { version = "40", features = ["compression", "parquet"] }
 futures = "0.3"
 noodles = { version = "0.77" }
 object_store = { version = "0.10.1" }

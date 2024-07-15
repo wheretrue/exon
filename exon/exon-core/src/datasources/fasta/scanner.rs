@@ -103,6 +103,10 @@ impl ExecutionPlan for FASTAScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "FASTAScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

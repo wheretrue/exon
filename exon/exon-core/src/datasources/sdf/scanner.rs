@@ -80,6 +80,10 @@ impl ExecutionPlan for SDFScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "SDFScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

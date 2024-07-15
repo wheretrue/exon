@@ -81,6 +81,10 @@ impl ExecutionPlan for CRAMScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "CRAMScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

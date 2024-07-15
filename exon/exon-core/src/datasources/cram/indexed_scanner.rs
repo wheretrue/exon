@@ -79,6 +79,10 @@ impl ExecutionPlan for IndexedCRAMScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "IndexedCRAMScan"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

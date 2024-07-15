@@ -88,6 +88,10 @@ impl ExecutionPlan for HMMDomTabScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "HMMDomTabScan"
+    }
+
     fn repartitioned(
         &self,
         target_partitions: usize,

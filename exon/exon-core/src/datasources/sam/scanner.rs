@@ -79,6 +79,10 @@ impl ExecutionPlan for SAMScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "SAMScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }

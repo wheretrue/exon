@@ -89,6 +89,10 @@ impl ExecutionPlan for BEDScan {
         self
     }
 
+    fn name(&self) -> &str {
+        "BEDScan"
+    }
+
     fn properties(&self) -> &PlanProperties {
         &self.properties
     }
