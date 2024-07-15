@@ -1100,7 +1100,7 @@ dependencies = [
  "byteorder",
  "byteordered",
  "bytes",
- "clap 4.5.7",
+ "clap 4.5.9",
  "crossbeam-channel",
  "crossbeam-utils",
  "futures",
@@ -1338,19 +1338,19 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.7"
+version = "4.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5db83dced34638ad474f39f250d7fea9598bdd239eaced1bdf45d597da0f433f"
+checksum = "64acc1846d54c1fe936a78dc189c34e28d3f5afc348403f28ecf53660b9b8462"
 dependencies = [
  "clap_builder",
- "clap_derive 4.5.5",
+ "clap_derive 4.5.8",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.5.7"
+version = "4.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e204572485eb3fbf28f871612191521df159bc3e15a9f5064c66dba3a8c05f"
+checksum = "6fb8393d67ba2e7bfaf28a23458e4e2b543cc73a99595511eb207fdb8aede942"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1373,9 +1373,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.5.5"
+version = "4.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c780290ccf4fb26629baa7a1081e68ced113f1d3ec302fa5948f1c381ebf06c6"
+checksum = "2bac35c6dafb060fd4d275d9a4ffae97917c13a6327903a8be2153cd964f7085"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -2085,7 +2085,7 @@ dependencies = [
  "arrow",
  "async-trait",
  "bytes",
- "clap 4.5.7",
+ "clap 4.5.9",
  "coitrees",
  "datafusion",
  "exon-bam",
@@ -2170,7 +2170,7 @@ dependencies = [
 name = "exon-benchmarks"
 version = "0.26.1"
 dependencies = [
- "clap 4.5.7",
+ "clap 4.5.9",
  "datafusion",
  "exon",
  "noodles",
@@ -2197,7 +2197,7 @@ dependencies = [
 name = "exon-cli"
 version = "0.26.1"
 dependencies = [
- "clap 4.5.7",
+ "clap 4.5.9",
  "datafusion",
  "datafusion-cli",
  "exon",
@@ -3212,7 +3212,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fefdf21230d6143476a28adbee3d930e2b68a3d56443c777cae3fe9340eebff9"
 dependencies = [
- "clap 4.5.7",
+ "clap 4.5.9",
  "escape8259",
  "termcolor",
  "threadpool",
