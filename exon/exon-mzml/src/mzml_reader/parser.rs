@@ -35,7 +35,7 @@ where
 
     pub fn from_reader(buf_reader: R) -> Self {
         let mut xml_reader = quick_xml::Reader::from_reader(buf_reader);
-        xml_reader.trim_text(false);
+        xml_reader.config_mut().trim_text(true);
 
         Self::new(xml_reader)
     }
@@ -124,7 +124,7 @@ mod tests {
         let buf_reader = tokio::io::BufReader::new(file);
 
         let mut xml_reader = quick_xml::Reader::from_reader(buf_reader);
-        xml_reader.trim_text(false);
+        xml_reader.config_mut().trim_text(false);
 
         let mut mzml_reader = MzMLReader::new(xml_reader);
 
