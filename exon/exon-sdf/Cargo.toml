@@ -10,7 +10,7 @@ version.workspace = true
 
 [dependencies]
 arrow = { workspace = true }
-exon-common = { path = "../exon-common", version = "0.28.0" }
+exon-common = { path = "../exon-common", version = "0.28.1" }
 object_store = { workspace = true }
 regex = "1"
 tracing = { workspace = true }
