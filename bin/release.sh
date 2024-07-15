@@ -3,6 +3,13 @@ set -e
 git cz bump --files-only
 
 VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "exon") | .version')
+
+# if VERSION is empty, then exit
+if [ -z "$VERSION" ]; then
+  echo "Version is empty"
+  exit 1
+fi
+
 echo "Releasing v$VERSION"
 
 sleep 1
