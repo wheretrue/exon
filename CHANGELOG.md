@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v0.27.0 (2024-07-15)
+
+### Feat
+
+- update to df 40 (#575)
+- support async sdf files (#572)
+- update bigwig (#569)
+- start adding sdf (#567)
+- **sdf**: array and batch reader (#562)
+- add sd reader (#556)
+- include data in sd file parsing (#555)
+
 ## v0.26.1 (2024-06-24)
 
 ### Feat
