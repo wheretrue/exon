@@ -17,6 +17,7 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    common::GetExt,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
         physical_plan::FileScanConfig, TableProvider, TableType,
@@ -28,7 +29,8 @@ use datafusion::{
 };
 use exon_common::TableSchema;
 use futures::TryStreamExt;
-use object_store::{GetResultPayload, ObjectMeta, ObjectStore};
+use object_store::{ObjectMeta, ObjectStore};
+use tokio_util::io::StreamReader;
 
 use crate::{
     datasources::{
@@ -81,9 +83,11 @@ impl ExonListingOptions for ListingSDFTableOptions {
 
     async fn create_physical_plan(
         &self,
-        _conf: FileScanConfig,
+        conf: FileScanConfig,
     ) -> datafusion::error::Result<Arc<dyn ExecutionPlan>> {
-        todo!()
+        let scan = SDFScan::new(conf, self.file_compression_type());
+
+        Ok(Arc::new(scan))
     }
 }
 
@@ -91,6 +95,15 @@ impl ListingSDFTableOptions {
     /// Update the table partition columns
     pub fn with_table_partition_cols(mut self, table_partition_cols: Vec<Field>) -> Self {
         self.table_partition_cols = table_partition_cols;
+        self
+    }
+
+    /// Update the file compression type
+    pub fn with_file_compression_type(
+        mut self,
+        file_compression_type: FileCompressionType,
+    ) -> Self {
+        self.file_compression_type = file_compression_type;
         self
     }
 
@@ -102,11 +115,21 @@ impl ListingSDFTableOptions {
     ) -> datafusion::common::Result<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
 
+        let file_extension = if self.file_compression_type.is_compressed() {
+            format!(
+                "{}{}",
+                self.file_extension,
+                self.file_compression_type.get_ext()
+            )
+        } else {
+            self.file_extension.clone()
+        };
+
         let files = exon_common::object_store_files_from_table_path(
             &store,
             table_path.as_ref(),
             table_path.prefix(),
-            self.file_extension.as_str(),
+            file_extension.as_str(),
             None,
         )
         .await;
@@ -133,20 +156,18 @@ impl ListingSDFTableOptions {
             ));
         }
 
-        let f = match store.get(&objects[0].location).await?.payload {
-            GetResultPayload::Stream(_) => {
-                return Err(DataFusionError::Execution(
-                    "Cannot infer schema from stream".to_string(),
-                ));
-            }
-            GetResultPayload::File(f, _) => f,
-        };
+        let get_result = store.get(&objects[0].location).await?;
 
-        let reader = std::io::BufReader::new(f);
+        let stream = Box::pin(get_result.into_stream().map_err(DataFusionError::from));
+        let decompressed_stream = self.file_compression_type().convert_stream(stream)?;
+
+        let reader = StreamReader::new(decompressed_stream);
+
         let mut sdf_reader = exon_sdf::Reader::new(reader);
 
         let record = if let Some(r) = sdf_reader
             .read_record()
+            .await
             .map_err(|e| DataFusionError::Execution(format!("Unable to read record: {}", e)))?
         {
             r
@@ -220,12 +241,22 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSDFTable<T> {
 
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
+        let file_extension = if self.config.options.file_compression_type().is_compressed() {
+            format!(
+                "{}{}",
+                self.config.options.file_extension(),
+                self.config.options.file_compression_type().get_ext()
+            )
+        } else {
+            self.config.options.file_extension().to_string()
+        };
+
         let file_list = pruned_partition_list(
             state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
-            self.config.options.file_extension(),
+            file_extension.as_str(),
             self.config.options.table_partition_cols(),
         )
         .await?
@@ -242,12 +273,10 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSDFTable<T> {
         .limit_option(limit)
         .build();
 
-        let scan = SDFScan::new(
-            file_scan_config,
-            self.config.options.file_compression_type(),
-        );
-
-        Ok(Arc::new(scan))
+        self.config
+            .options
+            .create_physical_plan(file_scan_config)
+            .await
     }
 }
 

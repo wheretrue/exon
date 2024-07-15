@@ -1,6 +1,27 @@
 control substitution on
 
 statement ok
+CREATE EXTERNAL TABLE sdf STORED AS SDF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/sdf/tox_benchmark_N6512.sdf.gz' OPTIONS (compression 'gzip');
+
+query T
+SELECT header, atom_count, bond_count FROM sdf LIMIT 1;
+----
+SciTegic02060916132D 50 60
+
+query T
+SELECT data."canonical_smiles" FROM sdf data LIMIT 1;
+----
+O=C1c2ccccc2C(=O)c3c1ccc4c3[nH]c5c6C(=O)c7ccccc7C(=O)c6c8[nH]c9c%10C(=O)c%11ccccc%11C(=O)c%10ccc9c8c45
+
+query T
+SELECT COUNT(*) FROM sdf;
+----
+6512
+
+statement ok
+DROP TABLE sdf
+
+statement ok
 CREATE EXTERNAL TABLE sdf STORED AS SDF LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/sdf/tox_benchmark_N6512.sdf'
 
 query T
@@ -17,3 +38,27 @@ query T
 SELECT COUNT(*) FROM sdf;
 ----
 6512
+
+statement ok
+DROP TABLE sdf
+
+statement ok
+CREATE EXTERNAL TABLE sdf STORED AS SDF LOCATION 's3://test-bucket/tox_benchmark_N6512.sdf'
+
+query T
+SELECT header, atom_count, bond_count FROM sdf LIMIT 1;
+----
+SciTegic02060916132D 50 60
+
+query T
+SELECT data."canonical_smiles" FROM sdf data LIMIT 1;
+----
+O=C1c2ccccc2C(=O)c3c1ccc4c3[nH]c5c6C(=O)c7ccccc7C(=O)c6c8[nH]c9c%10C(=O)c%11ccccc%11C(=O)c%10ccc9c8c45
+
+query T
+SELECT COUNT(*) FROM sdf;
+----
+6512
+
+statement ok
+DROP TABLE sdf

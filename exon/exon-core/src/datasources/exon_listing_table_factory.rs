@@ -343,6 +343,7 @@ impl ExonListingTableFactory {
             }
             ExonFileType::SDF => {
                 let options = ListingSDFTableOptions::default()
+                    .with_file_compression_type(file_compression_type)
                     .with_table_partition_cols(table_partition_cols);
 
                 let table_schema = options.infer_schema(state, &table_path).await?;
