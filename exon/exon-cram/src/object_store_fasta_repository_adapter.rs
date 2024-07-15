@@ -65,7 +65,10 @@ impl ObjectStoreFastaRepositoryAdapter {
         let index = fai::Reader::new(std::io::Cursor::new(index_bytes)).read_index()?;
 
         let mut index_records = HashMap::new();
-        for record in index {
+
+        let records: Vec<fai::Record> = index.into();
+
+        for record in records {
             let record_name = std::str::from_utf8(record.name()).map_err(|_| {
                 std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid name")
             })?;

@@ -403,7 +403,8 @@ impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions + 'static> T
                         let index_bytes = object_store.get(&index_file_path).await?.bytes().await?;
                         let cursor = std::io::Cursor::new(index_bytes);
 
-                        let index_records = Reader::new(cursor).read_index()?;
+                        let index = Reader::new(cursor).read_index()?;
+                        let index_records: Vec<_> = index.into();
 
                         // TODO: coalesce the regions into contiguous blocks
                         for index_record in index_records {
