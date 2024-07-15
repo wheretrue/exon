@@ -1,5 +1,6 @@
 [package]
 name = "exon-sdf"
+description = "Exon SDF"
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
