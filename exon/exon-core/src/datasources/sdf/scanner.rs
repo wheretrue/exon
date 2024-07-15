@@ -147,7 +147,8 @@ impl ExecutionPlan for SDFScan {
             batch_size,
             self.base_config.file_schema.clone(),
         )
-        .with_projection(self.base_config.file_projection());
+        .with_projection(self.base_config.file_projection())
+        .with_limit_opt(self.base_config.limit);
 
         let opener = SDFOpener::new(Arc::new(config), self.file_compression_type);
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;

@@ -22,6 +22,7 @@ use crate::config::SDFConfig;
 
 pub struct BatchReader<R> {
     reader: crate::io::Reader<R>,
+    n_records: usize,
     config: Arc<crate::config::SDFConfig>,
 }
 
@@ -33,22 +34,29 @@ where
         BatchReader {
             reader: crate::io::Reader::new(inner),
             config,
+            n_records: 0,
         }
     }
 
     pub async fn read_batch(&mut self) -> crate::Result<Option<RecordBatch>> {
+        if self.n_records >= self.config.limit.unwrap_or(usize::MAX) {
+            return Ok(None);
+        }
+
         let file_schema = self.config.file_schema.clone();
         let mut array_builder = crate::array_builder::SDFArrayBuilder::new(
             file_schema.fields().clone(),
             self.config.clone(),
         )?;
 
-        for _ in 0..self.config.batch_size {
+        for _ in 0..self.config.effective_batch_size() {
             match self.reader.read_record().await? {
                 Some(record) => array_builder.append_value(record)?,
                 None => break,
             }
         }
+
+        self.n_records += array_builder.len();
 
         if array_builder.is_empty() {
             Ok(None)

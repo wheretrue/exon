@@ -31,6 +31,9 @@ pub struct SDFConfig {
 
     /// Any projections to apply to the resulting batches.
     pub projection: Option<Vec<usize>>,
+
+    /// The limit of rows to read.
+    pub limit: Option<usize>,
 }
 
 impl SDFConfig {
@@ -44,7 +47,21 @@ impl SDFConfig {
             batch_size,
             file_schema,
             projection: None,
+            limit: None,
         }
+    }
+
+    /// Get the effective batch size, which is the minimum of the batch size
+    /// and the limit.
+    pub fn effective_batch_size(&self) -> usize {
+        self.limit
+            .map_or(self.batch_size, |limit| self.batch_size.min(limit))
+    }
+
+    /// Set the limit.
+    pub fn with_limit_opt(mut self, limit: Option<usize>) -> Self {
+        self.limit = limit;
+        self
     }
 
     /// Get the projection.

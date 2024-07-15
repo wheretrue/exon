@@ -42,6 +42,7 @@ use crate::{
         hmmdomtab::table_provider::{ListingHMMDomTabTable, ListingHMMDomTabTableOptions},
         mzml::table_provider::{ListingMzMLTable, ListingMzMLTableOptions},
         sam::table_provider::{ListingSAMTable, ListingSAMTableOptions},
+        sdf::ListingSDFTableOptions,
         vcf::ListingVCFTable,
     },
     error::ExonError,
@@ -568,6 +569,26 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read an SDF file.
+    pub async fn read_sdf(
+        &self,
+        table_path: &str,
+        options: ListingSDFTableOptions,
+    ) -> Result<DataFrame, ExonError> {
+        let table_path = ListingTableUrl::parse(table_path)?;
+
+        let table_schema = options
+            .infer_schema(&self.session.state(), &table_path)
+            .await?;
+
+        let config = ExonListingConfig::new_with_options(table_path, options);
+        let table = crate::datasources::sdf::ListingSDFTable::new(config, table_schema);
+
+        let table = self.session.read_table(Arc::new(table))?;
+
+        Ok(table)
+    }
+
     /// Read a BigWig zoom file.
     pub async fn read_bigwig_zoom(
         &self,
@@ -672,11 +693,29 @@ mod tests {
             bcf::table_provider::ListingBCFTableOptions, bigwig,
             cram::table_provider::ListingCRAMTableOptions,
             fasta::table_provider::ListingFASTATableOptions,
-            fastq::table_provider::ListingFASTQTableOptions,
+            fastq::table_provider::ListingFASTQTableOptions, sdf::ListingSDFTableOptions,
         },
         session_context::exon_context_ext::ExonSession,
         ExonRuntimeEnvExt,
     };
+
+    #[tokio::test]
+    async fn test_read_sdf() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = ExonSession::new_exon();
+
+        let sdf_path = exon_test::test_path("sdf", "tox_benchmark_N6512.sdf");
+
+        let df = ctx
+            .read_sdf(
+                sdf_path.to_str().unwrap(),
+                ListingSDFTableOptions::default(),
+            )
+            .await?;
+
+        assert_eq!(df.count().await?, 6512);
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_read_fastq() -> Result<(), Box<dyn std::error::Error>> {
