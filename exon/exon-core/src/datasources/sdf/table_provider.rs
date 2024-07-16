@@ -107,6 +107,12 @@ impl ListingSDFTableOptions {
         self
     }
 
+    /// Update the file extension
+    pub fn with_file_extension(mut self, file_extension: String) -> Self {
+        self.file_extension = file_extension;
+        self
+    }
+
     /// Infer the schema of the files in the table
     pub async fn infer_schema<'a>(
         &'a self,
