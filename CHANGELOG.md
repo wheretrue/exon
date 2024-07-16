@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.29.1 (2024-07-16)
+
+### Fix
+
+- add public with_file_extension
+- better header handling
+- remove eprintln
+
 ## v0.29.0 (2024-07-15)
 
 ### Feat
