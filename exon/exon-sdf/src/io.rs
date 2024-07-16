@@ -71,8 +71,8 @@ mod tests {
     #[tokio::test]
     async fn test_read_record() -> crate::Result<()> {
         let molfile_content = r#"
-Methane
-Example
+    Methane
+    Example
 
 2  1  0  0  0  0            999 V2000
     0.0000    0.0000    0.0000 C   0  0  0  0  0  0
@@ -97,7 +97,7 @@ $$$$
 
         let record = reader.read_record().await?.unwrap();
 
-        assert_eq!(record.header(), "Methane\nExample\n");
+        assert_eq!(record.header(), "Methane\nExample");
         assert_eq!(record.data().len(), 3);
         assert_eq!(record.atom_count(), 2);
         assert_eq!(record.bond_count(), 1);

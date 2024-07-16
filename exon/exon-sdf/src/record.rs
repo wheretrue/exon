@@ -100,7 +100,19 @@ pub(crate) fn parse_to_record(content: &str) -> crate::Result<Record> {
     let mut lines = content.lines();
 
     // Parse header (first 3 lines)
-    let header = lines.by_ref().take(3).collect::<Vec<_>>().join("\n");
+    let header = lines
+        .by_ref()
+        .take(3)
+        .filter_map(|l| {
+            let line = l.trim();
+            if line.is_empty() {
+                None
+            } else {
+                Some(line)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     // Parse counts line
     let counts_line = lines.next().expect("Missing counts line");
