@@ -117,7 +117,7 @@ impl ExecutionPlan for SDFScan {
 
     fn schema(&self) -> SchemaRef {
         tracing::trace!("SDF schema: {:#?}", self.projected_schema);
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -145,7 +145,7 @@ impl ExecutionPlan for SDFScan {
         let config = SDFConfig::new(
             object_store,
             batch_size,
-            self.base_config.file_schema.clone(),
+            Arc::clone(&self.base_config.file_schema),
         )
         .with_projection(self.base_config.file_projection())
         .with_limit_opt(self.base_config.limit);

@@ -52,7 +52,7 @@ impl BCFOpener {
 
 impl FileOpener for BCFOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
         let region = self.region.clone();
 
         Ok(Box::pin(async move {

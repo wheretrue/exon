@@ -223,7 +223,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSAMTable<T> {
         let file_schema = self.table_schema.file_schema()?;
         let file_scan_config = FileScanConfig {
             object_store_url,
-            file_schema: file_schema.clone(),
+            file_schema: Arc::clone(&file_schema),
             file_groups: vec![file_list],
             statistics: Statistics::new_unknown(&file_schema),
             projection: projection.cloned(),
@@ -244,7 +244,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSAMTable<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::Arc};
 
     use crate::{
         datasources::{ExonFileType, ExonListingTableFactory},
@@ -271,7 +271,7 @@ mod tests {
             )
             .await?;
 
-        let df = ctx.session.read_table(table.clone())?;
+        let df = ctx.session.read_table(Arc::clone(&table))?;
 
         let mut row_cnt = 0;
         let bs = df.collect().await?;

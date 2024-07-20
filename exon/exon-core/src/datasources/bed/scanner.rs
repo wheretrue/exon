@@ -125,7 +125,7 @@ impl ExecutionPlan for BEDScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -150,7 +150,7 @@ impl ExecutionPlan for BEDScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = BEDConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = BEDConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_n_fields(self.n_fields)
             .with_batch_size(batch_size)
             .with_some_projection(Some(self.base_config.file_projection()));

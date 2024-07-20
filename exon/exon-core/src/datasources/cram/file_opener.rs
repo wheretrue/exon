@@ -38,7 +38,7 @@ impl CRAMOpener {
 
 impl FileOpener for CRAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         Ok(Box::pin(async move {
             let s = config.object_store.get(file_meta.location()).await?;
@@ -56,10 +56,14 @@ impl FileOpener for CRAMOpener {
                 DataFusionError::Execution("Failed to parse CRAM header".to_string())
             })?;
 
-            let batch_stream =
-                AsyncBatchStream::try_new(cram_reader, config.object_store.clone(), header, config)
-                    .await?
-                    .into_stream();
+            let batch_stream = AsyncBatchStream::try_new(
+                cram_reader,
+                Arc::clone(&config.object_store),
+                header,
+                config,
+            )
+            .await?
+            .into_stream();
 
             Ok(batch_stream.boxed())
         }))

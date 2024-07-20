@@ -120,6 +120,7 @@ where
 #[cfg(test)]
 mod tests {
     use object_store::path::Path;
+    use std::sync::Arc;
     use tokio_util::io::StreamReader;
 
     use crate::streaming_bgzf::AsyncBGZFReader;
@@ -140,7 +141,7 @@ mod tests {
 
         let region = "1".parse()?;
         let chunks = crate::datasources::indexed_file::indexed_bgzf_file::IndexedBGZFFile::Vcf
-            .get_byte_range_for_file(object_store.clone(), &object_meta, &region)
+            .get_byte_range_for_file(Arc::clone(&object_store), &object_meta, &region)
             .await?;
         let first_chunk = chunks.first().unwrap();
 

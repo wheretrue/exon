@@ -60,7 +60,7 @@ impl IndexedGffScanner {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
-            region: region.clone(),
+            region: Arc::clone(&region),
             properties,
             statistics,
         })
@@ -115,7 +115,7 @@ impl ExecutionPlan for IndexedGffScanner {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -138,11 +138,11 @@ impl ExecutionPlan for IndexedGffScanner {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let config = GFFConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = GFFConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_batch_size(context.session_config().batch_size())
             .with_projection(self.base_config.file_projection());
 
-        let opener = IndexedGffOpener::new(Arc::new(config), self.region.clone());
+        let opener = IndexedGffOpener::new(Arc::new(config), Arc::clone(&self.region));
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
         Ok(Box::pin(stream) as SendableRecordBatchStream)

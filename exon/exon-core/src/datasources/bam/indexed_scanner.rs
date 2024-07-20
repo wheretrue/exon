@@ -107,7 +107,7 @@ impl ExecutionPlan for IndexedBAMScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -132,11 +132,11 @@ impl ExecutionPlan for IndexedBAMScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = BAMConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = BAMConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_batch_size(batch_size)
             .with_projection(self.base_config.file_projection());
 
-        let opener = IndexedBAMOpener::new(Arc::new(config), self.region.clone());
+        let opener = IndexedBAMOpener::new(Arc::new(config), Arc::clone(&self.region));
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
 

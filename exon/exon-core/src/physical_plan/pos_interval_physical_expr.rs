@@ -214,7 +214,7 @@ impl PhysicalExpr for PosIntervalPhysicalExpr {
         Ok(Arc::new(PosIntervalPhysicalExpr::new(
             self.start,
             self.end,
-            self.inner.clone(),
+            Arc::clone(&self.inner),
         )))
     }
 

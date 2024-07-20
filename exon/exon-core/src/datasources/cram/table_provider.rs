@@ -176,7 +176,7 @@ impl ListingCRAMTableOptions {
         let reference_sequence_repository = match &self.fasta_reference {
             Some(reference) => {
                 let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
-                    store.clone(),
+                    Arc::clone(store),
                     reference.to_string(),
                 )
                 .await?;
@@ -423,9 +423,13 @@ impl TableProvider for ListingCRAMTable {
                 DataFusionError::Execution("Failed to parse CRAM header".to_string())
             })?;
 
-            let file_byte_range =
-                augment_file_with_crai_record_chunks(object_store.clone(), &header, &f, &region)
-                    .await?;
+            let file_byte_range = augment_file_with_crai_record_chunks(
+                Arc::clone(&object_store),
+                &header,
+                &f,
+                &region,
+            )
+            .await?;
 
             file_partition_with_ranges.extend(file_byte_range);
         }

@@ -62,7 +62,7 @@ impl IndexedVCFScanner {
             base_config,
             projected_schema,
             metrics: ExecutionPlanMetricsSet::new(),
-            region: region.clone(),
+            region: Arc::clone(&region),
             properties,
             statistics,
         })
@@ -122,7 +122,7 @@ impl ExecutionPlan for IndexedVCFScanner {
     }
 
     fn schema(&self) -> SchemaRef {
-        let schema = self.projected_schema.clone();
+        let schema = Arc::clone(&self.projected_schema);
         tracing::trace!("VCF schema: {}", schema);
         schema
     }
@@ -149,11 +149,12 @@ impl ExecutionPlan for IndexedVCFScanner {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
+        let file_schema = Arc::clone(&self.base_config.file_schema);
+        let config = VCFConfig::new(object_store, file_schema)
             .with_batch_size(batch_size)
             .with_projection(self.base_config().file_projection());
 
-        let opener = IndexedVCFOpener::new(Arc::new(config), self.region.clone());
+        let opener = IndexedVCFOpener::new(Arc::new(config), Arc::clone(&self.region));
 
         let stream = FileStream::new(&self.base_config, partition, opener, &self.metrics)?;
         Ok(Box::pin(stream) as SendableRecordBatchStream)

@@ -103,7 +103,7 @@ mod tests {
                 .read_fasta(path.to_str().unwrap(), options)
                 .await
                 .unwrap();
-            create_dataset_stream_from_table_provider(df, rt.clone(), &mut stream_ptr)
+            create_dataset_stream_from_table_provider(df, Arc::clone(&rt), &mut stream_ptr)
                 .await
                 .unwrap();
         });

@@ -47,7 +47,7 @@ impl VCFOpener {
 
 impl FileOpener for VCFOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         tracing::debug!(
             "Opening file: {:?} with compression {:?}",

@@ -47,7 +47,7 @@ impl FASTAOpener {
 
 impl FileOpener for FASTAOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let fasta_config = self.config.clone();
+        let fasta_config = Arc::clone(&self.config);
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {

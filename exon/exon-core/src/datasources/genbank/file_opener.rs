@@ -42,7 +42,7 @@ impl GenbankOpener {
 
 impl FileOpener for GenbankOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {
@@ -90,7 +90,9 @@ mod test {
     async fn test_opener() {
         let object_store = Arc::new(LocalFileSystem::new());
 
-        let config = GenbankConfig::new(object_store.clone());
+        let config = GenbankConfig::new(Arc::<object_store::local::LocalFileSystem>::clone(
+            &object_store,
+        ));
         let opener = GenbankOpener::new(Arc::new(config), FileCompressionType::UNCOMPRESSED);
 
         let path = test_listing_table_dir("genbank", "test.gb");

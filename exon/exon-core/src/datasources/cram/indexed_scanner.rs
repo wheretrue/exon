@@ -107,7 +107,7 @@ impl ExecutionPlan for IndexedCRAMScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -134,7 +134,7 @@ impl ExecutionPlan for IndexedCRAMScan {
 
         let config = CRAMConfig::new(
             object_store,
-            self.base_config.file_schema.clone(),
+            Arc::clone(&self.projected_schema),
             self.reference.clone(),
         )
         .with_batch_size(batch_size)

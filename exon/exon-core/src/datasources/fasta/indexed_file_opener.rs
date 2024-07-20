@@ -58,7 +58,7 @@ fn record_batch_stream(
 ) -> impl Stream<Item = arrow::error::Result<RecordBatch>> {
     // Create a single record batch with the sequence literal.
     let record_batch = RecordBatch::try_new(
-        record_schema.clone(),
+        Arc::clone(&record_schema),
         vec![
             Arc::new(StringArray::from(vec![String::from(sequence_name)])),
             Arc::new(StringArray::from(Vec::<Option<String>>::from([None]))),
@@ -79,8 +79,8 @@ impl FileOpener for IndexedFASTAOpener {
         &self,
         file_meta: datafusion::datasource::physical_plan::FileMeta,
     ) -> datafusion::error::Result<datafusion::datasource::physical_plan::FileOpenFuture> {
-        let config = self.config.clone();
-        let schema = self.config.file_schema.clone();
+        let config = Arc::clone(&self.config);
+        let schema = Arc::clone(&self.config.file_schema);
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {

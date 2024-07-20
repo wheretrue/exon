@@ -140,7 +140,11 @@ pub(crate) async fn augment_partitioned_file_with_byte_range(
     let mut new_partition_files = vec![];
 
     let byte_ranges = indexed_file
-        .get_byte_range_for_file(object_store.clone(), &partitioned_file.object_meta, region)
+        .get_byte_range_for_file(
+            Arc::clone(&object_store),
+            &partitioned_file.object_meta,
+            region,
+        )
         .await?;
 
     for byte_range in byte_ranges {

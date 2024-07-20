@@ -46,7 +46,7 @@ impl HMMDomTabConfig {
 
     /// Build a decoder for this configuration.
     pub fn build_decoder(&self) -> Decoder {
-        let builder = ReaderBuilder::new(self.file_schema.clone())
+        let builder = ReaderBuilder::new(Arc::clone(&self.file_schema))
             .with_header(false)
             .with_delimiter(b'\t')
             .with_batch_size(self.batch_size);

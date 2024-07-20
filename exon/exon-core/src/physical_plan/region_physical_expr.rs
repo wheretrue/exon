@@ -217,9 +217,9 @@ impl PhysicalExpr for RegionPhysicalExpr {
         let eval = match self.interval_expr {
             Some(ref interval_expr) => {
                 let binary_expr = BinaryExpr::new(
-                    self.region_name_expr.clone(),
+                    Arc::clone(&self.region_name_expr),
                     datafusion::logical_expr::Operator::And,
-                    interval_expr.clone(),
+                    Arc::clone(interval_expr),
                 );
 
                 binary_expr.evaluate(batch)
@@ -241,7 +241,7 @@ impl PhysicalExpr for RegionPhysicalExpr {
         _children: Vec<std::sync::Arc<dyn PhysicalExpr>>,
     ) -> datafusion::error::Result<std::sync::Arc<dyn PhysicalExpr>> {
         Ok(Arc::new(RegionPhysicalExpr::new(
-            self.region_name_expr.clone(),
+            Arc::clone(&self.region_name_expr),
             self.interval_expr.clone(),
         )))
     }

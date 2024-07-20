@@ -125,7 +125,7 @@ impl ExecutionPlan for VCFScan {
 
     fn schema(&self) -> SchemaRef {
         tracing::trace!("VCF schema: {:#?}", self.projected_schema);
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -150,7 +150,8 @@ impl ExecutionPlan for VCFScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = VCFConfig::new(object_store, self.base_config.file_schema.clone())
+        let file_schema = Arc::clone(&self.base_config.file_schema);
+        let config = VCFConfig::new(object_store, file_schema)
             .with_batch_size(batch_size)
             .with_projection(self.base_config().file_projection());
 

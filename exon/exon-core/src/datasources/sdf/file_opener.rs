@@ -48,7 +48,7 @@ impl FileOpener for SDFOpener {
         &self,
         file_meta: datafusion::datasource::physical_plan::FileMeta,
     ) -> datafusion::error::Result<datafusion::datasource::physical_plan::FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {

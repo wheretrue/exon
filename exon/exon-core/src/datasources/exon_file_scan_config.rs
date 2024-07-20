@@ -44,8 +44,10 @@ impl ExonFileScanConfig for FileScanConfig {
     fn project_with_properties(&self) -> (Arc<Schema>, Statistics, PlanProperties) {
         let (schema, statistics, projected_output_ordering) = self.project();
 
-        let eq_properties =
-            EquivalenceProperties::new_with_orderings(schema.clone(), &projected_output_ordering);
+        let eq_properties = EquivalenceProperties::new_with_orderings(
+            Arc::clone(&schema),
+            &projected_output_ordering,
+        );
 
         let output_partitioning = Partitioning::UnknownPartitioning(self.file_groups.len());
 

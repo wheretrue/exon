@@ -41,9 +41,9 @@ pub(crate) fn filter_matches_partition_cols(
 
                     if table_partition_cols.iter().any(|f| f.name() == name) {
                         return TableProviderFilterPushDown::Exact;
-                    } else {
-                        return TableProviderFilterPushDown::Unsupported;
                     }
+
+                    return TableProviderFilterPushDown::Unsupported;
                 }
             }
         }
