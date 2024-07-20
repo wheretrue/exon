@@ -126,6 +126,8 @@ mod tests {
     use crate::sinks::SimpleRecordSink;
     use crate::ExonSession;
 
+    use std::sync::Arc;
+
     use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
     use datafusion::datasource::listing::PartitionedFile;
     use datafusion::datasource::physical_plan::FileSinkConfig;
@@ -147,7 +149,7 @@ mod tests {
             .unwrap();
 
         let stream = df.execute_stream().await.unwrap();
-        let output_schema = stream.schema().clone();
+        let output_schema = Arc::clone(&stream.schema());
 
         let p_file = PartitionedFile::new("/tmp/test.fa", 0);
 

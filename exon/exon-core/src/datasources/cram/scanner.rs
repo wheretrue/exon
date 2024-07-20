@@ -118,7 +118,7 @@ impl ExecutionPlan for CRAMScan {
 
     fn schema(&self) -> SchemaRef {
         tracing::trace!("CRAM schema: {:#?}", self.projected_schema);
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -145,7 +145,7 @@ impl ExecutionPlan for CRAMScan {
 
         let config = CRAMConfig::new(
             object_store,
-            self.base_config.file_schema.clone(),
+            Arc::clone(&self.base_config.file_schema),
             self.reference.clone(),
         )
         .with_batch_size(batch_size)

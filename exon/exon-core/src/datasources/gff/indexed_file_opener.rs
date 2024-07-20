@@ -51,10 +51,10 @@ impl FileOpener for IndexedGffOpener {
     ) -> datafusion::error::Result<datafusion::datasource::physical_plan::FileOpenFuture> {
         tracing::info!("Opening file: {:?}", file_meta.location());
 
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         // may need to have this do post query, i.e. pass this down
-        let region = self.region.clone();
+        let region = Arc::clone(&self.region);
 
         Ok(Box::pin(async move {
             let index_offsets = file_meta

@@ -97,7 +97,7 @@ impl ScalarUDFImpl for SAMScalarUDF {
 
         match &args[0] {
             datafusion::physical_plan::ColumnarValue::Array(arr) => {
-                let array = sam_flag_function(&[arr.clone()], self.flags)?;
+                let array = sam_flag_function(&[Arc::clone(arr)], self.flags)?;
                 Ok(datafusion::physical_plan::ColumnarValue::Array(array))
             }
             _ => Err(datafusion::error::DataFusionError::Execution(

@@ -46,7 +46,7 @@ impl BEDOpener {
 
 impl FileOpener for BEDOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {

@@ -41,7 +41,7 @@ impl FileOpener for IndexedCRAMOpener {
         &self,
         file_meta: datafusion::datasource::physical_plan::FileMeta,
     ) -> datafusion::error::Result<datafusion::datasource::physical_plan::FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         Ok(Box::pin(async move {
             let FileMeta {
@@ -63,7 +63,8 @@ impl FileOpener for IndexedCRAMOpener {
                 "Reading CRAM file with offset and landmark",
             );
 
-            let buf_reader = buffered::BufReader::new(config.object_store.clone(), &object_meta);
+            let buf_reader =
+                buffered::BufReader::new(Arc::clone(&config.object_store), &object_meta);
 
             let mut cram_reader = noodles::cram::AsyncReader::new(buf_reader);
 

@@ -378,7 +378,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBAMTable<T
             let f = f?;
 
             let file_byte_range = augment_partitioned_file_with_byte_range(
-                object_store.clone(),
+                Arc::clone(&object_store),
                 &f,
                 &region,
                 &IndexedBGZFFile::Bam,

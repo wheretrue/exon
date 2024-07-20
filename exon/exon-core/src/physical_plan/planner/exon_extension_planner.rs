@@ -163,7 +163,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             object_store_url,
             file_groups: vec![p_file],
             table_paths: vec![],
-            output_schema: schema.clone(),
+            output_schema: Arc::clone(&schema),
             table_partition_cols: vec![],
             overwrite: false,
             keep_partition_by_columns: false,

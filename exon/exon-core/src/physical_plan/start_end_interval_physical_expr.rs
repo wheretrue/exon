@@ -193,7 +193,7 @@ impl PhysicalExpr for StartEndIntervalPhysicalExpr {
         Ok(Arc::new(StartEndIntervalPhysicalExpr::new(
             self.start,
             self.end,
-            self.inner.clone(),
+            Arc::clone(&self.inner),
         )))
     }
 

@@ -36,7 +36,7 @@ impl SAMOpener {
 
 impl FileOpener for SAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         Ok(Box::pin(async move {
             let get_result = config.object_store.get(file_meta.location()).await?;

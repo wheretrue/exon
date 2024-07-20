@@ -35,7 +35,7 @@ impl FileOpener {
 
 impl FileOpenerTrait for FileOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         Ok(Box::pin(async move {
             let get_result = config.object_store.get(file_meta.location()).await?;
@@ -45,7 +45,7 @@ impl FileOpenerTrait for FileOpener {
                     let batch_reader =
                         exon_bigwig::value_batch_reader::ValueRecordBatchReader::try_new(
                             &path_buf.display().to_string(),
-                            config.clone(),
+                            Arc::clone(&config),
                         )?;
 
                     let batch_stream = batch_reader.into_stream();

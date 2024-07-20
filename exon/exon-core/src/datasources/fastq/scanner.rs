@@ -109,7 +109,7 @@ impl ExecutionPlan for FASTQScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {

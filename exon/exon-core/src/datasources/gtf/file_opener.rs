@@ -43,7 +43,7 @@ impl GTFOpener {
 
 impl FileOpener for GTFOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let gtf_config = self.config.clone();
+        let gtf_config = Arc::clone(&self.config);
         let file_compression_type = self.file_compression_type;
 
         Ok(Box::pin(async move {

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![warn(missing_docs)]
+#![deny(clippy::clone_on_ref_ptr)]
 
 //! Exon is a library to facilitate open-ended analysis of scientific data, ease the application of ML models, and provide a common data interface for science and engineering teams.
 //!

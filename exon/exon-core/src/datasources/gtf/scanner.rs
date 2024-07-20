@@ -117,7 +117,7 @@ impl ExecutionPlan for GTFScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -140,7 +140,7 @@ impl ExecutionPlan for GTFScan {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let config = GTFConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = GTFConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_batch_size(context.session_config().batch_size())
             .with_some_projection(Some(self.base_config.file_projection()));
 

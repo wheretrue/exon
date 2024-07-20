@@ -46,8 +46,8 @@ impl IndexedBAMOpener {
 
 impl FileOpener for IndexedBAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
-        let region = self.region.clone();
+        let config = Arc::clone(&self.config);
+        let region = Arc::clone(&self.region);
 
         Ok(Box::pin(async move {
             let get_request = config.object_store.get(file_meta.location()).await?;

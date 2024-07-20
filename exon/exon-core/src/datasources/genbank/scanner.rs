@@ -86,7 +86,7 @@ impl ExecutionPlan for GenbankScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn repartitioned(

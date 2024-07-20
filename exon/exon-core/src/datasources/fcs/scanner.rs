@@ -123,7 +123,7 @@ impl ExecutionPlan for FCSScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -148,7 +148,7 @@ impl ExecutionPlan for FCSScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = FCSConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = FCSConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_batch_size(batch_size)
             .with_projection(self.base_config.file_projection());
 

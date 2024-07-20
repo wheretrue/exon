@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
 use arrow::datatypes::{Field, SchemaRef};
 use datafusion::{
     datasource::{listing::PartitionedFile, physical_plan::FileScanConfig},
@@ -39,7 +41,7 @@ impl FileScanConfigBuilder {
         file_schema: SchemaRef,
         file_groups: Vec<Vec<PartitionedFile>>,
     ) -> Self {
-        let statistics = Statistics::new_unknown(&file_schema.clone());
+        let statistics = Statistics::new_unknown(&Arc::clone(&file_schema));
 
         Self {
             object_store_url,

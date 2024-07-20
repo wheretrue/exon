@@ -109,7 +109,7 @@ impl ExecutionPlan for Scanner {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -142,12 +142,14 @@ impl ExecutionPlan for Scanner {
 
         let batch_size = context.session_config().batch_size();
 
-        let config =
-            BigWigZoomConfig::new_with_schema(object_store, self.base_config.file_schema.clone())
-                .with_batch_size(batch_size)
-                .with_reduction_level(self.reduction_level)
-                .with_some_interval(self.region_filter.clone())
-                .with_some_projection(Some(self.base_config.file_projection()));
+        let config = BigWigZoomConfig::new_with_schema(
+            object_store,
+            Arc::clone(&self.base_config.file_schema),
+        )
+        .with_batch_size(batch_size)
+        .with_reduction_level(self.reduction_level)
+        .with_some_interval(self.region_filter.clone())
+        .with_some_projection(Some(self.base_config.file_projection()));
 
         let opener = FileOpener::new(Arc::new(config));
 

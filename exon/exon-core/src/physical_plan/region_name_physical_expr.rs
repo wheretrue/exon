@@ -253,7 +253,7 @@ impl PhysicalExpr for RegionNamePhysicalExpr {
         Ok(Arc::new(RegionNamePhysicalExpr::new(
             self.field_name.clone(),
             self.field_value.clone(),
-            self.inner.clone(),
+            Arc::clone(&self.inner),
         )))
     }
 

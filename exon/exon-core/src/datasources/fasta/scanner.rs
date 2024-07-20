@@ -139,7 +139,7 @@ impl ExecutionPlan for FASTAScan {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -164,7 +164,7 @@ impl ExecutionPlan for FASTAScan {
 
         let batch_size = context.session_config().batch_size();
 
-        let config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = FASTAConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_batch_size(batch_size)
             .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity)
             .with_sequence_data_type(self.sequence_data_type.clone())

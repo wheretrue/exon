@@ -98,7 +98,7 @@ impl ExecutionPlan for IndexedFASTAScanner {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.projected_schema.clone()
+        Arc::clone(&self.projected_schema)
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
@@ -152,7 +152,7 @@ impl ExecutionPlan for IndexedFASTAScanner {
             .runtime_env()
             .object_store(&self.base_config.object_store_url)?;
 
-        let config = FASTAConfig::new(object_store, self.base_config.file_schema.clone())
+        let config = FASTAConfig::new(object_store, Arc::clone(&self.base_config.file_schema))
             .with_batch_size(context.session_config().batch_size())
             .with_fasta_sequence_buffer_capacity(self.fasta_sequence_buffer_capacity)
             .with_projection(self.base_config.file_projection());

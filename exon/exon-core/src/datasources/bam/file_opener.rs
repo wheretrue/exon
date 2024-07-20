@@ -37,7 +37,7 @@ impl BAMOpener {
 
 impl FileOpener for BAMOpener {
     fn open(&self, file_meta: FileMeta) -> datafusion::error::Result<FileOpenFuture> {
-        let config = self.config.clone();
+        let config = Arc::clone(&self.config);
 
         Ok(Box::pin(async move {
             let get_request = config.object_store.get(file_meta.location()).await?;
