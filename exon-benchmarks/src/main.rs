@@ -221,7 +221,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Count: {}", cnt);
         }
         Some(Commands::FASTACodonScan { path, compression }) => {
-            let options = ListingFASTATableOptions::new(compression.unwrap());
+            let compression = compression.unwrap_or(FileCompressionType::UNCOMPRESSED);
+            let options = ListingFASTATableOptions::new(compression);
 
             let ctx = ExonSession::new_exon();
 
