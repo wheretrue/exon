@@ -20,7 +20,7 @@ use datafusion::{
 use exon::{
     datasources::{
         fasta::table_provider::ListingFASTATableOptions,
-        mzml::table_provider::ListingMzMLTableOptions,
+        mzml::table_provider::ListingMzMLTableOptions, sdf::ListingSDFTableOptions,
     },
     new_exon_config, ExonRuntimeEnvExt, ExonSession,
 };
@@ -84,6 +84,12 @@ enum Commands {
         #[arg(short, long)]
         compression: Option<FileCompressionType>,
     },
+    /// SDF Query
+    SDFQuery {
+        /// which path to use
+        #[arg(short, long)]
+        path: String,
+    },
 }
 
 #[derive(Parser)]
@@ -108,6 +114,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     match &cli.command {
+        Some(Commands::SDFQuery { path }) => {
+            let path = path.as_str();
+
+            let ctx = ExonSession::new_exon();
+            ctx.session
+                .runtime_env()
+                .exon_register_object_store_uri(path)
+                .await?;
+
+            let options = ListingSDFTableOptions::default()
+                .with_file_compression_type(FileCompressionType::GZIP);
+
+            let sdf_read = ctx.read_sdf(path, options).await?;
+
+            let count = sdf_read.count().await?;
+            eprintln!("Count: {}", count);
+        }
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
 
