@@ -12,7 +12,6 @@ version.workspace = true
 clap = { version = "4", features = ["derive"] }
 datafusion = { workspace = true }
 exon = { path = "../exon/exon-core", features = ["all"] }
-noodles = { workspace = true, features = ["core", "vcf", "bgzf"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"

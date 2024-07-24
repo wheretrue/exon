@@ -16,4 +16,3 @@ futures = { workspace = true }
 bigtools = "0.5"
 object_store = { workspace = true }
 tokio = { workspace = true }
-tokio-util = { workspace = true }

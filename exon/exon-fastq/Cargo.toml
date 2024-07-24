@@ -17,4 +17,3 @@ futures = { workspace = true }
 noodles = { workspace = true, features = ["async", "fastq"] }
 object_store = { workspace = true }
 tokio = { workspace = true }
-tokio-util = { workspace = true }

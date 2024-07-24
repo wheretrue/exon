@@ -2086,7 +2086,6 @@ dependencies = [
  "async-trait",
  "bytes",
  "clap 4.5.9",
- "coitrees",
  "datafusion",
  "exon-bam",
  "exon-bcf",
@@ -2134,7 +2133,6 @@ dependencies = [
  "exon-common",
  "exon-sam",
  "futures",
- "itertools 0.13.0",
  "noodles",
  "object_store",
  "tokio",
@@ -2163,7 +2161,6 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -2173,7 +2170,6 @@ dependencies = [
  "clap 4.5.9",
  "datafusion",
  "exon",
- "noodles",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -2190,7 +2186,6 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -2254,7 +2249,6 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -2307,7 +2301,6 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -2357,7 +2350,6 @@ dependencies = [
  "arrow",
  "exon-common",
  "futures",
- "itertools 0.13.0",
  "noodles",
  "object_store",
  "tokio",
@@ -2374,7 +2366,6 @@ dependencies = [
  "regex",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
