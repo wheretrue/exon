@@ -14,11 +14,11 @@ exon-common = { path = "../exon-common", version = "0.29.1" }
 exon-sam = { path = "../exon-sam", version = "0.29.1" }
 futures = { workspace = true }
 noodles = { workspace = true, features = [
-	"core",
-	"async",
-	"bam",
-	"sam",
-	"bgzf",
+  "core",
+  "async",
+  "bam",
+  "sam",
+  "bgzf",
 ] }
 object_store = { workspace = true }
 tokio = { workspace = true }
