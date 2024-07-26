@@ -12,13 +12,66 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
 use clap::Parser;
 use datafusion::error::{DataFusionError, Result};
+use datafusion::execution::context::SessionState;
+use datafusion::execution::TaskContext;
+use datafusion::logical_expr::LogicalPlan;
+use datafusion::prelude::DataFrame;
+use datafusion_cli::cli_context::CliSessionContext;
 use datafusion_cli::exec;
 use datafusion_cli::print_format::PrintFormat;
 use datafusion_cli::print_options::{MaxRows, PrintOptions};
 use exon::{new_exon_config, ExonSession};
+use object_store::ObjectStore;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+struct ExonCLISession {
+    exon_session: ExonSession,
+}
+
+impl Default for ExonCLISession {
+    fn default() -> Self {
+        let config = new_exon_config();
+        let exon_session = ExonSession::with_config_exon(config);
+
+        Self { exon_session }
+    }
+}
+
+#[async_trait::async_trait]
+impl CliSessionContext for ExonCLISession {
+    fn task_ctx(&self) -> Arc<TaskContext> {
+        self.exon_session.session.task_ctx()
+    }
+
+    fn session_state(&self) -> SessionState {
+        self.exon_session.session.state()
+    }
+
+    fn register_table_options_extension_from_scheme(&self, _scheme: &str) {
+        unimplemented!()
+    }
+
+    fn register_object_store(
+        &self,
+        url: &url::Url,
+        object_store: Arc<dyn ObjectStore>,
+    ) -> Option<Arc<dyn ObjectStore + 'static>> {
+        self.exon_session
+            .session
+            .register_object_store(url, object_store)
+    }
+
+    /// Execute a logical plan and return a DataFrame.
+    async fn execute_logical_plan(&self, plan: LogicalPlan) -> Result<DataFrame, DataFusionError> {
+        let df = self.exon_session.session.execute_logical_plan(plan).await?;
+
+        Ok(df)
+    }
+}
 
 #[derive(Debug, Parser, PartialEq)]
 struct Args {
@@ -61,8 +114,7 @@ pub async fn main() -> Result<()> {
     let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let config = new_exon_config();
-    let mut ctx = ExonSession::with_config_exon(config);
+    let mut ctx = ExonCLISession::default();
 
     let mut print_options = PrintOptions {
         format: args.format,
@@ -75,17 +127,17 @@ pub async fn main() -> Result<()> {
     let files = args.file;
 
     if commands.is_empty() && files.is_empty() {
-        return exec::exec_from_repl(&mut ctx.session, &mut print_options)
+        return exec::exec_from_repl(&mut ctx, &mut print_options)
             .await
             .map_err(|e| DataFusionError::External(Box::new(e)));
     }
 
     if !commands.is_empty() {
-        exec::exec_from_commands(&mut ctx.session, commands, &print_options).await?;
+        exec::exec_from_commands(&mut ctx, commands, &print_options).await?;
     }
 
     if !files.is_empty() {
-        exec::exec_from_files(&mut ctx.session, files, &print_options).await?;
+        exec::exec_from_files(&mut ctx, files, &print_options).await?;
     }
 
     Ok(())
