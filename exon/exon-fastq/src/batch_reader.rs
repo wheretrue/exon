@@ -14,6 +14,8 @@
 
 use std::sync::Arc;
 
+use exon_common::ExonArrayBuilder;
+
 use arrow::record_batch::RecordBatch;
 use noodles::fastq;
 
@@ -59,7 +61,7 @@ where
     }
 
     async fn read_batch(&mut self, batch_size: usize) -> ExonFastqResult<Option<RecordBatch>> {
-        let mut array = FASTQArrayBuilder::with_capacity(batch_size);
+        let mut array = FASTQArrayBuilder::with_capacity(batch_size, self.config.projection());
         let mut record = fastq::Record::default(); // Allocate once
 
         for _ in 0..batch_size {
@@ -73,15 +75,9 @@ where
             return Ok(None);
         }
 
-        let batch = RecordBatch::try_new(self.config.file_schema.clone(), array.finish())?;
+        let schema = self.config.projected_schema()?;
+        let batch = array.try_into_record_batch(schema)?;
 
-        match &self.config.projection {
-            Some(projection) => {
-                let projected_batch = batch.project(projection)?;
-
-                Ok(Some(projected_batch))
-            }
-            None => Ok(Some(batch)),
-        }
+        Ok(Some(batch))
     }
 }

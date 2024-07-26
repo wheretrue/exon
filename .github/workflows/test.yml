@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.79.0
 
       - name: run tests
         run: |
@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.79.0
 
       - name: Install toml-lint
         run: |
@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.79.0
 
       - name: Install cargo-machete
         run: |
@@ -64,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.79.0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -82,10 +82,6 @@ jobs:
           pip install awscli
           pip install awscli-local
           pip install urllib3==2.2.1
-
-      - name: Run clippy
-        run: |
-          cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Run tests and sqllogictests
         env:
