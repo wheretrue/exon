@@ -2261,7 +2261,6 @@ dependencies = [
  "noodles",
  "object_store",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]

@@ -76,5 +76,11 @@ SELECT COUNT(*) FROM fastq_table;
 ----
 2
 
+query T
+SELECT name, COUNT(*) FROM fastq_table GROUP BY name;
+----
+SEQ_ID 1
+SEQ_ID2 1
+
 statement ok
 DROP TABLE fastq_table;

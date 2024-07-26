@@ -19,6 +19,7 @@ pub enum ExonFastqError {
     Arrow(arrow::error::ArrowError),
     Parse(String),
     IO(std::io::Error),
+    InvalidColumnIndex(usize),
 }
 
 impl Error for ExonFastqError {}
@@ -31,6 +32,9 @@ impl Display for ExonFastqError {
             ExonFastqError::Arrow(error) => write!(f, "Arrow error: {}", error),
             ExonFastqError::Parse(msg) => write!(f, "Parse error: {}", msg),
             ExonFastqError::IO(error) => write!(f, "IO error: {}", error),
+            ExonFastqError::InvalidColumnIndex(idx) => {
+                write!(f, "Invalid column index: {}", idx)
+            }
         }
     }
 }
