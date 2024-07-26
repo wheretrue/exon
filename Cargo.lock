@@ -2192,13 +2192,16 @@ dependencies = [
 name = "exon-cli"
 version = "0.29.1"
 dependencies = [
+ "async-trait",
  "clap 4.5.10",
  "datafusion",
  "datafusion-cli",
  "exon",
+ "object_store",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

@@ -13,7 +13,10 @@ version.workspace = true
 datafusion-cli = { version = "40" }
 clap = { version = "4", features = ["derive", "cargo"] }
 datafusion = { workspace = true }
+object_store = { workspace = true }
 exon = { path = "../exon-core", version = "0.29.1", features = ["default"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+url = { workspace = true }
+async-trait = { workspace = true }
