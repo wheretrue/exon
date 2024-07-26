@@ -93,7 +93,7 @@ impl FASTQArrayBuilder {
                     self.quality_scores.append_value(quality);
                 }
                 _ => {
-                    return Err(ExonFastqError::InvalidColumnIndex(*col_idx).into());
+                    return Err(ExonFastqError::InvalidColumnIndex(*col_idx));
                 }
             }
         }
@@ -112,7 +112,7 @@ impl FASTQArrayBuilder {
                 2 => arrays.push(Arc::new(self.sequences.finish())),
                 3 => arrays.push(Arc::new(self.quality_scores.finish())),
                 c => {
-                    return Err(ExonFastqError::InvalidColumnIndex(*c).into());
+                    return Err(ExonFastqError::InvalidColumnIndex(*c));
                 }
             }
         }
