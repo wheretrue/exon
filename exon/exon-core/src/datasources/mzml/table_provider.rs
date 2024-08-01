@@ -33,6 +33,7 @@ use futures::TryStreamExt;
 
 use crate::{
     datasources::{
+        exon_file_type::get_file_extension_with_compression,
         exon_listing_table_options::{ExonListingConfig, ExonListingOptions},
         hive_partition::filter_matches_partition_cols,
         ExonFileType,
@@ -110,8 +111,11 @@ impl ListingMzMLTableOptions {
 
     /// Set the file extension
     pub fn with_file_extension(self, file_extension: String) -> Self {
+        let extension_with_compression =
+            get_file_extension_with_compression(&file_extension, self.file_compression_type);
+
         Self {
-            file_extension,
+            file_extension: extension_with_compression,
             ..self
         }
     }
