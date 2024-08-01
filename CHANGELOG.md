@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v0.30.0 (2024-07-31)
+
+### Feat
+
+- use cli context (#586)
+- use projection in fastq reads (#584)
+
+### Fix
+
+- set mzml compression (#591)
+- fix toml
+- fix benchmarks
+
 ## v0.29.1 (2024-07-16)
 
 ### Fix

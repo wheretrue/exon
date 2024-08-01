@@ -10,8 +10,8 @@ version = { workspace = true }
 
 [dependencies]
 arrow = { workspace = true }
-exon-common = { path = "../exon-common", version = "0.29.1" }
-exon-sam = { path = "../exon-sam", version = "0.29.1" }
+exon-common = { path = "../exon-common", version = "0.30.0" }
+exon-sam = { path = "../exon-sam", version = "0.30.0" }
 futures = { workspace = true }
 noodles = { workspace = true, features = [
   "core",
