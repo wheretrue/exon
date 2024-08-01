@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.30.1 (2024-07-31)
+
+### Fix
+
+- update time for cli
+
 ## v0.30.0 (2024-07-31)
 
 ### Feat
