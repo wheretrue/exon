@@ -21,7 +21,7 @@ use arrow::{
 use exon_common::ExonArrayBuilder;
 use exon_sam::TagsBuilder;
 use noodles::sam::{
-    alignment::record::{cigar::op::Kind, Cigar, Name},
+    alignment::record::{cigar::op::Kind, Cigar},
     Header,
 };
 
@@ -104,7 +104,7 @@ impl BAMArrayBuilder {
             match col_idx {
                 0 => {
                     if let Some(name) = record.record().name() {
-                        let sam_read_name = std::str::from_utf8(name.as_bytes())?;
+                        let sam_read_name = std::str::from_utf8(name)?;
 
                         self.names.append_value(sam_read_name);
                     } else {

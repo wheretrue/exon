@@ -22,7 +22,7 @@ use exon_common::ExonArrayBuilder;
 use exon_sam::TagsBuilder;
 use noodles::{
     cram::Record as CramRecord,
-    sam::alignment::record::{cigar::op::Kind, Cigar, Name},
+    sam::alignment::record::{cigar::op::Kind, Cigar},
 };
 
 use crate::CRAMConfig;
@@ -80,8 +80,7 @@ impl CRAMArrayBuilder {
             match col_idx {
                 0 => {
                     if let Some(name) = record.name() {
-                        let sam_read_name = name.as_bytes();
-                        self.names.append_value(std::str::from_utf8(sam_read_name)?);
+                        self.names.append_value(std::str::from_utf8(name)?);
                     } else {
                         self.names.append_null();
                     }

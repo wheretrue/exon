@@ -162,17 +162,6 @@ impl ListingCRAMTableOptions {
         let stream_reader = Box::pin(get_result.into_stream().map_err(ExonError::from));
         let stream_reader = StreamReader::new(stream_reader);
 
-        let mut cram_reader = noodles::cram::AsyncReader::new(stream_reader);
-
-        cram_reader.read_file_definition().await?;
-        let header = cram_reader.read_file_header().await?;
-        let header: Header = header
-            .to_owned()
-            .parse()
-            .map_err(|_| DataFusionError::Execution("Unable to parse header".to_string()))?;
-
-        let mut schema_builder = SAMSchemaBuilder::default();
-
         let reference_sequence_repository = match &self.fasta_reference {
             Some(reference) => {
                 let object_store_adapter = ObjectStoreFastaRepositoryAdapter::try_new(
@@ -186,11 +175,20 @@ impl ListingCRAMTableOptions {
             None => noodles::fasta::Repository::default(),
         };
 
-        if let Some(Ok(record)) = cram_reader
-            .records(&reference_sequence_repository, &header)
-            .next()
-            .await
-        {
+        let mut cram_reader = noodles::cram::r#async::io::reader::Builder::default()
+            .set_reference_sequence_repository(reference_sequence_repository)
+            .build_from_reader(stream_reader);
+
+        cram_reader.read_file_definition().await?;
+        let header = cram_reader.read_file_header().await?;
+        let header: Header = header
+            .to_owned()
+            .parse()
+            .map_err(|_| DataFusionError::Execution("Unable to parse header".to_string()))?;
+
+        let mut schema_builder = SAMSchemaBuilder::default();
+
+        if let Some(Ok(record)) = cram_reader.records(&header).next().await {
             schema_builder = schema_builder.with_tags_data_type_from_data(record.data())?;
         } else {
             return Err(ExonError::ExecutionError(
