@@ -79,15 +79,20 @@ impl Record {
         let line = line.trim_end();
 
         // Parse the atom and bond counts from their fixed positions
-        let atom_count_str = &line[0..3].trim();
-        let bond_count_str = &line[3..6].trim();
+        // let atom_count_str = &line[0..3].trim();
+        let atom_count_str = line.get(0..3).ok_or(ExonSDFError::ParseError(
+            "Failed to parse atom count".to_string(),
+        ))?;
+        let bond_count_str = line.get(3..6).ok_or(ExonSDFError::ParseError(
+            "Failed to parse bond count".to_string(),
+        ))?;
 
         // Convert the parsed strings to usize
-        let atom_count = atom_count_str.parse().map_err(|_| {
+        let atom_count = atom_count_str.trim().parse().map_err(|_| {
             ExonSDFError::ParseError(format!("Failed to parse atom count: {}", atom_count_str))
         })?;
 
-        let bond_count = bond_count_str.parse().map_err(|_| {
+        let bond_count = bond_count_str.trim().parse().map_err(|_| {
             ExonSDFError::ParseError(format!("Failed to parse bond count: {}", bond_count_str))
         })?;
 
@@ -95,7 +100,7 @@ impl Record {
     }
 }
 
-pub(crate) fn parse_to_record(content: &str) -> crate::Result<Record> {
+pub fn parse_to_record(content: &str) -> crate::Result<Record> {
     tracing::trace!("Parsing SDF content: {:?}", content);
     let mut lines = content.lines();
 

@@ -29,4 +29,5 @@ mod schema_builder;
 
 pub use batch_reader::BatchReader;
 pub use config::SDFConfig;
+pub use record::parse_to_record;
 pub use schema_builder::SDFSchemaBuilder;

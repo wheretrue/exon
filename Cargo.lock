@@ -2459,6 +2459,7 @@ name = "exon-sdf"
 version = "0.30.1"
 dependencies = [
  "arrow",
+ "criterion",
  "exon-common",
  "futures",
  "object_store",
