@@ -22,7 +22,8 @@ use datafusion::{
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub(crate) struct ReverseComplement {
+/// Scalar function for computing the reverse complement of a DNA sequence.
+pub struct ReverseComplement {
     signature: datafusion::logical_expr::Signature,
 }
 

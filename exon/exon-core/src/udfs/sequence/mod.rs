@@ -18,8 +18,10 @@ mod integer_encoding;
 mod locate_regex;
 mod quality_score_list_to_string;
 mod quality_score_string_to_list;
-mod reverse_complement;
 mod trim_polya;
+
+/// Module containing the reverse complement UDF.
+pub mod reverse_complement;
 
 #[cfg(feature = "motif_udf")]
 pub(crate) mod motif;
