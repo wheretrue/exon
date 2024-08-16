@@ -1112,7 +1112,7 @@ dependencies = [
  "byteorder",
  "byteordered",
  "bytes",
- "clap 4.5.15",
+ "clap 4.5.16",
  "crossbeam-channel",
  "crossbeam-utils",
  "futures",
@@ -1384,9 +1384,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.15"
+version = "4.5.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11d8838454fda655dafd3accb2b6e2bea645b9e4078abe84a22ceb947235c5cc"
+checksum = "ed6719fffa43d0d87e5fd8caeab59be1554fb028cd30edc88fc4369b17971019"
 dependencies = [
  "clap_builder",
  "clap_derive 4.5.13",
@@ -1556,7 +1556,7 @@ dependencies = [
  "anes",
  "cast",
  "ciborium",
- "clap 4.5.15",
+ "clap 4.5.16",
  "criterion-plot",
  "futures",
  "is-terminal",
@@ -2188,7 +2188,7 @@ dependencies = [
  "arrow",
  "async-trait",
  "bytes",
- "clap 4.5.15",
+ "clap 4.5.16",
  "criterion",
  "datafusion",
  "exon-bam",
@@ -2272,7 +2272,7 @@ dependencies = [
 name = "exon-benchmarks"
 version = "0.30.1"
 dependencies = [
- "clap 4.5.15",
+ "clap 4.5.16",
  "datafusion",
  "exon",
  "tokio",
@@ -2298,7 +2298,7 @@ name = "exon-cli"
 version = "0.30.1"
 dependencies = [
  "async-trait",
- "clap 4.5.15",
+ "clap 4.5.16",
  "datafusion",
  "datafusion-cli",
  "exon",
@@ -3328,7 +3328,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fefdf21230d6143476a28adbee3d930e2b68a3d56443c777cae3fe9340eebff9"
 dependencies = [
- "clap 4.5.15",
+ "clap 4.5.16",
  "escape8259",
  "termcolor",
  "threadpool",
