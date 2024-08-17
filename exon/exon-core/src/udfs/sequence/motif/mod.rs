@@ -23,11 +23,12 @@ use datafusion::{
     datasource::listing::ListingTableUrl,
     execution::context::SessionState,
     logical_expr::{
-        ColumnarValue, CreateFunctionBody, DefinitionStatement, OperateFunctionArg, ScalarUDFImpl,
-        Signature, TypeSignature,
+        ColumnarValue, CreateFunctionBody, OperateFunctionArg, ScalarUDFImpl, Signature,
+        TypeSignature,
     },
 };
 use lightmotif::*;
+use pli::{Encode, Pipeline, Score, Stripe};
 
 use crate::error::ExonError;
 
