@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.31.0 (2024-08-17)
+
+### Feat
+
+- update noodles (#596)
+
+### Fix
+
+- new lock file
+
 ## v0.30.1 (2024-07-31)
 
 ### Fix
