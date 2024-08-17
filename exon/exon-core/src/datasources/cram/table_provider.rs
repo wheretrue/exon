@@ -17,6 +17,7 @@ use std::{any::Any, collections::HashMap, sync::Arc};
 use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     common::Statistics,
     datasource::{
         listing::{ListingTableConfig, ListingTableUrl},
@@ -24,7 +25,6 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
-    execution::context::SessionState,
     logical_expr::{Expr, TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
 };
@@ -204,7 +204,7 @@ impl ListingCRAMTableOptions {
     /// Infer the schema for the table.
     pub async fn infer_schema<'a>(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         table_path: &'a ListingTableUrl,
     ) -> ExonResult<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
@@ -313,7 +313,7 @@ impl TableProvider for ListingCRAMTable {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -323,7 +323,6 @@ impl TableProvider for ListingCRAMTable {
 
         if !self.options.indexed {
             let file_list = pruned_partition_list(
-                state,
                 &object_store,
                 &self.table_paths[0],
                 filters,
@@ -392,7 +391,6 @@ impl TableProvider for ListingCRAMTable {
         }
 
         let mut file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.table_paths[0],
             filters,

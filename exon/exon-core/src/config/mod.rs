@@ -13,9 +13,9 @@
 // limitations under the License.
 
 use datafusion::{
+    catalog::Session,
     common::extensions_options,
     config::{ConfigExtension, ConfigOptions},
-    execution::context::SessionState,
     prelude::SessionConfig,
 };
 
@@ -44,7 +44,7 @@ pub fn new_exon_config() -> SessionConfig {
         .with_target_partitions(num_cpus::get())
 }
 
-pub fn extract_config_from_state(session_state: &SessionState) -> Result<&ExonConfigExtension> {
+pub fn extract_config_from_state(session_state: &dyn Session) -> Result<&ExonConfigExtension> {
     let config = session_state.config();
 
     extract_exon_config(config)
@@ -128,7 +128,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_setting_config_through_sql() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         ctx.session.sql("SET exon.vcf_parse_info = true").await?;
         ctx.session.sql("SET exon.vcf_parse_formats = true").await?;

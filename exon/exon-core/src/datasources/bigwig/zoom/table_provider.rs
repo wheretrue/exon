@@ -25,6 +25,7 @@ use crate::{
 use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig as DataFusionListingTableConfig, ListingTableUrl},
@@ -32,7 +33,6 @@ use datafusion::{
         TableProvider,
     },
     error::Result as DataFusionResult,
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
     prelude::Expr,
@@ -194,7 +194,7 @@ impl TableProvider for ListingTable {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -208,7 +208,6 @@ impl TableProvider for ListingTable {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.table_paths[0],
             filters,

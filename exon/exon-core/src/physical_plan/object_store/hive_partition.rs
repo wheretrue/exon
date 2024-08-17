@@ -27,7 +27,6 @@ use datafusion::{
     common::DFSchema,
     datasource::listing::{ListingTableUrl, PartitionedFile},
     error::{DataFusionError, Result},
-    execution::context::SessionState,
     physical_expr::{create_physical_expr, execution_props::ExecutionProps},
     prelude::Expr,
     scalar::ScalarValue,
@@ -42,7 +41,6 @@ const CONCURRENCY_LIMIT: usize = 100;
 
 pub(crate) async fn list_all_files<'a>(
     path: &'a ListingTableUrl,
-    _ctx: &'a SessionState,
     store: &'a dyn ObjectStore,
     file_extension: &'a str,
 ) -> Result<BoxStream<'a, Result<ObjectMeta>>> {
@@ -72,7 +70,6 @@ pub(crate) async fn list_all_files<'a>(
 /// `filters` might contain expressions that can be resolved only at the
 /// file level (e.g. Parquet row group pruning).
 pub async fn pruned_partition_list<'a>(
-    ctx: &'a SessionState,
     store: &'a dyn ObjectStore,
     table_path: &'a ListingTableUrl,
     filters: &'a [Expr],
@@ -87,7 +84,7 @@ pub async fn pruned_partition_list<'a>(
     );
 
     if partition_cols.is_empty() {
-        let files = list_all_files(table_path, ctx, store, file_extension)
+        let files = list_all_files(table_path, store, file_extension)
             .await?
             .map_ok(|o| o.into());
 

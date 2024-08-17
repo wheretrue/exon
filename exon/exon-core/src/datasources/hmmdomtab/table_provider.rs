@@ -17,12 +17,12 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
     error::Result,
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -167,7 +167,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingHMMDomTabTable<T>
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -181,7 +181,6 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingHMMDomTabTable<T>
         let object_store = state.runtime_env().object_store(url.clone())?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
@@ -237,7 +236,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         let session_state = ctx.session.state();
 
         let table_path = test_listing_table_url("hmmdomtab");

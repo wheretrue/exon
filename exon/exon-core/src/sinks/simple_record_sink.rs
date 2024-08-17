@@ -136,7 +136,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_data_sink() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fasta_path = exon_test::test_path("fasta", "test.fa");
 

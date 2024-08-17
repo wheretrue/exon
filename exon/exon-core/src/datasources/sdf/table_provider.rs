@@ -17,13 +17,13 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     common::GetExt,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
         physical_plan::FileScanConfig, TableProvider, TableType,
     },
     error::DataFusionError,
-    execution::context::SessionState,
     logical_expr::{Expr, TableProviderFilterPushDown},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
 };
@@ -110,10 +110,10 @@ impl ListingSDFTableOptions {
     /// Infer the schema of the files in the table
     pub async fn infer_schema<'a>(
         &'a self,
-        state: &SessionState,
+        session: &dyn Session,
         table_path: &'a ListingTableUrl,
     ) -> datafusion::common::Result<TableSchema> {
-        let store = state.runtime_env().object_store(table_path)?;
+        let store = session.runtime_env().object_store(table_path)?;
 
         let file_extension = if self.file_compression_type.is_compressed() {
             format!(
@@ -140,13 +140,11 @@ impl ListingSDFTableOptions {
             .await
             .map_err(|e| DataFusionError::Execution(format!("Unable to get path info: {}", e)))?;
 
-        self.infer_schema_from_object_meta(state, &store, &files)
-            .await
+        self.infer_schema_from_object_meta(&store, &files).await
     }
 
     async fn infer_schema_from_object_meta(
         &self,
-        _state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
     ) -> datafusion::error::Result<TableSchema> {
@@ -228,7 +226,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSDFTable<T> {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -252,7 +250,6 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingSDFTable<T> {
         };
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,

@@ -17,12 +17,12 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
         physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
     prelude::Expr,
@@ -193,7 +193,6 @@ impl ListingVCFTableOptions {
 
     async fn infer_schema_from_object_meta(
         &self,
-        _state: &SessionState,
         store: &Arc<dyn ObjectStore>,
         objects: &[ObjectMeta],
     ) -> datafusion::error::Result<TableSchema> {
@@ -241,7 +240,7 @@ impl ListingVCFTableOptions {
     /// Infer the schema of the files in the table
     pub async fn infer_schema<'a>(
         &'a self,
-        state: &SessionState,
+        state: &dyn Session,
         table_path: &'a ListingTableUrl,
     ) -> Result<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
@@ -261,8 +260,7 @@ impl ListingVCFTableOptions {
             .await
             .map_err(|e| DataFusionError::Execution(format!("Unable to get path info: {}", e)))?;
 
-        self.infer_schema_from_object_meta(state, &store, &files)
-            .await
+        self.infer_schema_from_object_meta(&store, &files).await
     }
 }
 
@@ -323,7 +321,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -373,7 +371,6 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
 
         if regions.is_empty() {
             let file_list = pruned_partition_list(
-                state,
                 &object_store,
                 url,
                 filters,
@@ -402,7 +399,6 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingVCFTable<T
         }
 
         let mut file_list = pruned_partition_list(
-            state,
             &object_store,
             self.config.inner.table_paths.first().unwrap(),
             filters,
@@ -466,7 +462,7 @@ mod tests {
 
         let path = test_fixture_table_url("chr17/")?;
 
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         ctx.session
             .sql(
                 format!(
@@ -499,7 +495,7 @@ mod tests {
             "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
         )?;
 
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         ctx.session.sql(
             format!(
@@ -541,7 +537,7 @@ mod tests {
             "chr17/ALL.chr17.integrated_phase1_v3.20101123.snps_indels_svs.genotypes.vcf.gz",
         )?;
 
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         ctx.session.sql(
             format!(
                 "CREATE EXTERNAL TABLE vcf_file STORED AS INDEXED_VCF LOCATION '{}' OPTIONS (compression gzip);",
@@ -574,7 +570,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_region_pushdown() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         let table_path = test_path("vcf", "index.vcf.gz");
         let table_path = table_path.to_str().ok_or("Invalid path")?;
 
@@ -616,7 +612,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vcf_parsing_string() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let table_path = test_path("vcf", "index.vcf");
 

@@ -9,7 +9,7 @@ SELECT header, atom_count, bond_count FROM sdf LIMIT 1;
 SciTegic02060916132D 50 60
 
 query T
-SELECT data."canonical_smiles" FROM sdf data LIMIT 1;
+SELECT data.canonical_smiles FROM sdf data LIMIT 1;
 ----
 O=C1c2ccccc2C(=O)c3c1ccc4c3[nH]c5c6C(=O)c7ccccc7C(=O)c6c8[nH]c9c%10C(=O)c%11ccccc%11C(=O)c%10ccc9c8c45
 

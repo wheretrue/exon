@@ -17,12 +17,12 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
         physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -87,7 +87,7 @@ impl ListingBCFTableOptions {
     /// Infer the schema for the table
     pub async fn infer_schema<'a>(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         table_path: &'a ListingTableUrl,
     ) -> datafusion::error::Result<TableSchema> {
         let store = state.runtime_env().object_store(table_path)?;
@@ -224,7 +224,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBCFTable<T
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -240,7 +240,6 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBCFTable<T
             .object_store(url.object_store().clone())?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             url,
             filters,
