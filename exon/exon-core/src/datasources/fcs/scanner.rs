@@ -171,7 +171,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fcs_read() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         let session_state = ctx.session.state();
 
         let table_path = test_listing_table_url("fcs");

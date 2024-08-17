@@ -17,6 +17,7 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType,
         listing::{ListingTableConfig, ListingTableUrl},
@@ -24,7 +25,6 @@ use datafusion::{
         TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -124,10 +124,10 @@ impl ListingFCSTableOptions {
     /// Infer the schema for the table
     pub async fn infer_schema(
         &self,
-        state: &SessionState,
+        session: &dyn Session,
         table_path: &ListingTableUrl,
     ) -> datafusion::error::Result<TableSchema> {
-        let store = state.runtime_env().object_store(table_path)?;
+        let store = session.runtime_env().object_store(table_path)?;
 
         let objects = exon_common::object_store_files_from_table_path(
             &store,
@@ -233,7 +233,7 @@ impl TableProvider for ListingFCSTable {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -247,7 +247,6 @@ impl TableProvider for ListingFCSTable {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,

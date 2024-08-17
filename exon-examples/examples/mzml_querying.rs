@@ -21,7 +21,7 @@ use exon::ExonSession;
 
 #[tokio::main]
 async fn main() -> Result<(), DataFusionError> {
-    let ctx = ExonSession::new_exon();
+    let ctx = ExonSession::new_exon()?;
 
     // From GNPS, create a table.
     let path = "./exon-examples/data/GNPS00002_A3_p.mzML";

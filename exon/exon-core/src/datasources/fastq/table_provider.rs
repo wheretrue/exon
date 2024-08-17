@@ -17,9 +17,9 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{file_format::file_compression_type::FileCompressionType, TableProvider},
     error::Result,
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -180,7 +180,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingFASTQTable<T> {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -194,7 +194,6 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingFASTQTable<T> {
         let object_store = state.runtime_env().object_store(object_store_url.clone())?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
@@ -239,7 +238,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_table_scan() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         let session_state = ctx.session.state();
 
         let table_path = test_listing_table_url("fastq");

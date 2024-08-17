@@ -147,7 +147,7 @@ async fn run_tests(test_options: &Options) -> Result<(), DataFusionError> {
     // Iterate through the test files and run the tests.
     let test_files = std::fs::read_dir(&test_options.test_dir)?;
 
-    let exon_context = Arc::new(ExonSession::new_exon());
+    let exon_context = Arc::new(ExonSession::new_exon()?);
 
     for test_file in test_files {
         let test_file = test_file?;

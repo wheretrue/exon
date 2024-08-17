@@ -30,12 +30,12 @@ use crate::{
 use arrow::datatypes::{Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
     error::Result as DataFusionResult,
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::ExecutionPlan,
     prelude::Expr,
@@ -194,7 +194,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingTable<T> {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -210,7 +210,6 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingTable<T> {
         let object_store = state.runtime_env().object_store(url.object_store())?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             self.config.inner.table_paths.first().unwrap(),
             filters,

@@ -15,11 +15,14 @@
 use std::{collections::HashMap, sync::Arc, vec};
 
 use datafusion::{
+    catalog::TableProviderFactory,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
     },
     error::{DataFusionError, Result},
-    execution::{context::SessionState, object_store::ObjectStoreUrl, runtime_env::RuntimeEnv},
+    execution::{
+        object_store::ObjectStoreUrl, runtime_env::RuntimeEnv, session_state::SessionStateBuilder,
+    },
     logical_expr::LogicalPlan,
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
@@ -35,7 +38,6 @@ use crate::{
         bigwig,
         cram::table_provider::{ListingCRAMTable, ListingCRAMTableConfig, ListingCRAMTableOptions},
         exon_listing_table_options::ExonListingConfig,
-        fasta::FASTAOptions,
         genbank::table_provider::{ListingGenbankTable, ListingGenbankTableOptions},
         gff::table_provider::{ListingGFFTable, ListingGFFTableOptions},
         gtf::table_provider::{ListingGTFTable, ListingGTFTableOptions},
@@ -108,22 +110,22 @@ impl ExonSession {
     }
 
     /// Create a new Exon based [`SessionContext`].
-    pub fn new_exon() -> Self {
+    pub fn new_exon() -> crate::Result<Self> {
         let exon_config = new_exon_config();
         Self::with_config_exon(exon_config)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config.
-    pub fn with_config_exon(config: SessionConfig) -> Self {
+    pub fn with_config_exon(config: SessionConfig) -> crate::Result<Self> {
         let runtime = Arc::new(RuntimeEnv::default());
         Self::with_config_rt_exon(config, runtime)
     }
 
     /// Create a new Exon based [`SessionContext`] with the given config and runtime.
-    pub fn with_config_rt_exon(config: SessionConfig, runtime: Arc<RuntimeEnv>) -> Self {
-        let mut state = SessionState::new_with_config_rt(config, runtime)
-            .with_function_factory(Arc::new(ExonFunctionFactory::default()));
-
+    pub fn with_config_rt_exon(
+        config: SessionConfig,
+        runtime: Arc<RuntimeEnv>,
+    ) -> crate::Result<Self> {
         let sources = vec![
             "BAM",
             "BCF",
@@ -152,17 +154,31 @@ impl ExonSession {
             "SDF",
         ];
 
+        let mut state_builder = SessionStateBuilder::new()
+            .with_default_features()
+            .with_config(config)
+            .with_runtime_env(runtime)
+            .with_function_factory(Some(Arc::new(ExonFunctionFactory::default())))
+            .with_query_planner(Arc::new(ExonQueryPlanner::default()));
+
+        let table_factories =
+            state_builder
+                .table_factories()
+                .as_mut()
+                .ok_or(ExonError::Configuration(
+                    "Could not configure exon state".to_string(),
+                ))?;
+
         for source in sources {
-            state
-                .table_factories_mut()
-                .insert(source.into(), Arc::new(ExonListingTableFactory::default()));
+            table_factories.insert(
+                source.to_string(),
+                Arc::new(ExonListingTableFactory::default()) as Arc<dyn TableProviderFactory>,
+            );
         }
 
-        let ctx = SessionContext::new_with_state(
-            state.with_query_planner(Arc::new(ExonQueryPlanner::default())),
-        );
+        let state = state_builder.build();
 
-        ctx.register_table_options_extension(FASTAOptions::default());
+        let ctx = SessionContext::new_with_state(state);
         ctx.register_table_options_extension(BEDOptions::default());
 
         // Register the mass spec UDFs
@@ -239,7 +255,7 @@ impl ExonSession {
             Arc::new(LocalFileSystem::new()),
         );
 
-        Self::new(ctx)
+        Ok(Self::new(ctx))
     }
 
     fn exon_sql_to_statement(&self, sql: &str) -> crate::Result<ExonStatement> {
@@ -559,7 +575,7 @@ impl ExonSession {
     ) -> Result<DataFrame, ExonError> {
         let table_path = ListingTableUrl::parse(table_path)?;
 
-        let table_schema = options.infer_schema(&self.session.state()).await?;
+        let table_schema = options.infer_schema().await?;
 
         let config = ExonListingConfig::new_with_options(table_path, options);
         let table = ListingFASTATable::try_new(config, table_schema)?;
@@ -701,7 +717,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_sdf() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let sdf_path = exon_test::test_path("sdf", "tox_benchmark_N6512.sdf");
 
@@ -719,7 +735,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fastq() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fastq_path = exon_test::test_path("fastq", "test.fq");
 
@@ -746,7 +762,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fastq_gzip() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fastq_path = exon_test::test_path("fastq", "test.fq.gz");
 
@@ -764,7 +780,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fasta_path = exon_test::test_path("fasta", "test.fa");
 
@@ -782,7 +798,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fasta_round_trip() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fasta_path = exon_test::test_path("fasta", "test.fasta");
 
@@ -835,7 +851,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bigwig_zoom_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let bigwig_path = exon_test::test_path("bigwig", "test.bw");
 
@@ -853,7 +869,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_bigwig_view_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let bigwig_path = exon_test::test_path("bigwig", "test.bw");
 
@@ -870,7 +886,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta_s3() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         ctx.session
             .runtime_env()
@@ -891,7 +907,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta_dir() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fasta_path = exon_test::test_path("fa", "test.fa");
         let fasta_path = fasta_path.parent().ok_or("No parent")?;
@@ -919,7 +935,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cram_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let cram_path = exon_test::test_path("cram", "test_input_1_a.cram");
 
@@ -965,7 +981,7 @@ mod tests {
     #[cfg(feature = "fcs")]
     #[tokio::test]
     async fn test_read_fcs() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fcs_path = exon_test::test_path("fcs", "Guava Muse.fcs");
 
@@ -985,7 +1001,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_fasta_gzip() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let fasta_path = exon_test::test_path("fasta", "test.fa.gz");
 
@@ -1003,7 +1019,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bcf_file() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let bcf_path = exon_test::test_path("bcf", "index.bcf");
 
@@ -1021,7 +1037,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bcf_file_with_region() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         let bcf_path = exon_test::test_path("bcf", "index.bcf");
 

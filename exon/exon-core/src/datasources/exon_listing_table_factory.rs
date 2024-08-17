@@ -17,11 +17,11 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use arrow::datatypes::{DataType, Field, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::{Session, TableProviderFactory},
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
-        provider::TableProviderFactory, TableProvider,
+        TableProvider,
     },
-    execution::context::SessionState,
     logical_expr::CreateExternalTable,
 };
 use url::Url;
@@ -75,7 +75,7 @@ impl ExonListingTableFactory {
     /// Create a new table provider from a file type.
     pub async fn create_from_file_type(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         file_type: ExonFileType,
         file_compression_type: FileCompressionType,
         location: String,
@@ -257,7 +257,7 @@ impl ExonListingTableFactory {
                     .with_sequence_buffer_capacity(sequence_buffer_capacity)
                     .with_some_file_extension(Some(fasta_options.file_extension()));
 
-                let schema = table_options.infer_schema(state).await?;
+                let schema = table_options.infer_schema().await?;
 
                 let config = ExonListingConfig::new_with_options(table_path, table_options);
                 let table = ListingFASTATable::try_new(config, schema)?;
@@ -361,7 +361,7 @@ impl ExonListingTableFactory {
 impl TableProviderFactory for ExonListingTableFactory {
     async fn create(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         cmd: &CreateExternalTable,
     ) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         let file_compression_type: FileCompressionType = cmd
@@ -415,8 +415,9 @@ impl TableProviderFactory for ExonListingTableFactory {
 mod tests {
     use std::{path::PathBuf, sync::Arc};
 
-    use datafusion::catalog::{
-        listing_schema::ListingSchemaProvider, CatalogProvider, MemoryCatalogProvider,
+    use datafusion::{
+        catalog::CatalogProvider,
+        catalog_common::{listing_schema::ListingSchemaProvider, MemoryCatalogProvider},
     };
     use object_store::local::LocalFileSystem;
 
@@ -424,7 +425,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_in_catalog() -> Result<(), Box<dyn std::error::Error>> {
-        let mem_catalog: MemoryCatalogProvider = MemoryCatalogProvider::new();
+        let mem_catalog = MemoryCatalogProvider::new();
         let object_store = Arc::new(LocalFileSystem::new());
 
         let cargo_manifest_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
@@ -445,10 +446,7 @@ mod tests {
 
         mem_catalog.register_schema("exon", Arc::new(schema))?;
 
-        // let session_config = SessionConfig::from_env()?;
-        // let runtime_env = create_runtime_env()?;
-        // let ctx = SessionContext::new_with_config_rt(session_config.clone(), Arc::new(runtime_env));
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
 
         ctx.session.register_catalog("exon", Arc::new(mem_catalog));
         ctx.session.refresh_catalogs().await?;

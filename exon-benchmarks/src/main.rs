@@ -117,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::SDFQuery { path }) => {
             let path = path.as_str();
 
-            let ctx = ExonSession::new_exon();
+            let ctx = ExonSession::new_exon()?;
             ctx.session
                 .runtime_env()
                 .exon_register_object_store_uri(path)
@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::VCFQuery { path, region }) => {
             let path = path.as_str();
 
-            let ctx = ExonSession::new_exon();
+            let ctx = ExonSession::new_exon()?;
             ctx.session
                 .runtime_env()
                 .exon_register_object_store_uri(path)
@@ -158,7 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::BAMScan { path }) => {
             let path = path.as_str();
-            let ctx = ExonSession::new_exon();
+            let ctx = ExonSession::new_exon()?;
             ctx.session
                 .runtime_env()
                 .exon_register_object_store_uri(path)
@@ -189,7 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let path = path.as_str();
             let region = region.as_str();
 
-            let ctx = ExonSession::new_exon();
+            let ctx = ExonSession::new_exon()?;
             ctx.session
                 .runtime_env()
                 .exon_register_object_store_uri(path)
@@ -224,7 +224,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let compression = compression.unwrap_or(FileCompressionType::UNCOMPRESSED);
             let options = ListingFASTATableOptions::new(compression);
 
-            let ctx = ExonSession::new_exon();
+            let ctx = ExonSession::new_exon()?;
 
             let df = ctx.read_fasta(path, options).await?;
 
@@ -234,7 +234,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::FASTAScanParallel { path, workers }) => {
             let exon_config = new_exon_config().with_target_partitions(*workers);
-            let ctx = ExonSession::with_config_exon(exon_config);
+            let ctx = ExonSession::with_config_exon(exon_config)?;
 
             let options = ListingFASTATableOptions::default();
 
@@ -251,7 +251,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let compression = compression.unwrap_or(FileCompressionType::UNCOMPRESSED);
             let options = ListingMzMLTableOptions::new(compression);
 
-            let ctx = ExonSession::new_exon();
+            let ctx = ExonSession::new_exon()?;
 
             let df = ctx.read_mzml(path, options).await?;
             let count = df.count().await?;

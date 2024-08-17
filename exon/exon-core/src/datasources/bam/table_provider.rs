@@ -30,12 +30,12 @@ use crate::{
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
         physical_plan::FileScanConfig, TableProvider,
     },
     error::{DataFusionError, Result},
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan, Statistics},
     prelude::Expr,
@@ -157,7 +157,7 @@ impl ListingBAMTableOptions {
     /// Infer the schema for the table
     pub async fn infer_schema(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         table_path: &ListingTableUrl,
     ) -> datafusion::error::Result<TableSchema> {
         if !self.tag_as_struct {
@@ -274,7 +274,7 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBAMTable<T
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -326,7 +326,6 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBAMTable<T
 
         if regions.is_empty() {
             let file_list = pruned_partition_list(
-                state,
                 &object_store,
                 url,
                 filters,
@@ -360,15 +359,9 @@ impl<T: ExonIndexedListingOptions + 'static> TableProvider for ListingBAMTable<T
         let file_extension = self.config.options.file_extension();
         let partition_cols = self.config.options.table_partition_cols();
 
-        let mut file_list = pruned_partition_list(
-            state,
-            &object_store,
-            url,
-            filters,
-            file_extension,
-            partition_cols,
-        )
-        .await?;
+        let mut file_list =
+            pruned_partition_list(&object_store, url, filters, file_extension, partition_cols)
+                .await?;
 
         let mut file_partition_with_ranges = Vec::new();
 

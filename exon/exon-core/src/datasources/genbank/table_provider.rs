@@ -17,12 +17,12 @@ use std::{any::Any, sync::Arc};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{
         file_format::file_compression_type::FileCompressionType, physical_plan::FileScanConfig,
         TableProvider,
     },
     error::Result,
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -140,7 +140,7 @@ impl<T: ExonListingOptions + 'static> TableProvider for ListingGenbankTable<T> {
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         _filters: &[Expr],
         limit: Option<usize>,
@@ -196,7 +196,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_listing() -> Result<(), Box<dyn std::error::Error>> {
-        let ctx = ExonSession::new_exon();
+        let ctx = ExonSession::new_exon()?;
         let session_state = ctx.session.state();
 
         let table_path = test_listing_table_url("genbank/test.gb");

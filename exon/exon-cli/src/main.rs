@@ -32,12 +32,12 @@ struct ExonCLISession {
     exon_session: ExonSession,
 }
 
-impl Default for ExonCLISession {
-    fn default() -> Self {
+impl ExonCLISession {
+    fn try_new() -> crate::Result<Self> {
         let config = new_exon_config();
-        let exon_session = ExonSession::with_config_exon(config);
+        let exon_session = ExonSession::with_config_exon(config)?;
 
-        Self { exon_session }
+        Ok(Self { exon_session })
     }
 }
 
@@ -114,7 +114,7 @@ pub async fn main() -> Result<()> {
     let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let mut ctx = ExonCLISession::default();
+    let mut ctx = ExonCLISession::try_new()?;
 
     let mut print_options = PrintOptions {
         format: args.format,

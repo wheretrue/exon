@@ -33,9 +33,9 @@ use crate::{
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::{
+    catalog::Session,
     datasource::{file_format::file_compression_type::FileCompressionType, TableProvider},
     error::Result,
-    execution::context::SessionState,
     logical_expr::{TableProviderFilterPushDown, TableType},
     physical_plan::{empty::EmptyExec, ExecutionPlan},
     prelude::Expr,
@@ -221,10 +221,7 @@ impl ListingFASTATableOptions {
     }
 
     /// Infer the base schema for the table
-    pub async fn infer_schema(
-        &self,
-        _state: &SessionState,
-    ) -> datafusion::error::Result<TableSchema> {
+    pub async fn infer_schema(&self) -> datafusion::error::Result<TableSchema> {
         let mut fasta_schema_builder = FASTASchemaBuilder::default()
             .with_sequence_data_type(self.sequence_data_type.clone())
             .with_partition_fields(self.table_partition_cols.clone());
@@ -261,7 +258,7 @@ impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions> ListingFAST
     async fn resolve_region<'a>(
         &self,
         filters: &[Expr],
-        session_context: &'a SessionState,
+        session_context: &'a dyn Session,
     ) -> Result<Option<Vec<Region>>> {
         if !self.config.options.regions().is_empty() {
             return Ok(Some(self.config.options.regions().to_vec()));
@@ -346,7 +343,7 @@ impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions + 'static> T
 
     async fn scan(
         &self,
-        state: &SessionState,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         filters: &[Expr],
         limit: Option<usize>,
@@ -362,7 +359,6 @@ impl<T: ExonFileIndexedListingOptions + ExonSequenceDataTypeOptions + 'static> T
         let regions = self.resolve_region(filters, state).await?;
 
         let file_list = pruned_partition_list(
-            state,
             &object_store,
             &self.config.inner.table_paths[0],
             filters,
