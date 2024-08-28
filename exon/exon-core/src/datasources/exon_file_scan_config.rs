@@ -99,5 +99,8 @@ fn regroup_files_by_size(
         new_file_groups[target_partition].push(file.clone());
     }
 
+    // Filter any empty file groups
+    new_file_groups.retain(|fg| !fg.is_empty());
+
     new_file_groups
 }
