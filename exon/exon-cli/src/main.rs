@@ -51,8 +51,10 @@ impl CliSessionContext for ExonCLISession {
         self.exon_session.session.state()
     }
 
-    fn register_table_options_extension_from_scheme(&self, _scheme: &str) {
-        unimplemented!()
+    fn register_table_options_extension_from_scheme(&self, scheme: &str) {
+        self.exon_session
+            .session
+            .register_table_options_extension_from_scheme(scheme);
     }
 
     fn register_object_store(
@@ -114,7 +116,7 @@ pub async fn main() -> Result<()> {
     let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let mut ctx = ExonCLISession::try_new()?;
+    let ctx = ExonCLISession::try_new()?;
 
     let mut print_options = PrintOptions {
         format: args.format,
@@ -127,17 +129,17 @@ pub async fn main() -> Result<()> {
     let files = args.file;
 
     if commands.is_empty() && files.is_empty() {
-        return exec::exec_from_repl(&mut ctx, &mut print_options)
+        return exec::exec_from_repl(&ctx, &mut print_options)
             .await
             .map_err(|e| DataFusionError::External(Box::new(e)));
     }
 
     if !commands.is_empty() {
-        exec::exec_from_commands(&mut ctx, commands, &print_options).await?;
+        exec::exec_from_commands(&ctx, commands, &print_options).await?;
     }
 
     if !files.is_empty() {
-        exec::exec_from_files(&mut ctx, files, &print_options).await?;
+        exec::exec_from_files(&ctx, files, &print_options).await?;
     }
 
     Ok(())
