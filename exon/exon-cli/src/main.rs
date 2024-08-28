@@ -51,8 +51,10 @@ impl CliSessionContext for ExonCLISession {
         self.exon_session.session.state()
     }
 
-    fn register_table_options_extension_from_scheme(&self, _scheme: &str) {
-        unimplemented!()
+    fn register_table_options_extension_from_scheme(&self, scheme: &str) {
+        self.exon_session
+            .session
+            .register_table_options_extension_from_scheme(scheme);
     }
 
     fn register_object_store(
