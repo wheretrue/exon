@@ -68,16 +68,20 @@ where
         })
     }
 
-    async fn read_record(&mut self) -> std::io::Result<Option<RecordBuf>> {
+    async fn read_record(&mut self) -> Result<Option<RecordBuf>, ArrowError> {
         let mut record_buf = RecordBuf::default();
 
         match self
             .reader
             .read_record_buf(&self.header, &mut record_buf)
-            .await?
+            .await
         {
-            0 => Ok(None),
-            _ => Ok(Some(record_buf)),
+            Ok(0) => Ok(None),
+            Ok(_) => Ok(Some(record_buf)),
+            Err(e) => {
+                let err = std::io::Error::new(e.kind(), format!("Error: {:?}", e));
+                Err(ArrowError::ExternalError(Box::new(err)))
+            }
         }
     }
 
