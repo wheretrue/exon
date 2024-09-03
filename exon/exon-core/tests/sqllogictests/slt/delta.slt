@@ -1,0 +1,25 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE delta_table STORED AS DELTATABLE LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/delta/';
+
+query T
+SELECT * FROM delta_table;
+----
+1 foo
+2 boo
+
+statement ok
+DROP TABLE delta_table;
+
+statement ok
+CREATE EXTERNAL TABLE delta_table STORED AS DELTATABLE LOCATION 's3://test-bucket/delta_table/';
+
+query T
+SELECT * FROM delta_table;
+----
+1 foo
+2 boo
+
+statement ok
+DROP TABLE delta_table;

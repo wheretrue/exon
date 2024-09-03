@@ -58,5 +58,8 @@ aws --endpoint-url=http://localhost:4566 s3 cp ./exon/exon-core/test-data/dataso
 # Make the bucket public.
 aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-bucket --acl public-read
 
+# Create the test table.
+python ./bin/create_delta_table.py
+
 # Run the tests.
 cargo test
