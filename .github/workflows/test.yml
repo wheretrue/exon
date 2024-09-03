@@ -77,11 +77,12 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install aws and awslocal
+      - name: Install python dependencies
         run: |
           pip install awscli
           pip install awscli-local
           pip install urllib3==2.2.1
+          pip install pandas
           pip install deltalake
 
       - name: Run tests and sqllogictests

@@ -26,7 +26,7 @@ fi
 # Setup
 echo "Setting up..."
 
-# trap teardown EXIT
+trap teardown EXIT
 
 # Start the docker compose stack.
 docker compose up -d localstack
@@ -62,4 +62,4 @@ aws --endpoint-url=http://localhost:4566 s3api put-bucket-acl --bucket test-buck
 python ./bin/create_delta_table.py
 
 # Run the tests.
-# cargo test
+cargo test

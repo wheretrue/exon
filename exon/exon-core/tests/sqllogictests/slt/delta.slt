@@ -19,7 +19,7 @@ query T
 SELECT * FROM delta_table;
 ----
 1 foo
-2 f
+2 boo
 
 statement ok
 DROP TABLE delta_table;
