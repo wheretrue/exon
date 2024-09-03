@@ -82,6 +82,7 @@ jobs:
           pip install awscli
           pip install awscli-local
           pip install urllib3==2.2.1
+          pip install deltalake
 
       - name: Run tests and sqllogictests
         env:

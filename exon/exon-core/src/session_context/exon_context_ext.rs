@@ -26,6 +26,11 @@ use datafusion::{
     logical_expr::LogicalPlan,
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
+#[cfg(feature = "deltalake")]
+use deltalake::delta_datafusion::DeltaTableFactory;
+
+#[cfg(feature = "deltalake")]
+use deltalake::aws::register_handlers;
 
 use crate::{
     datasources::{
@@ -174,6 +179,13 @@ impl ExonSession {
                 source.to_string(),
                 Arc::new(ExonListingTableFactory::default()) as Arc<dyn TableProviderFactory>,
             );
+        }
+
+        register_handlers(None);
+
+        #[cfg(feature = "deltalake")]
+        {
+            table_factories.insert("DELTATABLE".to_string(), Arc::new(DeltaTableFactory {}));
         }
 
         let state = state_builder.build();
