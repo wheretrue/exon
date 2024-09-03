@@ -7,11 +7,6 @@
 
 //! Types for representing pairwise sequence alignments
 
-#[cfg(feature = "clap")]
-use clap::ValueEnum;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 pub type TextSlice<'a> = &'a [u8];
 
 /// Alignment operations supported are match, substitution, insertion, deletion
@@ -22,7 +17,6 @@ pub type TextSlice<'a> = &'a [u8];
 /// value associated with the clipping operations are the lengths clipped. In case
 /// of standard modes like Global, Semi-Global and Local alignment, the clip operations
 /// are filtered out
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Eq, PartialEq, Debug, Copy, Clone, Hash)]
 pub enum AlignmentOperation {
     Match,
@@ -41,8 +35,6 @@ pub enum AlignmentOperation {
 /// appropriately set.
 ///
 /// The default alignment mode is Global.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "clap", derive(ValueEnum))]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AlignmentMode {
     Local,
@@ -63,7 +55,6 @@ impl Default for AlignmentMode {
 /// lengths of sequences x and y, and the alignment edit operations. The start position
 /// and end position of the alignment does not include the clipped regions. The length
 /// of clipped regions are already encapsulated in the Alignment Operation.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
 pub struct Alignment {
     /// Smith-Waterman alignment score

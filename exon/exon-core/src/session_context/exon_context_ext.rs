@@ -181,10 +181,9 @@ impl ExonSession {
             );
         }
 
-        register_handlers(None);
-
         #[cfg(feature = "deltalake")]
         {
+            register_handlers(None);
             table_factories.insert("DELTATABLE".to_string(), Arc::new(DeltaTableFactory {}));
         }
 

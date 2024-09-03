@@ -69,8 +69,6 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
     ) -> Result<Option<Arc<dyn ObjectStore>>, DataFusionError> {
         match url.scheme() {
             "s3" => self.register_s3_object_store(url).await,
-
-            #[cfg(feature = "gcp")]
             "gs" => {
                 use object_store::gcp::GoogleCloudStorageBuilder;
 
