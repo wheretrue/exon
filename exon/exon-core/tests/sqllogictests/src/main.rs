@@ -159,19 +159,6 @@ async fn run_tests(test_options: &Options) -> Result<(), DataFusionError> {
             }
         }
 
-        // special case pssm tests when the motif-udf feature is enabled
-        if test_file
-            .path()
-            .file_name()
-            .expect("expected file name")
-            .to_str()
-            .expect("expected file name")
-            == "pssm.slt"
-        {
-            #[cfg(not(feature = "motif-udf"))]
-            continue;
-        }
-
         // if the file doesn't end with an slt extension skip it
         if test_file
             .path()

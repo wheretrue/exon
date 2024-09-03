@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
-
 use async_trait::async_trait;
 use datafusion::{
     execution::context::{FunctionFactory, RegisterFunction, SessionState},
@@ -21,9 +19,6 @@ use datafusion::{
 };
 
 use crate::error::ExonError;
-
-#[cfg(feature = "motif-udf")]
-use crate::udfs::sequence::motif::create_pssm_function;
 
 #[derive(Default, Debug)]
 pub struct ExonFunctionFactory {}
@@ -45,31 +40,6 @@ impl FunctionFactory for ExonFunctionFactory {
             or_replace: _,
         } = statement;
 
-        let function = ExonFunctions::from_str(name.as_str())?;
-
-        match function {
-            #[cfg(feature = "motif-udf")]
-            ExonFunctions::Pssm => {
-                let pssm = create_pssm_function(state, &name, &params, &args).await?;
-                Ok(RegisterFunction::Scalar(Arc::new(pssm.into())))
-            }
-            #[allow(unreachable_patterns)]
-            _ => Err(ExonError::UnsupportedFunction(name.clone()).into()),
-        }
-    }
-}
-
-pub enum ExonFunctions {
-    Pssm,
-}
-
-impl FromStr for ExonFunctions {
-    type Err = ExonError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "pssm" => Ok(Self::Pssm),
-            _ => Err(ExonError::UnsupportedFunction(s.to_string())),
-        }
+        Err(ExonError::UnsupportedFunction(name.clone()).into())
     }
 }

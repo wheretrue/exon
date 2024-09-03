@@ -51,7 +51,7 @@ noodles = { workspace = true, features = [
   "gtf",
 ] }
 num_cpus = "1.16.0"
-object_store = { workspace = true, features = ["aws"] }
+object_store = { workspace = true, features = ["aws", "gcp"] }
 pin-project = { version = "1.1.5", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-util = { workspace = true }
@@ -62,8 +62,6 @@ fxhash = "0.2.1"
 lazy_static = "1.5.0"
 serde = { version = "1.0.209", features = ["derive"] }
 regex = "1.10.6"
-lightmotif = { version = "0.9.1", optional = true }
-lightmotif-io = { version = "0.9.1", optional = true }
 
 [dev-dependencies]
 exon-test = { path = "../exon-test" }
@@ -73,14 +71,13 @@ criterion = { version = "0.5", features = ["async_tokio"] }
 rand = "0.8"
 
 [features]
-all = ["ffi", "genbank", "mzml", "fcs", "motif-udfs", "deltalake"]
+all = ["ffi", "genbank", "mzml", "fcs", "deltalake"]
 default = ["ffi", "genbank", "mzml", "fcs"]
 fcs = ["dep:exon-fcs"]
 ffi = ["arrow/ffi", "dep:pin-project"]
 fixtures = []
 genbank = ["dep:exon-genbank"]
 mzml = ["dep:exon-mzml"]
-motif-udfs = ["dep:lightmotif", "dep:lightmotif-io"]
 deltalake = ["dep:deltalake"]
 
 [[test]]

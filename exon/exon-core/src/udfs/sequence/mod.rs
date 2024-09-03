@@ -23,9 +23,6 @@ mod trim_polya;
 /// Module containing the reverse complement UDF.
 pub mod reverse_complement;
 
-#[cfg(feature = "motif_udf")]
-pub(crate) mod motif;
-
 use datafusion::{execution::context::SessionContext, logical_expr::ScalarUDF};
 
 use gc_content::GCContent;
