@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.32.0 (2024-09-03)
+
+### Feat
+
+- support delta tables (#621)
+
+### Fix
+
+- better error message for bam reader (#615)
+- fix a few bugs (#614)
+
 ## v0.31.0 (2024-08-17)
 
 ### Feat
