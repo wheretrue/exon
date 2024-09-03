@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.32.1 (2024-09-03)
+
+### Fix
+
+- remove lightmotif (#622)
+
 ## v0.32.0 (2024-09-03)
 
 ### Feat
