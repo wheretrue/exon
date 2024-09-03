@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use datafusion::{error::DataFusionError, execution::runtime_env::RuntimeEnv};
+use object_store::gcp::GoogleCloudStorageBuilder;
 use object_store::ObjectStore;
 
 use exon_io::build_s3_object_store;
@@ -70,8 +71,6 @@ impl ExonRuntimeEnvExt for Arc<RuntimeEnv> {
         match url.scheme() {
             "s3" => self.register_s3_object_store(url).await,
             "gs" => {
-                use object_store::gcp::GoogleCloudStorageBuilder;
-
                 // Check that the GOOGLE_SERVICE_ACCOUNT env var is set
                 if std::env::var("GOOGLE_SERVICE_ACCOUNT").is_err() {
                     return Err(DataFusionError::Execution(
