@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.32.2 (2024-09-04)
+
+### Fix
+
+- include `read_deltalake` feature (#623)
+
 ## v0.32.1 (2024-09-03)
 
 ### Fix
