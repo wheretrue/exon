@@ -27,10 +27,7 @@ use datafusion::{
     prelude::{DataFrame, SessionConfig, SessionContext},
 };
 #[cfg(feature = "deltalake")]
-use deltalake::delta_datafusion::DeltaTableFactory;
-
-#[cfg(feature = "deltalake")]
-use deltalake::aws::register_handlers;
+use deltalake::{aws::register_handlers, delta_datafusion::DeltaTableFactory, open_table};
 
 use crate::{
     datasources::{
@@ -578,6 +575,18 @@ impl ExonSession {
         Ok(table)
     }
 
+    /// Read a Delta Lake table.
+    #[cfg(feature = "deltalake")]
+    pub async fn read_deltalake(&self, table_path: &str) -> Result<DataFrame, ExonError> {
+        let table = open_table(table_path).await.map_err(|e| {
+            ExonError::ExecutionError(format!("Error opening Delta Lake table: {}", e))
+        })?;
+
+        let df = self.session.read_table(Arc::new(table))?;
+
+        Ok(df)
+    }
+
     /// Read a FASTA file.
     pub async fn read_fasta(
         &self,
@@ -714,6 +723,7 @@ impl ExonSession {
 #[cfg(test)]
 mod tests {
     use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
+    use exon_test::test_listing_table_dir;
 
     use crate::{
         datasources::{
@@ -872,6 +882,20 @@ mod tests {
                 bigwig::zoom::ListingTableOptions::new(400),
             )
             .await?;
+
+        assert_eq!(df.count().await?, 2);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "deltalake")]
+    #[tokio::test]
+    async fn test_read_deltalake() -> Result<(), Box<dyn std::error::Error>> {
+        let ctx = ExonSession::new_exon()?;
+
+        let path = exon_test::test_listing_table_url("delta");
+
+        let df = ctx.read_deltalake(path.as_str()).await?;
 
         assert_eq!(df.count().await?, 2);
 
