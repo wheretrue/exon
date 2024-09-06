@@ -723,7 +723,6 @@ impl ExonSession {
 #[cfg(test)]
 mod tests {
     use datafusion::datasource::file_format::file_compression_type::FileCompressionType;
-    use exon_test::test_listing_table_dir;
 
     use crate::{
         datasources::{
