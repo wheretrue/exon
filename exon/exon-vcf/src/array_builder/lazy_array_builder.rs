@@ -229,7 +229,7 @@ impl LazyVCFArrayBuilder {
                             s.push('=');
 
                             match value {
-                                InfosValue::String(v) => s.push_str(v),
+                                InfosValue::String(v) => s.push_str(&v),
                                 InfosValue::Character(v) => s.push(v),
                                 InfosValue::Float(v) => s.push_str(&v.to_string()),
                                 InfosValue::Flag => {

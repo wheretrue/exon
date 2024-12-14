@@ -437,13 +437,13 @@ mod tests {
         let schema = SAMSchemaBuilder::default().with_tags_data_type_from_data(&data)?;
 
         let expected_fields = vec![
-            Field::new("CB", DataType::Utf8, false),
-            Field::new("NH", DataType::UInt8, false),
             Field::new(
-                "OX",
+                "BZ",
                 DataType::List(Arc::new(Field::new("item", DataType::Int32, true))),
                 false,
             ),
+            Field::new("CB", DataType::Utf8, false),
+            Field::new("NH", DataType::UInt8, false),
         ];
 
         let tags_type = schema

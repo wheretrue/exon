@@ -37,19 +37,6 @@ impl Display for ExonGFFError {
 
 impl Error for ExonGFFError {}
 
-impl From<noodles::gff::line::ParseError> for ExonGFFError {
-    fn from(e: noodles::gff::line::ParseError) -> Self {
-        match e {
-            noodles::gff::line::ParseError::InvalidRecord(s) => {
-                ExonGFFError::InvalidRecord(s.to_string())
-            }
-            noodles::gff::line::ParseError::InvalidDirective(s) => {
-                ExonGFFError::InvalidDirective(s.to_string())
-            }
-        }
-    }
-}
-
 impl From<ArrowError> for ExonGFFError {
     fn from(e: ArrowError) -> Self {
         ExonGFFError::ExternalError(Box::new(e))

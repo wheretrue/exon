@@ -23,7 +23,7 @@ use arrow::{
     error::ArrowError,
 };
 use exon_common::ExonArrayBuilder;
-use noodles::gff::lazy::Record;
+use noodles::gff::Record;
 
 pub struct GFFArrayBuilder {
     seqnames: GenericStringBuilder<i32>,
@@ -96,13 +96,12 @@ impl GFFArrayBuilder {
                 5 => {
                     let score = record.score();
 
-                    if score.is_empty() || score == "." {
-                        self.scores.append_null();
-                    } else {
-                        let score_f32 = score
-                            .parse::<f32>()
-                            .map_err(|e| ArrowError::ExternalError(Box::new(e)))?;
-                        self.scores.append_value(score_f32);
+                    match score {
+                        Some(Ok(score)) => {
+                            self.scores.append_value(score);
+                        }
+                        Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
+                        None => self.scores.append_null(),
                     }
                 }
                 6 => {
@@ -117,10 +116,12 @@ impl GFFArrayBuilder {
                 7 => {
                     let phase = record.phase();
 
-                    if phase.is_empty() || phase == "." {
-                        self.phases.append_null();
-                    } else {
-                        self.phases.append_value(phase);
+                    match phase {
+                        Some(Ok(phase)) => {
+                            self.phases.append_value(phase);
+                        }
+                        Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
+                        None => self.phases.append_null(),
                     }
                 }
                 8 => {
@@ -130,15 +131,15 @@ impl GFFArrayBuilder {
                         self.attributes.keys().append_value(key);
 
                         match value {
-                            noodles::gff::lazy::record::attributes::field::Value::String(value) => {
+                            noodles::gff::record::attributes::field::Value::String(value) => {
                                 self.attributes.values().append(true);
                                 self.attributes.values().values().append_value(value);
                             }
-                            noodles::gff::lazy::record::attributes::field::Value::Array(
-                                attr_values,
-                            ) => {
+                            noodles::gff::record::attributes::field::Value::Array(attr_values) => {
                                 let list_values = self.attributes.values().values();
                                 for value in attr_values.iter() {
+                                    let value = value?;
+
                                     list_values.append_value(value);
                                 }
                                 self.attributes.values().append(true);

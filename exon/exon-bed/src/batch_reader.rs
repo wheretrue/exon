@@ -18,26 +18,13 @@ use arrow::{error::ArrowError, record_batch::RecordBatch};
 
 use exon_common::ExonArrayBuilder;
 use futures::Stream;
-use noodles::bed::Record;
+use noodles::{
+    bed::feature::{record::Strand, record_buf::OtherFields, RecordBuf},
+    core::Position,
+};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
 use super::{array_builder::BEDArrayBuilder, bed_record_builder::BEDRecord, config::BEDConfig};
-
-macro_rules! extract_record {
-    ($buf:expr, $num:expr) => {{
-        let r: Record<$num> = match Record::from_str(&$buf) {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("invalid record: {e}"),
-                ));
-            }
-        };
-
-        BEDRecord::from(r)
-    }};
-}
 
 /// A batch reader for BED files.
 pub struct BatchReader<R> {
@@ -116,9 +103,6 @@ where
             }
         }
 
-        // Get the number of tab separated fields
-        let num_fields = buf.split('\t').count();
-
         // Remove the newline
         buf.pop();
 
@@ -128,15 +112,111 @@ where
             buf.pop();
         }
 
+        // Get the number of tab separated fields
+        let split = buf.split('\t').collect::<Vec<&str>>();
+        let num_fields = split.len();
+
         let bed_record = match num_fields {
-            12 => extract_record!(buf, 12),
-            9 => extract_record!(buf, 9),
-            8 => extract_record!(buf, 8),
-            7 => extract_record!(buf, 7),
-            6 => extract_record!(buf, 6),
-            5 => extract_record!(buf, 5),
-            4 => extract_record!(buf, 4),
-            3 => extract_record!(buf, 3),
+            12 => {
+                let buf_builder = RecordBuf::<6>::builder();
+
+                let other_fields = OtherFields::default();
+
+                let mut record = buf_builder
+                    .set_reference_sequence_name(split[0].as_bytes().to_vec())
+                    .set_feature_start(Position::from_str(split[1]).unwrap())
+                    .set_feature_end(Position::from_str(split[2]).unwrap())
+                    .set_name(split[3].as_bytes().to_vec())
+                    .set_score(split[4].parse().unwrap());
+
+                match split[5] {
+                    "+" => {
+                        record = record.set_strand(Strand::Forward);
+                    }
+                    "-" => {
+                        record = record.set_strand(Strand::Reverse);
+                    }
+                    "." => {}
+                    _ => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("invalid strand: {}", split[5]),
+                        ))
+                    }
+                };
+
+                let record = record.set_other_fields(other_fields).build();
+
+                BEDRecord::from(record)
+            }
+            // 9 => extract_record!(buf, 9),
+            // 8 => extract_record!(buf, 8),
+            // 7 => extract_record!(buf, 7),
+            6 => {
+                // let record = read_record_6(buf.as_bytes())?;
+                let mut buf_builder = RecordBuf::<6>::builder()
+                    .set_reference_sequence_name(split[0].as_bytes().to_vec())
+                    .set_feature_start(Position::from_str(split[1]).unwrap())
+                    .set_feature_end(Position::from_str(split[2]).unwrap())
+                    .set_name(split[3].as_bytes().to_vec())
+                    .set_score(split[4].parse().unwrap());
+
+                match split[5] {
+                    "+" => {
+                        buf_builder = buf_builder.set_strand(Strand::Forward);
+                    }
+                    "-" => {
+                        buf_builder = buf_builder.set_strand(Strand::Reverse);
+                    }
+                    "." => {}
+                    _ => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("invalid strand: {}", split[5]),
+                        ))
+                    }
+                };
+
+                let record = buf_builder.build();
+
+                BEDRecord::from(record)
+            }
+            5 => {
+                let buf_builder = RecordBuf::<5>::builder();
+
+                let record = buf_builder
+                    .set_reference_sequence_name(split[0].as_bytes().to_vec())
+                    .set_feature_start(Position::from_str(split[1]).unwrap())
+                    .set_feature_end(Position::from_str(split[2]).unwrap())
+                    .set_name(split[3].as_bytes().to_vec())
+                    .set_score(split[4].parse().unwrap())
+                    .build();
+
+                BEDRecord::from(record)
+            }
+            4 => {
+                let buf_builder = RecordBuf::<4>::builder();
+
+                let record = buf_builder
+                    .set_reference_sequence_name(split[0].as_bytes().to_vec())
+                    .set_feature_start(Position::from_str(split[1]).unwrap())
+                    .set_feature_end(Position::from_str(split[2]).unwrap())
+                    .set_name(split[3].as_bytes().to_vec())
+                    .build();
+
+                BEDRecord::from(record)
+            }
+            3 => {
+                let buf_builder = RecordBuf::<3>::builder();
+
+                let record = buf_builder
+                    .set_reference_sequence_name(split[0].as_bytes().to_vec())
+                    .set_feature_start(Position::from_str(split[1]).unwrap())
+                    .set_feature_end(Position::from_str(split[2]).unwrap())
+                    .build();
+
+                BEDRecord::from(record)
+            }
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
