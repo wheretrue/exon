@@ -13,12 +13,11 @@
 // limitations under the License.
 
 use noodles::{
-    bed::{
-        record::{Color, Name, Score, Strand},
-        Record,
-    },
+    bed::feature::{record::Strand, RecordBuf},
     core::Position,
 };
+
+use bstr::BStr;
 
 pub struct BEDRecord {
     reference_sequence_name: String,
@@ -150,176 +149,101 @@ impl BEDRecordBuilder {
         self
     }
 
-    pub fn name(mut self, name: Option<&Name>) -> Self {
+    pub fn name(mut self, name: Option<&BStr>) -> Self {
         self.name = name.map(|n| n.to_string());
         self
     }
 
-    pub fn score(mut self, score: Option<Score>) -> Self {
+    pub fn score(mut self, score: Option<u16>) -> Self {
         self.score = score.map(|i| u16::from(i) as i64);
         self
     }
 
     pub fn strand(mut self, strand: Option<Strand>) -> Self {
-        self.strand = strand.map(|s| s.to_string());
+        self.strand = match strand {
+            Some(Strand::Forward) => Some("+".to_string()),
+            Some(Strand::Reverse) => Some("-".to_string()),
+            None => None,
+        };
+
         self
     }
 
-    pub fn thick_start(mut self, thick_start: Position) -> Self {
-        self.thick_start = Some(thick_start.get() as u64);
-        self
-    }
+    // pub fn thick_start(mut self, thick_start: Position) -> Self {
+    //     self.thick_start = Some(thick_start.get() as u64);
+    //     self
+    // }
 
-    pub fn thick_end(mut self, thick_end: Position) -> Self {
-        self.thick_end = Some(thick_end.get() as u64);
-        self
-    }
+    // pub fn thick_end(mut self, thick_end: Position) -> Self {
+    //     self.thick_end = Some(thick_end.get() as u64);
+    //     self
+    // }
 
-    pub fn color(mut self, color: Option<Color>) -> Self {
-        self.color = color.map(|c| c.to_string());
-        self
-    }
+    // pub fn color(mut self, color: Option<&BStr>) -> Self {
+    //     self.color = color.map(|c| c.to_string());
+    //     self
+    // }
 
-    pub fn block_count(mut self, block_count: Option<u64>) -> Self {
-        self.block_count = block_count;
-        self
-    }
+    // pub fn block_count(mut self, block_count: Option<u64>) -> Self {
+    //     self.block_count = block_count;
+    //     self
+    // }
 
-    pub fn block_sizes(mut self, block_sizes: Option<String>) -> Self {
-        self.block_sizes = block_sizes;
-        self
-    }
+    // pub fn block_sizes(mut self, block_sizes: Option<String>) -> Self {
+    //     self.block_sizes = block_sizes;
+    //     self
+    // }
 
-    pub fn block_starts(mut self, block_starts: Option<String>) -> Self {
-        self.block_starts = block_starts;
-        self
-    }
+    // pub fn block_starts(mut self, block_starts: Option<String>) -> Self {
+    //     self.block_starts = block_starts;
+    //     self
+    // }
 }
 
-impl From<Record<12>> for BEDRecord {
-    fn from(value: Record<12>) -> Self {
-        let mut block_starts = Vec::new();
-        let mut block_sizes = Vec::new();
-
-        value.blocks().iter().for_each(|(start, size)| {
-            block_starts.push(start.to_string());
-            block_sizes.push(size.to_string());
-        });
-
-        let block_start_csv = block_starts.join(",");
-        let block_size_csv = block_sizes.join(",");
-
+impl From<RecordBuf<6>> for BEDRecord {
+    fn from(value: RecordBuf<6>) -> Self {
         let builder = BEDRecordBuilder::new()
             .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
+            .start(value.feature_start())
+            .end(value.feature_end().unwrap())
             .name(value.name())
-            .score(value.score())
-            .strand(value.strand())
-            .thick_start(value.thick_start())
-            .thick_end(value.thick_end())
-            .color(value.color())
-            .block_count(Some(block_starts.len() as u64))
-            .block_sizes(Some(block_size_csv))
-            .block_starts(Some(block_start_csv));
-
-        builder.finish()
-    }
-}
-
-impl From<Record<9>> for BEDRecord {
-    fn from(value: Record<9>) -> Self {
-        let builder = BEDRecordBuilder::new()
-            .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
-            .name(value.name())
-            .score(value.score())
-            .strand(value.strand())
-            .thick_start(value.thick_start())
-            .thick_end(value.thick_end())
-            .color(value.color());
-
-        builder.finish()
-    }
-}
-
-impl From<Record<8>> for BEDRecord {
-    fn from(value: Record<8>) -> Self {
-        let builder = BEDRecordBuilder::new()
-            .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
-            .name(value.name())
-            .score(value.score())
-            .strand(value.strand())
-            .thick_start(value.thick_start())
-            .thick_end(value.thick_end());
-
-        builder.finish()
-    }
-}
-
-impl From<Record<7>> for BEDRecord {
-    fn from(value: Record<7>) -> Self {
-        let builder = BEDRecordBuilder::new()
-            .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
-            .name(value.name())
-            .score(value.score())
-            .strand(value.strand())
-            .thick_start(value.thick_start());
-
-        builder.finish()
-    }
-}
-
-impl From<Record<6>> for BEDRecord {
-    fn from(value: Record<6>) -> Self {
-        let builder = BEDRecordBuilder::new()
-            .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
-            .name(value.name())
-            .score(value.score())
+            .score(Some(value.score()))
             .strand(value.strand());
 
         builder.finish()
     }
 }
 
-impl From<Record<5>> for BEDRecord {
-    fn from(value: Record<5>) -> Self {
+impl From<RecordBuf<5>> for BEDRecord {
+    fn from(value: RecordBuf<5>) -> Self {
         let builder = BEDRecordBuilder::new()
             .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
+            .start(value.feature_start())
+            .end(value.feature_end().unwrap())
             .name(value.name())
-            .score(value.score());
+            .score(Some(value.score()));
 
         builder.finish()
     }
 }
 
-impl From<Record<4>> for BEDRecord {
-    fn from(value: Record<4>) -> Self {
+impl From<RecordBuf<4>> for BEDRecord {
+    fn from(value: RecordBuf<4>) -> Self {
         let builder = BEDRecordBuilder::new()
             .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position())
-            .name(value.name());
+            .start(value.feature_start())
+            .end(value.feature_end().unwrap());
 
         builder.finish()
     }
 }
 
-impl From<Record<3>> for BEDRecord {
-    fn from(value: Record<3>) -> Self {
+impl From<RecordBuf<3>> for BEDRecord {
+    fn from(value: RecordBuf<3>) -> Self {
         let builder = BEDRecordBuilder::new()
             .reference_sequence_name(value.reference_sequence_name().to_string())
-            .start(value.start_position())
-            .end(value.end_position());
+            .start(value.feature_start())
+            .end(value.feature_end().unwrap());
 
         builder.finish()
     }

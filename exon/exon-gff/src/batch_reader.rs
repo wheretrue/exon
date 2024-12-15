@@ -63,17 +63,17 @@ where
         })
     }
 
-    async fn read_line(&mut self) -> Result<Option<noodles::gff::lazy::Line>> {
-        let mut line = noodles::gff::lazy::Line::default();
+    async fn read_line(&mut self) -> Result<Option<noodles::gff::Line>> {
+        let mut line = noodles::gff::Line::default();
 
-        match self.reader.read_lazy_line(&mut line).await {
+        match self.reader.read_line(&mut line).await {
             Ok(0) => Ok(None),
             Ok(_) => Ok(Some(line)),
             Err(e) => Err(e.into()),
         }
     }
 
-    fn filter(&self, record: &noodles::gff::lazy::Record) -> Result<bool> {
+    fn filter(&self, record: &noodles::gff::Record) -> Result<bool> {
         let chrom = record.reference_sequence_name();
 
         match &self.region {
@@ -105,21 +105,16 @@ where
         loop {
             match self.read_line().await? {
                 None => break,
-                Some(line) => match line {
-                    noodles::gff::lazy::Line::Comment(_) => {}
-                    noodles::gff::lazy::Line::Directive(_) => {}
-                    noodles::gff::lazy::Line::Record(record) => {
-                        // Filter on region if provided.
+                Some(line) => match line.as_record() {
+                    Some(Ok(record)) => {
                         if !self.filter(&record)? {
                             continue;
                         }
 
                         gff_array_builder.append(&record)?;
-
-                        if gff_array_builder.len() == self.config.batch_size {
-                            break;
-                        }
                     }
+                    Some(Err(e)) => return Err(e.into()),
+                    None => {}
                 },
             }
         }

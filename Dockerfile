@@ -1,4 +1,4 @@
-FROM rust:1.80 as builder
+FROM rust:1.83 as builder
 
 COPY . /usr/src/exon
 WORKDIR /usr/src/exon

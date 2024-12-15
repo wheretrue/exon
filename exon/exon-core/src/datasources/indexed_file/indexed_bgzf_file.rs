@@ -73,12 +73,7 @@ pub async fn get_byte_range_for_file(
                 std::io::Error::new(std::io::ErrorKind::InvalidInput, "missing tabix header")
             })?;
 
-            let region_name = std::str::from_utf8(region.name()).map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    format!("invalid region name: {}", e),
-                )
-            })?;
+            let region_name = region.name();
             let id = header.reference_sequence_names().get_index_of(region_name);
 
             match id {
