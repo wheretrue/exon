@@ -65,7 +65,7 @@ regex = "1.10.6"
 
 [dev-dependencies]
 exon-test = { path = "../exon-test" }
-sqllogictest = "0.21.0"
+sqllogictest = "0.23.1"
 clap = { version = "4", features = ["derive", "env"] }
 criterion = { version = "0.5", features = ["async_tokio"] }
 rand = "0.8"
