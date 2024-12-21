@@ -2194,7 +2194,7 @@ checksum = "5692dd7b5a1978a5aeb0ce83b7655c58ca8efdcb79d21036ea249da95afec2c6"
 
 [[package]]
 name = "exon"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2242,7 +2242,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bam"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2255,7 +2255,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bcf"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2268,7 +2268,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bed"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "bstr",
@@ -2281,7 +2281,7 @@ dependencies = [
 
 [[package]]
 name = "exon-benchmarks"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "clap",
  "datafusion",
@@ -2293,7 +2293,7 @@ dependencies = [
 
 [[package]]
 name = "exon-bigwig"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "bigtools",
@@ -2306,7 +2306,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cli"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "async-trait",
  "clap",
@@ -2322,7 +2322,7 @@ dependencies = [
 
 [[package]]
 name = "exon-common"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "datafusion",
@@ -2334,7 +2334,7 @@ dependencies = [
 
 [[package]]
 name = "exon-cram"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "coitrees",
@@ -2349,7 +2349,7 @@ dependencies = [
 
 [[package]]
 name = "exon-examples"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "datafusion",
@@ -2359,7 +2359,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fasta"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2372,7 +2372,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fastq"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2384,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "exon-fcs"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "byteorder",
@@ -2397,7 +2397,7 @@ dependencies = [
 
 [[package]]
 name = "exon-genbank"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2410,7 +2410,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gff"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2423,7 +2423,7 @@ dependencies = [
 
 [[package]]
 name = "exon-gtf"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2435,7 +2435,7 @@ dependencies = [
 
 [[package]]
 name = "exon-io"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -2447,7 +2447,7 @@ dependencies = [
 
 [[package]]
 name = "exon-mzml"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "base64 0.22.1",
@@ -2463,7 +2463,7 @@ dependencies = [
 
 [[package]]
 name = "exon-sam"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "exon-sdf"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "criterion",
@@ -2489,7 +2489,7 @@ dependencies = [
 
 [[package]]
 name = "exon-test"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "datafusion",
  "object_store",
@@ -2497,7 +2497,7 @@ dependencies = [
 
 [[package]]
 name = "exon-vcf"
-version = "0.32.3"
+version = "0.32.4"
 dependencies = [
  "arrow",
  "exon-common",
