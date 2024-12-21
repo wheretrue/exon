@@ -21,7 +21,7 @@ use datafusion::{
         physical_plan::FileSinkConfig, DefaultTableSource,
     },
     execution::context::SessionState,
-    logical_expr::{LogicalPlan, LogicalPlanBuilder, UserDefinedLogicalNode},
+    logical_expr::{dml::InsertOp, LogicalPlan, LogicalPlanBuilder, UserDefinedLogicalNode},
     physical_plan::{insert::DataSinkExec, ExecutionPlan},
     physical_planner::{ExtensionPlanner, PhysicalPlanner},
     sql::{
@@ -165,7 +165,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             table_paths: vec![],
             output_schema: Arc::clone(&schema),
             table_partition_cols: vec![],
-            overwrite: false,
+            insert_op: InsertOp::Append,
             keep_partition_by_columns: false,
         };
 

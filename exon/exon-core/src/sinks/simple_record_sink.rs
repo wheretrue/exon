@@ -132,6 +132,7 @@ mod tests {
     use datafusion::datasource::listing::PartitionedFile;
     use datafusion::datasource::physical_plan::FileSinkConfig;
     use datafusion::execution::object_store::ObjectStoreUrl;
+    use datafusion::logical_expr::dml::InsertOp;
     use datafusion::physical_plan::insert::DataSink;
 
     #[tokio::test]
@@ -160,7 +161,7 @@ mod tests {
             table_paths: vec![],
             output_schema,
             table_partition_cols: vec![],
-            overwrite: false,
+            insert_op: InsertOp::Append,
             keep_partition_by_columns: false,
         };
 

@@ -32,6 +32,12 @@ pub struct MzMLScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for MzMLScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MzMLScanFunction").finish()
+    }
+}
+
 impl MzMLScanFunction {
     /// Create a new `MzMLScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {

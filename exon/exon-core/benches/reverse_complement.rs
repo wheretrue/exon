@@ -40,7 +40,8 @@ fn generate_dna_sequences(num_sequences: usize) -> Vec<String> {
 fn bench_reverse_complement(c: &mut Criterion) {
     let mut group = c.benchmark_group("reverse_complement");
 
-    let sequences = generate_dna_sequences(500);
+    let size = 500;
+    let sequences = generate_dna_sequences(size);
     let sequence_array = Arc::new(StringArray::from(sequences));
     let sequence_column = ColumnarValue::Array(sequence_array.clone());
 
@@ -51,7 +52,7 @@ fn bench_reverse_complement(c: &mut Criterion) {
         &sequence_column,
         |b, s| {
             b.iter(|| {
-                rc.invoke(&[s.clone()]).unwrap();
+                rc.invoke_batch(&[s.clone()], size).unwrap();
             });
         },
     );

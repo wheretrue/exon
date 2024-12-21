@@ -38,6 +38,12 @@ pub struct GFFScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for GFFScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GFFScanFunction").finish()
+    }
+}
+
 impl GFFScanFunction {
     /// Create a new `GFFScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {
@@ -76,6 +82,12 @@ impl TableFunctionImpl for GFFScanFunction {
 /// A table function that returns a table provider for an indexed GFF file.
 pub struct GFFIndexedScanFunction {
     ctx: SessionContext,
+}
+
+impl std::fmt::Debug for GFFIndexedScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GFFIndexedScanFunction").finish()
+    }
 }
 
 impl GFFIndexedScanFunction {

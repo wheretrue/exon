@@ -43,6 +43,12 @@ pub struct FastaIndexedScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for FastaIndexedScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FastaIndexedScanFunction").finish()
+    }
+}
+
 impl FastaIndexedScanFunction {
     /// Create a new `FastaIndexedScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {

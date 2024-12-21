@@ -27,7 +27,7 @@ exon-fcs = { path = "../exon-fcs", version = "0.32.3", optional = true }
 exon-genbank = { path = "../exon-genbank", version = "0.32.3", optional = true }
 exon-gff = { path = "../exon-gff", version = "0.32.3" }
 exon-gtf = { path = "../exon-gtf", version = "0.32.3" }
-deltalake = { version = "0.19.0", features = [
+deltalake = { version = "0.22.3", features = [
   "datafusion",
   "deltalake-aws",
   "s3",

@@ -33,6 +33,12 @@ pub struct BEDScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for BEDScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BEDScanFunction").finish()
+    }
+}
+
 impl BEDScanFunction {
     /// Create a new `BEDScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {

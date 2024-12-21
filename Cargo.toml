@@ -35,12 +35,12 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-arrow = { version = "52.2.0" }
+arrow = { version = "53.3.0" }
 async-trait = "0.1.82"
-datafusion = { version = "41", features = ["compression", "parquet"] }
+datafusion = { version = "43", features = ["compression", "parquet"] }
 futures = "0.3"
 noodles = { version = "0.86" }
-object_store = { version = "0.10.2" }
+object_store = { version = "0.11.0" }
 tokio = { version = "1", features = ["io-util"] }
 tokio-util = { version = "0.7.13", features = ["compat"] }
 url = { version = "2.5.2" }

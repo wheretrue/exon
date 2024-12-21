@@ -30,6 +30,12 @@ pub struct FCSScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for FCSScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FCSScanFunction").finish()
+    }
+}
+
 impl FCSScanFunction {
     /// Create a new FCS scan function.
     pub fn new(ctx: SessionContext) -> Self {
