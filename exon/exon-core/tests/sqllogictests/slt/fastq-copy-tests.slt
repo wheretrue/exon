@@ -4,7 +4,7 @@ statement ok
 CREATE EXTERNAL TABLE fastq_table STORED AS FASTQ LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fastq/test.fastq';
 
 statement ok
-COPY (SELECT * FROM fastq_table) TO '${__TEST_DIR__}test.fastq' STORED AS FASTQ;
+COPY (SELECT name, description, quality_scores, sequence FROM fastq_table) TO '${__TEST_DIR__}test.fastq' STORED AS FASTQ;
 
 query I
 SELECT COUNT(*) FROM fastq_scan('${__TEST_DIR__}test.fastq');

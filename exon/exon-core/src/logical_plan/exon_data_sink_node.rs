@@ -96,6 +96,12 @@ impl From<ExonCopyToStatement> for ExonDataSinkLogicalPlanNode {
     }
 }
 
+impl PartialOrd for ExonDataSinkLogicalPlanNode {
+    fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
+        None
+    }
+}
+
 impl DfExtensionNode for ExonDataSinkLogicalPlanNode {}
 
 impl Hash for ExonDataSinkLogicalPlanNode {

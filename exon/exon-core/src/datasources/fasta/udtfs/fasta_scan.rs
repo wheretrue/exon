@@ -36,6 +36,12 @@ pub struct FastaScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for FastaScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FastaScanFunction").finish()
+    }
+}
+
 impl FastaScanFunction {
     /// Create a new `FastaScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {

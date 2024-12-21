@@ -33,6 +33,12 @@ pub struct GTFScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for GTFScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GTFScanFunction").finish()
+    }
+}
+
 impl GTFScanFunction {
     /// Create a new `GTFScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {

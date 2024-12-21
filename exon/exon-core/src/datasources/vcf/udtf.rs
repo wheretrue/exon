@@ -38,6 +38,12 @@ pub struct VCFScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for VCFScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VCFScanFunction").finish()
+    }
+}
+
 impl VCFScanFunction {
     /// Create a new VCF scan function.
     pub fn new(ctx: SessionContext) -> Self {
@@ -79,6 +85,12 @@ impl TableFunctionImpl for VCFScanFunction {
 /// A table function that returns a table provider for an Indexed VCF file.
 pub struct VCFIndexedScanFunction {
     ctx: SessionContext,
+}
+
+impl std::fmt::Debug for VCFIndexedScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VCFIndexedScanFunction").finish()
+    }
 }
 
 impl VCFIndexedScanFunction {

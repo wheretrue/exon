@@ -18,7 +18,7 @@ use arrow::datatypes::{Field, SchemaRef};
 use datafusion::{
     datasource::{listing::PartitionedFile, physical_plan::FileScanConfig},
     execution::object_store::ObjectStoreUrl,
-    physical_expr::PhysicalSortExpr,
+    physical_expr::LexOrdering,
     physical_plan::Statistics,
 };
 
@@ -30,7 +30,7 @@ pub struct FileScanConfigBuilder {
     statistics: Statistics,
     projection: Option<Vec<usize>>,
     limit: Option<usize>,
-    output_ordering: Vec<Vec<PhysicalSortExpr>>,
+    output_ordering: Vec<LexOrdering>,
     table_partition_cols: Vec<Field>,
 }
 

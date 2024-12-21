@@ -33,6 +33,12 @@ pub struct GenbankScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for GenbankScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GenbankScanFunction").finish()
+    }
+}
+
 impl GenbankScanFunction {
     /// Create a new `GenbankScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {

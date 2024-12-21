@@ -832,7 +832,7 @@ mod tests {
         let temp_path = temp_dir.join("test.fasta");
 
         let sql = format!(
-            "COPY (SELECT * FROM test_fasta) TO '{}' STORED AS FASTA",
+            "COPY (SELECT id, description, sequence FROM test_fasta) TO '{}' STORED AS FASTA",
             temp_path.display()
         );
         ctx.sql(&sql).await?.collect().await?;

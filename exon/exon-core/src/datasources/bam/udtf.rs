@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 use crate::{
     config::extract_config_from_state,
@@ -35,6 +35,12 @@ use super::table_provider::{ListingBAMTable, ListingBAMTableOptions};
 #[derive(Default)]
 pub struct BAMScanFunction {
     ctx: SessionContext,
+}
+
+impl Debug for BAMScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BAMScanFunction").finish()
+    }
 }
 
 impl BAMScanFunction {
@@ -80,6 +86,12 @@ impl TableFunctionImpl for BAMScanFunction {
 /// A table function that returns a table provider for an Indexed BAM file.
 pub struct BAMIndexedScanFunction {
     ctx: SessionContext,
+}
+
+impl Debug for BAMIndexedScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BAMIndexedScanFunction").finish()
+    }
 }
 
 impl BAMIndexedScanFunction {

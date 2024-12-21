@@ -33,6 +33,12 @@ pub struct CRAMScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for CRAMScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CRAMScanFunction").finish()
+    }
+}
+
 impl CRAMScanFunction {
     /// Create a new `CRAMScanFunction`.
     pub fn _new(ctx: SessionContext) -> Self {

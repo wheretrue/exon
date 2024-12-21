@@ -31,6 +31,12 @@ pub struct BCFScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for BCFScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BCFScanFunction").finish()
+    }
+}
+
 impl BCFScanFunction {
     /// Create a new BCF scan function.
     pub fn new(ctx: SessionContext) -> Self {

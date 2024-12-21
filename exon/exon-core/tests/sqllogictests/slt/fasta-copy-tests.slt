@@ -15,7 +15,7 @@ SELECT * FROM fasta_table WHERE id = 'a';
 a description ATCG
 
 statement ok
-COPY (SELECT * FROM fasta_table) TO '${__TEST_DIR__}test.fasta' STORED AS FASTA;
+COPY (SELECT id, description, sequence FROM fasta_table) TO '${__TEST_DIR__}test.fasta' STORED AS FASTA;
 
 query I
 SELECT * FROM fasta_scan('${__TEST_DIR__}test.fasta');

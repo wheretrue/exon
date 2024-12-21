@@ -77,7 +77,7 @@ impl CliSessionContext for ExonCLISession {
 
 #[derive(Debug, Parser, PartialEq)]
 struct Args {
-    #[arg(value_enum, long, default_value = "Table")]
+    #[arg(value_enum, long, default_value = "table")]
     format: PrintFormat,
 
     #[clap(
@@ -89,7 +89,7 @@ struct Args {
 
     #[clap(
         long,
-        help = "The max number of rows to display for 'Table' format\n[default: 40] [possible values: numbers(0/10/...), inf(no limit)]",
+        help = "The max number of rows to display for 'table' format\n[default: 40] [possible values: numbers(0/10/...), inf(no limit)]",
         default_value = "40"
     )]
     maxrows: MaxRows,

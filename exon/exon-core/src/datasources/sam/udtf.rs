@@ -32,6 +32,12 @@ pub struct SAMScanFunction {
     ctx: SessionContext,
 }
 
+impl std::fmt::Debug for SAMScanFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SAMScanFunction").finish()
+    }
+}
+
 impl SAMScanFunction {
     /// Create a new `SAMScanFunction`.
     pub fn new(ctx: SessionContext) -> Self {
