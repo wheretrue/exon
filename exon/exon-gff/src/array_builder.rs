@@ -23,7 +23,7 @@ use arrow::{
     error::ArrowError,
 };
 use exon_common::ExonArrayBuilder;
-use noodles::gff::Record;
+use noodles::gff::{record::Strand, Record};
 
 pub struct GFFArrayBuilder {
     seqnames: GenericStringBuilder<i32>,
@@ -107,19 +107,21 @@ impl GFFArrayBuilder {
                 6 => {
                     let strand = record.strand()?;
 
-                    if strand.as_ref() == "" || strand.as_ref() == "." {
-                        self.strands.append_null();
-                    } else {
-                        self.strands.append_value(strand);
+                    match strand {
+                        Strand::None | Strand::Unknown => self.strands.append_null(),
+                        Strand::Forward => self.strands.append_value("+"),
+                        Strand::Reverse => self.strands.append_value("-"),
                     }
                 }
                 7 => {
                     let phase = record.phase();
 
                     match phase {
-                        Some(Ok(phase)) => {
-                            self.phases.append_value(phase);
-                        }
+                        Some(Ok(phase)) => match phase {
+                            noodles::gff::record::Phase::Zero => self.phases.append_value("0"),
+                            noodles::gff::record::Phase::One => self.phases.append_value("1"),
+                            noodles::gff::record::Phase::Two => self.phases.append_value("2"),
+                        },
                         Some(Err(e)) => return Err(ArrowError::ExternalError(Box::new(e))),
                         None => self.phases.append_null(),
                     }
