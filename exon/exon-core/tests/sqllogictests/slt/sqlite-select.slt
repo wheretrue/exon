@@ -1,0 +1,4 @@
+control substitution on
+
+statement ok
+CREATE EXTERNAL TABLE fasta_table STORED AS FASTA LOCATION '$CARGO_MANIFEST_DIR/test-data/datasources/fasta/test.fasta';
