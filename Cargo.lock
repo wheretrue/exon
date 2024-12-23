@@ -5109,9 +5109,9 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sqllogictest"
-version = "0.23.1"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f8b0fbdd5d7cb140384bcf8607d8dc52b9296c64654606be5986aa04526b069"
+checksum = "48c03edcabfda1ab894cc63a115b9f014bfc6875916b850ab7498d3cb92daed9"
 dependencies = [
  "async-trait",
  "educe",
