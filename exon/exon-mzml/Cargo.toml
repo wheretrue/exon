@@ -18,7 +18,7 @@ exon-common = { path = "../exon-common", version = "0.32.4" }
 flate2 = { version = "1.0.33" }
 futures = { workspace = true }
 object_store = { workspace = true }
-quick-xml = { version = "0.36.1", features = [
+quick-xml = { version = "0.37.1", features = [
   "async-tokio",
   "serialize",
   "overlapped-lists",
