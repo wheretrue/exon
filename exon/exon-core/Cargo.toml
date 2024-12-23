@@ -52,7 +52,7 @@ noodles = { workspace = true, features = [
 ] }
 num_cpus = "1.16.0"
 object_store = { workspace = true, features = ["aws", "gcp"] }
-pin-project = { version = "1.1.5", optional = true }
+pin-project = { version = "1.1.7", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-util = { workspace = true }
 tracing = { workspace = true }
