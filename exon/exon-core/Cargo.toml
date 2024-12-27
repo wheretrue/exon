@@ -15,6 +15,10 @@ arrow = { workspace = true }
 async-trait = { workspace = true }
 bytes = "1.7.1"
 datafusion = { workspace = true }
+datafusion-table-providers = { version = "0.2.1", features = [
+  "sqlite",
+  "sqlite-federation",
+] }
 exon-bam = { path = "../exon-bam", version = "0.32.4" }
 exon-sdf = { path = "../exon-sdf", version = "0.32.4" }
 exon-bcf = { path = "../exon-bcf", version = "0.32.4" }

@@ -29,6 +29,8 @@ use datafusion::{
 #[cfg(feature = "deltalake")]
 use deltalake::{aws::register_handlers, delta_datafusion::DeltaTableFactory, open_table};
 
+use datafusion_table_providers::sqlite::SqliteTableProviderFactory;
+
 use crate::{
     datasources::{
         bam::table_provider::{ListingBAMTable, ListingBAMTableOptions},
@@ -177,6 +179,11 @@ impl ExonSession {
                 Arc::new(ExonListingTableFactory::default()) as Arc<dyn TableProviderFactory>,
             );
         }
+
+        table_factories.insert(
+            "SQLITE".to_string(),
+            Arc::new(SqliteTableProviderFactory::default()) as Arc<dyn TableProviderFactory>,
+        );
 
         #[cfg(feature = "deltalake")]
         {
