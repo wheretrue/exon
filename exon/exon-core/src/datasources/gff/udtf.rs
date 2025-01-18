@@ -20,9 +20,10 @@ use crate::{
     ExonRuntimeEnvExt,
 };
 use datafusion::{
+    catalog::TableFunctionImpl,
     datasource::{
-        file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
-        listing::ListingTableUrl, TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        TableProvider,
     },
     error::{DataFusionError, Result},
     execution::context::SessionContext,

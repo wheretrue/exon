@@ -19,7 +19,7 @@ use datafusion::{
     common::Statistics,
     datasource::{listing::PartitionedFile, physical_plan::FileScanConfig},
     physical_expr::EquivalenceProperties,
-    physical_plan::{ExecutionMode, Partitioning, PlanProperties},
+    physical_plan::{execution_plan::Boundedness, Partitioning, PlanProperties},
 };
 use itertools::Itertools;
 
@@ -51,8 +51,12 @@ impl ExonFileScanConfig for FileScanConfig {
 
         let output_partitioning = Partitioning::UnknownPartitioning(self.file_groups.len());
 
-        let properties =
-            PlanProperties::new(eq_properties, output_partitioning, ExecutionMode::Bounded);
+        let properties = PlanProperties::new(
+            eq_properties,
+            output_partitioning,
+            datafusion::physical_plan::execution_plan::EmissionType::Both,
+            Boundedness::Bounded,
+        );
 
         (schema, statistics, properties)
     }

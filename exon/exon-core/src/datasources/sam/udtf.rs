@@ -20,10 +20,8 @@ use crate::{
     datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction},
 };
 use datafusion::{
-    datasource::{function::TableFunctionImpl, TableProvider},
-    error::Result,
-    execution::context::SessionContext,
-    logical_expr::Expr,
+    catalog::TableFunctionImpl, datasource::TableProvider, error::Result,
+    execution::context::SessionContext, logical_expr::Expr,
 };
 use exon_common::TableSchema;
 

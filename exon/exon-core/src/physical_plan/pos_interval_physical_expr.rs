@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{any::Any, fmt::Display, hash::Hash, sync::Arc};
+use std::{any::Any, fmt::Display, sync::Arc};
 
 use arrow::datatypes::SchemaRef;
 use datafusion::{
@@ -28,7 +28,7 @@ use noodles::core::region::Interval;
 use crate::error::invalid_interval::InvalidIntervalError;
 
 /// A physical expression that represents a genomic interval.
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq)]
 pub struct PosIntervalPhysicalExpr {
     start: usize,
     end: Option<usize>,
@@ -216,12 +216,6 @@ impl PhysicalExpr for PosIntervalPhysicalExpr {
             self.end,
             Arc::clone(&self.inner),
         )))
-    }
-
-    fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
-        let mut s = state;
-        self.start.hash(&mut s);
-        self.end.hash(&mut s);
     }
 }
 

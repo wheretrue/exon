@@ -48,6 +48,7 @@ impl FileOpener for IndexedCRAMOpener {
                 extensions,
                 object_meta,
                 range: _,
+                metadata_size_hint: _,
             } = file_meta;
 
             let index_record = extensions

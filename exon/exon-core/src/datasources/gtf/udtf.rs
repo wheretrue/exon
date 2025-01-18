@@ -19,10 +19,8 @@ use crate::{
     ExonRuntimeEnvExt,
 };
 use datafusion::{
-    datasource::{function::TableFunctionImpl, TableProvider},
-    error::Result,
-    execution::context::SessionContext,
-    logical_expr::Expr,
+    catalog::TableFunctionImpl, datasource::TableProvider, error::Result,
+    execution::context::SessionContext, logical_expr::Expr,
 };
 use exon_gtf::new_gtf_schema_builder;
 

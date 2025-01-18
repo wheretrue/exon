@@ -144,6 +144,7 @@ pub async fn pruned_partition_list<'a>(
                     range: None,
                     extensions: None,
                     statistics: None,
+                    metadata_size_hint: None,
                 })
             }));
 

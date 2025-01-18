@@ -15,9 +15,10 @@
 use std::{str::FromStr, sync::Arc};
 
 use datafusion::{
+    catalog::TableFunctionImpl,
     datasource::{
-        file_format::file_compression_type::FileCompressionType, function::TableFunctionImpl,
-        listing::ListingTableUrl, TableProvider,
+        file_format::file_compression_type::FileCompressionType, listing::ListingTableUrl,
+        TableProvider,
     },
     error::{DataFusionError, Result as DataFusionResult},
     execution::context::SessionContext,

@@ -14,7 +14,6 @@
 
 use std::any::Any;
 use std::fmt::{Display, Formatter};
-use std::hash::Hash;
 use std::sync::Arc;
 
 use datafusion::error::{DataFusionError, Result};
@@ -28,7 +27,7 @@ use noodles::core::region::Interval;
 /// This is where the start is before the interval end and the end is after the interval start.
 /// Query:   |---------|     (10 to 20)
 /// Read:         |------|   (15 to 25)
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq)]
 pub struct StartEndIntervalPhysicalExpr {
     start: usize,
     end: Option<usize>,
@@ -195,12 +194,6 @@ impl PhysicalExpr for StartEndIntervalPhysicalExpr {
             self.end,
             Arc::clone(&self.inner),
         )))
-    }
-
-    fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
-        let mut s = state;
-        self.start.hash(&mut s);
-        self.end.hash(&mut s);
     }
 }
 

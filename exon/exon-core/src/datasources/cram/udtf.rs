@@ -18,7 +18,7 @@ use datafusion::datasource::listing::ListingTableUrl;
 use datafusion::datasource::TableProvider;
 use datafusion::scalar::ScalarValue;
 use datafusion::{
-    datasource::function::TableFunctionImpl, execution::context::SessionContext, logical_expr::Expr,
+    catalog::TableFunctionImpl, execution::context::SessionContext, logical_expr::Expr,
 };
 
 use datafusion::error::Result as DataFusionResult;

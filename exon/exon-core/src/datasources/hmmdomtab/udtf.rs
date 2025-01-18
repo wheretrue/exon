@@ -20,9 +20,7 @@ use super::{
 };
 use crate::datasources::{exon_listing_table_options::ExonListingConfig, ScanFunction};
 use datafusion::{
-    datasource::{function::TableFunctionImpl, TableProvider},
-    error::Result,
-    logical_expr::Expr,
+    catalog::TableFunctionImpl, datasource::TableProvider, error::Result, logical_expr::Expr,
 };
 
 /// A table function that returns a table provider for a HMMDomTab file.

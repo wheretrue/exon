@@ -21,7 +21,8 @@ use crate::{
     ExonRuntimeEnvExt,
 };
 use datafusion::{
-    datasource::{function::TableFunctionImpl, listing::ListingTableUrl, TableProvider},
+    catalog::TableFunctionImpl,
+    datasource::{listing::ListingTableUrl, TableProvider},
     error::{DataFusionError, Result},
     execution::context::SessionContext,
     logical_expr::Expr,
