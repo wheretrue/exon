@@ -26,7 +26,7 @@ use datafusion::{
 /// A physical expression that represents a chromosome.
 ///
 /// Under the hood, this is a binary expression that compares the `chrom` column to a literal. But may be used to optimize queries.
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq)]
 pub struct RegionNamePhysicalExpr {
     field_name: String,
     field_value: String,
@@ -257,11 +257,11 @@ impl PhysicalExpr for RegionNamePhysicalExpr {
         )))
     }
 
-    fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
-        let mut s = state;
-        self.field_name().hash(&mut s);
-        self.field_value().hash(&mut s);
-    }
+    // fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
+    //     let mut s = state;
+    //     self.field_name().hash(&mut s);
+    //     self.field_value().hash(&mut s);
+    // }
 }
 
 #[cfg(test)]

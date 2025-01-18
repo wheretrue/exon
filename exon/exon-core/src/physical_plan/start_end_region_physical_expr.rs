@@ -28,7 +28,7 @@ use super::{
 };
 
 /// A physical expression that represents a region, e.g. chr1:100-200.
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq)]
 pub struct StartEndRegionPhysicalExpr {
     region_name_expr: Arc<dyn PhysicalExpr>,
     interval_expr: Option<Arc<dyn PhysicalExpr>>,
@@ -239,15 +239,5 @@ impl PhysicalExpr for StartEndRegionPhysicalExpr {
             Arc::clone(&self.region_name_expr),
             self.interval_expr.clone(),
         )))
-    }
-
-    fn dyn_hash(&self, state: &mut dyn std::hash::Hasher) {
-        let mut s = state;
-
-        self.region_name_expr.dyn_hash(&mut s);
-
-        if let Some(ref interval_expr) = self.interval_expr {
-            interval_expr.dyn_hash(&mut s);
-        }
     }
 }

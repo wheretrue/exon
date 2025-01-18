@@ -73,7 +73,7 @@ impl ExtensionPlanner for ExomeExtensionPlanner {
             CopyToSource::Query(q) => {
                 session_state
                     .statement_to_plan(Statement::Statement(Box::new(ast::Statement::Query(
-                        Box::new(q.clone()),
+                        Box::new(*q.clone()),
                     ))))
                     .await?
             }
